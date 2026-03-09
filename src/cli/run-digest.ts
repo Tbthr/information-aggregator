@@ -90,6 +90,25 @@ function buildDefaultCollectDependencies(): CollectDependencies {
   };
 }
 
+function resolveDigestTimestamp(item: RawItem): number | null {
+  const timestamp = item.publishedAt ?? item.fetchedAt;
+  const parsed = Date.parse(timestamp);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+function filterItemsToLast24Hours(items: RawItem[], nowIso: string): RawItem[] {
+  const nowMs = Date.parse(nowIso);
+  if (Number.isNaN(nowMs)) {
+    return items;
+  }
+
+  const cutoffMs = nowMs - (24 * 60 * 60 * 1000);
+  return items.filter((item) => {
+    const itemMs = resolveDigestTimestamp(item);
+    return itemMs !== null && itemMs >= cutoffMs && itemMs <= nowMs;
+  });
+}
+
 export async function runDigest(args: RunDigestArgs, dependencies: RunDigestDependencies = {}): Promise<{ markdown: string; runId: string }> {
   const db = dependencies.db ?? createDb(args.dbPath ?? ":memory:");
   const now = dependencies.now ?? (() => new Date().toISOString());
@@ -126,7 +145,7 @@ export async function runDigest(args: RunDigestArgs, dependencies: RunDigestDepe
     createdAt: now(),
   });
 
-  const items = await collectImpl(selectedSources, buildDefaultCollectDependencies());
+  const items = filterItemsToLast24Hours(await collectImpl(selectedSources, buildDefaultCollectDependencies()), now());
   const normalized = normalizeItems(items);
   if (!args.dryRun) {
     insertRawItems(db, items);

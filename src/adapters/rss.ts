@@ -25,7 +25,7 @@ export function parseRssItems(xml: string, sourceId: string): RawItem[] {
     const atomHref = block.match(/<link[^>]*href="([^"]+)"/i)?.[1];
     const title = extractTag(block, "title") ?? `Untitled ${index + 1}`;
     const url = extractTag(block, "link") ?? atomHref ?? "";
-    const publishedAt = extractTag(block, "pubDate") ?? extractTag(block, "updated");
+    const publishedAt = extractTag(block, "pubDate") ?? extractTag(block, "published") ?? extractTag(block, "updated");
     const snippet = extractTag(block, "description") ?? extractTag(block, "summary") ?? extractTag(block, "content");
 
     return {

@@ -155,4 +155,80 @@ describe("runDigest", () => {
     expect(summaryCalls).toBe(1);
     expect(narrationCalls).toBe(1);
   });
+
+  test("keeps only items published within the last 24 hours", async () => {
+    const result = await runDigest(
+      {
+        profileId: "default",
+        dryRun: true,
+      },
+      {
+        now: () => "2026-03-09T12:00:00Z",
+        loadSources: async () => testSources,
+        loadProfiles: async () => testProfiles,
+        loadTopics: async () => testTopics,
+        loadSourcePacks: async () => testSourcePacks,
+        collectSources: async () => [
+          {
+            id: "raw-new",
+            sourceId: "rss-1",
+            title: "Fresh AI release",
+            url: "https://example.com/fresh",
+            publishedAt: "2026-03-09T08:00:00Z",
+            fetchedAt: "2026-03-09T12:00:00Z",
+            metadataJson: "{}",
+          },
+          {
+            id: "raw-old",
+            sourceId: "rss-1",
+            title: "Old AI release",
+            url: "https://example.com/old",
+            publishedAt: "2026-03-08T11:59:59Z",
+            fetchedAt: "2026-03-09T12:00:00Z",
+            metadataJson: "{}",
+          },
+        ],
+      },
+    );
+
+    expect(result.markdown).toContain("Fresh AI release");
+    expect(result.markdown).not.toContain("Old AI release");
+  });
+
+  test("falls back to fetchedAt when publishedAt is missing", async () => {
+    const result = await runDigest(
+      {
+        profileId: "default",
+        dryRun: true,
+      },
+      {
+        now: () => "2026-03-09T12:00:00Z",
+        loadSources: async () => testSources,
+        loadProfiles: async () => testProfiles,
+        loadTopics: async () => testTopics,
+        loadSourcePacks: async () => testSourcePacks,
+        collectSources: async () => [
+          {
+            id: "raw-fallback",
+            sourceId: "rss-1",
+            title: "Fallback item",
+            url: "https://example.com/fallback",
+            fetchedAt: "2026-03-09T11:00:00Z",
+            metadataJson: "{}",
+          },
+          {
+            id: "raw-stale-fallback",
+            sourceId: "rss-1",
+            title: "Stale fallback item",
+            url: "https://example.com/stale-fallback",
+            fetchedAt: "2026-03-08T10:00:00Z",
+            metadataJson: "{}",
+          },
+        ],
+      },
+    );
+
+    expect(result.markdown).toContain("Fallback item");
+    expect(result.markdown).not.toContain("Stale fallback item");
+  });
 });
