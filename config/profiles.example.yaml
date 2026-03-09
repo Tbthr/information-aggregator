@@ -1,5 +1,10 @@
 profiles:
   - id: default
+    name: Default Digest
     mode: digest
     topicIds:
       - ai-news
+      - engineering-blogs
+    sourcePackIds:
+      - ai-news-sites
+      - ai-daily-digest-blogs

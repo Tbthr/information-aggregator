@@ -4,6 +4,7 @@ export interface CollectSourceEvent {
   sourceId: string;
   status: "success" | "failure" | "zero-items";
   itemCount: number;
+  latencyMs?: number;
   error?: string;
 }
 
@@ -20,24 +21,35 @@ export async function collectSources(sources: Source[], dependencies: CollectDep
   for (const source of sources) {
     const adapter = dependencies.adapters[source.type];
     if (!adapter) {
-      dependencies.onSourceEvent?.({ sourceId: source.id, status: "failure", itemCount: 0, error: `Missing adapter: ${source.type}` });
+      dependencies.onSourceEvent?.({
+        sourceId: source.id,
+        status: "failure",
+        itemCount: 0,
+        latencyMs: 0,
+        error: `Missing adapter: ${source.type}`,
+      });
       continue;
     }
 
     try {
+      const startedAt = Date.now();
       const collected = await adapter(source);
+      const latencyMs = Date.now() - startedAt;
       items.push(...collected);
 
       dependencies.onSourceEvent?.({
         sourceId: source.id,
         status: collected.length === 0 ? "zero-items" : "success",
         itemCount: collected.length,
+        latencyMs,
       });
     } catch (error) {
+      const latencyMs = 0;
       dependencies.onSourceEvent?.({
         sourceId: source.id,
         status: "failure",
         itemCount: 0,
+        latencyMs,
         error: error instanceof Error ? error.message : String(error),
       });
     }

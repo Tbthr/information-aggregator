@@ -1,6 +1,6 @@
 # Testing Guide
 
-## Fastest MVP Check
+## Fastest Post-MVP Check
 
 Use the smoke command during active development:
 
@@ -36,7 +36,7 @@ Stable local end-to-end baseline:
 bun run e2e
 ```
 
-This starts no external dependency and verifies the full fetch-to-render path against local mock HTTP sources.
+This starts no external dependency and verifies the full fetch-to-render path against local mock HTTP sources, including the post-MVP profile-binding and pipeline-persistence path.
 
 Optional real-network probe:
 
@@ -63,11 +63,11 @@ This is usually enough before introducing a formal skill-installation flow.
 
 Use a layered verification order:
 
-1. Unit tests for pure pipeline logic.
-2. `bun run smoke` for local CLI integration.
-3. `bun run e2e` for stable fetch-to-output integration.
+1. Focused unit and integration tests for changed modules.
+2. `bun run e2e` for stable fetch-to-output integration.
+3. `bun run smoke` for local CLI integration.
 4. Clean-clone install test before sharing or publishing.
 5. `bun run e2e:real` as a manual public-network probe.
 6. Skill-installation test only when the skill packaging or distribution path changes.
 
-For this MVP stage, the recommended default is local CLI verification first, because it isolates core runtime issues from packaging issues.
+For this post-MVP phase, the recommended default is to confirm the changed modules first, then run the stable local E2E path before the broader smoke command.

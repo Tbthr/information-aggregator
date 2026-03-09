@@ -24,15 +24,27 @@ bun scripts/aggregator.ts config validate
 
 ## Configuration Shape
 
-Minimal local YAML examples:
+Default local YAML examples:
 
 ```yaml
 sources:
-  - id: example-rss
-    name: Example RSS
+  - id: openai-news
+    name: OpenAI News
     type: rss
     enabled: true
-    url: https://example.com/feed.xml
+    url: https://openai.com/news/rss.xml
+
+  - id: techurls
+    name: TechURLs
+    type: website
+    enabled: true
+    url: https://techurls.com/
+
+  - id: simon-willison
+    name: Simon Willison
+    type: website
+    enabled: true
+    url: https://simonwillison.net/
 ```
 
 ```yaml
@@ -41,19 +53,31 @@ topics:
     name: AI News
     keywords:
       - ai
+      - model
 ```
 
 ```yaml
 profiles:
   - id: default
+    name: Default Digest
     mode: digest
     topicIds:
       - ai-news
+      - engineering-blogs
+    sourcePackIds:
+      - ai-news-sites
+      - ai-daily-digest-blogs
 ```
 
 ## Source Packs
 
 The sample source pack files in `config/packs/` show how to bundle sources for recurring scans or digests.
+
+The default config is curated with the reference projects in mind:
+- `ai-news-radar` contributes active aggregator/news defaults such as TechURLs, Buzzing, Info Flow, BestBlogs, TopHub, Zeli, AI HubToday, AIbase, AI 今日热榜, NewsNow, WaytoAGI, and OPML-style RSS examples.
+- `ai-daily-digest` contributes active engineering/blog RSS defaults.
+- `clawfeed` contributes a disabled JSON Feed example that stays within the current MVP adapter set.
+- `smaug` and `x-ai-topic-selector` are included as disabled placeholders so the default config still reflects all five reference projects without enabling unsupported adapters in the active MVP path.
 
 ## Output Examples
 
@@ -63,7 +87,7 @@ Example `scan` output:
 # Scan
 
 - [Example title](https://example.com/post)
-  - source: Example RSS
+  - source: OpenAI News
   - score: 0.82
 ```
 
@@ -81,7 +105,7 @@ Example `digest` output:
 
 Planned, not part of MVP. Future work, intentionally excluded from current MVP:
 
-- X, Reddit, and Hacker News adapters
+- X adapters and deeper Reddit/community ingestion
 - deep enrichment and feedback loops
 - browser or web UI
 - multi-user workflows
@@ -93,16 +117,19 @@ Implemented in the current repository state:
 
 - CLI bootstrap and help text
 - config validation from local YAML files
+- curated default source config and source packs based on the reference projects
 - SQLite bootstrap with core tables for sources, raw items, normalized items, clusters, runs, outputs, and source health
-- source adapters for `rss`, `json-feed`, and `website`
+- source adapters for `rss`, `json-feed`, `website`, `hn`, and `reddit`
+- profile/topic/source-pack resolution before collection
 - deterministic normalize, dedupe, topic-match, rank, and cluster pipeline stages
 - markdown renderers for `scan` and `digest`
-- optional AI abstraction without provider-specific runtime integration
+- provider-backed AI hooks for candidate scoring, cluster summaries, and digest narration
+- persistence of raw items, normalized items, and clusters in the end-to-end path
 
 Deferred on purpose:
 
-- real provider-backed AI execution
-- full production profile/topic/source-pack orchestration
-- external adapters beyond the MVP set
+- X adapters
+- deeper enrichment and feedback loops
+- web or multi-user surfaces
 
 The implementation keeps code comments concise and uses them only for non-obvious behavior such as normalization rules, deduplication heuristics, ranking math, and adapter-specific edge cases.

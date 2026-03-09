@@ -7,26 +7,59 @@ function ensureRow(db: Database, sourceId: string): void {
 }
 
 export function recordSourceSuccess(db: Database, sourceId: string, timestamp: string): void {
-  ensureRow(db, sourceId);
-  db.prepare(
-    "UPDATE source_health SET last_success_at = ?, last_error = NULL, consecutive_zero_item_runs = 0 WHERE source_id = ?",
-  ).run(timestamp, sourceId);
+  recordSourceSuccessWithMetrics(db, sourceId, {
+    fetchedAt: timestamp,
+    itemCount: 0,
+  });
 }
 
-export function recordSourceFailure(db: Database, sourceId: string, error: string, timestamp = new Date().toISOString()): void {
+export function recordSourceSuccessWithMetrics(
+  db: Database,
+  sourceId: string,
+  metrics: { fetchedAt: string; latencyMs?: number; itemCount: number },
+): void {
   ensureRow(db, sourceId);
   db.prepare(
     `UPDATE source_health
-     SET last_failure_at = ?, last_error = ?, error_count = error_count + 1
+     SET last_success_at = ?,
+         last_error = NULL,
+         last_fetch_latency_ms = ?,
+         last_item_count = ?,
+         consecutive_failures = 0,
+         consecutive_zero_item_runs = CASE WHEN ? = 0 THEN consecutive_zero_item_runs + 1 ELSE 0 END
      WHERE source_id = ?`,
-  ).run(timestamp, error, sourceId);
+  ).run(metrics.fetchedAt, metrics.latencyMs ?? null, metrics.itemCount, metrics.itemCount, sourceId);
+}
+
+export function recordSourceFailure(db: Database, sourceId: string, error: string, timestamp = new Date().toISOString()): void {
+  recordSourceFailureWithMetrics(db, sourceId, {
+    error,
+    fetchedAt: timestamp,
+  });
+}
+
+export function recordSourceFailureWithMetrics(
+  db: Database,
+  sourceId: string,
+  metrics: { error: string; fetchedAt: string; latencyMs?: number },
+): void {
+  ensureRow(db, sourceId);
+  db.prepare(
+    `UPDATE source_health
+     SET last_failure_at = ?,
+         last_error = ?,
+         last_fetch_latency_ms = ?,
+         error_count = error_count + 1,
+         consecutive_failures = consecutive_failures + 1
+     WHERE source_id = ?`,
+  ).run(metrics.fetchedAt, metrics.error, metrics.latencyMs ?? null, sourceId);
 }
 
 export function recordSourceZeroItems(db: Database, sourceId: string): void {
-  ensureRow(db, sourceId);
-  db.prepare(
-    "UPDATE source_health SET consecutive_zero_item_runs = consecutive_zero_item_runs + 1 WHERE source_id = ?",
-  ).run(sourceId);
+  recordSourceSuccessWithMetrics(db, sourceId, {
+    fetchedAt: new Date().toISOString(),
+    itemCount: 0,
+  });
 }
 
 export function getSourceHealth(db: Database, sourceId: string): SourceHealth | null {
@@ -40,7 +73,10 @@ export function getSourceHealth(db: Database, sourceId: string): SourceHealth | 
     lastSuccessAt: row.last_success_at ? String(row.last_success_at) : null,
     lastFailureAt: row.last_failure_at ? String(row.last_failure_at) : null,
     lastError: row.last_error ? String(row.last_error) : null,
+    lastFetchLatencyMs: row.last_fetch_latency_ms === null || row.last_fetch_latency_ms === undefined ? null : Number(row.last_fetch_latency_ms),
+    lastItemCount: row.last_item_count === null || row.last_item_count === undefined ? null : Number(row.last_item_count),
     errorCount: Number(row.error_count ?? 0),
+    consecutiveFailures: Number(row.consecutive_failures ?? 0),
     consecutiveZeroItemRuns: Number(row.consecutive_zero_item_runs ?? 0),
   };
 }

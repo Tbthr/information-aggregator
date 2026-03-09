@@ -18,6 +18,12 @@ export interface SourcePack {
   sourceIds: string[];
 }
 
+export interface TopicDefinition {
+  id: string;
+  name: string;
+  keywords: string[];
+}
+
 export interface RawItem {
   id: string;
   sourceId: string;
@@ -88,7 +94,10 @@ export interface SourceHealth {
   lastSuccessAt?: string | null;
   lastFailureAt?: string | null;
   lastError?: string | null;
+  lastFetchLatencyMs?: number | null;
+  lastItemCount?: number | null;
   errorCount: number;
+  consecutiveFailures?: number;
   consecutiveZeroItemRuns: number;
 }
 

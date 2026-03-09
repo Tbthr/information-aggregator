@@ -2,4 +2,18 @@ pack:
   id: ai-news-sites
   name: AI News Sites
   sourceIds:
-    - example-rss
+    - openai-news
+    - hugging-face-blog
+    - infoq-cn
+    - techurls
+    - buzzing
+    - info-flow
+    - bestblogs
+    - tophub
+    - zeli
+    - ai-hubtoday
+    - aibase-news
+    - aihot-today
+    - newsnow
+    - waytoagi-updates
+    - simon-willison
