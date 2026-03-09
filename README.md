@@ -23,6 +23,36 @@ Example config files live in [`config/`](./config):
 
 The MVP expects local YAML files and runs entirely on local state.
 
+Minimal examples:
+
+```yaml
+# config/sources.example.yaml
+sources:
+  - id: example-rss
+    name: Example RSS
+    type: rss
+    enabled: true
+    url: https://example.com/feed.xml
+```
+
+```yaml
+# config/topics.example.yaml
+topics:
+  - id: ai-news
+    name: AI News
+    keywords:
+      - ai
+```
+
+```yaml
+# config/profiles.example.yaml
+profiles:
+  - id: default
+    mode: digest
+    topicIds:
+      - ai-news
+```
+
 ## Commands
 
 ```bash
@@ -55,6 +85,32 @@ bun scripts/aggregator.ts config validate
 bun scripts/aggregator.ts scan
 bun scripts/aggregator.ts digest
 ```
+
+Example `scan` output:
+
+```md
+# Scan
+
+- [Example title](https://example.com/post)
+  - source: Example RSS
+  - score: 0.82
+```
+
+Example `digest` output:
+
+```md
+# Digest
+
+## Top Highlights
+
+- Example title
+
+## Cluster: Example topic
+
+- [Example title](https://example.com/post)
+```
+
+The codebase uses concise comments around non-obvious logic such as normalization rules, deduplication heuristics, ranking math, and adapter edge cases.
 
 ## Future Work
 

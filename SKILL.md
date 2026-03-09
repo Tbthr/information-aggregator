@@ -22,13 +22,64 @@ bun scripts/aggregator.ts digest
 bun scripts/aggregator.ts config validate
 ```
 
+## Configuration Shape
+
+Minimal local YAML examples:
+
+```yaml
+sources:
+  - id: example-rss
+    name: Example RSS
+    type: rss
+    enabled: true
+    url: https://example.com/feed.xml
+```
+
+```yaml
+topics:
+  - id: ai-news
+    name: AI News
+    keywords:
+      - ai
+```
+
+```yaml
+profiles:
+  - id: default
+    mode: digest
+    topicIds:
+      - ai-news
+```
+
 ## Source Packs
 
 The sample source pack files in `config/packs/` show how to bundle sources for recurring scans or digests.
 
+## Output Examples
+
+Example `scan` output:
+
+```md
+# Scan
+
+- [Example title](https://example.com/post)
+  - source: Example RSS
+  - score: 0.82
+```
+
+Example `digest` output:
+
+```md
+# Digest
+
+## Top Highlights
+
+- Example title
+```
+
 ## Future Work
 
-Future work, intentionally excluded from current MVP:
+Planned, not part of MVP. Future work, intentionally excluded from current MVP:
 
 - X, Reddit, and Hacker News adapters
 - deep enrichment and feedback loops
@@ -53,3 +104,5 @@ Deferred on purpose:
 - real provider-backed AI execution
 - full production profile/topic/source-pack orchestration
 - external adapters beyond the MVP set
+
+The implementation keeps code comments concise and uses them only for non-obvious behavior such as normalization rules, deduplication heuristics, ranking math, and adapter-specific edge cases.
