@@ -1,0 +1,5 @@
+pack:
+  id: ai-news-sites
+  name: AI News Sites
+  sourceIds:
+    - example-rss

@@ -1,0 +1,6 @@
+sources:
+  - id: example-rss
+    name: Example RSS
+    type: rss
+    enabled: true
+    url: https://example.com/feed.xml

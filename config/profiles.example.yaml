@@ -1,0 +1,5 @@
+profiles:
+  - id: default
+    mode: digest
+    topicIds:
+      - ai-news

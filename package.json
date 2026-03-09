@@ -1,0 +1,15 @@
+{
+  "name": "information-aggregator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.17"
+  },
+  "dependencies": {
+    "yaml": "^2.8.1"
+  }
+}
