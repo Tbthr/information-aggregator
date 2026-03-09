@@ -18,6 +18,12 @@ export interface SourcePack {
   sourceIds: string[];
 }
 
+export interface TopicDefinition {
+  id: string;
+  name: string;
+  keywords: string[];
+}
+
 export interface RawItem {
   id: string;
   sourceId: string;

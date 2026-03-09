@@ -34,6 +34,12 @@ sources:
     enabled: true
     url: https://openai.com/news/rss.xml
 
+  - id: techurls
+    name: TechURLs
+    type: website
+    enabled: true
+    url: https://techurls.com/
+
   - id: simon-willison
     name: Simon Willison
     type: website
@@ -59,9 +65,17 @@ profiles:
     mode: digest
     topicIds:
       - ai-news
+      - engineering-blogs
+    sourcePackIds:
+      - ai-news-sites
+      - ai-daily-digest-blogs
 ```
 
-The default config is curated with the five reference projects in mind. Compatible default feeds currently come from `ai-daily-digest` and `ai-news-radar`; `smaug`, `x-ai-topic-selector`, and `clawfeed` currently influence pack structure and website fallback choices rather than adding unsupported X/browser sources to the MVP defaults.
+The default config is curated with the reference projects in mind:
+- `ai-news-radar` contributes active aggregator/news defaults such as TechURLs, Buzzing, Info Flow, BestBlogs, TopHub, Zeli, AI HubToday, AIbase, AI 今日热榜, NewsNow, WaytoAGI, and OPML-style RSS examples.
+- `ai-daily-digest` contributes active engineering/blog RSS defaults.
+- `clawfeed` contributes a disabled JSON Feed example that stays within the current MVP adapter set.
+- `smaug` and `x-ai-topic-selector` still influence the roadmap and pack design, but do not add active defaults until compatible adapters or stable source mappings exist.
 
 ## Commands
 

@@ -1,8 +1,8 @@
 sources:
-  # Curated defaults with the five reference projects in mind.
-  # Direct feed defaults currently come from ai-daily-digest and ai-news-radar.
-  # smaug, x-ai-topic-selector, and clawfeed inform the website fallback slot and pack layout,
-  # but their X/browser-heavy sources stay out of the default MVP config on purpose.
+  # Curated defaults with the reference projects in mind.
+  # Active supported defaults come from ai-daily-digest and ai-news-radar.
+  # Clawfeed contributes a disabled JSON feed example. smaug and x-ai-topic-selector
+  # remain design inputs until compatible adapters or source mappings land.
   - id: openai-news
     name: OpenAI News
     type: rss
@@ -18,6 +18,61 @@ sources:
     type: rss
     enabled: true
     url: https://www.infoq.cn/feed
+  - id: techurls
+    name: TechURLs
+    type: website
+    enabled: true
+    url: https://techurls.com/
+  - id: buzzing
+    name: Buzzing
+    type: json-feed
+    enabled: true
+    url: https://www.buzzing.cc/feed.json
+  - id: info-flow
+    name: Info Flow
+    type: website
+    enabled: true
+    url: https://iris.findtruman.io/web/info_flow
+  - id: bestblogs
+    name: BestBlogs Newsletter
+    type: website
+    enabled: true
+    url: https://www.bestblogs.dev/en/newsletter
+  - id: tophub
+    name: TopHub
+    type: website
+    enabled: true
+    url: https://tophub.today/
+  - id: zeli
+    name: Zeli
+    type: website
+    enabled: true
+    url: https://zeli.app/
+  - id: ai-hubtoday
+    name: AI HubToday
+    type: website
+    enabled: true
+    url: https://ai.hubtoday.app/
+  - id: aibase-news
+    name: AIbase News
+    type: website
+    enabled: true
+    url: https://www.aibase.com/zh/news
+  - id: aihot-today
+    name: AI Today Hotlist
+    type: website
+    enabled: true
+    url: https://aihot.today/
+  - id: newsnow
+    name: NewsNow
+    type: website
+    enabled: true
+    url: https://newsnow.busiyi.world/
+  - id: waytoagi-updates
+    name: WaytoAGI Updates
+    type: website
+    enabled: true
+    url: https://waytoagi.feishu.cn/wiki/RuBhwe63Viw8s8k1xCYc0zo1nEb
   - id: simon-willison
     name: Simon Willison
     type: website
@@ -43,3 +98,8 @@ sources:
     type: rss
     enabled: true
     url: https://www.troyhunt.com/rss/
+  - id: clawfeed-digest-json
+    name: ClawFeed Digest JSON
+    type: json-feed
+    enabled: false
+    url: https://digest.kevinhe.io/feed/kevin.json
