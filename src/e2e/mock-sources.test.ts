@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
 import { runDigest } from "../cli/run-digest";
 import { runScan } from "../cli/run-scan";
-import type { Source } from "../types/index";
+import type { Source, SourcePack, TopicDefinition, TopicProfile } from "../types/index";
 
 const rssXml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss><channel>
@@ -88,13 +88,48 @@ function getMockSources(): Source[] {
   ];
 }
 
+function getMockProfiles(): TopicProfile[] {
+  return [
+    {
+      id: "default",
+      name: "Default",
+      mode: "digest",
+      topicIds: ["ai-news"],
+      sourcePackIds: ["mock-pack"],
+    },
+  ];
+}
+
+function getMockTopics(): TopicDefinition[] {
+  return [
+    {
+      id: "ai-news",
+      name: "AI News",
+      keywords: ["rss", "json", "website"],
+    },
+  ];
+}
+
+function getMockSourcePacks(): SourcePack[] {
+  return [
+    {
+      id: "mock-pack",
+      name: "Mock Pack",
+      sourceIds: ["rss-1", "json-1", "site-1"],
+    },
+  ];
+}
+
 describe("mock source end-to-end flow", () => {
   test("runScan fetches mock sources and renders combined markdown", async () => {
     const result = await runScan({
       profileId: "default",
       dryRun: true,
     }, {
-      listSources: getMockSources,
+      loadSources: getMockSources,
+      loadProfiles: getMockProfiles,
+      loadTopics: getMockTopics,
+      loadSourcePacks: getMockSourcePacks,
     });
 
     expect(result.markdown).toContain("RSS Example");
@@ -106,7 +141,10 @@ describe("mock source end-to-end flow", () => {
       profileId: "default",
       dryRun: true,
     }, {
-      listSources: getMockSources,
+      loadSources: getMockSources,
+      loadProfiles: getMockProfiles,
+      loadTopics: getMockTopics,
+      loadSourcePacks: getMockSourcePacks,
     });
 
     expect(result.markdown).toContain("RSS Example");

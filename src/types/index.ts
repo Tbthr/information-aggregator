@@ -94,7 +94,10 @@ export interface SourceHealth {
   lastSuccessAt?: string | null;
   lastFailureAt?: string | null;
   lastError?: string | null;
+  lastFetchLatencyMs?: number | null;
+  lastItemCount?: number | null;
   errorCount: number;
+  consecutiveFailures?: number;
   consecutiveZeroItemRuns: number;
 }
 

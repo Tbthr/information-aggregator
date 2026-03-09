@@ -1,11 +1,15 @@
 import { createDb } from "../db/client";
 import { createOutput } from "../db/queries/outputs";
+import { insertNormalizedItems } from "../db/queries/normalized-items";
+import { insertRawItems } from "../db/queries/raw-items";
 import { createRun, finishRun } from "../db/queries/runs";
-import { recordSourceFailure, recordSourceSuccess, recordSourceZeroItems } from "../db/queries/source-health";
-import { listEnabledSources } from "../db/queries/sources";
+import { recordSourceFailureWithMetrics, recordSourceSuccessWithMetrics } from "../db/queries/source-health";
 import { collectJsonFeedSource } from "../adapters/json-feed-collect";
+import { collectHnSource } from "../adapters/hn";
 import { collectRssSource } from "../adapters/rss";
 import { collectWebsiteSource } from "../adapters/website";
+import { loadProfilesConfig, loadSourcePacksConfig, loadSourcesConfig, loadTopicsConfig } from "../config/load";
+import { resolveProfileSelection } from "../config/resolve-profile";
 import { normalizeItems } from "../pipeline/normalize";
 import { dedupeExact } from "../pipeline/dedupe-exact";
 import { dedupeNear } from "../pipeline/dedupe-near";
@@ -14,7 +18,7 @@ import { rankCandidates } from "../pipeline/rank";
 import { renderScanMarkdown } from "../render/scan";
 import { scoreTopicMatch } from "../pipeline/topic-match";
 import type { Database } from "bun:sqlite";
-import type { RawItem, RankedCandidate, Source, TopicRule } from "../types/index";
+import type { RawItem, RankedCandidate, Source, SourcePack, TopicDefinition, TopicProfile, TopicRule } from "../types/index";
 
 export interface RunScanArgs {
   profileId: string;
@@ -24,15 +28,36 @@ export interface RunScanArgs {
 
 export interface RunScanDependencies {
   db?: Database;
-  listSources?: () => Source[];
+  loadSources?: () => Promise<Source[]> | Source[];
+  loadProfiles?: () => Promise<TopicProfile[]> | TopicProfile[];
+  loadTopics?: () => Promise<TopicDefinition[]> | TopicDefinition[];
+  loadSourcePacks?: () => Promise<SourcePack[]> | SourcePack[];
   collectSources?: (sources: Source[], dependencies: CollectDependencies) => Promise<RawItem[]>;
   now?: () => string;
   topicRule?: TopicRule;
 }
 
+async function loadDefaultSourcePacks(): Promise<SourcePack[]> {
+  const [newsSites, blogPacks] = await Promise.all([
+    loadSourcePacksConfig("config/packs/ai-news-sites.yaml"),
+    loadSourcePacksConfig("config/packs/ai-daily-digest-blogs.yaml"),
+  ]);
+
+  return [...newsSites, ...blogPacks];
+}
+
+function buildTopicRule(topics: TopicDefinition[], topicIds: string[]): TopicRule {
+  const selectedTopics = topics.filter((topic) => topicIds.includes(topic.id));
+
+  return {
+    includeKeywords: selectedTopics.flatMap((topic) => topic.keywords).map((keyword) => keyword.toLowerCase()),
+  };
+}
+
 function buildDefaultCollectDependencies(): CollectDependencies {
   return {
     adapters: {
+      hn: (source) => collectHnSource(source),
       "json-feed": (source) => collectJsonFeedSource(source),
       rss: (source) => collectRssSource(source),
       website: (source) => collectWebsiteSource(source),
@@ -63,35 +88,63 @@ export async function runScan(args: RunScanArgs, dependencies: RunScanDependenci
   const db = dependencies.db ?? createDb(args.dbPath ?? ":memory:");
   const now = dependencies.now ?? (() => new Date().toISOString());
   const runId = `run-scan-${Date.now()}`;
+  const [sources, profiles, topics, sourcePacks] = await Promise.all([
+    Promise.resolve(dependencies.loadSources?.() ?? loadSourcesConfig("config/sources.example.yaml")),
+    Promise.resolve(dependencies.loadProfiles?.() ?? loadProfilesConfig("config/profiles.example.yaml")),
+    Promise.resolve(dependencies.loadTopics?.() ?? loadTopicsConfig("config/topics.example.yaml")),
+    Promise.resolve(dependencies.loadSourcePacks?.() ?? loadDefaultSourcePacks()),
+  ]);
+  const selection = resolveProfileSelection({
+    profileId: args.profileId,
+    profiles,
+    sourcePacks,
+    sources,
+  });
+  const selectedSources = sources.filter((source) => selection.sourceIds.includes(source.id));
+  const resolvedTopicRule = dependencies.topicRule ?? buildTopicRule(topics, selection.topicIds);
 
   createRun(db, {
     id: runId,
     mode: "scan",
-    sourceSelectionJson: "[]",
-    paramsJson: JSON.stringify({ profileId: args.profileId, dryRun: Boolean(args.dryRun) }),
+    sourceSelectionJson: JSON.stringify(selection.sourceIds),
+    paramsJson: JSON.stringify({
+      profileId: args.profileId,
+      dryRun: Boolean(args.dryRun),
+      topicIds: selection.topicIds,
+      sourcePackIds: selection.profile.sourcePackIds ?? [],
+    }),
     status: "running",
     createdAt: now(),
   });
 
-  const sources = dependencies.listSources?.() ?? listEnabledSources(db);
   const collectImpl = dependencies.collectSources ?? collectSources;
-  const items = await collectImpl(sources, {
+  const items = await collectImpl(selectedSources, {
     ...buildDefaultCollectDependencies(),
     onSourceEvent: (event) => {
       if (event.status === "failure") {
-        recordSourceFailure(db, event.sourceId, event.error ?? "unknown", now());
-      } else if (event.status === "zero-items") {
-        recordSourceZeroItems(db, event.sourceId);
+        recordSourceFailureWithMetrics(db, event.sourceId, {
+          error: event.error ?? "unknown",
+          fetchedAt: now(),
+          latencyMs: event.latencyMs,
+        });
       } else {
-        recordSourceSuccess(db, event.sourceId, now());
+        recordSourceSuccessWithMetrics(db, event.sourceId, {
+          fetchedAt: now(),
+          latencyMs: event.latencyMs,
+          itemCount: event.itemCount,
+        });
       }
     },
   });
 
   const normalized = normalizeItems(items);
+  if (!args.dryRun) {
+    insertRawItems(db, items);
+    insertNormalizedItems(db, normalized);
+  }
   const exact = dedupeExact(normalized.filter((item) => item.exactDedupKey) as Array<typeof normalized[number] & { exactDedupKey: string }>);
   const near = dedupeNear(exact.filter((item) => item.processedAt) as Array<typeof exact[number] & { processedAt: string }>);
-  const ranked = rankCandidates(toCandidates(near, dependencies.topicRule));
+  const ranked = rankCandidates(toCandidates(near, resolvedTopicRule));
   const markdown = renderScanMarkdown(
     ranked.map((item) => ({
       title: item.title ?? item.normalizedTitle ?? item.id,

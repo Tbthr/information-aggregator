@@ -73,6 +73,9 @@ CREATE TABLE IF NOT EXISTS source_health (
   last_success_at TEXT,
   last_failure_at TEXT,
   last_error TEXT,
+  last_fetch_latency_ms INTEGER,
+  last_item_count INTEGER,
   error_count INTEGER NOT NULL DEFAULT 0,
+  consecutive_failures INTEGER NOT NULL DEFAULT 0,
   consecutive_zero_item_runs INTEGER NOT NULL DEFAULT 0
 );
