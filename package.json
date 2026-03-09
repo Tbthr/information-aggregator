@@ -4,10 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "bun test"
+    "test": "bun test",
+    "check": "tsc --noEmit"
   },
   "devDependencies": {
-    "@types/bun": "^1.2.17"
+    "@types/bun": "^1.2.17",
+    "typescript": "^5.8.2"
   },
   "dependencies": {
     "yaml": "^2.8.1"
