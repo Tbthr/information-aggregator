@@ -29,6 +29,7 @@ The MVP expects local YAML files and runs entirely on local state.
 bun install
 bun test
 bun run check
+bun run smoke
 bun scripts/aggregator.ts --help
 bun scripts/aggregator.ts scan
 bun scripts/aggregator.ts digest
@@ -41,6 +42,12 @@ bun scripts/aggregator.ts config validate
 - `digest`: grouped markdown digest with highlights and clustered items
 
 ## Example Workflow
+
+```bash
+bun run smoke
+```
+
+For a more detailed checklist and clean-clone install flow, see [`docs/testing.md`](./docs/testing.md).
 
 ```bash
 bun scripts/aggregator.ts config validate

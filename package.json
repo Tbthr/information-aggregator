@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "test": "bun test",
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit",
+    "smoke": "bun scripts/smoke.ts"
   },
   "devDependencies": {
     "@types/bun": "^1.2.17",
