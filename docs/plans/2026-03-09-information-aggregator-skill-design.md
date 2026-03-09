@@ -3,6 +3,18 @@
 Date: 2026-03-09
 Status: Approved
 
+## Implementation Progress Snapshot
+
+Status as implemented on 2026-03-09:
+
+- Done: standalone Bun project, local Git repo, CLI entrypoint, config examples, test suite
+- Done: SQLite schema and repository functions for sources, runs, outputs, and source health
+- Done: adapters for RSS, JSON Feed, and website fallback discovery
+- Done: normalize, exact dedupe, near dedupe, topic scoring, ranking, clustering, and markdown renderers
+- Done: end-to-end `scan` and `digest` orchestration with dry-run friendly execution
+- Done: AI abstraction layer and prompt builders
+- Not yet implemented by design: remote provider execution, advanced config binding, persistent writes for all intermediate pipeline entities, non-MVP adapters, web UI, multi-user workflows, embeddings
+
 ## 1. Goal
 
 Build a reusable local-first aggregation skill that helps users collect information from multiple high-quality sources, reduce duplicates, and output high-density results in two modes:

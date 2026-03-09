@@ -61,3 +61,15 @@ Planned, not part of MVP:
 - embeddings or vector search
 
 These items are intentionally excluded from the current implementation.
+
+## Implementation Status
+
+Current project status as of 2026-03-09:
+
+- Completed: project scaffold, Bun CLI, YAML config loading, SQLite schema, run/output/source-health persistence
+- Completed: `rss`, `json-feed`, and `website` adapters
+- Completed: collection, normalization, exact deduplication, near-duplicate compression, topic matching, ranking, clustering
+- Completed: markdown scan and digest rendering
+- Completed: end-to-end `scan`, `digest`, and `config validate` CLI commands
+- Completed: AI client abstraction and prompt builders
+- Deferred beyond MVP: real AI provider integration, richer profile/topic binding, persistent raw/normalized item writes in the full pipeline, X/HN/Reddit adapters, embeddings, web UI, multi-user support

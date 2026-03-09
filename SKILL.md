@@ -35,3 +35,21 @@ Future work, intentionally excluded from current MVP:
 - browser or web UI
 - multi-user workflows
 - embeddings-backed similarity
+
+## Implementation Status
+
+Implemented in the current repository state:
+
+- CLI bootstrap and help text
+- config validation from local YAML files
+- SQLite bootstrap with core tables for sources, raw items, normalized items, clusters, runs, outputs, and source health
+- source adapters for `rss`, `json-feed`, and `website`
+- deterministic normalize, dedupe, topic-match, rank, and cluster pipeline stages
+- markdown renderers for `scan` and `digest`
+- optional AI abstraction without provider-specific runtime integration
+
+Deferred on purpose:
+
+- real provider-backed AI execution
+- full production profile/topic/source-pack orchestration
+- external adapters beyond the MVP set
