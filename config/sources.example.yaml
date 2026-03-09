@@ -2,7 +2,7 @@ sources:
   # Curated defaults with the reference projects in mind.
   # Active supported defaults come from ai-daily-digest and ai-news-radar.
   # Clawfeed contributes a disabled JSON feed example. smaug and x-ai-topic-selector
-  # remain design inputs until compatible adapters or source mappings land.
+  # are represented as disabled placeholders so all five projects appear in defaults.
   - id: openai-news
     name: OpenAI News
     type: rss
@@ -103,3 +103,13 @@ sources:
     type: json-feed
     enabled: false
     url: https://digest.kevinhe.io/feed/kevin.json
+  - id: smaug-bookmarks
+    name: Smaug Bookmark Feed
+    type: x_bookmarks
+    enabled: false
+    url: https://x.com/i/bookmarks
+  - id: x-ai-topic-selector-list
+    name: X AI Topic Selector List
+    type: x_list
+    enabled: false
+    url: https://x.com/i/lists/2021198996157710621

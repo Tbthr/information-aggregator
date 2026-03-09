@@ -75,7 +75,7 @@ The default config is curated with the reference projects in mind:
 - `ai-news-radar` contributes active aggregator/news defaults such as TechURLs, Buzzing, Info Flow, BestBlogs, TopHub, Zeli, AI HubToday, AIbase, AI 今日热榜, NewsNow, WaytoAGI, and OPML-style RSS examples.
 - `ai-daily-digest` contributes active engineering/blog RSS defaults.
 - `clawfeed` contributes a disabled JSON Feed example that stays within the current MVP adapter set.
-- `smaug` and `x-ai-topic-selector` still influence the roadmap and pack design, but do not add active defaults until compatible adapters or stable source mappings exist.
+- `smaug` and `x-ai-topic-selector` are included as disabled placeholders so the default config still reflects all five reference projects without enabling unsupported adapters in the active MVP path.
 
 ## Commands
 

@@ -23,8 +23,8 @@ describe("config loading", () => {
     expect(ids.has("overreacted")).toBe(true);
     expect(ids.has("simon-willison")).toBe(true);
     expect(ids.has("clawfeed-digest-json")).toBe(true);
-    expect(ids.has("smaug-bookmarks")).toBe(false);
-    expect(ids.has("x-ai-topic-selector-list")).toBe(false);
+    expect(ids.has("smaug-bookmarks")).toBe(true);
+    expect(ids.has("x-ai-topic-selector-list")).toBe(true);
   });
 
   test("keeps packs and profile examples aligned with the curated defaults", async () => {

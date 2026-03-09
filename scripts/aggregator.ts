@@ -1,4 +1,4 @@
-import { loadSourcesConfig } from "../src/config/load";
+import { loadProfilesConfig, loadSourcePacksConfig, loadSourcesConfig, loadTopicsConfig } from "../src/config/load";
 import { getCliVersion, getHelpText, parseCliArgs } from "../src/cli/index";
 import { runDigest } from "../src/cli/run-digest";
 import { runScan } from "../src/cli/run-scan";
@@ -24,7 +24,13 @@ async function main(): Promise<void> {
   }
 
   if (parsed.command === "config validate") {
-    await loadSourcesConfig("config/sources.example.yaml");
+    await Promise.all([
+      loadSourcesConfig("config/sources.example.yaml"),
+      loadTopicsConfig("config/topics.example.yaml"),
+      loadProfilesConfig("config/profiles.example.yaml"),
+      loadSourcePacksConfig("config/packs/ai-news-sites.yaml"),
+      loadSourcePacksConfig("config/packs/ai-daily-digest-blogs.yaml"),
+    ]);
     console.log("Config validation passed");
     return;
   }
