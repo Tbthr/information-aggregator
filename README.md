@@ -23,16 +23,22 @@ Example config files live in [`config/`](./config):
 
 The MVP expects local YAML files and runs entirely on local state.
 
-Minimal examples:
+Default examples:
 
 ```yaml
 # config/sources.example.yaml
 sources:
-  - id: example-rss
-    name: Example RSS
+  - id: openai-news
+    name: OpenAI News
     type: rss
     enabled: true
-    url: https://example.com/feed.xml
+    url: https://openai.com/news/rss.xml
+
+  - id: simon-willison
+    name: Simon Willison
+    type: website
+    enabled: true
+    url: https://simonwillison.net/
 ```
 
 ```yaml
@@ -42,16 +48,20 @@ topics:
     name: AI News
     keywords:
       - ai
+      - model
 ```
 
 ```yaml
 # config/profiles.example.yaml
 profiles:
   - id: default
+    name: Default Digest
     mode: digest
     topicIds:
       - ai-news
 ```
+
+The default config is curated with the five reference projects in mind. Compatible default feeds currently come from `ai-daily-digest` and `ai-news-radar`; `smaug`, `x-ai-topic-selector`, and `clawfeed` currently influence pack structure and website fallback choices rather than adding unsupported X/browser sources to the MVP defaults.
 
 ## Commands
 
@@ -92,7 +102,7 @@ Example `scan` output:
 # Scan
 
 - [Example title](https://example.com/post)
-  - source: Example RSS
+  - source: OpenAI News
   - score: 0.82
 ```
 
@@ -132,6 +142,7 @@ Current project status as of 2026-03-09:
 
 - Completed: project scaffold, Bun CLI, YAML config loading, SQLite schema, run/output/source-health persistence
 - Completed: `rss`, `json-feed`, and `website` adapters
+- Completed: curated default source config and source packs based on the reference projects
 - Completed: collection, normalization, exact deduplication, near-duplicate compression, topic matching, ranking, clustering
 - Completed: markdown scan and digest rendering
 - Completed: end-to-end `scan`, `digest`, and `config validate` CLI commands

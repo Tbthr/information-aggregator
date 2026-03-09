@@ -3,3 +3,12 @@ topics:
     name: AI News
     keywords:
       - ai
+      - model
+      - agent
+      - llm
+  - id: engineering-blogs
+    name: Engineering Blogs
+    keywords:
+      - engineering
+      - systems
+      - tooling

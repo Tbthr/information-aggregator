@@ -2,4 +2,7 @@ pack:
   id: ai-daily-digest-blogs
   name: AI Daily Digest Blogs
   sourceIds:
-    - example-rss
+    - overreacted
+    - paul-graham
+    - gwern
+    - troy-hunt

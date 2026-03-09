@@ -1,6 +1,45 @@
 sources:
-  - id: example-rss
-    name: Example RSS
+  # Curated defaults with the five reference projects in mind.
+  # Direct feed defaults currently come from ai-daily-digest and ai-news-radar.
+  # smaug, x-ai-topic-selector, and clawfeed inform the website fallback slot and pack layout,
+  # but their X/browser-heavy sources stay out of the default MVP config on purpose.
+  - id: openai-news
+    name: OpenAI News
     type: rss
     enabled: true
-    url: https://example.com/feed.xml
+    url: https://openai.com/news/rss.xml
+  - id: hugging-face-blog
+    name: Hugging Face Blog
+    type: rss
+    enabled: true
+    url: https://huggingface.co/blog/feed.xml
+  - id: infoq-cn
+    name: InfoQ CN
+    type: rss
+    enabled: true
+    url: https://www.infoq.cn/feed
+  - id: simon-willison
+    name: Simon Willison
+    type: website
+    enabled: true
+    url: https://simonwillison.net/
+  - id: overreacted
+    name: Overreacted
+    type: rss
+    enabled: true
+    url: https://overreacted.io/rss.xml
+  - id: paul-graham
+    name: Paul Graham Essays
+    type: rss
+    enabled: true
+    url: http://www.aaronsw.com/2002/feeds/pgessays.rss
+  - id: gwern
+    name: Gwern
+    type: rss
+    enabled: true
+    url: https://gwern.substack.com/feed
+  - id: troy-hunt
+    name: Troy Hunt
+    type: rss
+    enabled: true
+    url: https://www.troyhunt.com/rss/

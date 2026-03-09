@@ -24,15 +24,21 @@ bun scripts/aggregator.ts config validate
 
 ## Configuration Shape
 
-Minimal local YAML examples:
+Default local YAML examples:
 
 ```yaml
 sources:
-  - id: example-rss
-    name: Example RSS
+  - id: openai-news
+    name: OpenAI News
     type: rss
     enabled: true
-    url: https://example.com/feed.xml
+    url: https://openai.com/news/rss.xml
+
+  - id: simon-willison
+    name: Simon Willison
+    type: website
+    enabled: true
+    url: https://simonwillison.net/
 ```
 
 ```yaml
@@ -41,11 +47,13 @@ topics:
     name: AI News
     keywords:
       - ai
+      - model
 ```
 
 ```yaml
 profiles:
   - id: default
+    name: Default Digest
     mode: digest
     topicIds:
       - ai-news
@@ -55,6 +63,8 @@ profiles:
 
 The sample source pack files in `config/packs/` show how to bundle sources for recurring scans or digests.
 
+The default config is curated with the five reference projects in mind. Compatible default feeds currently come from `ai-daily-digest` and `ai-news-radar`; `smaug`, `x-ai-topic-selector`, and `clawfeed` currently shape pack design and website fallback choices without adding unsupported X/browser-driven sources.
+
 ## Output Examples
 
 Example `scan` output:
@@ -63,7 +73,7 @@ Example `scan` output:
 # Scan
 
 - [Example title](https://example.com/post)
-  - source: Example RSS
+  - source: OpenAI News
   - score: 0.82
 ```
 
@@ -93,6 +103,7 @@ Implemented in the current repository state:
 
 - CLI bootstrap and help text
 - config validation from local YAML files
+- curated default source config and source packs based on the reference projects
 - SQLite bootstrap with core tables for sources, raw items, normalized items, clusters, runs, outputs, and source health
 - source adapters for `rss`, `json-feed`, and `website`
 - deterministic normalize, dedupe, topic-match, rank, and cluster pipeline stages
