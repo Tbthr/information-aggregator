@@ -85,4 +85,27 @@ describe("collectSources", () => {
     expect(items).toHaveLength(1);
     expect(items[0]?.sourceId).toBe("hn-1");
   });
+
+  test("dispatches to the reddit adapter when configured", async () => {
+    const items = await collectSources(
+      [{ id: "reddit-1", name: "Reddit", type: "reddit", enabled: true, configJson: "{}", url: "https://example.com/reddit" }],
+      {
+        adapters: {
+          reddit: async () => [
+            {
+              id: "item-1",
+              sourceId: "reddit-1",
+              title: "Interesting post",
+              url: "https://example.com/post",
+              fetchedAt: "2026-03-09T00:00:00Z",
+              metadataJson: "{}",
+            },
+          ],
+        },
+      },
+    );
+
+    expect(items).toHaveLength(1);
+    expect(items[0]?.sourceId).toBe("reddit-1");
+  });
 });

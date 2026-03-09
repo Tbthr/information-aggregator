@@ -6,6 +6,7 @@ import { createRun, finishRun } from "../db/queries/runs";
 import { recordSourceFailureWithMetrics, recordSourceSuccessWithMetrics } from "../db/queries/source-health";
 import { collectJsonFeedSource } from "../adapters/json-feed-collect";
 import { collectHnSource } from "../adapters/hn";
+import { collectRedditSource } from "../adapters/reddit";
 import { collectRssSource } from "../adapters/rss";
 import { collectWebsiteSource } from "../adapters/website";
 import { loadProfilesConfig, loadSourcePacksConfig, loadSourcesConfig, loadTopicsConfig } from "../config/load";
@@ -58,6 +59,7 @@ function buildDefaultCollectDependencies(): CollectDependencies {
   return {
     adapters: {
       hn: (source) => collectHnSource(source),
+      reddit: (source) => collectRedditSource(source),
       "json-feed": (source) => collectJsonFeedSource(source),
       rss: (source) => collectRssSource(source),
       website: (source) => collectWebsiteSource(source),
