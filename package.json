@@ -6,7 +6,9 @@
   "scripts": {
     "test": "bun test",
     "check": "tsc --noEmit",
-    "smoke": "bun scripts/smoke.ts"
+    "smoke": "bun scripts/smoke.ts",
+    "e2e": "bun test src/e2e/mock-sources.test.ts",
+    "e2e:real": "bun scripts/e2e-real.ts"
   },
   "devDependencies": {
     "@types/bun": "^1.2.17",

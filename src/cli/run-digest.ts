@@ -2,6 +2,9 @@ import { createDb } from "../db/client";
 import { createOutput } from "../db/queries/outputs";
 import { createRun, finishRun } from "../db/queries/runs";
 import { listEnabledSources } from "../db/queries/sources";
+import { collectJsonFeedSource } from "../adapters/json-feed-collect";
+import { collectRssSource } from "../adapters/rss";
+import { collectWebsiteSource } from "../adapters/website";
 import { collectSources, type CollectDependencies } from "../pipeline/collect";
 import { normalizeItems } from "../pipeline/normalize";
 import { dedupeExact } from "../pipeline/dedupe-exact";
@@ -45,6 +48,16 @@ function toCandidates(items: ReturnType<typeof normalizeItems>): RankedCandidate
   }));
 }
 
+function buildDefaultCollectDependencies(): CollectDependencies {
+  return {
+    adapters: {
+      "json-feed": (source) => collectJsonFeedSource(source),
+      rss: (source) => collectRssSource(source),
+      website: (source) => collectWebsiteSource(source),
+    },
+  };
+}
+
 export async function runDigest(args: RunDigestArgs, dependencies: RunDigestDependencies = {}): Promise<{ markdown: string; runId: string }> {
   const db = dependencies.db ?? createDb(args.dbPath ?? ":memory:");
   const now = dependencies.now ?? (() => new Date().toISOString());
@@ -62,7 +75,7 @@ export async function runDigest(args: RunDigestArgs, dependencies: RunDigestDepe
   });
 
   const sources = dependencies.listSources?.() ?? listEnabledSources(db);
-  const items = await collectImpl(sources, { adapters: {} });
+  const items = await collectImpl(sources, buildDefaultCollectDependencies());
   const normalized = normalizeItems(items);
   const exact = dedupeExact(normalized.filter((item) => item.exactDedupKey) as Array<typeof normalized[number] & { exactDedupKey: string }>);
   const near = dedupeNear(exact.filter((item) => item.processedAt) as Array<typeof exact[number] & { processedAt: string }>);

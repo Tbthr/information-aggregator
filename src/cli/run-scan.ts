@@ -3,6 +3,7 @@ import { createOutput } from "../db/queries/outputs";
 import { createRun, finishRun } from "../db/queries/runs";
 import { recordSourceFailure, recordSourceSuccess, recordSourceZeroItems } from "../db/queries/source-health";
 import { listEnabledSources } from "../db/queries/sources";
+import { collectJsonFeedSource } from "../adapters/json-feed-collect";
 import { collectRssSource } from "../adapters/rss";
 import { collectWebsiteSource } from "../adapters/website";
 import { normalizeItems } from "../pipeline/normalize";
@@ -32,6 +33,7 @@ export interface RunScanDependencies {
 function buildDefaultCollectDependencies(): CollectDependencies {
   return {
     adapters: {
+      "json-feed": (source) => collectJsonFeedSource(source),
       rss: (source) => collectRssSource(source),
       website: (source) => collectWebsiteSource(source),
     },

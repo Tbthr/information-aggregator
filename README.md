@@ -30,6 +30,7 @@ bun install
 bun test
 bun run check
 bun run smoke
+bun run e2e
 bun scripts/aggregator.ts --help
 bun scripts/aggregator.ts scan
 bun scripts/aggregator.ts digest
