@@ -1,15 +1,36 @@
-import { getCliVersion } from "../src/cli/index";
+import { loadSourcesConfig } from "../src/config/load";
+import { getCliVersion, getHelpText, parseCliArgs } from "../src/cli/index";
+import { runDigest } from "../src/cli/run-digest";
+import { runScan } from "../src/cli/run-scan";
 
-function main(): void {
-  const arg = process.argv[2];
+async function main(): Promise<void> {
+  const parsed = parseCliArgs(process.argv.slice(2));
 
-  if (arg === "--version") {
+  if (parsed.command === "version") {
     console.log(getCliVersion());
     return;
   }
 
-  console.log(`information-aggregator ${getCliVersion()}`);
-  console.log("Usage: bun scripts/aggregator.ts --version");
+  if (parsed.command === "scan") {
+    const result = await runScan({ profileId: "default", dryRun: true });
+    console.log(result.markdown);
+    return;
+  }
+
+  if (parsed.command === "digest") {
+    const result = await runDigest({ profileId: "default", dryRun: true });
+    console.log(result.markdown);
+    return;
+  }
+
+  if (parsed.command === "config validate") {
+    await loadSourcesConfig("config/sources.example.yaml");
+    console.log("Config validation passed");
+    return;
+  }
+
+  console.log(`information-aggregator ${getCliVersion()}\n`);
+  console.log(getHelpText());
 }
 
-main();
+await main();
