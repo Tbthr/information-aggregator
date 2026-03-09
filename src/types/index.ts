@@ -1,12 +1,15 @@
 export type RunMode = "scan" | "digest";
+export type SourceType = "rss" | "json-feed" | "website" | string;
+export type RunStatus = "pending" | "running" | "completed" | "failed" | "succeeded";
 
 export interface Source {
   id: string;
   name: string;
-  type: string;
+  type: SourceType;
   enabled: boolean;
   url?: string;
   configJson?: string;
+  weight?: number;
 }
 
 export interface SourcePack {
@@ -33,6 +36,12 @@ export interface NormalizedItem {
   canonicalUrl: string;
   normalizedTitle: string;
   normalizedSnippet?: string;
+  normalizedText?: string;
+  exactDedupKey?: string;
+  processedAt?: string;
+  sourceId?: string;
+  title?: string;
+  url?: string;
 }
 
 export interface Cluster {
@@ -40,14 +49,21 @@ export interface Cluster {
   canonicalItemId: string;
   memberItemIds: string[];
   dedupeMethod: "exact" | "near";
+  runId?: string;
+  title?: string;
+  summary?: string;
+  url?: string;
 }
 
 export interface RunRecord {
   id: string;
   mode: RunMode;
-  startedAt: string;
+  startedAt?: string;
+  createdAt?: string;
   finishedAt?: string;
-  status: "pending" | "running" | "completed" | "failed";
+  status: RunStatus;
+  sourceSelectionJson?: string;
+  paramsJson?: string;
 }
 
 export interface OutputRecord {
@@ -65,4 +81,39 @@ export interface TopicProfile {
   mode: RunMode;
   topicIds: string[];
   sourcePackIds?: string[];
+}
+
+export interface SourceHealth {
+  sourceId: string;
+  lastSuccessAt?: string | null;
+  lastFailureAt?: string | null;
+  lastError?: string | null;
+  errorCount: number;
+  consecutiveZeroItemRuns: number;
+}
+
+export interface TopicRule {
+  includeKeywords?: string[];
+  excludeKeywords?: string[];
+  preferredSources?: string[];
+  blockedSources?: string[];
+}
+
+export interface RankedCandidate {
+  id: string;
+  title?: string;
+  url?: string;
+  sourceId?: string;
+  sourceName?: string;
+  normalizedTitle?: string;
+  normalizedText?: string;
+  canonicalUrl?: string;
+  processedAt?: string;
+  sourceWeightScore: number;
+  freshnessScore: number;
+  engagementScore: number;
+  topicMatchScore: number;
+  contentQualityAi: number;
+  finalScore?: number;
+  rationale?: string;
 }
