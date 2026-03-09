@@ -141,7 +141,7 @@ The codebase uses concise comments around non-obvious logic such as normalizatio
 Planned, not part of MVP:
 
 - X adapters such as `x_bookmarks` and `x_list`
-- Hacker News and Reddit adapters
+- Reddit adapter hardening and broader community-source coverage
 - deep enrichment and article extraction
 - feedback loop and adaptive ranking
 - web UI
@@ -156,9 +156,12 @@ Current project status as of 2026-03-09:
 
 - Completed: project scaffold, Bun CLI, YAML config loading, SQLite schema, run/output/source-health persistence
 - Completed: `rss`, `json-feed`, and `website` adapters
+- Completed: `hn` and `reddit` adapter support in the collector path
 - Completed: curated default source config and source packs based on the reference projects
+- Completed: profile/source-pack resolution before collection
 - Completed: collection, normalization, exact deduplication, near-duplicate compression, topic matching, ranking, clustering
+- Completed: persistent writes for raw items, normalized items, clusters, runs, outputs, and enriched source health metrics
 - Completed: markdown scan and digest rendering
 - Completed: end-to-end `scan`, `digest`, and `config validate` CLI commands
-- Completed: AI client abstraction and prompt builders
-- Deferred beyond MVP: real AI provider integration, richer profile/topic binding, persistent raw/normalized item writes in the full pipeline, X/HN/Reddit adapters, embeddings, web UI, multi-user support
+- Completed: provider-backed AI client hooks for candidate scoring, cluster summaries, and digest narration
+- Deferred beyond MVP: X adapters, deep enrichment, feedback learning, embeddings, web UI, multi-user support

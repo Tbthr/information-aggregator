@@ -12,8 +12,10 @@ Status as implemented on 2026-03-09:
 - Done: adapters for RSS, JSON Feed, and website fallback discovery
 - Done: normalize, exact dedupe, near dedupe, topic scoring, ranking, clustering, and markdown renderers
 - Done: end-to-end `scan` and `digest` orchestration with dry-run friendly execution
-- Done: AI abstraction layer and prompt builders
-- Not yet implemented by design: remote provider execution, advanced config binding, persistent writes for all intermediate pipeline entities, non-MVP adapters, web UI, multi-user workflows, embeddings
+- Done: provider-backed AI client hooks and prompt builders for candidate scoring, cluster summaries, and digest narration
+- Done: profile/topic/source-pack binding before collection and persistent writes for raw items, normalized items, and clusters
+- Done: stronger source health tracking and Hacker News / Reddit adapter support
+- Not yet implemented by design: X adapters, deeper enrichment workers, feedback loops, web UI, multi-user workflows, embeddings
 
 ## 1. Goal
 
@@ -685,10 +687,9 @@ The following should be tracked as future work but not implemented in this MVP.
 
 ### Phase 2
 
-- Hacker News
 - Reddit
 - better website fallback
-- stronger source health tracking
+- strengthen community-source coverage beyond the first Reddit / Hacker News path
 
 ### Phase 3
 

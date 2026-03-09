@@ -105,7 +105,7 @@ Example `digest` output:
 
 Planned, not part of MVP. Future work, intentionally excluded from current MVP:
 
-- X, Reddit, and Hacker News adapters
+- X adapters and deeper Reddit/community ingestion
 - deep enrichment and feedback loops
 - browser or web UI
 - multi-user workflows
@@ -119,15 +119,17 @@ Implemented in the current repository state:
 - config validation from local YAML files
 - curated default source config and source packs based on the reference projects
 - SQLite bootstrap with core tables for sources, raw items, normalized items, clusters, runs, outputs, and source health
-- source adapters for `rss`, `json-feed`, and `website`
+- source adapters for `rss`, `json-feed`, `website`, `hn`, and `reddit`
+- profile/topic/source-pack resolution before collection
 - deterministic normalize, dedupe, topic-match, rank, and cluster pipeline stages
 - markdown renderers for `scan` and `digest`
-- optional AI abstraction without provider-specific runtime integration
+- provider-backed AI hooks for candidate scoring, cluster summaries, and digest narration
+- persistence of raw items, normalized items, and clusters in the end-to-end path
 
 Deferred on purpose:
 
-- real provider-backed AI execution
-- full production profile/topic/source-pack orchestration
-- external adapters beyond the MVP set
+- X adapters
+- deeper enrichment and feedback loops
+- web or multi-user surfaces
 
 The implementation keeps code comments concise and uses them only for non-obvious behavior such as normalization rules, deduplication heuristics, ranking math, and adapter-specific edge cases.
