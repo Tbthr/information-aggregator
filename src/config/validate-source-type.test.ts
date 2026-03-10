@@ -41,6 +41,20 @@ describe("validateSource source-type specific schema", () => {
     ).toThrow("Source digest-source (digest_feed) requires config.format or config.linkSelector");
   });
 
+  test("requires itemPath for json digest_feed sources", () => {
+    expect(() =>
+      validateSource({
+        id: "digest-source",
+        name: "Digest Source",
+        type: "digest_feed",
+        enabled: false,
+        config: {
+          format: "json",
+        },
+      }),
+    ).toThrow("Source digest-source (digest_feed) requires config.itemPath for json format");
+  });
+
   test("allows lightweight config for github_trending sources", () => {
     const source = validateSource({
       id: "github-trending-source",
@@ -65,6 +79,22 @@ describe("validateSource source-type specific schema", () => {
         config: {},
       }),
     ).toThrow("Source x-list-source (x_list) requires config.birdMode");
+  });
+
+  test("accepts optional browser-auth settings for x family sources", () => {
+    const source = validateSource({
+      id: "x-home-source",
+      name: "X Home",
+      type: "x_home",
+      enabled: false,
+      config: {
+        birdMode: "home",
+        chromeProfile: "Default",
+        cookieSource: ["chrome"],
+      },
+    });
+
+    expect(source.type).toBe("x_home");
   });
 
   test("allows non-runnable schema placeholders to skip runnable fields", () => {

@@ -5,7 +5,15 @@ import { getRealProbeSources, probeLooksHealthy } from "./real-probe";
 describe("real probe helpers", () => {
   test("returns the documented public source set", () => {
     const sources = getRealProbeSources();
-    expect(sources.map((source) => source.type)).toEqual(["rss", "json-feed", "website"]);
+    expect(sources.map((source) => source.type)).toEqual([
+      "rss",
+      "json-feed",
+      "website",
+      "hn",
+      "reddit",
+      "github_trending",
+      "digest_feed",
+    ]);
   });
 
   test("accepts markdown with links as a healthy probe result", () => {

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { parseDigestFeedItems } from "./digest-feed";
+import { collectDigestFeedSource, parseDigestFeedItems } from "./digest-feed";
 
 describe("parseDigestFeedItems", () => {
   test("extracts digest entries and preserves linked canonical url hints", () => {
@@ -18,6 +18,54 @@ describe("parseDigestFeedItems", () => {
 
     expect(items).toHaveLength(1);
     expect(items[0]?.url).toBe("https://digest.example/1");
+    expect(JSON.parse(items[0]?.metadataJson ?? "{}")).toEqual({
+      provider: "digest_feed",
+      sourceType: "digest_feed",
+      contentType: "digest_entry",
+      canonicalHints: {
+        linkedUrl: "https://example.com/article",
+      },
+    });
+  });
+
+  test("collects json digest payloads from digest arrays", async () => {
+    const fetchImpl = (async () =>
+      new Response(
+        JSON.stringify({
+          user: {
+            name: "Kevin He",
+            slug: "kevin",
+          },
+          digests: [
+            {
+              id: 165,
+              type: "4h",
+              content: "Digest summary with https://example.com/article inside",
+            },
+          ],
+        }),
+        { headers: { "content-type": "application/json" } },
+      )) as unknown as typeof fetch;
+
+    const items = await collectDigestFeedSource(
+      {
+        id: "digest-source",
+        name: "Digest Source",
+        type: "digest_feed",
+        enabled: true,
+        url: "https://clawfeed.kevinhe.io/feed/kevin",
+        configJson: JSON.stringify({
+          format: "json",
+          itemPath: "digests",
+          contentField: "content",
+        }),
+      },
+      fetchImpl,
+    );
+
+    expect(items).toHaveLength(1);
+    expect(items[0]?.title).toBe("Digest 165");
+    expect(items[0]?.url).toBe("https://example.com/article");
     expect(JSON.parse(items[0]?.metadataJson ?? "{}")).toEqual({
       provider: "digest_feed",
       sourceType: "digest_feed",

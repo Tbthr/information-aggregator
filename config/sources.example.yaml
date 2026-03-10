@@ -544,9 +544,7 @@ sources:
     type: hn
     enabled: false
     url: https://hn.algolia.com/api/v1/search?tags=front_page
-    config:
-      placeholderMode: schema
-      expectedPayload: hn-search
+    config: {}
   - id: reddit-machine-learning-reference
     name: Reddit r/MachineLearning Reference
     type: reddit
@@ -559,6 +557,9 @@ sources:
     url: https://x.com/home
     config:
       birdMode: home
+      chromeProfile: Default
+      cookieSource:
+        - chrome
   - id: x-bookmarks-reference
     name: X Bookmarks Reference
     type: x_bookmarks
@@ -566,6 +567,9 @@ sources:
     url: https://x.com/i/bookmarks
     config:
       birdMode: bookmarks
+      chromeProfile: Default
+      cookieSource:
+        - chrome
   - id: x-list-reference
     name: X List Reference
     type: x_list
@@ -574,6 +578,9 @@ sources:
     config:
       birdMode: list
       listId: "2021198996157710621"
+      chromeProfile: Default
+      cookieSource:
+        - chrome
   - id: github-trending-typescript-reference
     name: GitHub Trending TypeScript Reference
     type: github_trending
@@ -588,8 +595,9 @@ sources:
     enabled: false
     url: https://clawfeed.kevinhe.io/feed/kevin
     config:
-      format: html
-      linkSelector: article a[href]
+      format: json
+      itemPath: digests
+      contentField: content
   - id: custom-api-schema-placeholder
     name: Custom API Schema Placeholder
     type: custom_api
@@ -604,6 +612,9 @@ sources:
     url: https://x.com/i/likes
     config:
       birdMode: likes
+      chromeProfile: Default
+      cookieSource:
+        - chrome
   - id: x-multi-reference
     name: X Multi Reference
     type: x_multi
@@ -613,6 +624,9 @@ sources:
       birdMode: multi
       listIds:
         - 12345
+      chromeProfile: Default
+      cookieSource:
+        - chrome
   - id: opml-rss-local-import-reference
     name: OPML RSS Local Import Reference
     type: opml_rss

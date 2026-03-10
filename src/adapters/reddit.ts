@@ -58,8 +58,24 @@ export async function collectRedditSource(
   source: Source,
   fetchImpl: typeof fetch = fetch,
 ): Promise<RawItem[]> {
-  const response = await fetchImpl(source.url ?? "");
-  const payload = await response.json();
+  const response = await fetchImpl(new Request(source.url ?? "", {
+    headers: {
+      accept: "application/json",
+      "user-agent": "information-aggregator/0.1 (+https://local.dev)",
+    },
+  }));
+  const rawText = await response.text();
+
+  if (!response.ok) {
+    throw new Error(`Reddit request failed with ${response.status}: ${rawText.slice(0, 160)}`);
+  }
+
+  let payload: unknown;
+  try {
+    payload = JSON.parse(rawText);
+  } catch {
+    throw new Error(`Failed to parse Reddit JSON: ${rawText.slice(0, 160)}`);
+  }
 
   if (!payload || typeof payload !== "object") {
     throw new Error("Invalid Reddit payload");

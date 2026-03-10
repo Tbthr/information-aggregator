@@ -4,40 +4,118 @@ interface BirdSourceConfig {
   birdMode?: string;
   listId?: string;
   listIds?: string[];
+  authToken?: string;
+  ct0?: string;
+  authTokenEnv?: string;
+  ct0Env?: string;
+  chromeProfile?: string;
+  chromeProfileDir?: string;
+  cookieSource?: string[];
+  cookieTimeoutMs?: number;
 }
 
 interface BirdItem {
   id?: string;
   text?: string;
   url?: string;
+  expandedUrl?: string;
   expanded_url?: string;
-  author?: string;
+  authorId?: string;
+  author?: string | {
+    username?: string;
+    name?: string;
+  };
+  article?: {
+    title?: string;
+    previewText?: string;
+  };
+  createdAt?: string;
   created_at?: string;
+  likeCount?: number;
+  replyCount?: number;
+  retweetCount?: number;
+}
+
+function normalizeBirdTitle(text: string): string {
+  const firstLine = text.split("\n").map((line) => line.trim()).find((line) => line !== "") ?? text.trim();
+  const withoutUrls = firstLine.replace(/https?:\/\/\S+/g, "").trim();
+  const collapsed = withoutUrls.replace(/\s+/g, " ");
+  return collapsed.length > 120 ? `${collapsed.slice(0, 117).trimEnd()}...` : collapsed;
 }
 
 function getBirdConfig(source: Pick<Source, "configJson">): BirdSourceConfig {
   return JSON.parse(source.configJson ?? "{}") as BirdSourceConfig;
 }
 
-export function buildBirdCommand(source: Pick<Source, "type" | "configJson">): string[] {
-  const config = getBirdConfig(source);
-  const mode = config.birdMode;
+function getTokenFromEnv(name: string | undefined): string | undefined {
+  if (!name) {
+    return undefined;
+  }
+
+  const value = process.env[name];
+  return typeof value === "string" && value.trim() !== "" ? value : undefined;
+}
+
+function getBirdAuthArgs(config: BirdSourceConfig): string[] {
+  const authToken = config.authToken ?? getTokenFromEnv(config.authTokenEnv);
+  const ct0 = config.ct0 ?? getTokenFromEnv(config.ct0Env);
+  const args: string[] = [];
+
+  if (authToken && ct0) {
+    args.push("--auth-token", authToken, "--ct0", ct0);
+  } else {
+    if (config.chromeProfile) {
+      args.push("--chrome-profile", config.chromeProfile);
+    }
+    if (config.chromeProfileDir) {
+      args.push("--chrome-profile-dir", config.chromeProfileDir);
+    }
+    for (const source of config.cookieSource ?? []) {
+      args.push("--cookie-source", source);
+    }
+    if (typeof config.cookieTimeoutMs === "number") {
+      args.push("--cookie-timeout", String(config.cookieTimeoutMs));
+    }
+  }
+
+  return args;
+}
+
+function getBirdMode(source: Pick<Source, "configJson">): string {
+  const mode = getBirdConfig(source).birdMode;
   if (!mode) {
     throw new Error("x source requires birdMode");
   }
 
-  const command = ["bird", mode];
-  if (mode === "list" && config.listId) {
-    command.push("--list-id", config.listId);
+  return mode;
+}
+
+export function buildBirdCommand(source: Pick<Source, "type" | "configJson">): string[] | string[][] {
+  const config = getBirdConfig(source);
+  const mode = getBirdMode(source);
+  const authArgs = getBirdAuthArgs(config);
+
+  if (mode === "home" || mode === "bookmarks" || mode === "likes") {
+    return ["bird", ...authArgs, mode, "--json"];
+  }
+
+  if (mode === "list") {
+    if (!config.listId) {
+      throw new Error("x list source requires listId");
+    }
+
+    return ["bird", ...authArgs, "list-timeline", config.listId, "--json"];
   }
 
   if (mode === "multi") {
-    for (const listId of config.listIds ?? []) {
-      command.push("--list", listId);
+    if (!config.listIds || config.listIds.length === 0) {
+      throw new Error("x multi source requires listIds");
     }
+
+    return config.listIds.map((listId) => ["bird", ...authArgs, "list-timeline", listId, "--json"]);
   }
 
-  return command;
+  throw new Error(`Unsupported birdMode: ${mode}`);
 }
 
 function parseBirdItems(payload: string, source: Source): RawItem[] {
@@ -47,22 +125,42 @@ function parseBirdItems(payload: string, source: Source): RawItem[] {
   }
 
   return items
-    .filter((item) => typeof item.text === "string" && typeof item.url === "string")
-    .map((item, index) => ({
-      id: item.id ?? `${source.id}-${index + 1}`,
-      sourceId: source.id,
-      title: item.text ?? `Post ${index + 1}`,
-      url: item.url ?? "",
-      author: item.author,
-      publishedAt: item.created_at,
-      fetchedAt: new Date().toISOString(),
-      metadataJson: JSON.stringify({
-        provider: "bird",
-        sourceType: source.type,
-        contentType: "social_post",
-        canonicalHints: item.expanded_url ? { expandedUrl: item.expanded_url } : undefined,
-      }),
-    }));
+    .filter((item) => typeof item.text === "string")
+    .map((item, index) => {
+      const rawText = item.text ?? `Post ${index + 1}`;
+      const title = typeof item.article?.title === "string" && item.article.title.trim() !== ""
+        ? item.article.title.trim()
+        : normalizeBirdTitle(rawText);
+      return {
+        id: item.id ?? `${source.id}-${index + 1}`,
+        sourceId: source.id,
+        title,
+        url: item.url
+        ?? (typeof item.author === "object" && typeof item.author?.username === "string" && typeof item.id === "string"
+          ? `https://x.com/${item.author.username}/status/${item.id}`
+          : ""),
+        author: typeof item.author === "string" ? item.author : item.author?.username,
+        snippet: rawText,
+        publishedAt: item.created_at ?? item.createdAt,
+        fetchedAt: new Date().toISOString(),
+        metadataJson: JSON.stringify({
+          provider: "bird",
+          sourceType: source.type,
+          contentType: "social_post",
+          engagement: item.likeCount === undefined && item.replyCount === undefined && item.retweetCount === undefined
+            ? undefined
+            : {
+              score: item.likeCount,
+              comments: item.replyCount,
+              reactions: item.retweetCount,
+            },
+          canonicalHints: item.expanded_url || item.expandedUrl
+            ? { expandedUrl: item.expanded_url ?? item.expandedUrl }
+            : undefined,
+        }),
+      };
+    })
+    .filter((item) => item.url !== "");
 }
 
 export async function collectXBirdSource(
@@ -81,6 +179,11 @@ export async function collectXBirdSource(
     return output;
   },
 ): Promise<RawItem[]> {
-  const output = await execImpl(buildBirdCommand(source));
-  return parseBirdItems(output, source);
+  const command = buildBirdCommand(source);
+  if (Array.isArray(command[0])) {
+    const outputs = await Promise.all((command as string[][]).map((part) => execImpl(part)));
+    return outputs.flatMap((output) => parseBirdItems(output, source));
+  }
+
+  return parseBirdItems(await execImpl(command as string[]), source);
 }

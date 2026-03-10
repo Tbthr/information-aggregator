@@ -3,6 +3,8 @@
 日期：2026-03-10
 状态：已确认
 
+> 进度注记（2026-03-10 更新）：`github_trending`、`digest_feed`、`custom_api`、`opml_rss` 与 X family adapter 已进入主代码库；其中 X family 仍依赖 `bird CLI` 授权与手动 probe，不能按匿名 public source 对待。
+
 ## 目标
 
 为 `information-aggregator` 制定一份按阶段推进的数据源类型实现路线图。路线图要同时覆盖：
@@ -25,7 +27,7 @@
 当前仓库已经具备：
 
 - 本地 YAML 配置：`sources`、`packs`、`topics`、`profiles`
-- 已接入或已具备 collector 路径的类型：`rss`、`json-feed`、`website`、`hn`、`reddit`
+- 已接入或已具备 collector 路径的类型：`rss`、`json-feed`、`website`、`hn`、`reddit`、`github_trending`、`digest_feed`、`custom_api`、`opml_rss`、X family
 - 规范化、精确去重、近似去重、排序、聚类、Markdown 输出
 - 根据 5 个参考项目扩充后的 source surface
 

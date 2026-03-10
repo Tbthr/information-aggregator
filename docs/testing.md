@@ -82,14 +82,7 @@ bun run smoke
 
 对于不稳定或尚未正式支持的 source type，例如：
 
-- `github_trending`
-- `digest_feed`
 - `custom_api`
-- `x_bookmarks`
-- `x_likes`
-- `x_multi`
-- `x_list`
-- `x_home`
 - `opml_rss`
 
 默认应以 fixture / reference source / 手动 probe 为主，不应直接进入稳定 CI。
@@ -99,6 +92,37 @@ bun run smoke
 - 先验证 `bird CLI` 参数映射
 - 再验证 fixture 输出到 `RawItem` 的转换
 - 最后才做手动 `bird CLI` 探测
+- 建议顺序：
+
+```bash
+bird check
+bird whoami
+bird --chrome-profile "Default" home --json
+```
+
+- 如果 `bird 0.8.x` 使用 Chrome cookie，优先配置：
+  - `chromeProfile`
+  - `chromeProfileDir`
+  - `cookieSource`
+- 如果直接注入 cookie，则使用：
+  - `authToken` / `ct0`
+  - 或 `authTokenEnv` / `ct0Env`
+
+当前匿名 public probe 可覆盖：
+
+- `rss`
+- `json-feed`
+- `website`
+- `hn`
+- `reddit`
+- `github_trending`
+- `digest_feed`
+
+当前仍建议保留为手动或本地依赖验证的类型：
+
+- `custom_api`
+- `opml_rss`
+- X family 全部类型
 
 ## source 有效性审计
 

@@ -7,8 +7,9 @@
 - TypeScript + Bun CLI
 - SQLite 持久化：sources、runs、outputs、source health
 - 配置驱动的 sources、source packs、topics、profiles
-- `rss`、`json-feed`、`website` 的基础采集能力
-- 已接入 collector 路径的 `hn` 与 `reddit`
+- 已接入 `rss`、`json-feed`、`website`、`hn`、`reddit`
+- 已接入 `github_trending`、`digest_feed`、`custom_api`、`opml_rss`
+- 已接入基于 `bird CLI` 的 X family adapter
 - 确定性的规范化、精确去重、近似去重、排序与聚类
 - 可选的 AI 抽象层，用于后续候选评分和摘要扩展
 
@@ -51,6 +52,30 @@ sources:
     type: website
     enabled: true
     url: https://simonwillison.net/
+```
+
+X family 最小配置示例：
+
+```yaml
+  - id: x-home-reference
+    name: X Home Reference
+    type: x_home
+    enabled: false
+    url: https://x.com/home
+    config:
+      birdMode: home
+      chromeProfile: Default
+      cookieSource:
+        - chrome
+```
+
+如果不走浏览器 cookie，也可以改用显式 token：
+
+```yaml
+    config:
+      birdMode: home
+      authTokenEnv: BIRD_AUTH_TOKEN
+      ct0Env: BIRD_CT0
 ```
 
 ```yaml
@@ -98,19 +123,13 @@ profiles:
   - 依赖登录态或外部会话的 auth-required reference source
   - `config.placeholderMode: schema` 的 schema placeholder，仅用于表达未来契约
 
-当前仍未接入主采集链路、但已出现在配置中的类型包括：
+当前已接入主采集链路、但默认不启用或仍依赖本地前置条件的类型包括：
 
-- `github_trending`
-- `digest_feed`
-- `custom_api`
-- `x_bookmarks`
-- `x_likes`
-- `x_multi`
-- `x_list`
-- `x_home`
-- `opml_rss`
+- 匿名可跑通的 reference source：`hn`、`reddit`、`github_trending`、`digest_feed`
+- 需要本地文件或显式 schema 的类型：`custom_api`、`opml_rss`
+- 需要 `bird CLI` 与 X 登录态的类型：`x_bookmarks`、`x_likes`、`x_multi`、`x_list`、`x_home`
 
-这保证了配置能完整反映当前 source taxonomy，但不代表这些 adapter 已全部成为默认可运行能力。
+这保证了配置能完整反映当前 source taxonomy，同时把“已实现 adapter”和“默认 runnable”区分开。
 
 ## 命令
 
@@ -173,8 +192,8 @@ bun scripts/aggregator.ts digest
 
 以下内容已经进入持续迭代路线图：
 
-- X family adapter
-- `github_trending`、`digest_feed`、`custom_api`、`opml_rss`
+- X family 的授权配置、手动 probe 与兼容性收敛
+- 更稳的 `github_trending` / `digest_feed` / `custom_api` / `opml_rss` source 治理
 - 更深的正文提取与 enrichment
 - feedback loop 与自适应排序
 - Web UI
@@ -191,9 +210,11 @@ bun scripts/aggregator.ts digest
 - 已完成：SQLite schema 与核心表
 - 已完成：`rss`、`json-feed`、`website` adapter
 - 已完成：`hn`、`reddit` 的 collector 路径支持
+- 已完成：`github_trending`、`digest_feed`、`custom_api`、`opml_rss` adapter
+- 已完成：X family `bird CLI` adapter，需本地授权后手动 probe
 - 已完成：profile / topic / source-pack resolution
 - 已完成：规范化、去重、topic match、排序、聚类
 - 已完成：`scan` 与 `digest` Markdown 输出
 - 已完成：候选评分、cluster summary、digest narration 的 AI hook
 - 已完成：raw items、normalized items、clusters 的 end-to-end 持久化
-- 尚未实现：X adapters、深度 enrichment、feedback learning、Web UI、多用户能力
+- 尚未实现：深度 enrichment、feedback learning、Web UI、多用户能力

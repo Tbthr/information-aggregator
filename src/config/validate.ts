@@ -84,6 +84,9 @@ function validateSourceTypeConfig(sourceId: string, type: SourceType, enabled: b
       validateCustomApiFieldMap(sourceId, type, config);
       return;
     case "digest_feed":
+      if (config.format === "json" && !hasNonEmptyString(config, "itemPath")) {
+        throw new Error(`Source ${sourceId} (${type}) requires config.itemPath for json format`);
+      }
       if (!hasNonEmptyString(config, "format") && !hasNonEmptyString(config, "linkSelector")) {
         throw new Error(`Source ${sourceId} (${type}) requires config.format or config.linkSelector`);
       }
