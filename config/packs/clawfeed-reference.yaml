@@ -1,0 +1,11 @@
+pack:
+  id: clawfeed-reference
+  name: Clawfeed Reference
+  referenceOnly: true
+  sourceIds:
+    - clawfeed-digest-json
+    - clawfeed-hn-front-page
+    - clawfeed-reddit-ai
+    - clawfeed-curated-digest
+    - clawfeed-custom-api
+    - clawfeed-github-trending

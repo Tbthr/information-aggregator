@@ -21,6 +21,11 @@ describe("collectSources", () => {
       },
     );
     expect(items).toHaveLength(1);
+    expect(JSON.parse(items[0]?.metadataJson ?? "{}")).toEqual({
+      provider: "rss",
+      sourceType: "rss",
+      contentType: "article",
+    });
   });
 
   test("reports source event metrics for success and failure paths", async () => {
@@ -70,7 +75,7 @@ describe("collectSources", () => {
         adapters: {
           hn: async () => [
             {
-              id: "item-1",
+              id: "hn-1",
               sourceId: "hn-1",
               title: "Show HN",
               url: "https://example.com/post",
@@ -84,6 +89,15 @@ describe("collectSources", () => {
 
     expect(items).toHaveLength(1);
     expect(items[0]?.sourceId).toBe("hn-1");
+    expect(JSON.parse(items[0]?.metadataJson ?? "{}")).toEqual({
+      provider: "hn",
+      sourceType: "hn",
+      contentType: "community_post",
+      canonicalHints: {
+        externalUrl: "https://example.com/post",
+        discussionUrl: "https://news.ycombinator.com/item?id=1",
+      },
+    });
   });
 
   test("dispatches to the reddit adapter when configured", async () => {
@@ -93,7 +107,7 @@ describe("collectSources", () => {
         adapters: {
           reddit: async () => [
             {
-              id: "item-1",
+              id: "reddit-abc",
               sourceId: "reddit-1",
               title: "Interesting post",
               url: "https://example.com/post",
@@ -107,5 +121,14 @@ describe("collectSources", () => {
 
     expect(items).toHaveLength(1);
     expect(items[0]?.sourceId).toBe("reddit-1");
+    expect(JSON.parse(items[0]?.metadataJson ?? "{}")).toEqual({
+      provider: "reddit",
+      sourceType: "reddit",
+      contentType: "community_post",
+      canonicalHints: {
+        externalUrl: "https://example.com/post",
+        discussionUrl: "https://www.reddit.com/r/artificial/comments/abc",
+      },
+    });
   });
 });

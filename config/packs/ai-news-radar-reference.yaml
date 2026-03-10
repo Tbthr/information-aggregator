@@ -1,0 +1,12 @@
+pack:
+  id: ai-news-radar-reference
+  name: AI News Radar Reference
+  referenceOnly: true
+  sourceIds:
+    - openai-news
+    - hugging-face-blog
+    - infoq-cn
+    - techurls
+    - buzzing
+    - info-flow
+    - ai-news-radar-opml

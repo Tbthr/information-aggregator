@@ -1,7 +1,7 @@
 pack:
-  id: ai-daily-digest-blogs
-  name: AI Daily Digest Blogs
-  referenceOnly: false
+  id: ai-daily-digest-reference-full
+  name: AI Daily Digest Reference Full
+  referenceOnly: true
   sourceIds:
     - overreacted
     - paul-graham

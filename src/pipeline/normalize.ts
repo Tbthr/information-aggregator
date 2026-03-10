@@ -1,10 +1,19 @@
-import type { NormalizedItem, RawItem } from "../types/index";
+import { parseRawItemMetadata, type NormalizedItem, type RawItem } from "../types/index";
 import { normalizeSnippet, normalizeTitle } from "./normalize-text";
-import { normalizeUrl } from "./normalize-url";
+import { resolveCanonicalUrl } from "./normalize-url";
+
+function toBoundedEngagementScore(metadataJson: string): number {
+  const metadata = parseRawItemMetadata(metadataJson);
+  const score = metadata?.engagement?.score ?? 0;
+  const comments = metadata?.engagement?.comments ?? 0;
+  const total = Math.max(0, score) + Math.max(0, comments * 0.5);
+  return Math.min(1, Math.log10(total + 1) / 2);
+}
 
 export function normalizeItems(items: RawItem[]): NormalizedItem[] {
   return items.map((item) => {
-    const canonicalUrl = normalizeUrl(item.url);
+    const metadata = parseRawItemMetadata(item.metadataJson);
+    const canonicalUrl = resolveCanonicalUrl(item.url, metadata);
     const normalizedTitle = normalizeTitle(item.title);
     const normalizedSnippet = normalizeSnippet(item.snippet);
 
@@ -18,8 +27,11 @@ export function normalizeItems(items: RawItem[]): NormalizedItem[] {
       normalizedTitle,
       normalizedSnippet,
       normalizedText: [normalizedTitle, normalizedSnippet].filter(Boolean).join(" "),
-      // The exact dedup key intentionally favors stable identity over downstream ranking hints.
-      exactDedupKey: `${canonicalUrl}::${normalizedTitle}`,
+      metadataJson: item.metadataJson,
+      sourceType: metadata?.sourceType,
+      contentType: metadata?.contentType,
+      engagementScore: toBoundedEngagementScore(item.metadataJson),
+      exactDedupKey: canonicalUrl,
       // Raw items stay immutable; normalization is stored separately so dedup rules can evolve safely.
       processedAt: item.fetchedAt,
     };

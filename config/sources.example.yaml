@@ -1,8 +1,9 @@
 sources:
-  # Curated defaults with the reference projects in mind.
-  # Active supported defaults come from ai-daily-digest and ai-news-radar.
-  # Clawfeed contributes a disabled JSON feed example. smaug and x-ai-topic-selector
-  # are represented as disabled placeholders so all five projects appear in defaults.
+  # Curated defaults and roadmap/reference examples.
+  # Runnable defaults stay in the active packs.
+  # Disabled entries below may be either:
+  # 1. structurally valid reference sources
+  # 2. non-runnable schema placeholders with config.placeholderMode: schema
   - id: openai-news
     name: OpenAI News
     type: rss
@@ -103,13 +104,83 @@ sources:
     type: json-feed
     enabled: false
     url: https://digest.kevinhe.io/feed/kevin.json
+  - id: clawfeed-hn-front-page
+    name: ClawFeed Hacker News Front Page
+    type: hn
+    enabled: false
+    url: https://hn.algolia.com/api/v1/search?tags=front_page
+    config:
+      placeholderMode: schema
+      expectedPayload: hn-search
+  - id: clawfeed-reddit-ai
+    name: ClawFeed Reddit Artificial
+    type: reddit
+    enabled: false
+    url: https://www.reddit.com/r/artificial/hot.json?limit=25
+  - id: ai-news-radar-opml
+    name: AI News Radar OPML
+    type: opml_rss
+    enabled: false
+    config:
+      path: ./fixtures/ai-news-radar.opml
+  - id: clawfeed-curated-digest
+    name: ClawFeed Curated Digest
+    type: digest_feed
+    enabled: false
+    url: https://digest.kevinhe.io/
+    config:
+      format: html
+      linkSelector: article a[href]
+  - id: clawfeed-custom-api
+    name: ClawFeed Custom API
+    type: custom_api
+    enabled: false
+    url: https://example.com/api/clawfeed
+    config:
+      placeholderMode: schema
+  - id: clawfeed-github-trending
+    name: ClawFeed GitHub Trending
+    type: github_trending
+    enabled: false
+    url: https://github.com/trending
+    config:
+      language: typescript
+      since: daily
   - id: smaug-bookmarks
     name: Smaug Bookmark Feed
     type: x_bookmarks
     enabled: false
     url: https://x.com/i/bookmarks
+    config:
+      birdMode: bookmarks
+  - id: smaug-likes
+    name: Smaug Likes Feed
+    type: x_likes
+    enabled: false
+    url: https://x.com/i/likes
+    config:
+      birdMode: likes
+  - id: smaug-multi
+    name: Smaug Multi Feed
+    type: x_multi
+    enabled: false
+    url: https://x.com/home
+    config:
+      birdMode: multi
+      listIds:
+        - 12345
   - id: x-ai-topic-selector-list
     name: X AI Topic Selector List
     type: x_list
     enabled: false
     url: https://x.com/i/lists/2021198996157710621
+    config:
+      birdMode: list
+      listId: "2021198996157710621"
+  - id: x-ai-topic-selector-home
+    name: X AI Topic Selector Home
+    type: x_home
+    enabled: false
+    url: https://x.com/home
+    config:
+      birdMode: home

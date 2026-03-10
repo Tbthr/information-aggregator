@@ -92,4 +92,10 @@ bun run smoke
 - `x_home`
 - `opml_rss`
 
-默认应以 fixture / placeholder / 手动 probe 为主，不应直接进入稳定 CI。
+默认应以 fixture / reference source / 手动 probe 为主，不应直接进入稳定 CI。
+
+其中 X family 额外要求：
+
+- 先验证 `bird CLI` 参数映射
+- 再验证 fixture 输出到 `RawItem` 的转换
+- 最后才做手动 `bird CLI` 探测

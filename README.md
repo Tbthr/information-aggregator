@@ -1,8 +1,8 @@
 # Information Aggregator
 
-`information-aggregator` 是一个本地优先的 Bun + TypeScript 信息聚合 MVP，用于收集已配置的数据源、去除重复内容，并输出快速浏览用的 `scan` 或结构化的 `digest`。
+`information-aggregator` 是一个本地优先的 Bun + TypeScript 信息聚合工具，用于收集已配置的数据源、去除重复内容，并输出快速浏览用的 `scan` 或结构化的 `digest`。
 
-## 当前 MVP 包含什么
+## 当前能力
 
 - TypeScript + Bun CLI
 - SQLite 持久化：sources、runs、outputs、source health
@@ -27,7 +27,7 @@
 - `config/packs/smaug-reference.yaml`
 - `config/packs/x-ai-topic-selector-reference.yaml`
 
-当前 MVP 默认使用本地 YAML 配置并运行在本地状态之上。
+当前默认使用本地 YAML 配置并运行在本地状态之上。
 
 ### 示例
 
@@ -89,11 +89,11 @@ profiles:
 
 注意：
 
-- 当前仓库内部只保留 `x_*` 命名，不再保留 `twitter_*`
-- `config/sources.example.yaml` 里有一部分 source type 是为了完整表达路线图而加入的 placeholder
-- placeholder 可能是：
-  - `enabled: false` 但结构有效
-  - 仅用于表达未来 schema 的 non-runnable placeholder
+- 当前仓库内部只保留 canonical source type 命名
+- `config/sources.example.yaml` 里有一部分 source type 是为了完整表达路线图和参考项目覆盖范围而加入的 disabled reference source
+- disabled reference source 分为两类：
+  - `enabled: false` 且结构有效，可在 adapter 实现后直接转为可运行 source
+  - `config.placeholderMode: schema`，只用于表达未来 schema 契约，当前不可直接运行
 
 当前仍未接入主采集链路、但已出现在配置中的类型包括：
 
@@ -168,7 +168,7 @@ bun scripts/aggregator.ts digest
 
 ## 后续计划
 
-以下内容已规划，但不属于当前 MVP：
+以下内容已经进入持续迭代路线图：
 
 - X family adapter
 - `github_trending`、`digest_feed`、`custom_api`、`opml_rss`

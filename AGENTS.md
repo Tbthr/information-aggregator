@@ -2,25 +2,25 @@
 
 ## 项目概览
 
-`information-aggregator` 是一个本地优先的 Bun + TypeScript 信息聚合 MVP，用于收集已配置的数据源、规范化与去重，并输出 `scan` 或 `digest`。
+`information-aggregator` 是一个本地优先的 Bun + TypeScript 信息聚合工具，用于收集已配置的数据源、规范化与去重，并输出 `scan` 或 `digest`。
 
-当前 MVP 范围：
+当前能力范围：
 
 - YAML 驱动的 source 配置
 - SQLite 持久化：sources、runs、outputs、source health
-- `rss`、`json-feed`、`website` adapter
+- `rss`、`json-feed`、`website`、`hn`、`reddit`、`opml_rss`、`digest_feed`、`custom_api`、`github_trending` adapter
+- `bird CLI` 驱动的 X family adapter：`x_home`、`x_list`、`x_bookmarks`、`x_likes`、`x_multi`
 - 确定性的规范化、精确去重、近似去重、排序、聚类与 Markdown 输出
+- enrichment boundary 与有界 AI hook
 - `scan`、`digest`、`config validate` CLI
 - 稳定的本地 smoke 与 E2E 验证流程
 
-当前 MVP 明确不包含：
+当前仍明确不包含：
 
-- 完整 X adapter
-- 真实 AI provider 执行
 - embeddings / vector similarity
 - Web UI
 - 多用户能力
-- 高级 feedback loop
+- 高级 feedback loop / learning loop
 
 ## 架构
 
@@ -96,6 +96,7 @@ bun scripts/aggregator.ts digest
 - 优先使用本地 HTTP test server，而不是脆弱的网络 mock
 - 断言最终 Markdown 输出，而不只检查中间结构
 - 真实网络 probe 只能作为补充验证，不能是唯一验证
+- X family source 要优先做 `bird CLI` 参数映射和 fixture 输出测试，再做手动 probe
 
 当你修改打包或安装行为时：
 
@@ -126,9 +127,10 @@ bun scripts/aggregator.ts digest
 
 - 项目脚手架与 CLI
 - config validation
-- `rss`、`json-feed`、`website` adapter
+- `rss`、`json-feed`、`website`、`hn`、`reddit`、`opml_rss`、`digest_feed`、`custom_api`、`github_trending` adapter
+- `bird CLI` 驱动的 X family adapter
 - SQLite bootstrap 与核心 queries
-- normalize、dedupe、topic scoring、ranking、clustering
+- normalize、dedupe、topic scoring、ranking、clustering、enrichment boundary
 - Markdown `scan` / `digest`
 - smoke 验证
 - mock-source E2E
@@ -136,7 +138,6 @@ bun scripts/aggregator.ts digest
 
 按设计仍延期：
 
-- X family adapter
 - 更深的 enrichment 与 feedback loop
 - Web / 多用户表面
 
@@ -146,5 +147,5 @@ bun scripts/aggregator.ts digest
 
 - 优先做小而清晰的改动
 - commit 必须逻辑分组
-- 不要悄悄扩大 MVP scope
+- 不要悄悄扩大当前路线图 scope
 - 如果一项能力被延期，记录在 docs，而不是半实现地留在代码里

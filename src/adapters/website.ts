@@ -28,7 +28,11 @@ export async function collectWebsiteSource(source: Source, fetchImpl: typeof fet
         title: extractPageTitle(html),
         url: source.url ?? "",
         fetchedAt: new Date().toISOString(),
-        metadataJson: "{}",
+        metadataJson: JSON.stringify({
+          provider: "website",
+          sourceType: "website",
+          contentType: "page",
+        }),
       },
     ];
   }
@@ -40,7 +44,12 @@ export async function collectWebsiteSource(source: Source, fetchImpl: typeof fet
       title: extractPageTitle(html),
       url: feedUrl,
       fetchedAt: new Date().toISOString(),
-      metadataJson: JSON.stringify({ discoveredFrom: source.url }),
+      metadataJson: JSON.stringify({
+        provider: "website",
+        sourceType: "website",
+        contentType: "feed_discovery",
+        discoveredFrom: source.url,
+      }),
     },
   ];
 }

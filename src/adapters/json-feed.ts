@@ -29,7 +29,11 @@ export function parseJsonFeedItems(payload: JsonFeedPayload, sourceId: string): 
       snippet: item.content_text ?? item.content_html ?? "",
       publishedAt: item.date_published,
       fetchedAt: new Date().toISOString(),
-      metadataJson: "{}",
+      metadataJson: JSON.stringify({
+        provider: "json-feed",
+        sourceType: "json-feed",
+        contentType: "article",
+      }),
     }))
     .filter((item) => item.url);
 }

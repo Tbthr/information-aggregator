@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { getSmokeCommands } from "./smoke";
 
 describe("getSmokeCommands", () => {
-  test("returns the recommended mvp verification sequence", () => {
+  test("returns the recommended verification sequence", () => {
     expect(getSmokeCommands()).toEqual([
       "bun test",
       "bun run check",

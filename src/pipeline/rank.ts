@@ -8,9 +8,10 @@ export function rankCandidates<T extends RankedCandidate>(candidates: T[]): Arra
       finalScore:
         candidate.sourceWeightScore * 0.3 +
         candidate.freshnessScore * 0.25 +
-        candidate.engagementScore * 0.1 +
+        Math.min(1, candidate.engagementScore) * 0.1 +
         candidate.topicMatchScore * 0.25 +
-        candidate.contentQualityAi * 0.1,
+        candidate.contentQualityAi * 0.1 -
+        (candidate.contentType === "community_post" ? 0.12 : 0),
     }))
     .sort((left, right) => right.finalScore - left.finalScore);
 }
