@@ -1,9 +1,10 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
+import { collectSources, type CollectDependencies } from "../pipeline/collect";
 import { runQuery } from "../query/run-query";
 import { renderQueryJson } from "../render/json";
+import type { RawItem, QueryViewDefinition, Source, SourcePack, TopicDefinition, TopicProfile } from "../types/index";
 import { buildViewModel, renderViewMarkdown } from "../views/registry";
-import type { QueryViewDefinition, Source, SourcePack, TopicDefinition, TopicProfile } from "../types/index";
 
 const rssXml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss><channel>
@@ -31,6 +32,42 @@ const websiteHtml = `<!doctype html>
   </head>
   <body>Website body</body>
 </html>`;
+
+// X family fixture data (mock bird CLI output)
+const xBirdFixture: RawItem[] = [
+  {
+    id: "x-tweet-1",
+    sourceId: "x-bookmarks-1",
+    title: "AI agents are reshaping workflows",
+    url: "https://x.com/testuser/status/123",
+    author: "testuser",
+    snippet: "AI agents are reshaping workflows automation productivity",
+    publishedAt: new Date().toISOString(),
+    fetchedAt: new Date().toISOString(),
+    metadataJson: JSON.stringify({
+      provider: "bird",
+      sourceType: "x_bookmarks",
+      contentType: "social_post",
+      engagement: { score: 100, comments: 10, reactions: 50 },
+    }),
+  },
+  {
+    id: "x-tweet-2",
+    sourceId: "x-bookmarks-1",
+    title: "Claude Code is amazing for development",
+    url: "https://x.com/anotheruser/status/456",
+    author: "anotheruser",
+    snippet: "Claude Code is amazing for development coding ai tools",
+    publishedAt: new Date().toISOString(),
+    fetchedAt: new Date().toISOString(),
+    metadataJson: JSON.stringify({
+      provider: "bird",
+      sourceType: "x_bookmarks",
+      contentType: "social_post",
+      engagement: { score: 200, comments: 20, reactions: 80 },
+    }),
+  },
+];
 
 let server: ReturnType<typeof Bun.serve> | null = null;
 let baseUrl = "";
@@ -129,6 +166,108 @@ function getMockViews(): QueryViewDefinition[] {
   ];
 }
 
+// X family mock configuration
+function getXMockSources(): Source[] {
+  return [
+    {
+      id: "x-bookmarks-1",
+      name: "X Bookmarks Mock",
+      type: "x_bookmarks",
+      enabled: true,
+      url: "https://x.com/bookmarks",
+      configJson: JSON.stringify({ birdMode: "bookmarks" }),
+    },
+    {
+      id: "x-likes-1",
+      name: "X Likes Mock",
+      type: "x_likes",
+      enabled: true,
+      url: "https://x.com/likes",
+      configJson: JSON.stringify({ birdMode: "likes" }),
+    },
+    {
+      id: "x-home-1",
+      name: "X Home Mock",
+      type: "x_home",
+      enabled: true,
+      url: "https://x.com/home",
+      configJson: JSON.stringify({ birdMode: "home" }),
+    },
+  ];
+}
+
+function getXMockProfiles(): TopicProfile[] {
+  return [
+    {
+      id: "x-default",
+      name: "X Default",
+      topicIds: ["x-topics"],
+      sourcePackIds: ["x-pack"],
+      defaultView: "x-bookmarks-analysis",
+      defaultWindow: "7d",
+    },
+  ];
+}
+
+function getXMockTopics(): TopicDefinition[] {
+  return [
+    {
+      id: "x-topics",
+      name: "X Topics",
+      keywords: ["ai", "agents", "coding"],
+    },
+  ];
+}
+
+function getXMockSourcePacks(): SourcePack[] {
+  return [
+    {
+      id: "x-pack",
+      name: "X Pack",
+      sourceIds: ["x-bookmarks-1", "x-likes-1", "x-home-1"],
+    },
+  ];
+}
+
+function getXMockViews(): QueryViewDefinition[] {
+  return [
+    {
+      id: "x-bookmarks-analysis",
+      name: "X Bookmarks Analysis",
+      defaultWindow: "7d",
+      defaultSort: "recent",
+      defaultSourceTypes: ["x_bookmarks"],
+    },
+    {
+      id: "x-likes-analysis",
+      name: "X Likes Analysis",
+      defaultWindow: "7d",
+      defaultSort: "recent",
+      defaultSourceTypes: ["x_likes"],
+    },
+    {
+      id: "x-longform-hot",
+      name: "X Longform Hot",
+      defaultWindow: "7d",
+      defaultSort: "ranked",
+      defaultSourceTypes: ["x_home", "x_list", "x_multi"],
+    },
+  ];
+}
+
+// Mock collect dependencies for X family sources
+function getXMockCollectDeps(): CollectDependencies {
+  return {
+    adapters: {
+      x_bookmarks: async () => xBirdFixture,
+      x_likes: async () => xBirdFixture,
+      x_home: async () => xBirdFixture,
+      x_list: async () => xBirdFixture,
+      x_multi: async () => xBirdFixture,
+    },
+  };
+}
+
 describe("mock source end-to-end flow", () => {
   test("run --view item-list outputs markdown", async () => {
     const result = await runQuery({
@@ -189,5 +328,81 @@ describe("mock source end-to-end flow", () => {
     expect(json).toContain("\"query\"");
     expect(json).toContain("\"selection\"");
     expect(json).toContain("\"rankedItems\"");
+  });
+});
+
+describe("x family mock source end-to-end flow", () => {
+  test("run --view x-bookmarks-analysis outputs markdown", async () => {
+    const result = await runQuery({
+      command: "run",
+      profileId: "x-default",
+      viewId: "x-bookmarks-analysis",
+      format: "markdown",
+    }, {
+      loadSources: getXMockSources,
+      loadProfiles: getXMockProfiles,
+      loadTopics: getXMockTopics,
+      loadSourcePacks: getXMockSourcePacks,
+      loadViews: getXMockViews,
+      collectSources: (sources, deps) => {
+        const xDeps = getXMockCollectDeps();
+        return collectSources(sources, { ...deps, adapters: { ...deps.adapters, ...xDeps.adapters } });
+      },
+    });
+    const markdown = renderViewMarkdown(buildViewModel(result, "x-bookmarks-analysis"), "x-bookmarks-analysis");
+
+    expect(markdown).toContain("X Bookmarks Analysis");
+    expect(markdown).toContain("Summary");
+    expect(markdown).toContain("Top Themes");
+    expect(markdown).toContain("Notable Items");
+  });
+
+  test("run --view x-likes-analysis outputs markdown", async () => {
+    const result = await runQuery({
+      command: "run",
+      profileId: "x-default",
+      viewId: "x-likes-analysis",
+      format: "markdown",
+    }, {
+      loadSources: getXMockSources,
+      loadProfiles: getXMockProfiles,
+      loadTopics: getXMockTopics,
+      loadSourcePacks: getXMockSourcePacks,
+      loadViews: getXMockViews,
+      collectSources: (sources, deps) => {
+        const xDeps = getXMockCollectDeps();
+        return collectSources(sources, { ...deps, adapters: { ...deps.adapters, ...xDeps.adapters } });
+      },
+    });
+    const markdown = renderViewMarkdown(buildViewModel(result, "x-likes-analysis"), "x-likes-analysis");
+
+    expect(markdown).toContain("X Likes Analysis");
+    expect(markdown).toContain("Summary");
+    expect(markdown).toContain("Top Themes");
+  });
+
+  test("run --view x-longform-hot outputs markdown", async () => {
+    const result = await runQuery({
+      command: "run",
+      profileId: "x-default",
+      viewId: "x-longform-hot",
+      format: "markdown",
+    }, {
+      loadSources: getXMockSources,
+      loadProfiles: getXMockProfiles,
+      loadTopics: getXMockTopics,
+      loadSourcePacks: getXMockSourcePacks,
+      loadViews: getXMockViews,
+      collectSources: (sources, deps) => {
+        const xDeps = getXMockCollectDeps();
+        return collectSources(sources, { ...deps, adapters: { ...deps.adapters, ...xDeps.adapters } });
+      },
+    });
+    const markdown = renderViewMarkdown(buildViewModel(result, "x-longform-hot"), "x-longform-hot");
+
+    expect(markdown).toContain("X Longform Hot");
+    expect(markdown).toContain("Hot Posts");
+    expect(markdown).toContain("Linked Articles");
+    expect(markdown).toContain("Clusters");
   });
 });
