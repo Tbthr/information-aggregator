@@ -1,57 +1,57 @@
 # AGENTS.md
 
-## Project Summary
+## 项目概览
 
-`information-aggregator` is a local-first Bun + TypeScript MVP that collects configured sources, normalizes and deduplicates results, and renders either a fast `scan` or a grouped `digest`.
+`information-aggregator` 是一个本地优先的 Bun + TypeScript 信息聚合 MVP，用于收集已配置的数据源、规范化与去重，并输出 `scan` 或 `digest`。
 
-Current MVP scope:
+当前 MVP 范围：
 
-- YAML-driven source configuration
-- SQLite-backed persistence for sources, runs, outputs, and source health
-- adapters for `rss`, `json-feed`, and `website`
-- deterministic normalization, exact dedupe, near-deduplication, ranking, clustering, and markdown rendering
-- CLI commands for `scan`, `digest`, and `config validate`
-- stable local smoke and end-to-end verification flows
+- YAML 驱动的 source 配置
+- SQLite 持久化：sources、runs、outputs、source health
+- `rss`、`json-feed`、`website` adapter
+- 确定性的规范化、精确去重、近似去重、排序、聚类与 Markdown 输出
+- `scan`、`digest`、`config validate` CLI
+- 稳定的本地 smoke 与 E2E 验证流程
 
-Out of scope for the current MVP:
+当前 MVP 明确不包含：
 
-- X, Reddit, and Hacker News adapters
-- real AI provider execution
+- 完整 X adapter
+- 真实 AI provider 执行
 - embeddings / vector similarity
-- web UI
-- multi-user support
-- advanced feedback loops
+- Web UI
+- 多用户能力
+- 高级 feedback loop
 
-## Architecture
+## 架构
 
-The main runtime flow is:
+主运行流为：
 
 ```text
 Sources -> Collectors -> RawItem -> Normalize -> Dedup/Cluster -> Rank -> Render
 ```
 
-Module ownership:
+模块职责：
 
-- `src/adapters/`: source-specific fetch and parse logic only
-- `src/config/`: YAML loading and validation
-- `src/db/`: SQLite schema and query helpers
-- `src/pipeline/`: collect, normalize, dedupe, topic match, rank, cluster
-- `src/render/`: markdown output formatting
-- `src/cli/`: end-to-end orchestration for `scan` and `digest`
-- `src/verification/`: reusable verification helpers
-- `scripts/`: runnable developer entrypoints such as smoke and real-source probes
-- `docs/`: plans, testing guidance, and implementation progress
+- `src/adapters/`：只负责 source-specific fetch / parse
+- `src/config/`：YAML 加载与校验
+- `src/db/`：SQLite schema 与 query helpers
+- `src/pipeline/`：collect、normalize、dedupe、topic match、rank、cluster
+- `src/render/`：Markdown 输出格式化
+- `src/cli/`：`scan` / `digest` 端到端编排
+- `src/verification/`：可复用的验证辅助
+- `scripts/`：开发与验证入口
+- `docs/`：计划、测试说明、实现进展
 
-Design constraints:
+设计约束：
 
-- keep pipeline stages deterministic unless explicitly adding optional AI hooks
-- avoid mixing fetch logic into ranking/render code
-- prefer dependency injection for tests over global mocking
-- keep new adapters isolated behind the existing collector pattern
+- 除非明确是可选 AI hook，否则 pipeline 必须保持确定性
+- 不要把 fetch 逻辑混入 ranking / render
+- 测试优先使用依赖注入，不依赖全局 mock
+- 新 adapter 必须通过既有 collector pattern 接入
 
-## Developer Workflow
+## 开发流程
 
-Install and baseline checks:
+安装与基线检查：
 
 ```bash
 bun install
@@ -59,7 +59,7 @@ bun test
 bun run check
 ```
 
-Primary developer commands:
+主要开发命令：
 
 ```bash
 bun run smoke
@@ -71,74 +71,80 @@ bun scripts/aggregator.ts scan
 bun scripts/aggregator.ts digest
 ```
 
-## Verification Policy
+## 验证策略
 
-Use this order unless there is a specific reason not to:
+默认顺序：
 
-1. `bun test` for unit and focused integration coverage
-2. `bun run smoke` for local CLI regression checks
-3. `bun run e2e` for stable mock-source end-to-end verification
-4. clean-clone install verification before publishing or handing off
-5. `bun run e2e:real` as a manual real-network probe
-6. skill-installation verification only when packaging/distribution behavior changes
+1. `bun test`
+2. `bun run smoke`
+3. `bun run e2e`
+4. clean-clone 安装验证
+5. `bun run e2e:real`
+6. 仅在打包/分发变更时做 skill-installation 验证
 
-Interpretation:
+解释：
 
-- `smoke` is the fastest default check during development
-- `e2e` is the stable fetch-to-output gate
-- `e2e:real` is intentionally non-CI and may fail due to upstream/network issues
+- `smoke` 是开发期最快的回归检查
+- `e2e` 是稳定的 fetch-to-output 本地基线
+- `e2e:real` 不应作为 CI gate，因为它受上游和网络波动影响
 
-## End-To-End Testing Rules
+## 端到端测试规则
 
-When adding or changing source/runtime behavior:
+当你新增或修改 source/runtime 行为时：
 
-- add or update a local mock-source E2E test first
-- prefer local HTTP test servers over brittle network mocks
-- assert on final markdown output, not only intermediate structures
-- keep real-network probes as supplemental validation, never the only test
+- 先补本地 mock-source E2E 测试
+- 优先使用本地 HTTP test server，而不是脆弱的网络 mock
+- 断言最终 Markdown 输出，而不只检查中间结构
+- 真实网络 probe 只能作为补充验证，不能是唯一验证
 
-When changing packaging or installation:
+当你修改打包或安装行为时：
 
-- verify the repository from a clean clone
-- only add skill-installation tests when the skill entrypoint or packaging contract changes
+- 从 clean clone 验证仓库
+- 只有当 skill 入口或打包契约变化时，才补 skill-installation 测试
 
-## Documentation Rules
+## 文档规则
 
-Keep these files aligned when behavior changes:
+行为变化时，需要保持这些文件同步：
 
-- `README.md`: user-facing overview and commands
-- `docs/testing.md`: verification workflows and best practices
-- `docs/plans/2026-03-09-information-aggregator-skill-design.md`: architecture intent and progress snapshot
-- `docs/plans/2026-03-09-information-aggregator-skill-implementation-plan.md`: execution plan history
+- `README.md`：用户视角说明与命令
+- `docs/testing.md`：验证流程与最佳实践
+- `docs/plans/2026-03-09-information-aggregator-skill-design.md`：架构意图与进度快照
+- `docs/plans/2026-03-09-information-aggregator-skill-implementation-plan.md`：历史执行计划
+- 当前活跃路线图与实施计划文档
 
-When something remains intentionally unfinished, document it instead of implying support.
+如果某项能力故意未完成，必须写进文档，不能让配置或 README 暗示“已经支持”。
 
-## Implementation Progress
+### Markdown 语言规则
 
-Implemented today:
+- 本仓库新增或修改的 Markdown 文档必须使用中文
+- 代码标识符、CLI 命令、source type 名称、协议名称等保留原文
+- 引用英文上游名称时，用中文解释，不要把整份文档切回英文
 
-- project scaffold and CLI
+## 当前实现进展
+
+目前已完成：
+
+- 项目脚手架与 CLI
 - config validation
-- source adapters for `rss`, `json-feed`, and `website`
-- SQLite bootstrap and core queries
-- normalization, dedupe, topic scoring, ranking, clustering
-- markdown `scan` and `digest`
-- smoke verification
-- mock-source E2E verification
-- real-network probe verification
+- `rss`、`json-feed`、`website` adapter
+- SQLite bootstrap 与核心 queries
+- normalize、dedupe、topic scoring、ranking、clustering
+- Markdown `scan` / `digest`
+- smoke 验证
+- mock-source E2E
+- real-network probe
 
-Still deferred by design:
+按设计仍延期：
 
-- full production config/profile binding depth
-- persistence of all intermediate pipeline entities in the end-to-end path
-- remote AI providers
-- non-MVP adapters and product surfaces
+- X family adapter
+- 更深的 enrichment 与 feedback loop
+- Web / 多用户表面
 
-## Collaboration Notes
+## 协作说明
 
-For future agents:
+给后续 agent 的约束：
 
-- prefer minimal, well-scoped changes
-- keep commits logically grouped
-- do not silently expand MVP scope
-- if a feature is deferred, record it in docs rather than partially implementing it
+- 优先做小而清晰的改动
+- commit 必须逻辑分组
+- 不要悄悄扩大 MVP scope
+- 如果一项能力被延期，记录在 docs，而不是半实现地留在代码里

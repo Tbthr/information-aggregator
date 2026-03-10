@@ -1,14 +1,14 @@
-# Testing Guide
+# 测试指南
 
-## Fastest Post-MVP Check
+## 最快的日常检查
 
-Use the smoke command during active development:
+开发过程中优先使用：
 
 ```bash
 bun run smoke
 ```
 
-This runs the current recommended verification chain:
+它会执行当前推荐的验证链：
 
 ```bash
 bun test
@@ -19,36 +19,37 @@ bun scripts/aggregator.ts scan
 bun scripts/aggregator.ts digest
 ```
 
-## Manual Acceptance Checklist
+## 人工验收清单
 
-- `bun run smoke` passes without manual fixes
-- `bun scripts/aggregator.ts --help` shows `scan`, `digest`, and `config validate`
-- `bun scripts/aggregator.ts config validate` succeeds with example config
-- `bun scripts/aggregator.ts scan` returns markdown output
-- `bun scripts/aggregator.ts digest` returns markdown output
-- example config files remain readable and in sync with the documented commands
+- `bun run smoke` 无需手工修复即可通过
+- `bun scripts/aggregator.ts --help` 展示 `scan`、`digest`、`config validate`
+- `bun scripts/aggregator.ts config validate` 能通过示例配置
+- `bun scripts/aggregator.ts scan` 能输出 Markdown
+- `bun scripts/aggregator.ts digest` 能输出 Markdown
+- 示例配置文件与文档保持一致且可读
 
-## End-To-End Checks
+## 端到端检查
 
-Stable local end-to-end baseline:
+稳定的本地 E2E 基线：
 
 ```bash
 bun run e2e
 ```
 
-This starts no external dependency and verifies the full fetch-to-render path against local mock HTTP sources, including the post-MVP profile-binding and pipeline-persistence path.
+这个命令不会依赖外部服务，而是通过本地 mock HTTP sources 验证从 fetch 到 render 的完整流程。
 
-Optional real-network probe:
+可选的真实网络探测：
 
 ```bash
 bun run e2e:real
 ```
 
-This hits current public feeds and confirms the runtime still works against real sources. It should not be treated as a stable CI gate because upstream availability can change.
+它会访问当前公开可用的数据源，确认运行时仍能与真实 source 协同工作。  
+它不应该作为稳定 CI gate，因为上游可用性会变化。
 
-## Installation Test
+## 安装验证
 
-For release-style verification, use a clean directory and verify the repository like an external user would:
+发布前建议用一个干净目录做外部用户视角验证：
 
 ```bash
 git clone <repo-url> information-aggregator-test
@@ -57,17 +58,38 @@ bun install
 bun run smoke
 ```
 
-This is usually enough before introducing a formal skill-installation flow.
+这通常足以覆盖本地使用与交付前检查。
 
-## Current Best Practice
+## 当前最佳实践
 
-Use a layered verification order:
+推荐验证顺序：
 
-1. Focused unit and integration tests for changed modules.
-2. `bun run e2e` for stable fetch-to-output integration.
-3. `bun run smoke` for local CLI integration.
-4. Clean-clone install test before sharing or publishing.
-5. `bun run e2e:real` as a manual public-network probe.
-6. Skill-installation test only when the skill packaging or distribution path changes.
+1. 先跑变更模块对应的 unit / integration tests
+2. 再跑 `bun run e2e`
+3. 再跑 `bun run smoke`
+4. 需要交付或发布时，再做 clean-clone 安装验证
+5. `bun run e2e:real` 仅作为手动公共网络探测
+6. 只有在 skill 打包或分发路径变更时才做 installation 验证
 
-For this post-MVP phase, the recommended default is to confirm the changed modules first, then run the stable local E2E path before the broader smoke command.
+## source type 相关补充
+
+当你新增或修改 source type 时：
+
+- 先补 fixture-first adapter tests
+- 再补 config validation tests
+- 再补 mock-source E2E
+- 最后才考虑真实网络 probe
+
+对于不稳定或尚未正式支持的 source type，例如：
+
+- `github_trending`
+- `digest_feed`
+- `custom_api`
+- `x_bookmarks`
+- `x_likes`
+- `x_multi`
+- `x_list`
+- `x_home`
+- `opml_rss`
+
+默认应以 fixture / placeholder / 手动 probe 为主，不应直接进入稳定 CI。

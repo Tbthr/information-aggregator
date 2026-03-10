@@ -1,18 +1,18 @@
 # Information Aggregator
 
-Aggregate configured information sources into local `scan` and `digest` outputs.
+将已配置的信息源聚合为本地 `scan` 与 `digest` 输出。
 
-## MVP Capabilities
+## 当前 MVP 能力
 
-- load YAML configuration for sources, topics, profiles, and source packs
-- collect from `rss`, `json-feed`, and `website` sources
-- normalize URLs and text
-- remove exact duplicates and compress near-duplicates
-- rank candidates with deterministic mixed scoring
-- render markdown `scan` and `digest` outputs
-- track runs, outputs, and source health in SQLite
+- 加载 sources、topics、profiles、source packs 的 YAML 配置
+- 从 `rss`、`json-feed`、`website` 采集
+- 规范化 URL 与文本
+- 去除精确重复并压缩近似重复
+- 使用确定性的混合评分进行排序
+- 输出 Markdown 格式的 `scan` 与 `digest`
+- 在 SQLite 中跟踪 runs、outputs 与 source health
 
-## Usage
+## 使用方式
 
 ```bash
 bun install
@@ -22,9 +22,9 @@ bun scripts/aggregator.ts digest
 bun scripts/aggregator.ts config validate
 ```
 
-## Configuration Shape
+## 配置结构
 
-Default local YAML examples:
+本地 YAML 示例：
 
 ```yaml
 sources:
@@ -71,17 +71,21 @@ profiles:
 
 ## Source Packs
 
-The sample source pack files in `config/packs/` show how to bundle sources for recurring scans or digests.
+`config/packs/` 下的示例文件展示了如何把 sources 组合成可重复使用的扫描或摘要集合。
 
-The default config is curated with the reference projects in mind:
-- `ai-news-radar` contributes active aggregator/news defaults such as TechURLs, Buzzing, Info Flow, BestBlogs, TopHub, Zeli, AI HubToday, AIbase, AI 今日热榜, NewsNow, WaytoAGI, and OPML-style RSS examples.
-- `ai-daily-digest` contributes active engineering/blog RSS defaults.
-- `clawfeed` contributes a disabled JSON Feed example that stays within the current MVP adapter set.
-- `smaug` and `x-ai-topic-selector` are included as disabled placeholders so the default config still reflects all five reference projects without enabling unsupported adapters in the active MVP path.
+默认配置参考了 5 个项目的数据源表面：
 
-## Output Examples
+- `ai-news-radar`
+- `ai-daily-digest`
+- `clawfeed`
+- `smaug`
+- `x-ai-topic-selector`
 
-Example `scan` output:
+其中一部分 source type 只是 disabled placeholder，用来表达路线图和参考项目覆盖范围，不代表当前已经可采集。
+
+## 输出示例
+
+`scan` 输出示例：
 
 ```md
 # Scan
@@ -91,7 +95,7 @@ Example `scan` output:
   - score: 0.82
 ```
 
-Example `digest` output:
+`digest` 输出示例：
 
 ```md
 # Digest
@@ -101,35 +105,34 @@ Example `digest` output:
 - Example title
 ```
 
-## Future Work
+## 后续计划
 
-Planned, not part of MVP. Future work, intentionally excluded from current MVP:
+以下能力已规划，但不属于当前 MVP：
 
-- X adapters and deeper Reddit/community ingestion
-- deep enrichment and feedback loops
-- browser or web UI
-- multi-user workflows
-- embeddings-backed similarity
+- X family adapter
+- 更深的 Reddit / community source 支持
+- 深度 enrichment 与 feedback loop
+- 浏览器界面或 Web UI
+- 多用户能力
+- embedding 相似度
 
-## Implementation Status
+## 当前实现状态
 
-Implemented in the current repository state:
+当前仓库已经实现：
 
-- CLI bootstrap and help text
-- config validation from local YAML files
-- curated default source config and source packs based on the reference projects
-- SQLite bootstrap with core tables for sources, raw items, normalized items, clusters, runs, outputs, and source health
-- source adapters for `rss`, `json-feed`, `website`, `hn`, and `reddit`
-- profile/topic/source-pack resolution before collection
-- deterministic normalize, dedupe, topic-match, rank, and cluster pipeline stages
-- markdown renderers for `scan` and `digest`
-- provider-backed AI hooks for candidate scoring, cluster summaries, and digest narration
-- persistence of raw items, normalized items, and clusters in the end-to-end path
+- CLI 启动与帮助命令
+- 本地 YAML 配置校验
+- 基于参考项目扩展的默认 source config 与 source packs
+- SQLite bootstrap 与核心表
+- `rss`、`json-feed`、`website`、`hn`、`reddit` adapter/collector 路径
+- profile / topic / source-pack resolution
+- 确定性的 normalize、dedupe、topic-match、rank、cluster
+- `scan` 与 `digest` Markdown render
+- 候选评分、cluster summary、digest narration 的 AI hook
+- raw items、normalized items、clusters 的 end-to-end 持久化
 
-Deferred on purpose:
+当前刻意延期：
 
-- X adapters
-- deeper enrichment and feedback loops
-- web or multi-user surfaces
-
-The implementation keeps code comments concise and uses them only for non-obvious behavior such as normalization rules, deduplication heuristics, ranking math, and adapter-specific edge cases.
+- X family adapter
+- 更深的 enrichment 与 feedback loop
+- Web / 多用户表面

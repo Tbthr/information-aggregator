@@ -1,64 +1,64 @@
-# Digest 24-Hour Filter Implementation Plan
+# Digest 24 小时过滤实施计划
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Restrict digest output to content from the last 24 hours, using publication time when available and fetch time otherwise.
+**目标：** 让 `digest` 输出只覆盖最近 24 小时内容，优先使用发布时间，缺失时回退到抓取时间。
 
-**Architecture:** Keep timestamp extraction in adapters and apply a single time-window filter inside `runDigest` before normalization. This preserves the existing pipeline and limits behavior change to digest mode.
+**架构：** 保持时间提取留在各 adapter 内部，只在 `runDigest` 中加入统一的时间窗口过滤。这样能把行为变化限定在 digest 模式，不影响 scan。
 
-**Tech Stack:** Bun, TypeScript, bun:test
+**技术栈：** Bun、TypeScript、bun:test
 
 ---
 
-### Task 1: Add failing tests for timestamp parsing and digest filtering
+### 任务 1：先补失败测试
 
-**Files:**
-- Modify: `src/adapters/rss.test.ts`
-- Modify: `src/adapters/json-feed.test.ts`
-- Modify: `src/cli/run-digest.test.ts`
+**文件：**
+- 修改：`src/adapters/rss.test.ts`
+- 修改：`src/adapters/json-feed.test.ts`
+- 修改：`src/cli/run-digest.test.ts`
 
-**Step 1: Write the failing test**
+**步骤 1：先写失败测试**
 
-- Add RSS coverage for `pubDate` and Atom `published`.
-- Add JSON Feed coverage for `date_published`.
-- Add digest coverage for 24-hour filtering and fetch-time fallback.
+- 为 RSS 增加 `pubDate` 与 Atom `published` 测试
+- 为 JSON Feed 增加 `date_published` 测试
+- 为 digest 增加 24 小时过滤与回退逻辑测试
 
-**Step 2: Run test to verify it fails**
+**步骤 2：运行测试，确认它失败**
 
-Run: `bun test src/adapters/rss.test.ts src/adapters/json-feed.test.ts src/cli/run-digest.test.ts`
-Expected: FAIL because the digest path does not yet filter by the 24-hour window and RSS does not yet read Atom `published`.
+运行：`bun test src/adapters/rss.test.ts src/adapters/json-feed.test.ts src/cli/run-digest.test.ts`
+预期：FAIL，因为当前 digest 尚未按 24 小时窗口过滤，RSS 也未完整解析 Atom `published`
 
-### Task 2: Implement the minimal filtering and timestamp parsing changes
+### 任务 2：写最小实现
 
-**Files:**
-- Modify: `src/adapters/rss.ts`
-- Modify: `src/cli/run-digest.ts`
+**文件：**
+- 修改：`src/adapters/rss.ts`
+- 修改：`src/cli/run-digest.ts`
 
-**Step 1: Write minimal implementation**
+**步骤 1：实现最小改动**
 
-- Extend RSS parsing to read Atom `published`.
-- Add a helper in `runDigest.ts` that:
-  - computes a cutoff from `now() - 24h`
-  - uses `publishedAt` when valid
-  - otherwise uses `fetchedAt`
-  - excludes invalid or too-old timestamps
+- 扩展 RSS 解析，支持 Atom `published`
+- 在 `runDigest.ts` 中加入 24 小时过滤 helper：
+  - cutoff = `now() - 24h`
+  - 优先使用 `publishedAt`
+  - 缺失时回退到 `fetchedAt`
+  - 丢弃无效时间或超窗条目
 
-**Step 2: Run test to verify it passes**
+**步骤 2：运行测试，确认通过**
 
-Run: `bun test src/adapters/rss.test.ts src/adapters/json-feed.test.ts src/cli/run-digest.test.ts`
-Expected: PASS
+运行：`bun test src/adapters/rss.test.ts src/adapters/json-feed.test.ts src/cli/run-digest.test.ts`
+预期：PASS
 
-### Task 3: Verify no regression in digest flow
+### 任务 3：做回归验证
 
-**Files:**
-- No code changes expected
+**文件：**
+- 无新增代码
 
-**Step 1: Run focused verification**
+**步骤 1：跑聚焦测试**
 
-Run: `bun test src/cli/run-digest.test.ts src/adapters/rss.test.ts src/adapters/json-feed.test.ts`
-Expected: PASS
+运行：`bun test src/cli/run-digest.test.ts src/adapters/rss.test.ts src/adapters/json-feed.test.ts`
+预期：PASS
 
-**Step 2: Run smoke verification**
+**步骤 2：跑 smoke**
 
-Run: `bun run smoke`
-Expected: PASS
+运行：`bun run smoke`
+预期：PASS

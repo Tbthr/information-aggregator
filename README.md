@@ -1,29 +1,35 @@
 # Information Aggregator
 
-Local-first information aggregation MVP for collecting configured sources, deduplicating overlap, and rendering either a quick `scan` or a structured `digest`.
+`information-aggregator` 是一个本地优先的 Bun + TypeScript 信息聚合 MVP，用于收集已配置的数据源、去除重复内容，并输出快速浏览用的 `scan` 或结构化的 `digest`。
 
-## What The MVP Includes
+## 当前 MVP 包含什么
 
 - TypeScript + Bun CLI
-- SQLite persistence for sources, runs, outputs, and source health
-- Config-driven source definitions, source packs, topics, and profiles
-- Adapters for `rss`, `json-feed`, and `website` fallback discovery
-- Deterministic normalization, exact deduplication, near-duplicate compression, ranking, and rendering
-- Optional AI abstraction for later candidate scoring and narration hooks
+- SQLite 持久化：sources、runs、outputs、source health
+- 配置驱动的 sources、source packs、topics、profiles
+- `rss`、`json-feed`、`website` 的基础采集能力
+- 已接入 collector 路径的 `hn` 与 `reddit`
+- 确定性的规范化、精确去重、近似去重、排序与聚类
+- 可选的 AI 抽象层，用于后续候选评分和摘要扩展
 
-## Configuration
+## 配置文件
 
-Example config files live in [`config/`](./config):
+示例配置位于 [`config/`](./config)：
 
 - `sources.example.yaml`
 - `topics.example.yaml`
 - `profiles.example.yaml`
 - `config/packs/ai-daily-digest-blogs.yaml`
+- `config/packs/ai-daily-digest-reference-full.yaml`
 - `config/packs/ai-news-sites.yaml`
+- `config/packs/ai-news-radar-reference.yaml`
+- `config/packs/clawfeed-reference.yaml`
+- `config/packs/smaug-reference.yaml`
+- `config/packs/x-ai-topic-selector-reference.yaml`
 
-The MVP expects local YAML files and runs entirely on local state.
+当前 MVP 默认使用本地 YAML 配置并运行在本地状态之上。
 
-Default examples:
+### 示例
 
 ```yaml
 # config/sources.example.yaml
@@ -71,13 +77,39 @@ profiles:
       - ai-daily-digest-blogs
 ```
 
-The default config is curated with the reference projects in mind:
-- `ai-news-radar` contributes active aggregator/news defaults such as TechURLs, Buzzing, Info Flow, BestBlogs, TopHub, Zeli, AI HubToday, AIbase, AI 今日热榜, NewsNow, WaytoAGI, and OPML-style RSS examples.
-- `ai-daily-digest` contributes active engineering/blog RSS defaults.
-- `clawfeed` contributes a disabled JSON Feed example that stays within the current MVP adapter set.
-- `smaug` and `x-ai-topic-selector` are included as disabled placeholders so the default config still reflects all five reference projects without enabling unsupported adapters in the active MVP path.
+## 默认配置与参考项目
 
-## Commands
+当前默认配置参考了 5 个项目的数据源表面：
+
+- `ai-news-radar`：提供聚合站/新闻站默认源，以及 `opml_rss` 占位需求
+- `ai-daily-digest`：提供高质量 blog/RSS 源池
+- `clawfeed`：提供 `json-feed`、`rss`、`website`、`hn`、`reddit`、`github_trending`、`digest_feed`、`custom_api` 等类型参考
+- `smaug`：提供 `x_bookmarks`、`x_likes`、`x_multi` 的输入语义参考
+- `x-ai-topic-selector`：提供 `x_list`、`x_home`、`x_bookmarks` 的输入语义参考
+
+注意：
+
+- 当前仓库内部只保留 `x_*` 命名，不再保留 `twitter_*`
+- `config/sources.example.yaml` 里有一部分 source type 是为了完整表达路线图而加入的 placeholder
+- placeholder 可能是：
+  - `enabled: false` 但结构有效
+  - 仅用于表达未来 schema 的 non-runnable placeholder
+
+当前仍未接入主采集链路、但已出现在配置中的类型包括：
+
+- `github_trending`
+- `digest_feed`
+- `custom_api`
+- `x_bookmarks`
+- `x_likes`
+- `x_multi`
+- `x_list`
+- `x_home`
+- `opml_rss`
+
+这保证了配置能完整反映参考项目的 source surface，但不代表这些 adapter 已经实现。
+
+## 命令
 
 ```bash
 bun install
@@ -91,18 +123,18 @@ bun scripts/aggregator.ts digest
 bun scripts/aggregator.ts config validate
 ```
 
-## Output Modes
+## 输出模式
 
-- `scan`: ranked markdown list for fast review
-- `digest`: grouped markdown digest with highlights and clustered items
+- `scan`：适合快速浏览的排序 Markdown 列表
+- `digest`：带高亮与聚类的结构化 Markdown 摘要
 
-## Example Workflow
+## 示例工作流
 
 ```bash
 bun run smoke
 ```
 
-For a more detailed checklist and clean-clone install flow, see [`docs/testing.md`](./docs/testing.md).
+更完整的验证说明请见 [`docs/testing.md`](./docs/testing.md)。
 
 ```bash
 bun scripts/aggregator.ts config validate
@@ -110,7 +142,7 @@ bun scripts/aggregator.ts scan
 bun scripts/aggregator.ts digest
 ```
 
-Example `scan` output:
+### `scan` 输出示例
 
 ```md
 # Scan
@@ -120,7 +152,7 @@ Example `scan` output:
   - score: 0.82
 ```
 
-Example `digest` output:
+### `digest` 输出示例
 
 ```md
 # Digest
@@ -134,34 +166,31 @@ Example `digest` output:
 - [Example title](https://example.com/post)
 ```
 
-The codebase uses concise comments around non-obvious logic such as normalization rules, deduplication heuristics, ranking math, and adapter edge cases.
+## 后续计划
 
-## Future Work
+以下内容已规划，但不属于当前 MVP：
 
-Planned, not part of MVP:
+- X family adapter
+- `github_trending`、`digest_feed`、`custom_api`、`opml_rss`
+- 更深的正文提取与 enrichment
+- feedback loop 与自适应排序
+- Web UI
+- 多用户能力
+- embedding / vector search
 
-- X adapters such as `x_bookmarks` and `x_list`
-- Reddit adapter hardening and broader community-source coverage
-- deep enrichment and article extraction
-- feedback loop and adaptive ranking
-- web UI
-- multi-user mode
-- embeddings or vector search
+## 当前实现状态
 
-These items are intentionally excluded from the current implementation.
+截至 2026-03-10，仓库当前状态为：
 
-## Implementation Status
-
-Current project status as of 2026-03-09:
-
-- Completed: project scaffold, Bun CLI, YAML config loading, SQLite schema, run/output/source-health persistence
-- Completed: `rss`, `json-feed`, and `website` adapters
-- Completed: `hn` and `reddit` adapter support in the collector path
-- Completed: curated default source config and source packs based on the reference projects
-- Completed: profile/source-pack resolution before collection
-- Completed: collection, normalization, exact deduplication, near-duplicate compression, topic matching, ranking, clustering
-- Completed: persistent writes for raw items, normalized items, clusters, runs, outputs, and enriched source health metrics
-- Completed: markdown scan and digest rendering
-- Completed: end-to-end `scan`, `digest`, and `config validate` CLI commands
-- Completed: provider-backed AI client hooks for candidate scoring, cluster summaries, and digest narration
-- Deferred beyond MVP: X adapters, deep enrichment, feedback learning, embeddings, web UI, multi-user support
+- 已完成：项目脚手架与 CLI
+- 已完成：本地 YAML 配置加载与校验
+- 已完成：基于参考项目的 source config 与 source packs
+- 已完成：SQLite schema 与核心表
+- 已完成：`rss`、`json-feed`、`website` adapter
+- 已完成：`hn`、`reddit` 的 collector 路径支持
+- 已完成：profile / topic / source-pack resolution
+- 已完成：规范化、去重、topic match、排序、聚类
+- 已完成：`scan` 与 `digest` Markdown 输出
+- 已完成：候选评分、cluster summary、digest narration 的 AI hook
+- 已完成：raw items、normalized items、clusters 的 end-to-end 持久化
+- 尚未实现：X adapters、深度 enrichment、feedback learning、Web UI、多用户能力
