@@ -1,0 +1,15 @@
+pack:
+  id: clawfeed-reference
+  name: ClawFeed Reference
+  sourceIds:
+    - clawfeed-digest-json
+    - clawfeed-rss-example
+    - clawfeed-website-example
+    - clawfeed-hacker-news-front-page
+    - clawfeed-reddit-machine-learning
+    - clawfeed-twitter-feed
+    - clawfeed-twitter-bookmarks
+    - clawfeed-twitter-list
+    - clawfeed-github-trending
+    - clawfeed-digest-feed
+    - clawfeed-custom-api

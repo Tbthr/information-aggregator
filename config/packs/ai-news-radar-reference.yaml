@@ -1,9 +1,7 @@
 pack:
-  id: ai-news-sites
-  name: AI News Sites
+  id: ai-news-radar-reference
+  name: AI News Radar Reference
   sourceIds:
-    - openai-news
-    - hugging-face-blog
     - infoq-cn
     - techurls
     - buzzing
@@ -17,4 +15,4 @@ pack:
     - newsnow
     - waytoagi-updates
     - waytoagi-history
-    - simon-willison
+    - ai-news-radar-opml-import

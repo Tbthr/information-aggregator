@@ -1,0 +1,7 @@
+pack:
+  id: smaug-reference
+  name: Smaug Reference
+  sourceIds:
+    - smaug-bookmarks
+    - smaug-likes
+    - smaug-both

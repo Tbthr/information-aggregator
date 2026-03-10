@@ -1,0 +1,7 @@
+pack:
+  id: x-ai-topic-selector-reference
+  name: X AI Topic Selector Reference
+  sourceIds:
+    - x-ai-topic-selector-list
+    - x-ai-topic-selector-home
+    - x-ai-topic-selector-bookmarks

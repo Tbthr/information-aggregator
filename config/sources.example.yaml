@@ -1,8 +1,9 @@
 sources:
-  # Curated defaults with the reference projects in mind.
-  # Active supported defaults come from ai-daily-digest and ai-news-radar.
-  # Clawfeed contributes a disabled JSON feed example. smaug and x-ai-topic-selector
-  # are represented as disabled placeholders so all five projects appear in defaults.
+  # Reference-project defaults and placeholders.
+  # Supported adapters can be enabled directly. Unsupported source types stay disabled
+  # so the config reflects the full source surface of the five reference projects.
+
+  # Active supported defaults derived mainly from ai-news-radar.
   - id: openai-news
     name: OpenAI News
     type: rss
@@ -73,6 +74,13 @@ sources:
     type: website
     enabled: true
     url: https://waytoagi.feishu.cn/wiki/RuBhwe63Viw8s8k1xCYc0zo1nEb
+  - id: waytoagi-history
+    name: WaytoAGI 7d History
+    type: website
+    enabled: true
+    url: https://waytoagi.feishu.cn/wiki/FjiOwWp2giA7hRk6jjfcPioCnAc
+
+  # ai-daily-digest core defaults used by the current default profile.
   - id: simon-willison
     name: Simon Willison
     type: website
@@ -98,18 +106,543 @@ sources:
     type: rss
     enabled: true
     url: https://www.troyhunt.com/rss/
+
+  # Remaining ai-daily-digest blog feeds mirrored into aggregator config.
+  - id: jeffgeerling-com
+    name: jeffgeerling.com
+    type: rss
+    enabled: true
+    url: https://www.jeffgeerling.com/blog.xml
+  - id: seangoedecke-com
+    name: seangoedecke.com
+    type: rss
+    enabled: true
+    url: https://www.seangoedecke.com/rss.xml
+  - id: krebsonsecurity-com
+    name: krebsonsecurity.com
+    type: rss
+    enabled: true
+    url: https://krebsonsecurity.com/feed/
+  - id: daringfireball-net
+    name: daringfireball.net
+    type: rss
+    enabled: true
+    url: https://daringfireball.net/feeds/main
+  - id: ericmigi-com
+    name: ericmigi.com
+    type: rss
+    enabled: true
+    url: https://ericmigi.com/rss.xml
+  - id: antirez-com
+    name: antirez.com
+    type: rss
+    enabled: true
+    url: http://antirez.com/rss
+  - id: idiallo-com
+    name: idiallo.com
+    type: rss
+    enabled: true
+    url: https://idiallo.com/feed.rss
+  - id: maurycyz-com
+    name: maurycyz.com
+    type: rss
+    enabled: true
+    url: https://maurycyz.com/index.xml
+  - id: pluralistic-net
+    name: pluralistic.net
+    type: rss
+    enabled: true
+    url: https://pluralistic.net/feed/
+  - id: shkspr-mobi
+    name: shkspr.mobi
+    type: rss
+    enabled: true
+    url: https://shkspr.mobi/blog/feed/
+  - id: lcamtuf-substack-com
+    name: lcamtuf.substack.com
+    type: rss
+    enabled: true
+    url: https://lcamtuf.substack.com/feed
+  - id: mitchellh-com
+    name: mitchellh.com
+    type: rss
+    enabled: true
+    url: https://mitchellh.com/feed.xml
+  - id: dynomight-net
+    name: dynomight.net
+    type: rss
+    enabled: true
+    url: https://dynomight.net/feed.xml
+  - id: utcc-utoronto-ca-cks
+    name: utcc.utoronto.ca/~cks
+    type: rss
+    enabled: true
+    url: https://utcc.utoronto.ca/~cks/space/blog/?atom
+  - id: xeiaso-net
+    name: xeiaso.net
+    type: rss
+    enabled: true
+    url: https://xeiaso.net/blog.rss
+  - id: devblogs-microsoft-com-oldnewthing
+    name: devblogs.microsoft.com/oldnewthing
+    type: rss
+    enabled: true
+    url: https://devblogs.microsoft.com/oldnewthing/feed
+  - id: righto-com
+    name: righto.com
+    type: rss
+    enabled: true
+    url: https://www.righto.com/feeds/posts/default
+  - id: lucumr-pocoo-org
+    name: lucumr.pocoo.org
+    type: rss
+    enabled: true
+    url: https://lucumr.pocoo.org/feed.atom
+  - id: skyfall-dev
+    name: skyfall.dev
+    type: rss
+    enabled: true
+    url: https://skyfall.dev/rss.xml
+  - id: garymarcus-substack-com
+    name: garymarcus.substack.com
+    type: rss
+    enabled: true
+    url: https://garymarcus.substack.com/feed
+  - id: rachelbythebay-com
+    name: rachelbythebay.com
+    type: rss
+    enabled: true
+    url: https://rachelbythebay.com/w/atom.xml
+  - id: timsh-org
+    name: timsh.org
+    type: rss
+    enabled: true
+    url: https://timsh.org/rss/
+  - id: johndcook-com
+    name: johndcook.com
+    type: rss
+    enabled: true
+    url: https://www.johndcook.com/blog/feed/
+  - id: gilesthomas-com
+    name: gilesthomas.com
+    type: rss
+    enabled: true
+    url: https://gilesthomas.com/feed/rss.xml
+  - id: matklad-github-io
+    name: matklad.github.io
+    type: rss
+    enabled: true
+    url: https://matklad.github.io/feed.xml
+  - id: derekthompson-org
+    name: derekthompson.org
+    type: rss
+    enabled: true
+    url: https://www.theatlantic.com/feed/author/derek-thompson/
+  - id: evanhahn-com
+    name: evanhahn.com
+    type: rss
+    enabled: true
+    url: https://evanhahn.com/feed.xml
+  - id: terriblesoftware-org
+    name: terriblesoftware.org
+    type: rss
+    enabled: true
+    url: https://terriblesoftware.org/feed/
+  - id: rakhim-exotext-com
+    name: rakhim.exotext.com
+    type: rss
+    enabled: true
+    url: https://rakhim.exotext.com/rss.xml
+  - id: joanwestenberg-com
+    name: joanwestenberg.com
+    type: rss
+    enabled: true
+    url: https://joanwestenberg.com/rss
+  - id: xania-org
+    name: xania.org
+    type: rss
+    enabled: true
+    url: https://xania.org/feed
+  - id: micahflee-com
+    name: micahflee.com
+    type: rss
+    enabled: true
+    url: https://micahflee.com/feed/
+  - id: nesbitt-io
+    name: nesbitt.io
+    type: rss
+    enabled: true
+    url: https://nesbitt.io/feed.xml
+  - id: construction-physics-com
+    name: construction-physics.com
+    type: rss
+    enabled: true
+    url: https://www.construction-physics.com/feed
+  - id: tedium-co
+    name: tedium.co
+    type: rss
+    enabled: true
+    url: https://feed.tedium.co/
+  - id: susam-net
+    name: susam.net
+    type: rss
+    enabled: true
+    url: https://susam.net/feed.xml
+  - id: entropicthoughts-com
+    name: entropicthoughts.com
+    type: rss
+    enabled: true
+    url: https://entropicthoughts.com/feed.xml
+  - id: buttondown-com-hillelwayne
+    name: buttondown.com/hillelwayne
+    type: rss
+    enabled: true
+    url: https://buttondown.com/hillelwayne/rss
+  - id: dwarkesh-com
+    name: dwarkesh.com
+    type: rss
+    enabled: true
+    url: https://www.dwarkeshpatel.com/feed
+  - id: borretti-me
+    name: borretti.me
+    type: rss
+    enabled: true
+    url: https://borretti.me/feed.xml
+  - id: wheresyoured-at
+    name: wheresyoured.at
+    type: rss
+    enabled: true
+    url: https://www.wheresyoured.at/rss/
+  - id: jayd-ml
+    name: jayd.ml
+    type: rss
+    enabled: true
+    url: https://jayd.ml/feed.xml
+  - id: minimaxir-com
+    name: minimaxir.com
+    type: rss
+    enabled: true
+    url: https://minimaxir.com/index.xml
+  - id: geohot-github-io
+    name: geohot.github.io
+    type: rss
+    enabled: true
+    url: https://geohot.github.io/blog/feed.xml
+  - id: filfre-net
+    name: filfre.net
+    type: rss
+    enabled: true
+    url: https://www.filfre.net/feed/
+  - id: blog-jim-nielsen-com
+    name: blog.jim-nielsen.com
+    type: rss
+    enabled: true
+    url: https://blog.jim-nielsen.com/feed.xml
+  - id: dfarq-homeip-net
+    name: dfarq.homeip.net
+    type: rss
+    enabled: true
+    url: https://dfarq.homeip.net/feed/
+  - id: jyn-dev
+    name: jyn.dev
+    type: rss
+    enabled: true
+    url: https://jyn.dev/atom.xml
+  - id: geoffreylitt-com
+    name: geoffreylitt.com
+    type: rss
+    enabled: true
+    url: https://www.geoffreylitt.com/feed.xml
+  - id: downtowndougbrown-com
+    name: downtowndougbrown.com
+    type: rss
+    enabled: true
+    url: https://www.downtowndougbrown.com/feed/
+  - id: brutecat-com
+    name: brutecat.com
+    type: rss
+    enabled: true
+    url: https://brutecat.com/rss.xml
+  - id: eli-thegreenplace-net
+    name: eli.thegreenplace.net
+    type: rss
+    enabled: true
+    url: https://eli.thegreenplace.net/feeds/all.atom.xml
+  - id: abortretry-fail
+    name: abortretry.fail
+    type: rss
+    enabled: true
+    url: https://www.abortretry.fail/feed
+  - id: fabiensanglard-net
+    name: fabiensanglard.net
+    type: rss
+    enabled: true
+    url: https://fabiensanglard.net/rss.xml
+  - id: oldvcr-blogspot-com
+    name: oldvcr.blogspot.com
+    type: rss
+    enabled: true
+    url: https://oldvcr.blogspot.com/feeds/posts/default
+  - id: bogdanthegeek-github-io
+    name: bogdanthegeek.github.io
+    type: rss
+    enabled: true
+    url: https://bogdanthegeek.github.io/blog/index.xml
+  - id: hugotunius-se
+    name: hugotunius.se
+    type: rss
+    enabled: true
+    url: https://hugotunius.se/feed.xml
+  - id: berthub-eu
+    name: berthub.eu
+    type: rss
+    enabled: true
+    url: https://berthub.eu/articles/index.xml
+  - id: chadnauseam-com
+    name: chadnauseam.com
+    type: rss
+    enabled: true
+    url: https://chadnauseam.com/rss.xml
+  - id: simone-org
+    name: simone.org
+    type: rss
+    enabled: true
+    url: https://simone.org/feed/
+  - id: it-notes-dragas-net
+    name: it-notes.dragas.net
+    type: rss
+    enabled: true
+    url: https://it-notes.dragas.net/feed/
+  - id: beej-us
+    name: beej.us
+    type: rss
+    enabled: true
+    url: https://beej.us/blog/rss.xml
+  - id: hey-paris
+    name: hey.paris
+    type: rss
+    enabled: true
+    url: https://hey.paris/index.xml
+  - id: danielwirtz-com
+    name: danielwirtz.com
+    type: rss
+    enabled: true
+    url: https://danielwirtz.com/rss.xml
+  - id: matduggan-com
+    name: matduggan.com
+    type: rss
+    enabled: true
+    url: https://matduggan.com/rss/
+  - id: refactoringenglish-com
+    name: refactoringenglish.com
+    type: rss
+    enabled: true
+    url: https://refactoringenglish.com/index.xml
+  - id: worksonmymachine-substack-com
+    name: worksonmymachine.substack.com
+    type: rss
+    enabled: true
+    url: https://worksonmymachine.substack.com/feed
+  - id: philiplaine-com
+    name: philiplaine.com
+    type: rss
+    enabled: true
+    url: https://philiplaine.com/index.xml
+  - id: steveblank-com
+    name: steveblank.com
+    type: rss
+    enabled: true
+    url: https://steveblank.com/feed/
+  - id: bernsteinbear-com
+    name: bernsteinbear.com
+    type: rss
+    enabled: true
+    url: https://bernsteinbear.com/feed.xml
+  - id: danieldelaney-net
+    name: danieldelaney.net
+    type: rss
+    enabled: true
+    url: https://danieldelaney.net/feed
+  - id: herman-bearblog-dev
+    name: herman.bearblog.dev
+    type: rss
+    enabled: true
+    url: https://herman.bearblog.dev/feed/
+  - id: tomrenner-com
+    name: tomrenner.com
+    type: rss
+    enabled: true
+    url: https://tomrenner.com/index.xml
+  - id: blog-pixelmelt-dev
+    name: blog.pixelmelt.dev
+    type: rss
+    enabled: true
+    url: https://blog.pixelmelt.dev/rss/
+  - id: martinalderson-com
+    name: martinalderson.com
+    type: rss
+    enabled: true
+    url: https://martinalderson.com/feed.xml
+  - id: danielchasehooper-com
+    name: danielchasehooper.com
+    type: rss
+    enabled: true
+    url: https://danielchasehooper.com/feed.xml
+  - id: chiark-greenend-org-uk-sgtatham
+    name: chiark.greenend.org.uk/~sgtatham
+    type: rss
+    enabled: true
+    url: https://www.chiark.greenend.org.uk/~sgtatham/quasiblog/feed.xml
+  - id: grantslatton-com
+    name: grantslatton.com
+    type: rss
+    enabled: true
+    url: https://grantslatton.com/rss.xml
+  - id: experimental-history-com
+    name: experimental-history.com
+    type: rss
+    enabled: true
+    url: https://www.experimental-history.com/feed
+  - id: anildash-com
+    name: anildash.com
+    type: rss
+    enabled: true
+    url: https://anildash.com/feed.xml
+  - id: aresluna-org
+    name: aresluna.org
+    type: rss
+    enabled: true
+    url: https://aresluna.org/main.rss
+  - id: michael-stapelberg-ch
+    name: michael.stapelberg.ch
+    type: rss
+    enabled: true
+    url: https://michael.stapelberg.ch/feed.xml
+  - id: miguelgrinberg-com
+    name: miguelgrinberg.com
+    type: rss
+    enabled: true
+    url: https://blog.miguelgrinberg.com/feed
+  - id: keygen-sh
+    name: keygen.sh
+    type: rss
+    enabled: true
+    url: https://keygen.sh/blog/feed.xml
+  - id: mjg59-dreamwidth-org
+    name: mjg59.dreamwidth.org
+    type: rss
+    enabled: true
+    url: https://mjg59.dreamwidth.org/data/rss
+  - id: computer-rip
+    name: computer.rip
+    type: rss
+    enabled: true
+    url: https://computer.rip/rss.xml
+  - id: tedunangst-com
+    name: tedunangst.com
+    type: rss
+    enabled: true
+    url: https://www.tedunangst.com/flak/rss
+
+  # ClawFeed supported source surface. Unsupported types remain disabled placeholders.
   - id: clawfeed-digest-json
     name: ClawFeed Digest JSON
     type: json-feed
     enabled: false
     url: https://digest.kevinhe.io/feed/kevin.json
+  - id: clawfeed-rss-example
+    name: ClawFeed RSS Example
+    type: rss
+    enabled: false
+    url: https://clawfeed.kevinhe.io/feed/kevin.rss
+  - id: clawfeed-website-example
+    name: ClawFeed Website Example
+    type: website
+    enabled: false
+    url: https://clawfeed.kevinhe.io/
+  - id: clawfeed-hacker-news-front-page
+    name: ClawFeed Hacker News Front Page
+    type: hackernews
+    enabled: false
+    url: https://hn.algolia.com/api/v1/search?tags=front_page
+    config:
+      note: Disabled placeholder until the hackernews adapter input contract matches this endpoint.
+  - id: clawfeed-reddit-machine-learning
+    name: ClawFeed Reddit r/MachineLearning
+    type: reddit
+    enabled: false
+    url: https://www.reddit.com/r/MachineLearning/.json
+  - id: clawfeed-twitter-feed
+    name: ClawFeed Twitter Feed
+    type: twitter_feed
+    enabled: false
+    url: https://x.com/home
+  - id: clawfeed-twitter-bookmarks
+    name: ClawFeed Twitter Bookmarks
+    type: twitter_bookmarks
+    enabled: false
+    url: https://x.com/i/bookmarks
+  - id: clawfeed-twitter-list
+    name: ClawFeed Twitter List
+    type: twitter_list
+    enabled: false
+    url: https://x.com/i/lists/2021198996157710621
+  - id: clawfeed-github-trending
+    name: ClawFeed GitHub Trending
+    type: github_trending
+    enabled: false
+    url: https://github.com/trending
+  - id: clawfeed-digest-feed
+    name: ClawFeed Digest Feed
+    type: digest_feed
+    enabled: false
+    url: https://clawfeed.kevinhe.io/feed/kevin
+  - id: clawfeed-custom-api
+    name: ClawFeed Custom API
+    type: custom_api
+    enabled: false
+    url: https://example.com/api/feed
+
+  # Smaug source surface. These are disabled because X ingestion is post-MVP.
   - id: smaug-bookmarks
     name: Smaug Bookmark Feed
     type: x_bookmarks
     enabled: false
     url: https://x.com/i/bookmarks
+  - id: smaug-likes
+    name: Smaug Likes Feed
+    type: x_likes
+    enabled: false
+    url: https://x.com/likes
+  - id: smaug-both
+    name: Smaug Bookmarks and Likes
+    type: x_multi
+    enabled: false
+    config:
+      mode: both
+
+  # X AI Topic Selector source surface. These are disabled placeholders until X adapters land.
   - id: x-ai-topic-selector-list
     name: X AI Topic Selector List
     type: x_list
     enabled: false
     url: https://x.com/i/lists/2021198996157710621
+  - id: x-ai-topic-selector-home
+    name: X AI Topic Selector Home
+    type: x_home
+    enabled: false
+    url: https://x.com/home
+  - id: x-ai-topic-selector-bookmarks
+    name: X AI Topic Selector Bookmarks
+    type: x_bookmarks
+    enabled: false
+    url: https://x.com/i/bookmarks
+
+  # ai-news-radar private RSS import placeholder.
+  - id: ai-news-radar-opml-import
+    name: AI News Radar OPML Import
+    type: opml_rss
+    enabled: false
+    config:
+      path: feeds/follow.opml
+      note: Private OPML import from ai-news-radar. Keep disabled until an OPML adapter exists.
