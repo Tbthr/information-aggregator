@@ -1,5 +1,22 @@
 export type RunMode = "scan" | "digest";
-export type SourceType = "rss" | "json-feed" | "website" | string;
+export const CANONICAL_SOURCE_TYPES = [
+  "rss",
+  "json-feed",
+  "website",
+  "hn",
+  "reddit",
+  "opml_rss",
+  "digest_feed",
+  "custom_api",
+  "github_trending",
+  "x_home",
+  "x_list",
+  "x_bookmarks",
+  "x_likes",
+  "x_multi",
+] as const;
+
+export type SourceType = (typeof CANONICAL_SOURCE_TYPES)[number];
 export type RunStatus = "pending" | "running" | "completed" | "failed" | "succeeded";
 
 export interface Source {
@@ -16,6 +33,7 @@ export interface SourcePack {
   id: string;
   name: string;
   sourceIds: string[];
+  referenceOnly?: boolean;
 }
 
 export interface TopicDefinition {
@@ -36,6 +54,29 @@ export interface RawItem {
   author?: string;
 }
 
+export interface RawItemEngagement {
+  score?: number;
+  comments?: number;
+  reactions?: number;
+}
+
+export interface RawItemCanonicalHints {
+  externalUrl?: string;
+  discussionUrl?: string;
+  linkedUrl?: string;
+  expandedUrl?: string;
+}
+
+export interface RawItemMetadata {
+  provider: string;
+  sourceType: SourceType;
+  contentType: string;
+  engagement?: RawItemEngagement;
+  canonicalHints?: RawItemCanonicalHints;
+  subreddit?: string;
+  discoveredFrom?: string;
+}
+
 export interface NormalizedItem {
   id: string;
   rawItemId: string;
@@ -48,6 +89,10 @@ export interface NormalizedItem {
   sourceId?: string;
   title?: string;
   url?: string;
+  metadataJson?: string;
+  sourceType?: SourceType;
+  contentType?: string;
+  engagementScore?: number;
 }
 
 export interface Cluster {
@@ -125,4 +170,19 @@ export interface RankedCandidate {
   contentQualityAi: number;
   finalScore?: number;
   rationale?: string;
+  contentType?: string;
+  sourceType?: SourceType;
+}
+
+export function parseRawItemMetadata(metadataJson: string | undefined): RawItemMetadata | null {
+  if (typeof metadataJson !== "string" || metadataJson.trim() === "") {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(metadataJson) as RawItemMetadata | null;
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
 }

@@ -1,7 +1,8 @@
 pack:
   id: smaug-reference
   name: Smaug Reference
+  referenceOnly: true
   sourceIds:
     - smaug-bookmarks
     - smaug-likes
-    - smaug-both
+    - smaug-multi

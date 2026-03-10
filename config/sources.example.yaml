@@ -1,9 +1,9 @@
 sources:
-  # Reference-project defaults and placeholders.
-  # Supported adapters can be enabled directly. Unsupported source types stay disabled
-  # so the config reflects the full source surface of the five reference projects.
-
-  # Active supported defaults derived mainly from ai-news-radar.
+  # Curated defaults and roadmap/reference examples.
+  # Runnable defaults stay in the active packs.
+  # Disabled entries below may be either:
+  # 1. structurally valid reference sources
+  # 2. non-runnable schema placeholders with config.placeholderMode: schema
   - id: openai-news
     name: OpenAI News
     type: rss
@@ -79,8 +79,6 @@ sources:
     type: website
     enabled: true
     url: https://waytoagi.feishu.cn/wiki/FjiOwWp2giA7hRk6jjfcPioCnAc
-
-  # ai-daily-digest core defaults used by the current default profile.
   - id: simon-willison
     name: Simon Willison
     type: website
@@ -106,8 +104,6 @@ sources:
     type: rss
     enabled: true
     url: https://www.troyhunt.com/rss/
-
-  # Remaining ai-daily-digest blog feeds mirrored into aggregator config.
   - id: jeffgeerling-com
     name: jeffgeerling.com
     type: rss
@@ -543,8 +539,6 @@ sources:
     type: rss
     enabled: true
     url: https://www.tedunangst.com/flak/rss
-
-  # ClawFeed supported source surface. Unsupported types remain disabled placeholders.
   - id: clawfeed-digest-json
     name: ClawFeed Digest JSON
     type: json-feed
@@ -562,87 +556,110 @@ sources:
     url: https://clawfeed.kevinhe.io/
   - id: clawfeed-hacker-news-front-page
     name: ClawFeed Hacker News Front Page
-    type: hackernews
+    type: hn
     enabled: false
     url: https://hn.algolia.com/api/v1/search?tags=front_page
     config:
-      note: Disabled placeholder until the hackernews adapter input contract matches this endpoint.
+      placeholderMode: schema
+      expectedPayload: hn-search
   - id: clawfeed-reddit-machine-learning
     name: ClawFeed Reddit r/MachineLearning
     type: reddit
     enabled: false
     url: https://www.reddit.com/r/MachineLearning/.json
-  - id: clawfeed-twitter-feed
-    name: ClawFeed Twitter Feed
-    type: twitter_feed
+  - id: clawfeed-x-home
+    name: ClawFeed X Home
+    type: x_home
     enabled: false
     url: https://x.com/home
-  - id: clawfeed-twitter-bookmarks
-    name: ClawFeed Twitter Bookmarks
-    type: twitter_bookmarks
+    config:
+      birdMode: home
+  - id: clawfeed-x-bookmarks
+    name: ClawFeed X Bookmarks
+    type: x_bookmarks
     enabled: false
     url: https://x.com/i/bookmarks
-  - id: clawfeed-twitter-list
-    name: ClawFeed Twitter List
-    type: twitter_list
+    config:
+      birdMode: bookmarks
+  - id: clawfeed-x-list
+    name: ClawFeed X List
+    type: x_list
     enabled: false
     url: https://x.com/i/lists/2021198996157710621
+    config:
+      birdMode: list
+      listId: "2021198996157710621"
   - id: clawfeed-github-trending
     name: ClawFeed GitHub Trending
     type: github_trending
     enabled: false
     url: https://github.com/trending
+    config:
+      language: typescript
+      since: daily
   - id: clawfeed-digest-feed
     name: ClawFeed Digest Feed
     type: digest_feed
     enabled: false
     url: https://clawfeed.kevinhe.io/feed/kevin
+    config:
+      format: html
+      linkSelector: article a[href]
   - id: clawfeed-custom-api
     name: ClawFeed Custom API
     type: custom_api
     enabled: false
     url: https://example.com/api/feed
-
-  # Smaug source surface. These are disabled because X ingestion is post-MVP.
+    config:
+      placeholderMode: schema
   - id: smaug-bookmarks
     name: Smaug Bookmark Feed
     type: x_bookmarks
     enabled: false
     url: https://x.com/i/bookmarks
+    config:
+      birdMode: bookmarks
   - id: smaug-likes
     name: Smaug Likes Feed
     type: x_likes
     enabled: false
-    url: https://x.com/likes
-  - id: smaug-both
-    name: Smaug Bookmarks and Likes
+    url: https://x.com/i/likes
+    config:
+      birdMode: likes
+  - id: smaug-multi
+    name: Smaug Multi Feed
     type: x_multi
     enabled: false
+    url: https://x.com/home
     config:
-      mode: both
-
-  # X AI Topic Selector source surface. These are disabled placeholders until X adapters land.
+      birdMode: multi
+      listIds:
+        - 12345
   - id: x-ai-topic-selector-list
     name: X AI Topic Selector List
     type: x_list
     enabled: false
     url: https://x.com/i/lists/2021198996157710621
+    config:
+      birdMode: list
+      listId: "2021198996157710621"
   - id: x-ai-topic-selector-home
     name: X AI Topic Selector Home
     type: x_home
     enabled: false
     url: https://x.com/home
+    config:
+      birdMode: home
   - id: x-ai-topic-selector-bookmarks
     name: X AI Topic Selector Bookmarks
     type: x_bookmarks
     enabled: false
     url: https://x.com/i/bookmarks
-
-  # ai-news-radar private RSS import placeholder.
+    config:
+      birdMode: bookmarks
   - id: ai-news-radar-opml-import
     name: AI News Radar OPML Import
     type: opml_rss
     enabled: false
     config:
       path: feeds/follow.opml
-      note: Private OPML import from ai-news-radar. Keep disabled until an OPML adapter exists.

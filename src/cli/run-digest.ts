@@ -4,11 +4,16 @@ import { insertNormalizedItems } from "../db/queries/normalized-items";
 import { createOutput } from "../db/queries/outputs";
 import { insertRawItems } from "../db/queries/raw-items";
 import { createRun, finishRun } from "../db/queries/runs";
+import { collectCustomApiSource } from "../adapters/custom-api";
+import { collectDigestFeedSource } from "../adapters/digest-feed";
+import { collectGitHubTrendingSource } from "../adapters/github-trending";
 import { collectJsonFeedSource } from "../adapters/json-feed-collect";
 import { collectHnSource } from "../adapters/hn";
+import { collectOpmlRssSource } from "../adapters/opml-rss";
 import { collectRedditSource } from "../adapters/reddit";
 import { collectRssSource } from "../adapters/rss";
 import { collectWebsiteSource } from "../adapters/website";
+import { collectXBirdSource } from "../adapters/x-bird";
 import type { AiClient } from "../ai/client";
 import { buildCandidateQualityPrompt, buildClusterSummaryPrompt, buildDigestNarrationPrompt } from "../ai/prompts";
 import { loadProfilesConfig, loadSourcePacksConfig, loadSourcesConfig, loadTopicsConfig } from "../config/load";
@@ -19,10 +24,11 @@ import { dedupeExact } from "../pipeline/dedupe-exact";
 import { dedupeNear } from "../pipeline/dedupe-near";
 import { rankCandidates } from "../pipeline/rank";
 import { buildClusters } from "../pipeline/cluster";
+import { enrichCandidates } from "../pipeline/enrich";
 import { renderDigestMarkdown } from "../render/digest";
 import { scoreTopicMatch } from "../pipeline/topic-match";
 import type { Database } from "bun:sqlite";
-import type { RawItem, RankedCandidate, Source, SourcePack, TopicDefinition, TopicProfile, TopicRule } from "../types/index";
+import { parseRawItemMetadata, type RawItem, type RankedCandidate, type Source, type SourcePack, type TopicDefinition, type TopicProfile, type TopicRule } from "../types/index";
 
 export interface RunDigestArgs {
   profileId: string;
@@ -61,6 +67,13 @@ function buildTopicRule(topics: TopicDefinition[], topicIds: string[]): TopicRul
 
 function toCandidates(items: ReturnType<typeof normalizeItems>, topicRule: TopicRule): RankedCandidate[] {
   return items.map((item) => ({
+    ...(() => {
+      const metadata = parseRawItemMetadata(item.metadataJson);
+      return {
+        contentType: item.contentType ?? metadata?.contentType,
+        sourceType: item.sourceType ?? metadata?.sourceType,
+      };
+    })(),
     id: item.id,
     title: item.title,
     url: item.url,
@@ -72,7 +85,7 @@ function toCandidates(items: ReturnType<typeof normalizeItems>, topicRule: Topic
     processedAt: item.processedAt,
     sourceWeightScore: 1,
     freshnessScore: 1,
-    engagementScore: 0,
+    engagementScore: item.engagementScore ?? 0,
     topicMatchScore: scoreTopicMatch(item, topicRule),
     contentQualityAi: 0,
   }));
@@ -81,11 +94,20 @@ function toCandidates(items: ReturnType<typeof normalizeItems>, topicRule: Topic
 function buildDefaultCollectDependencies(): CollectDependencies {
   return {
     adapters: {
+      custom_api: (source) => collectCustomApiSource(source),
+      digest_feed: (source) => collectDigestFeedSource(source),
+      github_trending: (source) => collectGitHubTrendingSource(source),
       hn: (source) => collectHnSource(source),
       reddit: (source) => collectRedditSource(source),
       "json-feed": (source) => collectJsonFeedSource(source),
+      opml_rss: (source) => collectOpmlRssSource(source),
       rss: (source) => collectRssSource(source),
       website: (source) => collectWebsiteSource(source),
+      x_bookmarks: (source) => collectXBirdSource(source),
+      x_home: (source) => collectXBirdSource(source),
+      x_likes: (source) => collectXBirdSource(source),
+      x_list: (source) => collectXBirdSource(source),
+      x_multi: (source) => collectXBirdSource(source),
     },
   };
 }
@@ -153,15 +175,15 @@ export async function runDigest(args: RunDigestArgs, dependencies: RunDigestDepe
   }
   const exact = dedupeExact(normalized.filter((item) => item.exactDedupKey) as Array<typeof normalized[number] & { exactDedupKey: string }>);
   const near = dedupeNear(exact.filter((item) => item.processedAt) as Array<typeof exact[number] & { processedAt: string }>);
-  const baseCandidates = toCandidates(near, topicRule);
-
-  if (aiClient) {
-    for (const candidate of baseCandidates.slice(0, 5)) {
-      candidate.contentQualityAi = await aiClient.scoreCandidate(
-        buildCandidateQualityPrompt(candidate.title ?? candidate.normalizedTitle ?? candidate.id, candidate.normalizedText ?? ""),
-      );
-    }
-  }
+  const baseCandidates = await enrichCandidates(toCandidates(near, topicRule), {
+    limit: 5,
+    scoreCandidate: aiClient
+      ? async (candidate) =>
+        aiClient.scoreCandidate(
+          buildCandidateQualityPrompt(candidate.title ?? candidate.normalizedTitle ?? candidate.id, candidate.normalizedText ?? ""),
+        )
+      : undefined,
+  });
 
   const ranked = rankCandidates(baseCandidates);
   const clusters = clusterImpl(
@@ -189,14 +211,14 @@ export async function runDigest(args: RunDigestArgs, dependencies: RunDigestDepe
   }
 
   const highlights = ranked.slice(0, 3).map((item) => item.title ?? item.normalizedTitle ?? item.id);
+  let narration: string | undefined;
   if (aiClient && highlights.length > 0) {
-    const narration = await aiClient.narrateDigest(buildDigestNarrationPrompt(highlights));
-    if (narration.trim() !== "") {
-      highlights[0] = narration;
-    }
+    narration = await aiClient.narrateDigest(buildDigestNarrationPrompt(highlights));
+    narration = narration.trim() === "" ? undefined : narration;
   }
 
   const markdown = renderDigestMarkdown({
+    narration,
     highlights,
     clusters: clusters.map((cluster) => ({
       title: cluster.title ?? cluster.canonicalItemId,

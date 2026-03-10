@@ -135,6 +135,7 @@ describe("runDigest", () => {
         loadProfiles: async () => testProfiles,
         loadTopics: async () => testTopics,
         loadSourcePacks: async () => testSourcePacks,
+        now: () => "2026-03-09T12:00:00Z",
         collectSources: async () => [
           {
             id: "raw-1",

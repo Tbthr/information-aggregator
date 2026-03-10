@@ -36,7 +36,11 @@ export function parseRssItems(xml: string, sourceId: string): RawItem[] {
       snippet,
       publishedAt,
       fetchedAt: new Date().toISOString(),
-      metadataJson: "{}",
+      metadataJson: JSON.stringify({
+        provider: "rss",
+        sourceType: "rss",
+        contentType: "article",
+      }),
     };
   }).filter((item) => item.url);
 }

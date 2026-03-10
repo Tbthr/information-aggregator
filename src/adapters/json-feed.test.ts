@@ -28,4 +28,19 @@ describe("parseJsonFeedItems", () => {
 
     expect(items[0]?.publishedAt).toBe("2026-03-09T08:00:00Z");
   });
+
+  test("emits stable collector metadata", () => {
+    const payload = {
+      version: "https://jsonfeed.org/version/1.1",
+      items: [{ id: "1", title: "Hello", url: "https://example.com/1" }],
+    };
+
+    const items = parseJsonFeedItems(payload, "json-1");
+
+    expect(JSON.parse(items[0]?.metadataJson ?? "{}")).toEqual({
+      provider: "json-feed",
+      sourceType: "json-feed",
+      contentType: "article",
+    });
+  });
 });

@@ -1,6 +1,7 @@
 pack:
   id: ai-news-sites
   name: AI News Sites
+  referenceOnly: false
   sourceIds:
     - openai-news
     - hugging-face-blog

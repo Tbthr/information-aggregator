@@ -9,4 +9,30 @@ describe("rankCandidates", () => {
     ]);
     expect(ranked[0]?.id).toBe("b");
   });
+
+  test("keeps engagement bounded so discussion pages do not outrank the original article", () => {
+    const ranked = rankCandidates([
+      {
+        id: "article",
+        sourceWeightScore: 0.9,
+        freshnessScore: 0.9,
+        engagementScore: 0.2,
+        topicMatchScore: 0.8,
+        contentQualityAi: 0,
+        contentType: "article",
+      },
+      {
+        id: "discussion",
+        sourceWeightScore: 0.9,
+        freshnessScore: 0.9,
+        engagementScore: 10,
+        topicMatchScore: 0.8,
+        contentQualityAi: 0,
+        contentType: "community_post",
+      },
+    ]);
+
+    expect(ranked[0]?.id).toBe("article");
+    expect(ranked[1]?.finalScore).toBeLessThan(1.1);
+  });
 });

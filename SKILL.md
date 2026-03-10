@@ -2,10 +2,11 @@
 
 将已配置的信息源聚合为本地 `scan` 与 `digest` 输出。
 
-## 当前 MVP 能力
+## 当前能力
 
 - 加载 sources、topics、profiles、source packs 的 YAML 配置
-- 从 `rss`、`json-feed`、`website` 采集
+- 从 `rss`、`json-feed`、`website`、`hn`、`reddit`、`opml_rss`、`digest_feed`、`custom_api`、`github_trending` 采集
+- 通过 `bird CLI` 接入 `x_home`、`x_list`、`x_bookmarks`、`x_likes`、`x_multi`
 - 规范化 URL 与文本
 - 去除精确重复并压缩近似重复
 - 使用确定性的混合评分进行排序
@@ -81,7 +82,7 @@ profiles:
 - `smaug`
 - `x-ai-topic-selector`
 
-其中一部分 source type 只是 disabled placeholder，用来表达路线图和参考项目覆盖范围，不代表当前已经可采集。
+其中一部分 disabled source 只用于表达参考项目覆盖范围与 schema 边界，不代表默认配置会直接运行它们。
 
 ## 输出示例
 
@@ -107,9 +108,8 @@ profiles:
 
 ## 后续计划
 
-以下能力已规划，但不属于当前 MVP：
+以下能力已经进入持续迭代路线图：
 
-- X family adapter
 - 更深的 Reddit / community source 支持
 - 深度 enrichment 与 feedback loop
 - 浏览器界面或 Web UI
@@ -124,7 +124,8 @@ profiles:
 - 本地 YAML 配置校验
 - 基于参考项目扩展的默认 source config 与 source packs
 - SQLite bootstrap 与核心表
-- `rss`、`json-feed`、`website`、`hn`、`reddit` adapter/collector 路径
+- `rss`、`json-feed`、`website`、`hn`、`reddit`、`opml_rss`、`digest_feed`、`custom_api`、`github_trending` adapter/collector 路径
+- `bird CLI` 驱动的 X family adapter
 - profile / topic / source-pack resolution
 - 确定性的 normalize、dedupe、topic-match、rank、cluster
 - `scan` 与 `digest` Markdown render
@@ -133,6 +134,5 @@ profiles:
 
 当前刻意延期：
 
-- X family adapter
 - 更深的 enrichment 与 feedback loop
 - Web / 多用户表面

@@ -4,9 +4,13 @@ interface RedditListingItem {
   id?: string;
   title?: string;
   url?: string;
+  url_overridden_by_dest?: string;
+  permalink?: string;
   author?: string;
   subreddit?: string;
   created_utc?: number;
+  score?: number;
+  num_comments?: number;
 }
 
 interface RedditListing {
@@ -29,11 +33,24 @@ export function parseRedditListing(payload: RedditListing, sourceId: string): Ra
       id: `reddit-${item.id ?? item.url}`,
       sourceId,
       title: item.title,
-      url: item.url,
+      url: item.url_overridden_by_dest ?? item.url,
       author: typeof item.author === "string" ? item.author : undefined,
       publishedAt: typeof item.created_utc === "number" ? new Date(item.created_utc * 1000).toISOString() : undefined,
       fetchedAt: new Date().toISOString(),
-      metadataJson: JSON.stringify({ provider: "reddit", subreddit: item.subreddit ?? null }),
+      metadataJson: JSON.stringify({
+        provider: "reddit",
+        sourceType: "reddit",
+        contentType: "community_post",
+        engagement: {
+          score: item.score,
+          comments: item.num_comments,
+        },
+        canonicalHints: {
+          externalUrl: item.url_overridden_by_dest ?? item.url,
+          discussionUrl: typeof item.permalink === "string" ? new URL(item.permalink, "https://www.reddit.com").toString() : item.url,
+        },
+        subreddit: item.subreddit ?? undefined,
+      }),
     }));
 }
 

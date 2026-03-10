@@ -1,6 +1,7 @@
 pack:
   id: x-ai-topic-selector-reference
   name: X AI Topic Selector Reference
+  referenceOnly: true
   sourceIds:
     - x-ai-topic-selector-list
     - x-ai-topic-selector-home

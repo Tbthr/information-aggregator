@@ -4,22 +4,28 @@ import { insertNormalizedItems } from "../db/queries/normalized-items";
 import { insertRawItems } from "../db/queries/raw-items";
 import { createRun, finishRun } from "../db/queries/runs";
 import { recordSourceFailureWithMetrics, recordSourceSuccessWithMetrics } from "../db/queries/source-health";
+import { collectCustomApiSource } from "../adapters/custom-api";
+import { collectDigestFeedSource } from "../adapters/digest-feed";
+import { collectGitHubTrendingSource } from "../adapters/github-trending";
 import { collectJsonFeedSource } from "../adapters/json-feed-collect";
 import { collectHnSource } from "../adapters/hn";
+import { collectOpmlRssSource } from "../adapters/opml-rss";
 import { collectRedditSource } from "../adapters/reddit";
 import { collectRssSource } from "../adapters/rss";
 import { collectWebsiteSource } from "../adapters/website";
+import { collectXBirdSource } from "../adapters/x-bird";
 import { loadProfilesConfig, loadSourcePacksConfig, loadSourcesConfig, loadTopicsConfig } from "../config/load";
 import { resolveProfileSelection } from "../config/resolve-profile";
 import { normalizeItems } from "../pipeline/normalize";
 import { dedupeExact } from "../pipeline/dedupe-exact";
 import { dedupeNear } from "../pipeline/dedupe-near";
 import { collectSources, type CollectDependencies } from "../pipeline/collect";
+import { enrichCandidates } from "../pipeline/enrich";
 import { rankCandidates } from "../pipeline/rank";
 import { renderScanMarkdown } from "../render/scan";
 import { scoreTopicMatch } from "../pipeline/topic-match";
 import type { Database } from "bun:sqlite";
-import type { RawItem, RankedCandidate, Source, SourcePack, TopicDefinition, TopicProfile, TopicRule } from "../types/index";
+import { parseRawItemMetadata, type RawItem, type RankedCandidate, type Source, type SourcePack, type TopicDefinition, type TopicProfile, type TopicRule } from "../types/index";
 
 export interface RunScanArgs {
   profileId: string;
@@ -58,17 +64,33 @@ function buildTopicRule(topics: TopicDefinition[], topicIds: string[]): TopicRul
 function buildDefaultCollectDependencies(): CollectDependencies {
   return {
     adapters: {
+      custom_api: (source) => collectCustomApiSource(source),
+      digest_feed: (source) => collectDigestFeedSource(source),
+      github_trending: (source) => collectGitHubTrendingSource(source),
       hn: (source) => collectHnSource(source),
       reddit: (source) => collectRedditSource(source),
       "json-feed": (source) => collectJsonFeedSource(source),
+      opml_rss: (source) => collectOpmlRssSource(source),
       rss: (source) => collectRssSource(source),
       website: (source) => collectWebsiteSource(source),
+      x_bookmarks: (source) => collectXBirdSource(source),
+      x_home: (source) => collectXBirdSource(source),
+      x_likes: (source) => collectXBirdSource(source),
+      x_list: (source) => collectXBirdSource(source),
+      x_multi: (source) => collectXBirdSource(source),
     },
   };
 }
 
 function toCandidates(items: ReturnType<typeof normalizeItems>, topicRule?: TopicRule): RankedCandidate[] {
   return items.map((item) => ({
+    ...(() => {
+      const metadata = parseRawItemMetadata(item.metadataJson);
+      return {
+        contentType: item.contentType ?? metadata?.contentType,
+        sourceType: item.sourceType ?? metadata?.sourceType,
+      };
+    })(),
     id: item.id,
     title: item.title,
     url: item.url,
@@ -80,7 +102,7 @@ function toCandidates(items: ReturnType<typeof normalizeItems>, topicRule?: Topi
     processedAt: item.processedAt,
     sourceWeightScore: 1,
     freshnessScore: 1,
-    engagementScore: 0,
+    engagementScore: item.engagementScore ?? 0,
     topicMatchScore: scoreTopicMatch(item, topicRule ?? {}),
     contentQualityAi: 0,
   }));
@@ -146,7 +168,7 @@ export async function runScan(args: RunScanArgs, dependencies: RunScanDependenci
   }
   const exact = dedupeExact(normalized.filter((item) => item.exactDedupKey) as Array<typeof normalized[number] & { exactDedupKey: string }>);
   const near = dedupeNear(exact.filter((item) => item.processedAt) as Array<typeof exact[number] & { processedAt: string }>);
-  const ranked = rankCandidates(toCandidates(near, resolvedTopicRule));
+  const ranked = rankCandidates(await enrichCandidates(toCandidates(near, resolvedTopicRule)));
   const markdown = renderScanMarkdown(
     ranked.map((item) => ({
       title: item.title ?? item.normalizedTitle ?? item.id,

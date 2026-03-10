@@ -6,7 +6,7 @@ function toRecord(row: Record<string, unknown>): Source {
   return {
     id: String(row.id),
     name: String(row.name),
-    type: String(row.type),
+    type: String(row.type) as Source["type"],
     enabled: Boolean(row.enabled),
     url: row.url ? String(row.url) : undefined,
     configJson: String(row.config_json ?? "{}"),

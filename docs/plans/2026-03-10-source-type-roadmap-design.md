@@ -32,7 +32,7 @@
 当前配置已经同时包含两类内容：
 
 1. 当前可以进入主链路的数据源
-2. 为了完整表达参考项目 source surface 而加入的 disabled placeholder
+2. 为了完整表达参考项目 source surface 而加入的 disabled reference source
 
 因此后续路线图不能只写“继续加 adapter”，还必须先解决 source type、config schema、pack 语义和文档边界。
 
@@ -73,7 +73,7 @@
 - `x_likes`
 - `x_multi`
 
-仓库内部不再保留 `twitter_*` 作为正式类型。
+仓库内部不再保留旧版别名族，统一使用 `x_*` 作为正式类型。
 
 ## 参考项目映射
 
@@ -150,7 +150,7 @@
 明确约束：
 
 - 不做 CDP / 浏览器双路线
-- 不引入 `twitter_*` 别名体系
+- 不引入旧版 X 别名体系
 - `smaug` 负责提供 ingestion / extraction 思路
 - `x-ai-topic-selector` 负责提供 filtering / scoring / report 思路
 
@@ -169,17 +169,12 @@
 
 ### 2. 命名存在与设计冲突的条目
 
-当前配置中仍有：
-
-- `twitter_feed`
-- `twitter_bookmarks`
-- `twitter_list`
-- `hackernews`
+当前配置与文档审计曾发现旧版别名与社区源命名漂移。
 
 问题：
 
-- `twitter_*` 与本设计确认的 `x_*` 单一命名冲突
-- `hackernews` 与当前仓库 collector/adapter 的 `hn` 命名不一致
+- 旧版 X 别名与本设计确认的 `x_*` 单一命名冲突
+- 旧版 HN 命名与当前仓库 collector/adapter 的 `hn` 命名不一致
 
 这些问题必须作为路线图的第一批修正项。
 
@@ -211,7 +206,7 @@
 
 ### 5. 文档与设计存在漂移
 
-当前 README 仍提到 `twitter_*` placeholder 类型，这与最终确认的 `x_*` 设计不一致。  
+当前 README 曾提到旧版 X placeholder 类型，这与最终确认的 `x_*` 设计不一致。  
 这类漂移必须纳入路线图中的文档对齐任务。
 
 ## Phase 规划

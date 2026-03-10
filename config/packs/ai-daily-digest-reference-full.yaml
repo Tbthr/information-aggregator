@@ -1,6 +1,7 @@
 pack:
   id: ai-daily-digest-reference-full
   name: AI Daily Digest Reference Full
+  referenceOnly: true
   sourceIds:
     - simon-willison
     - overreacted

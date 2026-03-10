@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import type { Source, SourcePack, TopicProfile } from "../types/index";
+import { CANONICAL_SOURCE_TYPES, type Source, type SourcePack, type TopicProfile } from "../types/index";
 import { resolveProfileSelection } from "./resolve-profile";
 
 const profiles: TopicProfile[] = [
@@ -25,6 +25,25 @@ const sources: Source[] = [
 ];
 
 describe("resolveProfileSelection", () => {
+  test("keeps the canonical source taxonomy frozen", () => {
+    expect(CANONICAL_SOURCE_TYPES).toEqual([
+      "rss",
+      "json-feed",
+      "website",
+      "hn",
+      "reddit",
+      "opml_rss",
+      "digest_feed",
+      "custom_api",
+      "github_trending",
+      "x_home",
+      "x_list",
+      "x_bookmarks",
+      "x_likes",
+      "x_multi",
+    ]);
+  });
+
   test("expands source packs into enabled unique source ids", () => {
     const result = resolveProfileSelection({
       profileId: "default",

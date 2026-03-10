@@ -4,9 +4,11 @@ import { renderDigestMarkdown } from "./digest";
 describe("renderDigestMarkdown", () => {
   test("renders top sections and grouped highlights", () => {
     const markdown = renderDigestMarkdown({
+      narration: "AI narration",
       highlights: ["Top trend"],
       clusters: [{ title: "New model released", summary: "Why it matters", url: "https://example.com" }],
     });
+    expect(markdown).toContain("AI narration");
     expect(markdown).toContain("Top trend");
     expect(markdown).toContain("New model released");
   });

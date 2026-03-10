@@ -28,6 +28,22 @@ describe("parseRssItems", () => {
     expect(items[0]?.publishedAt).toBe("Mon, 09 Mar 2026 08:00:00 GMT");
   });
 
+  test("emits stable collector metadata", () => {
+    const xml = `
+      <rss><channel>
+        <item><title>Hello</title><link>https://example.com/1</link></item>
+      </channel></rss>
+    `;
+
+    const items = parseRssItems(xml, "rss-1");
+
+    expect(JSON.parse(items[0]?.metadataJson ?? "{}")).toEqual({
+      provider: "rss",
+      sourceType: "rss",
+      contentType: "article",
+    });
+  });
+
   test("extracts published as publishedAt from Atom entries", () => {
     const xml = `
       <feed xmlns="http://www.w3.org/2005/Atom">

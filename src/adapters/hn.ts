@@ -20,7 +20,16 @@ export function parseHnItems(payload: HnItem[], sourceId: string): RawItem[] {
       author: typeof item.by === "string" ? item.by : undefined,
       publishedAt: typeof item.time === "number" ? new Date(item.time * 1000).toISOString() : undefined,
       fetchedAt: new Date().toISOString(),
-      metadataJson: JSON.stringify({ provider: "hn", score: item.score ?? null }),
+      metadataJson: JSON.stringify({
+        provider: "hn",
+        sourceType: "hn",
+        contentType: "community_post",
+        engagement: item.score === undefined ? undefined : { score: item.score },
+        canonicalHints: {
+          externalUrl: item.url,
+          discussionUrl: item.id === undefined ? undefined : `https://news.ycombinator.com/item?id=${item.id}`,
+        },
+      }),
     }));
 }
 

@@ -5,11 +5,18 @@ interface DigestCluster {
 }
 
 export function renderDigestMarkdown(input: {
+  narration?: string;
   highlights: string[];
   clusters: DigestCluster[];
   supportingItems?: Array<{ title: string; url: string }>;
 }): string {
-  const lines = ["# Daily Digest", "", "## Highlights"];
+  const lines = ["# Daily Digest"];
+
+  if (input.narration) {
+    lines.push("", "## Narration", input.narration);
+  }
+
+  lines.push("", "## Highlights");
   for (const highlight of input.highlights) {
     lines.push(`- ${highlight}`);
   }

@@ -3,16 +3,26 @@ import { runDigest } from "../cli/run-digest";
 import { createDb } from "../db/client";
 import type { Source, SourcePack, TopicDefinition, TopicProfile } from "../types/index";
 
-describe("post mvp e2e", () => {
+describe("profile-bound e2e", () => {
   test("runs digest with resolved profile binding and persisted pipeline entities", async () => {
     const result = await runPostMvpFixture();
 
     expect(result.markdown).toContain("# Daily Digest");
-    expect(result.markdown).toContain("Reddit Example");
+    expect(result.markdown).toContain("Original Article");
     expect(result.persisted.rawItems).toBeGreaterThan(0);
     expect(result.persisted.normalizedItems).toBeGreaterThan(0);
     expect(result.persisted.clusters).toBeGreaterThan(0);
     expect(result.persisted.outputs).toBe(1);
+  });
+
+  test("dedupes a reddit discussion item against the linked original article", async () => {
+    const result = await runPostMvpFixture();
+
+    expect(result.persisted.rawItems).toBe(2);
+    expect(result.persisted.normalizedItems).toBe(2);
+    expect(result.persisted.clusters).toBe(1);
+    expect(result.markdown).toContain("Original Article");
+    expect(result.markdown).not.toContain("Reddit Discussion");
   });
 });
 
@@ -25,34 +35,47 @@ async function runPostMvpFixture(): Promise<{
     outputs: number;
   };
 }> {
-  const redditListing = JSON.stringify({
-    data: {
-      children: [
-        {
-          data: {
-            id: "abc",
-            title: "Reddit Example",
-            url: "http://127.0.0.1/post",
-            author: "bob",
-            subreddit: "artificial",
-          },
-        },
-      ],
-    },
-  });
+  let baseUrl = "";
+  let redditListing = "";
+
   const server = Bun.serve({
     port: 0,
-    fetch(request) {
+    fetch(request): Response {
       const url = new URL(request.url);
       if (url.pathname === "/reddit.json") {
         return new Response(redditListing, { headers: { "content-type": "application/json" } });
+      }
+      if (url.pathname === "/feed.xml") {
+        return new Response(
+          `<rss><channel><item><title>Original Article</title><link>${baseUrl}/post</link><pubDate>Mon, 09 Mar 2026 08:00:00 GMT</pubDate></item></channel></rss>`,
+          { headers: { "content-type": "application/rss+xml" } },
+        );
       }
 
       return new Response("not found", { status: 404 });
     },
   });
 
-  const baseUrl = `http://127.0.0.1:${server.port}`;
+  baseUrl = `http://127.0.0.1:${server.port}`;
+  redditListing = JSON.stringify({
+    data: {
+      children: [
+        {
+          data: {
+            id: "abc",
+            title: "Reddit Discussion",
+            url: `${baseUrl}/reddit/comments/abc`,
+            url_overridden_by_dest: `${baseUrl}/post`,
+            permalink: "/r/artificial/comments/abc",
+            author: "bob",
+            subreddit: "artificial",
+            score: 42,
+            num_comments: 9,
+          },
+        },
+      ],
+    },
+  });
   const db = createDb(":memory:");
   const sources: Source[] = [
     {
@@ -61,6 +84,14 @@ async function runPostMvpFixture(): Promise<{
       type: "reddit",
       enabled: true,
       url: `${baseUrl}/reddit.json`,
+      configJson: "{}",
+    },
+    {
+      id: "rss-source",
+      name: "RSS Source",
+      type: "rss",
+      enabled: true,
+      url: `${baseUrl}/feed.xml`,
       configJson: "{}",
     },
   ];
@@ -84,7 +115,7 @@ async function runPostMvpFixture(): Promise<{
     {
       id: "community-pack",
       name: "Community Pack",
-      sourceIds: ["reddit-ai"],
+      sourceIds: ["reddit-ai", "rss-source"],
     },
   ];
 
