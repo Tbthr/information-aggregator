@@ -6,12 +6,12 @@
 
 - TypeScript + Bun CLI
 - SQLite 持久化：sources、runs、outputs、source health
-- 配置驱动的 sources、source packs、topics、profiles
+- 配置驱动的 sources、source packs、topics、profiles、views
 - 已接入 `rss`、`json-feed`、`website`、`hn`、`reddit`
 - 已接入 `github_trending`、`digest_feed`、`custom_api`、`opml_rss`
 - 已接入基于 `bird CLI` 的 X family adapter
 - 确定性的规范化、精确去重、近似去重、排序与聚类
-- 可选的 AI 抽象层，用于后续候选评分和摘要扩展
+- 可选的 AI 抽象层，用于候选评分、cluster summary 与 digest narration 扩展
 
 ## 配置文件
 
@@ -137,6 +137,7 @@ bun scripts/aggregator.ts config validate
 - `x-bookmarks-analysis` / `x-likes-analysis`：面向 X 收藏/点赞的分析视图
 - `x-longform-hot`：面向 X 长文与外链热度的发现视图
 - `--format json`：输出稳定的中间层 JSON，包含 `query`、`selection`、`rankedItems`、`clusters` 与 `viewModel`
+- `scan` / `digest`：仍可调用，但仅作为 deprecated thin wrapper
 
 ## 示例工作流
 
@@ -191,7 +192,7 @@ bun scripts/aggregator.ts run --view daily-brief
 
 ## 当前实现状态
 
-截至 2026-03-10，仓库当前状态为：
+截至 2026-03-11，仓库当前状态为：
 
 - 已完成：项目脚手架与 CLI
 - 已完成：本地 YAML 配置加载与校验

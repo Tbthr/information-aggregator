@@ -2,17 +2,19 @@
 
 ## 项目概览
 
-`information-aggregator` 是一个本地优先的 Bun + TypeScript 信息聚合工具，用于收集已配置的数据源、规范化与去重，并输出 `scan` 或 `digest`。
+`information-aggregator` 是一个本地优先的 Bun + TypeScript 信息聚合工具，用于收集已配置的数据源、规范化与去重，并通过统一的 `run --view <view>` 查询入口输出 Markdown 或 JSON。
 
 当前能力范围：
 
 - YAML 驱动的 source 配置
+- query preset 与 view 配置
 - SQLite 持久化：sources、runs、outputs、source health
 - `rss`、`json-feed`、`website`、`hn`、`reddit`、`opml_rss`、`digest_feed`、`custom_api`、`github_trending` adapter
 - `bird CLI` 驱动的 X family adapter：`x_home`、`x_list`、`x_bookmarks`、`x_likes`、`x_multi`
 - 确定性的规范化、精确去重、近似去重、排序、聚类与 Markdown 输出
 - enrichment boundary 与有界 AI hook
-- `scan`、`digest`、`config validate` CLI
+- `run --view`、`sources list`、`config validate` CLI
+- `scan` / `digest` deprecated thin wrapper
 - 稳定的本地 smoke 与 E2E 验证流程
 
 当前仍明确不包含：
@@ -27,7 +29,7 @@
 主运行流为：
 
 ```text
-Sources -> Collectors -> RawItem -> Normalize -> Dedup/Cluster -> Rank -> Render
+QuerySpec -> SelectionResolver -> Collectors -> RawItem -> Normalize -> Dedup/Cluster -> Rank -> ViewModel -> Render
 ```
 
 模块职责：
@@ -36,8 +38,10 @@ Sources -> Collectors -> RawItem -> Normalize -> Dedup/Cluster -> Rank -> Render
 - `src/config/`：YAML 加载与校验
 - `src/db/`：SQLite schema 与 query helpers
 - `src/pipeline/`：collect、normalize、dedupe、topic match、rank、cluster
+- `src/query/`：query spec、CLI parser、selection resolver、shared query engine
+- `src/views/`：view registry 与 view model 构建
 - `src/render/`：Markdown 输出格式化
-- `src/cli/`：`scan` / `digest` 端到端编排
+- `src/cli/`：兼容层 wrapper 与顶层 CLI surface
 - `src/verification/`：可复用的验证辅助
 - `scripts/`：开发与验证入口
 - `docs/`：计划、测试说明、实现进展
@@ -46,6 +50,7 @@ Sources -> Collectors -> RawItem -> Normalize -> Dedup/Cluster -> Rank -> Render
 
 - 除非明确是可选 AI hook，否则 pipeline 必须保持确定性
 - 不要把 fetch 逻辑混入 ranking / render
+- 不要把 view-specific 逻辑塞回 collect / normalize
 - 测试优先使用依赖注入，不依赖全局 mock
 - 新 adapter 必须通过既有 collector pattern 接入
 
@@ -67,8 +72,11 @@ bun run e2e
 bun run e2e:real
 bun scripts/aggregator.ts --help
 bun scripts/aggregator.ts config validate
-bun scripts/aggregator.ts scan
-bun scripts/aggregator.ts digest
+bun scripts/aggregator.ts run --view item-list
+bun scripts/aggregator.ts run --view daily-brief
+bun scripts/aggregator.ts run --view x-bookmarks-analysis
+bun scripts/aggregator.ts run --view item-list --format json
+bun scripts/aggregator.ts sources list --source-type rss
 ```
 
 ## 验证策略
@@ -127,11 +135,13 @@ bun scripts/aggregator.ts digest
 
 - 项目脚手架与 CLI
 - config validation
+- query runner / selection resolver / view registry
 - `rss`、`json-feed`、`website`、`hn`、`reddit`、`opml_rss`、`digest_feed`、`custom_api`、`github_trending` adapter
 - `bird CLI` 驱动的 X family adapter
 - SQLite bootstrap 与核心 queries
 - normalize、dedupe、topic scoring、ranking、clustering、enrichment boundary
-- Markdown `scan` / `digest`
+- Markdown / JSON 输出
+- `scan` / `digest` thin wrapper
 - smoke 验证
 - mock-source E2E
 - real-network probe
