@@ -1,6 +1,8 @@
 # Information Aggregator Skill 实施计划
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+>
+> 2026-03-10 更新：仓库当前主执行路径已切换到 query runner + view system，本文中的 `scan` / `digest` 描述应视为历史实现背景。
 
 **目标：** 落地一个本地优先、基于 SQLite 的信息聚合 skill，支持可配置的数据源、精确与近似去重，以及 `scan` / `digest` 两种输出模式。
 

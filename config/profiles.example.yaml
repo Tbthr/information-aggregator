@@ -1,10 +1,11 @@
 profiles:
   - id: default
-    name: Default Digest
-    mode: digest
+    name: Default Query
     topicIds:
       - ai-news
       - engineering-blogs
     sourcePackIds:
       - ai-news-sites
       - engineering-blogs-core
+    defaultView: daily-brief
+    defaultWindow: 24h

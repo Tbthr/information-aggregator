@@ -7,9 +7,10 @@ const profiles: TopicProfile[] = [
   {
     id: "default",
     name: "Default Digest",
-    mode: "digest",
     topicIds: ["ai-news"],
     sourcePackIds: ["pack-a", "pack-b"],
+    defaultView: "daily-brief",
+    defaultWindow: "24h",
   },
 ];
 
@@ -93,5 +94,17 @@ describe("resolveProfileSelection", () => {
         sources: sources.map((source) => ({ ...source, enabled: false })),
       }),
     ).toThrow("Resolved profile has no enabled sources: default");
+  });
+
+  test("preserves query preset defaults for downstream resolvers", () => {
+    const result = resolveProfileSelection({
+      profileId: "default",
+      profiles,
+      sourcePacks,
+      sources,
+    });
+
+    expect(result.profile.defaultView).toBe("daily-brief");
+    expect(result.profile.defaultWindow).toBe("24h");
   });
 });

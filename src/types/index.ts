@@ -1,4 +1,6 @@
 export type RunMode = "scan" | "digest";
+export type OutputFormat = "markdown" | "json";
+export type QuerySort = "ranked" | "recent" | "engagement";
 export const CANONICAL_SOURCE_TYPES = [
   "rss",
   "json-feed",
@@ -34,7 +36,6 @@ export interface SourcePack {
   name: string;
   description?: string;
   sourceIds: string[];
-  referenceOnly?: boolean;
 }
 
 export interface TopicDefinition {
@@ -130,9 +131,20 @@ export interface OutputRecord {
 export interface TopicProfile {
   id: string;
   name: string;
-  mode: RunMode;
   topicIds: string[];
   sourcePackIds?: string[];
+  defaultView?: string;
+  defaultWindow?: string;
+  mode?: RunMode;
+}
+
+export interface QueryViewDefinition {
+  id: string;
+  name: string;
+  description?: string;
+  defaultWindow?: string;
+  defaultSort?: QuerySort;
+  defaultSourceTypes?: SourceType[];
 }
 
 export interface SourceHealth {

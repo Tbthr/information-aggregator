@@ -1,0 +1,29 @@
+views:
+  - id: daily-brief
+    name: Daily Brief
+    defaultWindow: 24h
+    defaultSort: ranked
+  - id: item-list
+    name: Item List
+    defaultWindow: 7d
+    defaultSort: recent
+  - id: x-longform-hot
+    name: X Longform Hot
+    defaultWindow: all
+    defaultSort: engagement
+    defaultSourceTypes:
+      - x_home
+      - x_list
+      - x_multi
+  - id: x-bookmarks-analysis
+    name: X Bookmarks Analysis
+    defaultWindow: 7d
+    defaultSort: ranked
+    defaultSourceTypes:
+      - x_bookmarks
+  - id: x-likes-analysis
+    name: X Likes Analysis
+    defaultWindow: 7d
+    defaultSort: ranked
+    defaultSourceTypes:
+      - x_likes

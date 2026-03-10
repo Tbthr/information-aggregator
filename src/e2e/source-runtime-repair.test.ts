@@ -13,10 +13,10 @@ import { collectRedditSource } from "../adapters/reddit";
 import { collectRssSource } from "../adapters/rss";
 import { collectWebsiteSource } from "../adapters/website";
 import { collectXBirdSource } from "../adapters/x-bird";
-import { runDigest } from "../cli/run-digest";
-import { runScan } from "../cli/run-scan";
 import { collectSources } from "../pipeline/collect";
-import type { Source, SourcePack, TopicDefinition, TopicProfile } from "../types/index";
+import { runQuery } from "../query/run-query";
+import { buildViewModel, renderViewMarkdown } from "../views/registry";
+import type { QueryViewDefinition, Source, SourcePack, TopicDefinition, TopicProfile } from "../types/index";
 
 let server: ReturnType<typeof Bun.serve> | null = null;
 let baseUrl = "";
@@ -208,9 +208,10 @@ function getProfiles(mode: "scan" | "digest"): TopicProfile[] {
     {
       id: "all",
       name: "All Sources",
-      mode,
       topicIds: ["all-topics"],
       sourcePackIds: ["all-pack"],
+      defaultView: mode === "digest" ? "daily-brief" : "item-list",
+      defaultWindow: mode === "digest" ? "24h" : "7d",
     },
   ];
 }
@@ -232,6 +233,14 @@ function getSourcePacks(): SourcePack[] {
       name: "All Pack",
       sourceIds: getSources().map((source) => source.id),
     },
+  ];
+}
+
+function getViews(): QueryViewDefinition[] {
+  return [
+    { id: "item-list", name: "Item List", defaultWindow: "7d", defaultSort: "recent" },
+    { id: "daily-brief", name: "Daily Brief", defaultWindow: "24h", defaultSort: "ranked" },
+    { id: "x-bookmarks-analysis", name: "X Bookmarks Analysis", defaultWindow: "7d", defaultSourceTypes: ["x_bookmarks"] },
   ];
 }
 
@@ -269,43 +278,70 @@ async function collectRepairedSources(sources: Source[]) {
 }
 
 describe("source runtime repair e2e", () => {
-  test("runs scan across repaired source types", async () => {
-    const result = await runScan({
+  test("runs item-list across repaired source types", async () => {
+    const result = await runQuery({
+      command: "run",
       profileId: "all",
-      dryRun: true,
+      viewId: "item-list",
+      format: "markdown",
     }, {
       loadSources: getSources,
       loadProfiles: () => getProfiles("scan"),
       loadTopics: getTopics,
       loadSourcePacks: getSourcePacks,
+      loadViews: getViews,
       collectSources: collectRepairedSources,
       now: () => "2026-03-10T12:00:00.000Z",
     });
+    const markdown = renderViewMarkdown(buildViewModel(result, "item-list"), "item-list");
 
-    expect(result.markdown).toContain("hn item");
-    expect(result.markdown).toContain("reddit item");
-    expect(result.markdown).toContain("owner / repo");
-    expect(result.markdown).toContain("Digest 165");
-    expect(result.markdown).toContain("x home item");
-    expect(result.markdown).toContain("x list item");
+    expect(markdown).toContain("hn item");
+    expect(markdown).toContain("reddit item");
+    expect(markdown).toContain("x home item");
+    expect(markdown).toContain("x list item");
+    expect(markdown).toContain("custom item");
   });
 
-  test("runs digest across repaired source types", async () => {
-    const result = await runDigest({
+  test("runs daily-brief across repaired source types", async () => {
+    const result = await runQuery({
+      command: "run",
       profileId: "all",
-      dryRun: true,
+      viewId: "daily-brief",
+      format: "markdown",
     }, {
       loadSources: getSources,
       loadProfiles: () => getProfiles("digest"),
       loadTopics: getTopics,
       loadSourcePacks: getSourcePacks,
+      loadViews: getViews,
       collectSources: collectRepairedSources,
       now: () => "2026-03-10T12:00:00.000Z",
     });
+    const markdown = renderViewMarkdown(buildViewModel(result, "daily-brief"), "daily-brief");
 
-    expect(result.markdown).toContain("# Daily Digest");
-    expect(result.markdown).toContain("owner / repo");
-    expect(result.markdown).toContain("digest 165");
-    expect(result.markdown).toContain("x bookmarks item");
+    expect(markdown).toContain("# Daily Digest");
+    expect(markdown).toContain("x bookmarks item");
+    expect(markdown).toContain("custom item");
+  });
+
+  test("runs x-bookmarks-analysis across repaired source types", async () => {
+    const result = await runQuery({
+      command: "run",
+      profileId: "all",
+      viewId: "x-bookmarks-analysis",
+      format: "markdown",
+    }, {
+      loadSources: getSources,
+      loadProfiles: () => getProfiles("digest"),
+      loadTopics: getTopics,
+      loadSourcePacks: getSourcePacks,
+      loadViews: getViews,
+      collectSources: collectRepairedSources,
+      now: () => "2026-03-10T12:00:00.000Z",
+    });
+    const markdown = renderViewMarkdown(buildViewModel(result, "x-bookmarks-analysis"), "x-bookmarks-analysis");
+
+    expect(markdown).toContain("Summary");
+    expect(markdown).toContain("Top Themes");
   });
 });

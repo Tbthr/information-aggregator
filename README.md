@@ -1,6 +1,6 @@
 # Information Aggregator
 
-`information-aggregator` 是一个本地优先的 Bun + TypeScript 信息聚合工具，用于收集已配置的数据源、去除重复内容，并输出快速浏览用的 `scan` 或结构化的 `digest`。
+`information-aggregator` 是一个本地优先的 Bun + TypeScript 信息聚合工具，用于收集已配置的数据源、去除重复内容，并通过统一的 `run --view <view>` 查询入口输出 Markdown 或 JSON 结果。
 
 ## 当前能力
 
@@ -20,13 +20,9 @@
 - `sources.example.yaml`
 - `topics.example.yaml`
 - `profiles.example.yaml`
+- `views.example.yaml`
 - `config/packs/ai-news-sites.yaml`
 - `config/packs/engineering-blogs-core.yaml`
-- `config/packs/engineering-blogs-reference-hnpc-2025.yaml`
-- `config/packs/community-api-reference.yaml`
-- `config/packs/import-and-special-feed-reference.yaml`
-- `config/packs/web-auth-reference.yaml`
-- `config/packs/x-auth-reference.yaml`
 
 当前默认使用本地 YAML 配置并运行在本地状态之上。
 
@@ -57,10 +53,10 @@ sources:
 X family 最小配置示例：
 
 ```yaml
-  - id: x-home-reference
-    name: X Home Reference
+  - id: x-home-local
+    name: X Home Local
     type: x_home
-    enabled: false
+    enabled: true
     url: https://x.com/home
     config:
       birdMode: home
@@ -92,44 +88,30 @@ topics:
 # config/profiles.example.yaml
 profiles:
   - id: default
-    name: Default Digest
-    mode: digest
+    name: Default Query
     topicIds:
       - ai-news
       - engineering-blogs
     sourcePackIds:
       - ai-news-sites
       - engineering-blogs-core
+    defaultView: daily-brief
+    defaultWindow: 24h
 ```
 
 ## 默认配置与 Pack taxonomy
 
-当前 `config/packs` 按数据源本质分组，而不是按参考项目命名：
+当前 `config/packs` 只保留可直接参与 runtime resolution 的 pack：
 
 - `ai-news-sites`：默认启用的公开 AI 新闻站与聚合站
 - `engineering-blogs-core`：默认启用的工程博客核心源
-- `engineering-blogs-reference-hnpc-2025`：90 个工程博客/RSS 参考源，描述为 `Hacker News Popularity Contest 2025` curated list
-- `community-api-reference`：`hn`、`reddit`、`github_trending` 这类社区/榜单型 reference source
-- `import-and-special-feed-reference`：`opml_rss`、`digest_feed`、`custom_api` 这类导入或特殊 feed 类型 reference source
-- `web-auth-reference`：网页可达但需要登录态的参考源
-- `x-auth-reference`：依赖 `bird CLI` / 登录态的 X family reference source
 
 注意：
 
 - 当前仓库内部只保留 canonical source type 命名
-- `config/sources.example.yaml` 同时包含 runnable public sources、auth-required reference sources、schema placeholder sources
-- reference source 分为三类：
-  - 匿名可访问但默认不启用的 reference source
-  - 依赖登录态或外部会话的 auth-required reference source
-  - `config.placeholderMode: schema` 的 schema placeholder，仅用于表达未来契约
-
-当前已接入主采集链路、但默认不启用或仍依赖本地前置条件的类型包括：
-
-- 匿名可跑通的 reference source：`hn`、`reddit`、`github_trending`、`digest_feed`
-- 需要本地文件或显式 schema 的类型：`custom_api`、`opml_rss`
-- 需要 `bird CLI` 与 X 登录态的类型：`x_bookmarks`、`x_likes`、`x_multi`、`x_list`、`x_home`
-
-这保证了配置能完整反映当前 source taxonomy，同时把“已实现 adapter”和“默认 runnable”区分开。
+- `config/sources.example.yaml` 默认只暴露可直接运行的公开 source
+- `custom_api`、`opml_rss`、X family 这类依赖本地文件、登录态或外部前置条件的 source，应由使用者在本地配置中按需添加
+- `config.placeholderMode: schema` 仍可用于 source 级 schema placeholder，但不再通过 pack 暴露为 reference-only 运行分组
 
 ## 命令
 
@@ -140,15 +122,21 @@ bun run check
 bun run smoke
 bun run e2e
 bun scripts/aggregator.ts --help
-bun scripts/aggregator.ts scan
-bun scripts/aggregator.ts digest
+bun scripts/aggregator.ts run --view item-list
+bun scripts/aggregator.ts run --view daily-brief
+bun scripts/aggregator.ts run --view x-bookmarks-analysis
+bun scripts/aggregator.ts run --view item-list --format json
+bun scripts/aggregator.ts sources list --source-type rss
 bun scripts/aggregator.ts config validate
 ```
 
 ## 输出模式
 
-- `scan`：适合快速浏览的排序 Markdown 列表
-- `digest`：带高亮与聚类的结构化 Markdown 摘要
+- `item-list`：适合快速浏览的排序 Markdown 列表
+- `daily-brief`：带高亮与聚类的结构化 Markdown 摘要
+- `x-bookmarks-analysis` / `x-likes-analysis`：面向 X 收藏/点赞的分析视图
+- `x-longform-hot`：面向 X 长文与外链热度的发现视图
+- `--format json`：输出稳定的中间层 JSON，包含 `query`、`selection`、`rankedItems`、`clusters` 与 `viewModel`
 
 ## 示例工作流
 
@@ -160,32 +148,33 @@ bun run smoke
 
 ```bash
 bun scripts/aggregator.ts config validate
-bun scripts/aggregator.ts scan
-bun scripts/aggregator.ts digest
+bun scripts/aggregator.ts run --view item-list
+bun scripts/aggregator.ts run --view daily-brief
 ```
 
-### `scan` 输出示例
+### `item-list` 输出示例
 
 ```md
-# Scan
+# Scan Results
 
 - [Example title](https://example.com/post)
-  - source: OpenAI News
-  - score: 0.82
+  - Source: Query View
+  - Score: 0.82
 ```
 
-### `digest` 输出示例
+### `daily-brief` 输出示例
 
 ```md
-# Digest
+# Daily Digest
 
-## Top Highlights
+## Highlights
 
 - Example title
 
-## Cluster: Example topic
+## Top Clusters
 
 - [Example title](https://example.com/post)
+  - Why it matters
 ```
 
 ## 后续计划
@@ -212,9 +201,10 @@ bun scripts/aggregator.ts digest
 - 已完成：`hn`、`reddit` 的 collector 路径支持
 - 已完成：`github_trending`、`digest_feed`、`custom_api`、`opml_rss` adapter
 - 已完成：X family `bird CLI` adapter，需本地授权后手动 probe
-- 已完成：profile / topic / source-pack resolution
+- 已完成：profile preset、view config、统一 selection resolution
 - 已完成：规范化、去重、topic match、排序、聚类
-- 已完成：`scan` 与 `digest` Markdown 输出
+- 已完成：`run --view` 查询入口、Markdown / JSON 输出
+- 已完成：`scan` 与 `digest` thin wrapper 兼容层
 - 已完成：候选评分、cluster summary、digest narration 的 AI hook
 - 已完成：raw items、normalized items、clusters 的 end-to-end 持久化
 - 尚未实现：深度 enrichment、feedback learning、Web UI、多用户能力

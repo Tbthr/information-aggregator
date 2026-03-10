@@ -4,7 +4,7 @@ export function getSmokeCommands(): string[] {
     "bun run check",
     "bun scripts/aggregator.ts --help",
     "bun scripts/aggregator.ts config validate",
-    "bun scripts/aggregator.ts scan",
-    "bun scripts/aggregator.ts digest",
+    "bun scripts/aggregator.ts run --view item-list",
+    "bun scripts/aggregator.ts run --view daily-brief",
   ];
 }

@@ -1,5 +1,5 @@
 export interface ParsedCliArgs {
-  command: "scan" | "digest" | "config validate" | "help" | "version";
+  command: "run" | "scan" | "digest" | "sources list" | "config validate" | "help" | "version";
 }
 
 export function getCliVersion(): string {
@@ -11,9 +11,11 @@ export function getHelpText(): string {
     "information-aggregator",
     "",
     "Commands:",
-    "  scan             Run scan mode",
-    "  digest           Run digest mode",
+    "  run --view <view>  Run a query view",
+    "  sources list      List sources matching selectors",
     "  config validate  Validate local config files",
+    "  scan (deprecated)   Legacy scan wrapper",
+    "  digest (deprecated) Legacy digest wrapper",
     "  --help           Show this help",
     "  --version        Show version",
   ].join("\n");
@@ -24,12 +26,20 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
     return { command: "version" };
   }
 
+  if (args[0] === "run") {
+    return { command: "run" };
+  }
+
   if (args[0] === "scan") {
     return { command: "scan" };
   }
 
   if (args[0] === "digest") {
     return { command: "digest" };
+  }
+
+  if (args[0] === "sources" && args[1] === "list") {
+    return { command: "sources list" };
   }
 
   if (args[0] === "config" && args[1] === "validate") {

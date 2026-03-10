@@ -1,31 +1,13 @@
+import type { Database } from "bun:sqlite";
+
 import { createDb } from "../db/client";
-import { createOutput } from "../db/queries/outputs";
 import { insertNormalizedItems } from "../db/queries/normalized-items";
+import { createOutput } from "../db/queries/outputs";
 import { insertRawItems } from "../db/queries/raw-items";
 import { createRun, finishRun } from "../db/queries/runs";
-import { recordSourceFailureWithMetrics, recordSourceSuccessWithMetrics } from "../db/queries/source-health";
-import { collectCustomApiSource } from "../adapters/custom-api";
-import { collectDigestFeedSource } from "../adapters/digest-feed";
-import { collectGitHubTrendingSource } from "../adapters/github-trending";
-import { collectJsonFeedSource } from "../adapters/json-feed-collect";
-import { collectHnSource } from "../adapters/hn";
-import { collectOpmlRssSource } from "../adapters/opml-rss";
-import { collectRedditSource } from "../adapters/reddit";
-import { collectRssSource } from "../adapters/rss";
-import { collectWebsiteSource } from "../adapters/website";
-import { collectXBirdSource } from "../adapters/x-bird";
-import { loadProfilesConfig, loadSourcePacksConfig, loadSourcesConfig, loadTopicsConfig } from "../config/load";
-import { resolveProfileSelection } from "../config/resolve-profile";
-import { normalizeItems } from "../pipeline/normalize";
-import { dedupeExact } from "../pipeline/dedupe-exact";
-import { dedupeNear } from "../pipeline/dedupe-near";
-import { collectSources, type CollectDependencies } from "../pipeline/collect";
-import { enrichCandidates } from "../pipeline/enrich";
-import { rankCandidates } from "../pipeline/rank";
-import { renderScanMarkdown } from "../render/scan";
-import { scoreTopicMatch } from "../pipeline/topic-match";
-import type { Database } from "bun:sqlite";
-import { parseRawItemMetadata, type RawItem, type RankedCandidate, type Source, type SourcePack, type TopicDefinition, type TopicProfile, type TopicRule } from "../types/index";
+import type { RunQueryDependencies } from "../query/run-query";
+import { runQuery } from "../query/run-query";
+import { buildViewModel, renderViewMarkdown } from "../views/registry";
 
 export interface RunScanArgs {
   profileId: string;
@@ -33,153 +15,43 @@ export interface RunScanArgs {
   dbPath?: string;
 }
 
-export interface RunScanDependencies {
+export interface RunScanDependencies extends RunQueryDependencies {
   db?: Database;
-  loadSources?: () => Promise<Source[]> | Source[];
-  loadProfiles?: () => Promise<TopicProfile[]> | TopicProfile[];
-  loadTopics?: () => Promise<TopicDefinition[]> | TopicDefinition[];
-  loadSourcePacks?: () => Promise<SourcePack[]> | SourcePack[];
-  collectSources?: (sources: Source[], dependencies: CollectDependencies) => Promise<RawItem[]>;
-  now?: () => string;
-  topicRule?: TopicRule;
-}
-
-async function loadDefaultSourcePacks(): Promise<SourcePack[]> {
-  const [newsSites, blogPacks] = await Promise.all([
-    loadSourcePacksConfig("config/packs/ai-news-sites.yaml"),
-    loadSourcePacksConfig("config/packs/engineering-blogs-core.yaml"),
-  ]);
-
-  return [...newsSites, ...blogPacks];
-}
-
-function buildTopicRule(topics: TopicDefinition[], topicIds: string[]): TopicRule {
-  const selectedTopics = topics.filter((topic) => topicIds.includes(topic.id));
-
-  return {
-    includeKeywords: selectedTopics.flatMap((topic) => topic.keywords).map((keyword) => keyword.toLowerCase()),
-  };
-}
-
-function buildDefaultCollectDependencies(): CollectDependencies {
-  return {
-    adapters: {
-      custom_api: (source) => collectCustomApiSource(source),
-      digest_feed: (source) => collectDigestFeedSource(source),
-      github_trending: (source) => collectGitHubTrendingSource(source),
-      hn: (source) => collectHnSource(source),
-      reddit: (source) => collectRedditSource(source),
-      "json-feed": (source) => collectJsonFeedSource(source),
-      opml_rss: (source) => collectOpmlRssSource(source),
-      rss: (source) => collectRssSource(source),
-      website: (source) => collectWebsiteSource(source),
-      x_bookmarks: (source) => collectXBirdSource(source),
-      x_home: (source) => collectXBirdSource(source),
-      x_likes: (source) => collectXBirdSource(source),
-      x_list: (source) => collectXBirdSource(source),
-      x_multi: (source) => collectXBirdSource(source),
-    },
-  };
-}
-
-function toCandidates(items: ReturnType<typeof normalizeItems>, topicRule?: TopicRule): RankedCandidate[] {
-  return items.map((item) => ({
-    ...(() => {
-      const metadata = parseRawItemMetadata(item.metadataJson);
-      return {
-        contentType: item.contentType ?? metadata?.contentType,
-        sourceType: item.sourceType ?? metadata?.sourceType,
-      };
-    })(),
-    id: item.id,
-    title: item.title,
-    url: item.url,
-    sourceId: item.sourceId,
-    sourceName: item.sourceId ?? "Unknown",
-    normalizedTitle: item.normalizedTitle,
-    normalizedText: item.normalizedText,
-    canonicalUrl: item.canonicalUrl,
-    processedAt: item.processedAt,
-    sourceWeightScore: 1,
-    freshnessScore: 1,
-    engagementScore: item.engagementScore ?? 0,
-    topicMatchScore: scoreTopicMatch(item, topicRule ?? {}),
-    contentQualityAi: 0,
-  }));
 }
 
 export async function runScan(args: RunScanArgs, dependencies: RunScanDependencies = {}): Promise<{ markdown: string; runId: string }> {
   const db = dependencies.db ?? createDb(args.dbPath ?? ":memory:");
   const now = dependencies.now ?? (() => new Date().toISOString());
   const runId = `run-scan-${Date.now()}`;
-  const [sources, profiles, topics, sourcePacks] = await Promise.all([
-    Promise.resolve(dependencies.loadSources?.() ?? loadSourcesConfig("config/sources.example.yaml")),
-    Promise.resolve(dependencies.loadProfiles?.() ?? loadProfilesConfig("config/profiles.example.yaml")),
-    Promise.resolve(dependencies.loadTopics?.() ?? loadTopicsConfig("config/topics.example.yaml")),
-    Promise.resolve(dependencies.loadSourcePacks?.() ?? loadDefaultSourcePacks()),
-  ]);
-  const selection = resolveProfileSelection({
-    profileId: args.profileId,
-    profiles,
-    sourcePacks,
-    sources,
-  });
-  const selectedSources = sources.filter((source) => selection.sourceIds.includes(source.id));
-  const resolvedTopicRule = dependencies.topicRule ?? buildTopicRule(topics, selection.topicIds);
 
   createRun(db, {
     id: runId,
     mode: "scan",
-    sourceSelectionJson: JSON.stringify(selection.sourceIds),
+    sourceSelectionJson: JSON.stringify([]),
     paramsJson: JSON.stringify({
       profileId: args.profileId,
       dryRun: Boolean(args.dryRun),
-      topicIds: selection.topicIds,
-      sourcePackIds: selection.profile.sourcePackIds ?? [],
+      viewId: "item-list",
     }),
     status: "running",
     createdAt: now(),
   });
 
-  const collectImpl = dependencies.collectSources ?? collectSources;
-  const items = await collectImpl(selectedSources, {
-    ...buildDefaultCollectDependencies(),
-    onSourceEvent: (event) => {
-      if (event.status === "failure") {
-        recordSourceFailureWithMetrics(db, event.sourceId, {
-          error: event.error ?? "unknown",
-          fetchedAt: now(),
-          latencyMs: event.latencyMs,
-        });
-      } else {
-        recordSourceSuccessWithMetrics(db, event.sourceId, {
-          fetchedAt: now(),
-          latencyMs: event.latencyMs,
-          itemCount: event.itemCount,
-        });
-      }
+  const queryResult = await runQuery(
+    {
+      command: "run",
+      profileId: args.profileId,
+      viewId: "item-list",
+      format: "markdown",
     },
-  });
-
-  const normalized = normalizeItems(items);
-  if (!args.dryRun) {
-    insertRawItems(db, items);
-    insertNormalizedItems(db, normalized);
-  }
-  const exact = dedupeExact(normalized.filter((item) => item.exactDedupKey) as Array<typeof normalized[number] & { exactDedupKey: string }>);
-  const near = dedupeNear(exact.filter((item) => item.processedAt) as Array<typeof exact[number] & { processedAt: string }>);
-  const ranked = rankCandidates(await enrichCandidates(toCandidates(near, resolvedTopicRule)));
-  const markdown = renderScanMarkdown(
-    ranked.map((item) => ({
-      title: item.title ?? item.normalizedTitle ?? item.id,
-      url: item.url ?? item.canonicalUrl ?? "",
-      finalScore: item.finalScore,
-      sourceName: item.sourceName ?? "Unknown",
-      rationale: item.topicMatchScore > 0 ? "Matches topic profile" : undefined,
-    })),
+    dependencies,
   );
+  const viewModel = buildViewModel(queryResult, "item-list");
+  const markdown = renderViewMarkdown(viewModel, "item-list");
 
   if (!args.dryRun) {
+    insertRawItems(db, queryResult.items);
+    insertNormalizedItems(db, queryResult.normalizedItems);
     createOutput(db, {
       id: `output-${runId}`,
       runId,

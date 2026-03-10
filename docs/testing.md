@@ -15,17 +15,18 @@ bun test
 bun run check
 bun scripts/aggregator.ts --help
 bun scripts/aggregator.ts config validate
-bun scripts/aggregator.ts scan
-bun scripts/aggregator.ts digest
+bun scripts/aggregator.ts run --view item-list
+bun scripts/aggregator.ts run --view daily-brief
 ```
 
 ## 人工验收清单
 
 - `bun run smoke` 无需手工修复即可通过
-- `bun scripts/aggregator.ts --help` 展示 `scan`、`digest`、`config validate`
+- `bun scripts/aggregator.ts --help` 展示 `run --view <view>`、`sources list`、`config validate`
 - `bun scripts/aggregator.ts config validate` 能通过示例配置
-- `bun scripts/aggregator.ts scan` 能输出 Markdown
-- `bun scripts/aggregator.ts digest` 能输出 Markdown
+- `bun scripts/aggregator.ts run --view item-list` 能输出 Markdown
+- `bun scripts/aggregator.ts run --view daily-brief` 能输出 Markdown
+- `bun scripts/aggregator.ts run --view item-list --format json` 能输出结构化 JSON
 - 示例配置文件与文档保持一致且可读
 
 ## 端到端检查

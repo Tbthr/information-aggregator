@@ -100,9 +100,10 @@ async function runPostMvpFixture(): Promise<{
     {
       id: "default",
       name: "Default Digest",
-      mode: "digest",
       topicIds: ["ai-news"],
       sourcePackIds: ["community-pack"],
+      defaultView: "daily-brief",
+      defaultWindow: "24h",
     },
   ];
   const topics: TopicDefinition[] = [

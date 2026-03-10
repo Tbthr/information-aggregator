@@ -1,8 +1,9 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
-import { runDigest } from "../cli/run-digest";
-import { runScan } from "../cli/run-scan";
-import type { Source, SourcePack, TopicDefinition, TopicProfile } from "../types/index";
+import { runQuery } from "../query/run-query";
+import { renderQueryJson } from "../render/json";
+import { buildViewModel, renderViewMarkdown } from "../views/registry";
+import type { QueryViewDefinition, Source, SourcePack, TopicDefinition, TopicProfile } from "../types/index";
 
 const rssXml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss><channel>
@@ -93,9 +94,10 @@ function getMockProfiles(): TopicProfile[] {
     {
       id: "default",
       name: "Default",
-      mode: "digest",
       topicIds: ["ai-news"],
       sourcePackIds: ["mock-pack"],
+      defaultView: "daily-brief",
+      defaultWindow: "24h",
     },
   ];
 }
@@ -120,34 +122,72 @@ function getMockSourcePacks(): SourcePack[] {
   ];
 }
 
+function getMockViews(): QueryViewDefinition[] {
+  return [
+    { id: "item-list", name: "Item List", defaultWindow: "7d", defaultSort: "recent" },
+    { id: "daily-brief", name: "Daily Brief", defaultWindow: "24h", defaultSort: "ranked" },
+  ];
+}
+
 describe("mock source end-to-end flow", () => {
-  test("runScan fetches mock sources and renders combined markdown", async () => {
-    const result = await runScan({
+  test("run --view item-list outputs markdown", async () => {
+    const result = await runQuery({
+      command: "run",
       profileId: "default",
-      dryRun: true,
+      viewId: "item-list",
+      format: "markdown",
     }, {
       loadSources: getMockSources,
       loadProfiles: getMockProfiles,
       loadTopics: getMockTopics,
       loadSourcePacks: getMockSourcePacks,
+      loadViews: getMockViews,
     });
+    const markdown = renderViewMarkdown(buildViewModel(result, "item-list"), "item-list");
 
-    expect(result.markdown).toContain("RSS Example");
-    expect(result.markdown).toContain("JSON Feed Example");
+    expect(markdown).toContain("RSS Example");
+    expect(markdown).toContain("JSON Feed Example");
   });
 
-  test("runDigest fetches mock sources and renders digest markdown", async () => {
-    const result = await runDigest({
+  test("run --view daily-brief outputs markdown", async () => {
+    const result = await runQuery({
+      command: "run",
       profileId: "default",
-      dryRun: true,
+      viewId: "daily-brief",
+      format: "markdown",
     }, {
       loadSources: getMockSources,
       loadProfiles: getMockProfiles,
       loadTopics: getMockTopics,
       loadSourcePacks: getMockSourcePacks,
+      loadViews: getMockViews,
+    });
+    const markdown = renderViewMarkdown(buildViewModel(result, "daily-brief"), "daily-brief");
+
+    expect(markdown).toContain("RSS Example");
+    expect(markdown).toContain("## Top Clusters");
+  });
+
+  test("run --format json outputs structured results", async () => {
+    const result = await runQuery({
+      command: "run",
+      profileId: "default",
+      viewId: "item-list",
+      format: "json",
+    }, {
+      loadSources: getMockSources,
+      loadProfiles: getMockProfiles,
+      loadTopics: getMockTopics,
+      loadSourcePacks: getMockSourcePacks,
+      loadViews: getMockViews,
+    });
+    const json = renderQueryJson({
+      queryResult: result,
+      viewModel: buildViewModel(result, "item-list"),
     });
 
-    expect(result.markdown).toContain("RSS Example");
-    expect(result.markdown).toContain("## Top Clusters");
+    expect(json).toContain("\"query\"");
+    expect(json).toContain("\"selection\"");
+    expect(json).toContain("\"rankedItems\"");
   });
 });

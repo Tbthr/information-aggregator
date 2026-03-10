@@ -1,4 +1,13 @@
-import { CANONICAL_SOURCE_TYPES, type Source, type SourcePack, type SourceType, type TopicDefinition, type TopicProfile } from "../types/index";
+import {
+  CANONICAL_SOURCE_TYPES,
+  type QueryViewDefinition,
+  type QuerySort,
+  type Source,
+  type SourcePack,
+  type SourceType,
+  type TopicDefinition,
+  type TopicProfile,
+} from "../types/index";
 
 function assertString(value: unknown, field: string): string {
   if (typeof value !== "string" || value.trim() === "") {
@@ -38,6 +47,22 @@ function assertSourceType(value: unknown): SourceType {
   }
 
   return value as SourceType;
+}
+
+function assertOptionalString(value: unknown, field: string): string | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  return assertString(value, field);
+}
+
+function assertOptionalSourceTypes(value: unknown, field: string): SourceType[] | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  return assertStringArray(value, field).map((entry) => assertSourceType(entry));
 }
 
 function isSchemaPlaceholder(config: Record<string, unknown>): boolean {
@@ -154,9 +179,11 @@ export function validateProfile(input: unknown): TopicProfile {
   return {
     id: assertString(record.id, "profile.id"),
     name: assertString(record.name, "profile.name"),
-    mode: assertString(record.mode, "profile.mode") as TopicProfile["mode"],
     topicIds: assertStringArray(record.topicIds, "profile.topicIds"),
     sourcePackIds: Array.isArray(record.sourcePackIds) ? assertStringArray(record.sourcePackIds, "profile.sourcePackIds") : undefined,
+    defaultView: assertOptionalString(record.defaultView, "profile.defaultView"),
+    defaultWindow: assertOptionalString(record.defaultWindow, "profile.defaultWindow"),
+    mode: typeof record.mode === "string" ? (record.mode as TopicProfile["mode"]) : undefined,
   };
 }
 
@@ -172,6 +199,26 @@ export function validateSourcePack(input: unknown): SourcePack {
     name: assertString(record.name, "pack.name"),
     description: record.description === undefined ? undefined : assertString(record.description, "pack.description"),
     sourceIds: assertStringArray(record.sourceIds, "pack.sourceIds"),
-    referenceOnly: record.referenceOnly === undefined ? false : assertBoolean(record.referenceOnly, "pack.referenceOnly"),
+  };
+}
+
+export function validateView(input: unknown): QueryViewDefinition {
+  if (!input || typeof input !== "object") {
+    throw new Error("Invalid view entry");
+  }
+
+  const record = input as Record<string, unknown>;
+  const defaultSort = assertOptionalString(record.defaultSort, "view.defaultSort");
+  if (defaultSort && !["ranked", "recent", "engagement"].includes(defaultSort)) {
+    throw new Error("Invalid field: view.defaultSort");
+  }
+
+  return {
+    id: assertString(record.id, "view.id"),
+    name: assertString(record.name, "view.name"),
+    description: assertOptionalString(record.description, "view.description"),
+    defaultWindow: assertOptionalString(record.defaultWindow, "view.defaultWindow"),
+    defaultSort: defaultSort as QuerySort | undefined,
+    defaultSourceTypes: assertOptionalSourceTypes(record.defaultSourceTypes, "view.defaultSourceTypes"),
   };
 }

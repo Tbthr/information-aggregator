@@ -1,8 +1,0 @@
-pack:
-  id: community-api-reference
-  name: Community API Reference
-  referenceOnly: true
-  sourceIds:
-    - hn-front-page-reference
-    - reddit-machine-learning-reference
-    - github-trending-typescript-reference

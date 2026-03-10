@@ -2,8 +2,8 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import YAML from "yaml";
 
-import type { Source, SourcePack, TopicDefinition, TopicProfile } from "../types/index";
-import { validateProfile, validateSource, validateSourcePack, validateTopic } from "./validate";
+import type { QueryViewDefinition, Source, SourcePack, TopicDefinition, TopicProfile } from "../types/index";
+import { validateProfile, validateSource, validateSourcePack, validateTopic, validateView } from "./validate";
 
 async function loadYamlFile(filePath: string): Promise<Record<string, unknown>> {
   const absolutePath = resolve(process.cwd(), filePath);
@@ -11,14 +11,15 @@ async function loadYamlFile(filePath: string): Promise<Record<string, unknown>> 
   return (YAML.parse(fileContents) as Record<string, unknown> | null) ?? {};
 }
 
-export async function loadSourcesConfig(filePath: string): Promise<Source[]> {
+export async function loadSourcesConfig(filePath: string, options: { includeDisabled?: boolean } = {}): Promise<Source[]> {
   const parsed = (await loadYamlFile(filePath)) as { sources?: unknown[] };
 
   if (!Array.isArray(parsed.sources)) {
     throw new Error("Invalid sources config: sources must be an array");
   }
 
-  return parsed.sources.map((source) => validateSource(source));
+  const sources = parsed.sources.map((source) => validateSource(source));
+  return options.includeDisabled ? sources : sources.filter((source) => source.enabled);
 }
 
 export async function loadTopicsConfig(filePath: string): Promise<TopicDefinition[]> {
@@ -53,4 +54,14 @@ export async function loadSourcePacksConfig(filePath: string): Promise<SourcePac
   }
 
   throw new Error("Invalid source packs config: expected pack or packs");
+}
+
+export async function loadViewsConfig(filePath: string): Promise<QueryViewDefinition[]> {
+  const parsed = (await loadYamlFile(filePath)) as { views?: unknown[] };
+
+  if (!Array.isArray(parsed.views)) {
+    throw new Error("Invalid views config: views must be an array");
+  }
+
+  return parsed.views.map((view) => validateView(view));
 }

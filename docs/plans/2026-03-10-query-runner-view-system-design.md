@@ -1,5 +1,7 @@
 # Query Runner 与 View System 设计
 
+> 2026-03-10 实现状态：`run --view`、`sources list`、view config、shared query engine、Markdown / JSON renderer 已落地；`scan` / `digest` 仍保留为兼容 wrapper。
+
 ## 背景
 
 当前项目以 `scan` 与 `digest` 作为顶层 CLI 命令。这种设计在项目早期是够用的，但随着使用场景扩展，问题已经比较明显：

@@ -1,7 +1,0 @@
-pack:
-  id: web-auth-reference
-  name: Web Auth Reference
-  referenceOnly: true
-  sourceIds:
-    - waytoagi-updates
-    - waytoagi-history
