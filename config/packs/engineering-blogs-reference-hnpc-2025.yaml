@@ -1,6 +1,7 @@
 pack:
-  id: ai-daily-digest-reference-full
-  name: AI Daily Digest Reference Full
+  id: engineering-blogs-reference-hnpc-2025
+  name: Engineering Blogs Reference HNPC 2025
+  description: 90 RSS feeds from Hacker News Popularity Contest 2025 (curated by Karpathy)
   referenceOnly: true
   sourceIds:
     - simon-willison

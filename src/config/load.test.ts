@@ -24,17 +24,17 @@ describe("config loading", () => {
     expect(ids.has("techurls")).toBe(true);
     expect(ids.has("waytoagi-history")).toBe(true);
     expect(ids.has("jeffgeerling-com")).toBe(true);
-    expect(ids.has("clawfeed-hacker-news-front-page")).toBe(true);
-    expect(ids.has("clawfeed-x-home")).toBe(true);
-    expect(ids.has("smaug-multi")).toBe(true);
-    expect(ids.has("x-ai-topic-selector-bookmarks")).toBe(true);
-    expect(ids.has("ai-news-radar-opml-import")).toBe(true);
-    expect(typesById.get("clawfeed-github-trending")).toBe("github_trending");
-    expect(typesById.get("smaug-bookmarks")).toBe("x_bookmarks");
-    expect(typesById.get("smaug-likes")).toBe("x_likes");
-    expect(typesById.get("smaug-multi")).toBe("x_multi");
-    expect(typesById.get("x-ai-topic-selector-home")).toBe("x_home");
-    expect(typesById.get("ai-news-radar-opml-import")).toBe("opml_rss");
+    expect(ids.has("hn-front-page-reference")).toBe(true);
+    expect(ids.has("x-home-reference")).toBe(true);
+    expect(ids.has("x-multi-reference")).toBe(true);
+    expect(ids.has("x-bookmarks-reference")).toBe(true);
+    expect(ids.has("opml-rss-local-import-reference")).toBe(true);
+    expect(typesById.get("github-trending-typescript-reference")).toBe("github_trending");
+    expect(typesById.get("x-bookmarks-reference")).toBe("x_bookmarks");
+    expect(typesById.get("x-likes-reference")).toBe("x_likes");
+    expect(typesById.get("x-multi-reference")).toBe("x_multi");
+    expect(typesById.get("x-home-reference")).toBe("x_home");
+    expect(typesById.get("opml-rss-local-import-reference")).toBe("opml_rss");
   });
 
   test("keeps packs and profile examples aligned with the curated defaults", async () => {
@@ -52,7 +52,7 @@ describe("config loading", () => {
         .sort()
         .map(async (fileName) => {
           const file = await readFile(resolve(process.cwd(), "config/packs", fileName), "utf8");
-          return YAML.parse(file) as { pack: { id: string; sourceIds: string[]; referenceOnly?: boolean } };
+          return YAML.parse(file) as { pack: { id: string; sourceIds: string[]; referenceOnly?: boolean; description?: string } };
         }),
     );
     const topics = YAML.parse(topicsFile) as { topics: Array<{ id: string }> };
@@ -68,9 +68,28 @@ describe("config loading", () => {
     }
 
     expect(packs.find((pack) => pack.pack.id === "ai-news-sites")?.pack.referenceOnly).toBe(false);
-    expect(packs.find((pack) => pack.pack.id === "ai-daily-digest-reference-full")?.pack.referenceOnly).toBe(true);
-    expect(packs.find((pack) => pack.pack.id === "clawfeed-reference")?.pack.referenceOnly).toBe(true);
-    expect(profiles.profiles[0]?.sourcePackIds).toEqual(["ai-news-sites", "ai-daily-digest-blogs"]);
+    expect(packs.find((pack) => pack.pack.id === "engineering-blogs-reference-hnpc-2025")?.pack.referenceOnly).toBe(true);
+    expect(packs.find((pack) => pack.pack.id === "x-auth-reference")?.pack.referenceOnly).toBe(true);
+    expect(packs.find((pack) => pack.pack.id === "engineering-blogs-reference-hnpc-2025")?.pack.description).toBe(
+      "90 RSS feeds from Hacker News Popularity Contest 2025 (curated by Karpathy)",
+    );
+    expect(profiles.profiles[0]?.sourcePackIds).toEqual(["ai-news-sites", "engineering-blogs-core"]);
+  });
+
+  test("keeps default runnable packs limited to enabled public sources", async () => {
+    const [sources, newsPacks, blogPacks] = await Promise.all([
+      loadSourcesConfig("config/sources.example.yaml"),
+      loadSourcePacksConfig("config/packs/ai-news-sites.yaml"),
+      loadSourcePacksConfig("config/packs/engineering-blogs-core.yaml"),
+    ]);
+
+    const defaultPackSourceIds = new Set([...newsPacks, ...blogPacks].flatMap((pack) => pack.sourceIds));
+    const disabledDefaultSources = sources
+      .filter((source) => defaultPackSourceIds.has(source.id))
+      .filter((source) => source.enabled === false)
+      .map((source) => source.id);
+
+    expect(disabledDefaultSources).toEqual([]);
   });
 
   test("uses canonical source taxonomy and removes deprecated aliases", async () => {
@@ -107,7 +126,7 @@ describe("config loading", () => {
 
     expect(profiles).toHaveLength(1);
     expect(profiles[0]?.topicIds).toEqual(["ai-news", "engineering-blogs"]);
-    expect(profiles[0]?.sourcePackIds).toEqual(["ai-news-sites", "ai-daily-digest-blogs"]);
+    expect(profiles[0]?.sourcePackIds).toEqual(["ai-news-sites", "engineering-blogs-core"]);
   });
 
   test("loads source packs from local yaml files", async () => {

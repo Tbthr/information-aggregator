@@ -167,6 +167,7 @@ export function validateSourcePack(input: unknown): SourcePack {
   return {
     id: assertString(record.id, "pack.id"),
     name: assertString(record.name, "pack.name"),
+    description: record.description === undefined ? undefined : assertString(record.description, "pack.description"),
     sourceIds: assertStringArray(record.sourceIds, "pack.sourceIds"),
     referenceOnly: record.referenceOnly === undefined ? false : assertBoolean(record.referenceOnly, "pack.referenceOnly"),
   };

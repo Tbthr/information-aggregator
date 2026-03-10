@@ -1,0 +1,8 @@
+pack:
+  id: import-and-special-feed-reference
+  name: Import And Special Feed Reference
+  referenceOnly: true
+  sourceIds:
+    - digest-feed-reference
+    - custom-api-schema-placeholder
+    - opml-rss-local-import-reference

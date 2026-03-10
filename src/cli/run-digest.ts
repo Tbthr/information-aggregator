@@ -51,7 +51,7 @@ export interface RunDigestDependencies {
 async function loadDefaultSourcePacks(): Promise<SourcePack[]> {
   const [newsSites, blogPacks] = await Promise.all([
     loadSourcePacksConfig("config/packs/ai-news-sites.yaml"),
-    loadSourcePacksConfig("config/packs/ai-daily-digest-blogs.yaml"),
+    loadSourcePacksConfig("config/packs/engineering-blogs-core.yaml"),
   ]);
 
   return [...newsSites, ...blogPacks];

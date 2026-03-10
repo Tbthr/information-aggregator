@@ -72,12 +72,12 @@ sources:
   - id: waytoagi-updates
     name: WaytoAGI Updates
     type: website
-    enabled: true
+    enabled: false
     url: https://waytoagi.feishu.cn/wiki/RuBhwe63Viw8s8k1xCYc0zo1nEb
   - id: waytoagi-history
     name: WaytoAGI 7d History
     type: website
-    enabled: true
+    enabled: false
     url: https://waytoagi.feishu.cn/wiki/FjiOwWp2giA7hRk6jjfcPioCnAc
   - id: simon-willison
     name: Simon Willison
@@ -539,95 +539,73 @@ sources:
     type: rss
     enabled: true
     url: https://www.tedunangst.com/flak/rss
-  - id: clawfeed-digest-json
-    name: ClawFeed Digest JSON
-    type: json-feed
-    enabled: false
-    url: https://digest.kevinhe.io/feed/kevin.json
-  - id: clawfeed-rss-example
-    name: ClawFeed RSS Example
-    type: rss
-    enabled: false
-    url: https://clawfeed.kevinhe.io/feed/kevin.rss
-  - id: clawfeed-website-example
-    name: ClawFeed Website Example
-    type: website
-    enabled: false
-    url: https://clawfeed.kevinhe.io/
-  - id: clawfeed-hacker-news-front-page
-    name: ClawFeed Hacker News Front Page
+  - id: hn-front-page-reference
+    name: Hacker News Front Page Reference
     type: hn
     enabled: false
     url: https://hn.algolia.com/api/v1/search?tags=front_page
     config:
       placeholderMode: schema
       expectedPayload: hn-search
-  - id: clawfeed-reddit-machine-learning
-    name: ClawFeed Reddit r/MachineLearning
+  - id: reddit-machine-learning-reference
+    name: Reddit r/MachineLearning Reference
     type: reddit
     enabled: false
     url: https://www.reddit.com/r/MachineLearning/.json
-  - id: clawfeed-x-home
-    name: ClawFeed X Home
+  - id: x-home-reference
+    name: X Home Reference
     type: x_home
     enabled: false
     url: https://x.com/home
     config:
       birdMode: home
-  - id: clawfeed-x-bookmarks
-    name: ClawFeed X Bookmarks
+  - id: x-bookmarks-reference
+    name: X Bookmarks Reference
     type: x_bookmarks
     enabled: false
     url: https://x.com/i/bookmarks
     config:
       birdMode: bookmarks
-  - id: clawfeed-x-list
-    name: ClawFeed X List
+  - id: x-list-reference
+    name: X List Reference
     type: x_list
     enabled: false
     url: https://x.com/i/lists/2021198996157710621
     config:
       birdMode: list
       listId: "2021198996157710621"
-  - id: clawfeed-github-trending
-    name: ClawFeed GitHub Trending
+  - id: github-trending-typescript-reference
+    name: GitHub Trending TypeScript Reference
     type: github_trending
     enabled: false
     url: https://github.com/trending
     config:
       language: typescript
       since: daily
-  - id: clawfeed-digest-feed
-    name: ClawFeed Digest Feed
+  - id: digest-feed-reference
+    name: Digest Feed Reference
     type: digest_feed
     enabled: false
     url: https://clawfeed.kevinhe.io/feed/kevin
     config:
       format: html
       linkSelector: article a[href]
-  - id: clawfeed-custom-api
-    name: ClawFeed Custom API
+  - id: custom-api-schema-placeholder
+    name: Custom API Schema Placeholder
     type: custom_api
     enabled: false
     url: https://example.com/api/feed
     config:
       placeholderMode: schema
-  - id: smaug-bookmarks
-    name: Smaug Bookmark Feed
-    type: x_bookmarks
-    enabled: false
-    url: https://x.com/i/bookmarks
-    config:
-      birdMode: bookmarks
-  - id: smaug-likes
-    name: Smaug Likes Feed
+  - id: x-likes-reference
+    name: X Likes Reference
     type: x_likes
     enabled: false
     url: https://x.com/i/likes
     config:
       birdMode: likes
-  - id: smaug-multi
-    name: Smaug Multi Feed
+  - id: x-multi-reference
+    name: X Multi Reference
     type: x_multi
     enabled: false
     url: https://x.com/home
@@ -635,30 +613,8 @@ sources:
       birdMode: multi
       listIds:
         - 12345
-  - id: x-ai-topic-selector-list
-    name: X AI Topic Selector List
-    type: x_list
-    enabled: false
-    url: https://x.com/i/lists/2021198996157710621
-    config:
-      birdMode: list
-      listId: "2021198996157710621"
-  - id: x-ai-topic-selector-home
-    name: X AI Topic Selector Home
-    type: x_home
-    enabled: false
-    url: https://x.com/home
-    config:
-      birdMode: home
-  - id: x-ai-topic-selector-bookmarks
-    name: X AI Topic Selector Bookmarks
-    type: x_bookmarks
-    enabled: false
-    url: https://x.com/i/bookmarks
-    config:
-      birdMode: bookmarks
-  - id: ai-news-radar-opml-import
-    name: AI News Radar OPML Import
+  - id: opml-rss-local-import-reference
+    name: OPML RSS Local Import Reference
     type: opml_rss
     enabled: false
     config:

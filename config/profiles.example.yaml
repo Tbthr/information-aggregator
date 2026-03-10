@@ -7,4 +7,4 @@ profiles:
       - engineering-blogs
     sourcePackIds:
       - ai-news-sites
-      - ai-daily-digest-blogs
+      - engineering-blogs-core

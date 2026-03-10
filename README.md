@@ -19,13 +19,13 @@
 - `sources.example.yaml`
 - `topics.example.yaml`
 - `profiles.example.yaml`
-- `config/packs/ai-daily-digest-blogs.yaml`
-- `config/packs/ai-daily-digest-reference-full.yaml`
 - `config/packs/ai-news-sites.yaml`
-- `config/packs/ai-news-radar-reference.yaml`
-- `config/packs/clawfeed-reference.yaml`
-- `config/packs/smaug-reference.yaml`
-- `config/packs/x-ai-topic-selector-reference.yaml`
+- `config/packs/engineering-blogs-core.yaml`
+- `config/packs/engineering-blogs-reference-hnpc-2025.yaml`
+- `config/packs/community-api-reference.yaml`
+- `config/packs/import-and-special-feed-reference.yaml`
+- `config/packs/web-auth-reference.yaml`
+- `config/packs/x-auth-reference.yaml`
 
 当前默认使用本地 YAML 配置并运行在本地状态之上。
 
@@ -74,26 +74,29 @@ profiles:
       - engineering-blogs
     sourcePackIds:
       - ai-news-sites
-      - ai-daily-digest-blogs
+      - engineering-blogs-core
 ```
 
-## 默认配置与参考项目
+## 默认配置与 Pack taxonomy
 
-当前默认配置参考了 5 个项目的数据源表面：
+当前 `config/packs` 按数据源本质分组，而不是按参考项目命名：
 
-- `ai-news-radar`：提供聚合站/新闻站默认源，以及 `opml_rss` 占位需求
-- `ai-daily-digest`：提供高质量 blog/RSS 源池
-- `clawfeed`：提供 `json-feed`、`rss`、`website`、`hn`、`reddit`、`github_trending`、`digest_feed`、`custom_api` 等类型参考
-- `smaug`：提供 `x_bookmarks`、`x_likes`、`x_multi` 的输入语义参考
-- `x-ai-topic-selector`：提供 `x_list`、`x_home`、`x_bookmarks` 的输入语义参考
+- `ai-news-sites`：默认启用的公开 AI 新闻站与聚合站
+- `engineering-blogs-core`：默认启用的工程博客核心源
+- `engineering-blogs-reference-hnpc-2025`：90 个工程博客/RSS 参考源，描述为 `Hacker News Popularity Contest 2025` curated list
+- `community-api-reference`：`hn`、`reddit`、`github_trending` 这类社区/榜单型 reference source
+- `import-and-special-feed-reference`：`opml_rss`、`digest_feed`、`custom_api` 这类导入或特殊 feed 类型 reference source
+- `web-auth-reference`：网页可达但需要登录态的参考源
+- `x-auth-reference`：依赖 `bird CLI` / 登录态的 X family reference source
 
 注意：
 
 - 当前仓库内部只保留 canonical source type 命名
-- `config/sources.example.yaml` 里有一部分 source type 是为了完整表达路线图和参考项目覆盖范围而加入的 disabled reference source
-- disabled reference source 分为两类：
-  - `enabled: false` 且结构有效，可在 adapter 实现后直接转为可运行 source
-  - `config.placeholderMode: schema`，只用于表达未来 schema 契约，当前不可直接运行
+- `config/sources.example.yaml` 同时包含 runnable public sources、auth-required reference sources、schema placeholder sources
+- reference source 分为三类：
+  - 匿名可访问但默认不启用的 reference source
+  - 依赖登录态或外部会话的 auth-required reference source
+  - `config.placeholderMode: schema` 的 schema placeholder，仅用于表达未来契约
 
 当前仍未接入主采集链路、但已出现在配置中的类型包括：
 
@@ -107,7 +110,7 @@ profiles:
 - `x_home`
 - `opml_rss`
 
-这保证了配置能完整反映参考项目的 source surface，但不代表这些 adapter 已经实现。
+这保证了配置能完整反映当前 source taxonomy，但不代表这些 adapter 已全部成为默认可运行能力。
 
 ## 命令
 
@@ -184,7 +187,7 @@ bun scripts/aggregator.ts digest
 
 - 已完成：项目脚手架与 CLI
 - 已完成：本地 YAML 配置加载与校验
-- 已完成：基于参考项目的 source config 与 source packs
+- 已完成：按 source taxonomy 组织的 source config 与 source packs
 - 已完成：SQLite schema 与核心表
 - 已完成：`rss`、`json-feed`、`website` adapter
 - 已完成：`hn`、`reddit` 的 collector 路径支持

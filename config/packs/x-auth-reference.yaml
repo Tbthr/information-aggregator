@@ -1,0 +1,10 @@
+pack:
+  id: x-auth-reference
+  name: X Auth Reference
+  referenceOnly: true
+  sourceIds:
+    - x-home-reference
+    - x-bookmarks-reference
+    - x-list-reference
+    - x-likes-reference
+    - x-multi-reference

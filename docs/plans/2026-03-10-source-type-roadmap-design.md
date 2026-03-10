@@ -180,22 +180,24 @@
 
 ### 3. 存在 reference-only packs
 
-下列 pack 当前更适合被定义为“参考 pack”，而不是“可运行默认 pack”：
+当前已按数据源本质收敛为下列 reference-only packs，而不是继续保留参考项目命名：
 
-- `clawfeed-reference`
-- `smaug-reference`
-- `x-ai-topic-selector-reference`
+- `community-api-reference`
+- `import-and-special-feed-reference`
+- `web-auth-reference`
+- `x-auth-reference`
 
 原因：
 
-- 它们全部或绝大多数由 disabled placeholder 组成
-- 如果未来误接入 profile，可能在 profile resolution 后得到空 source 集
+- 它们表达的是 source taxonomy，而不是上游项目边界
+- 其中包含 disabled reference source、auth-required source 或 schema placeholder
+- 如果未来误接入 profile，会把不可匿名运行的 source 混入默认选择
 
 ### 4. 存在 placeholder 但并非可运行示例
 
 典型例子：
 
-- `clawfeed-hacker-news-front-page`
+- `hn-front-page-reference`
 
 问题：
 

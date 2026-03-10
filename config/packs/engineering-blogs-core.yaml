@@ -1,6 +1,6 @@
 pack:
-  id: ai-daily-digest-blogs
-  name: AI Daily Digest Blogs
+  id: engineering-blogs-core
+  name: Engineering Blogs Core
   referenceOnly: false
   sourceIds:
     - overreacted

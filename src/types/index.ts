@@ -32,6 +32,7 @@ export interface Source {
 export interface SourcePack {
   id: string;
   name: string;
+  description?: string;
   sourceIds: string[];
   referenceOnly?: boolean;
 }
