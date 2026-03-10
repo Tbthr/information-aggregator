@@ -26,6 +26,41 @@ const queryResult = {
       contentQualityAi: 0,
       finalScore: 3.2,
     },
+    {
+      id: "item-2",
+      title: "Second ranked item",
+      url: "https://example.com/second",
+      sourceWeightScore: 1,
+      freshnessScore: 1,
+      engagementScore: 0.2,
+      topicMatchScore: 1,
+      contentQualityAi: 0,
+      finalScore: 3.0,
+    },
+    {
+      id: "item-3",
+      title: "Third ranked item",
+      url: "https://example.com/third",
+      sourceWeightScore: 1,
+      freshnessScore: 1,
+      engagementScore: 0.2,
+      topicMatchScore: 1,
+      contentQualityAi: 0,
+      finalScore: 2.95,
+    },
+    {
+      id: "item-4",
+      title: "Thread sharing the launch",
+      url: "https://x.com/example/status/2",
+      linkedCanonicalUrl: "https://example.com/fresh",
+      relationshipToCanonical: "share",
+      sourceWeightScore: 1,
+      freshnessScore: 1,
+      engagementScore: 0.2,
+      topicMatchScore: 1,
+      contentQualityAi: 0,
+      finalScore: 2.9,
+    },
   ],
   clusters: [
     {
@@ -57,16 +92,21 @@ describe("views", () => {
 
     expect(model.title).toBe("Item List");
     expect(model.sections[0]?.items[0]?.title).toBe("Fresh AI launch");
+    expect(model.sections[0]?.items[3]?.url).toBe("https://example.com/fresh");
+    expect(model.sections[0]?.items[3]?.summary).toContain("linked article");
   });
 
   test("daily-brief builds highlights and cluster sections and renders markdown", () => {
     const model = buildViewModel(queryResult, "daily-brief");
     const markdown = renderViewMarkdown(model, "daily-brief");
 
-    expect(model.highlights).toEqual(["Fresh AI launch"]);
+    expect(model.highlights).toEqual(["Fresh AI launch", "Second ranked item", "Third ranked item"]);
     expect(model.sections.map((section) => section.title)).toEqual(["Top Clusters", "Supporting Items"]);
     expect(markdown).toContain("# Daily Digest");
     expect(markdown).toContain("Fresh AI launch");
     expect(markdown).toContain("Why it matters");
+    expect(model.sections[1]?.items[0]?.url).toBe("https://example.com/fresh");
+    expect(model.sections[1]?.items[0]?.summary).toContain("linked article");
+    expect(markdown).toContain("linked article");
   });
 });

@@ -8,7 +8,7 @@ export function renderDigestMarkdown(input: {
   narration?: string;
   highlights: string[];
   clusters: DigestCluster[];
-  supportingItems?: Array<{ title: string; url: string }>;
+  supportingItems?: Array<{ title: string; url: string; summary?: string }>;
 }): string {
   const lines = ["# Daily Digest"];
 
@@ -30,6 +30,9 @@ export function renderDigestMarkdown(input: {
   lines.push("", "## Supporting Items");
   for (const item of input.supportingItems ?? []) {
     lines.push(`- [${item.title}](${item.url})`);
+    if (item.summary) {
+      lines.push(`  - ${item.summary}`);
+    }
   }
 
   return lines.join("\n");

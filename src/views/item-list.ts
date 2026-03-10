@@ -1,6 +1,14 @@
 import type { QueryResult } from "../query/run-query";
 import type { ViewModel } from "./registry";
 
+function relationSummary(result: QueryResult["rankedItems"][number]): string | undefined {
+  if (!result.linkedCanonicalUrl) {
+    return undefined;
+  }
+
+  return result.relationshipToCanonical === "discussion" ? "discussion source" : "linked article";
+}
+
 export function buildItemListView(result: QueryResult): ViewModel {
   return {
     viewId: "item-list",
@@ -10,9 +18,12 @@ export function buildItemListView(result: QueryResult): ViewModel {
         title: "Ranked Items",
         items: result.rankedItems.map((item) => ({
           title: item.title ?? item.normalizedTitle ?? item.id,
-          url: item.url ?? item.canonicalUrl,
+          url: item.linkedCanonicalUrl ?? item.url ?? item.canonicalUrl,
           score: item.finalScore,
-          summary: item.topicMatchScore > 0 ? "Matches topic profile" : undefined,
+          summary: [
+            relationSummary(item),
+            item.topicMatchScore > 0 ? "Matches topic profile" : undefined,
+          ].filter(Boolean).join("; ") || undefined,
         })),
       },
     ],
