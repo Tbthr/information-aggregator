@@ -35,4 +35,44 @@ describe("rankCandidates", () => {
     expect(ranked[0]?.id).toBe("article");
     expect(ranked[1]?.finalScore).toBeLessThan(1.1);
   });
+
+  test("applies a lighter penalty to share items than discussion items", () => {
+    const ranked = rankCandidates([
+      {
+        id: "original",
+        sourceWeightScore: 0.9,
+        freshnessScore: 0.9,
+        engagementScore: 0.5,
+        topicMatchScore: 0.8,
+        contentQualityAi: 0,
+        contentType: "article",
+        relationshipToCanonical: "original",
+      },
+      {
+        id: "share",
+        sourceWeightScore: 0.9,
+        freshnessScore: 0.9,
+        engagementScore: 0.5,
+        topicMatchScore: 0.8,
+        contentQualityAi: 0,
+        contentType: "social_post",
+        relationshipToCanonical: "share",
+      },
+      {
+        id: "discussion",
+        sourceWeightScore: 0.9,
+        freshnessScore: 0.9,
+        engagementScore: 0.5,
+        topicMatchScore: 0.8,
+        contentQualityAi: 0,
+        contentType: "community_post",
+        relationshipToCanonical: "discussion",
+      },
+    ]);
+
+    expect(ranked.map((item) => item.id)).toEqual(["original", "share", "discussion"]);
+    expect((ranked.find((item) => item.id === "share")?.finalScore ?? 0)).toBeGreaterThan(
+      ranked.find((item) => item.id === "discussion")?.finalScore ?? 0,
+    );
+  });
 });

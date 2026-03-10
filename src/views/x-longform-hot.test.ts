@@ -23,6 +23,8 @@ describe("x-longform-hot", () => {
             title: "An in-depth thread about agent orchestration and evaluation",
             url: "https://x.com/example/status/1",
             canonicalUrl: "https://example.com/article",
+            linkedCanonicalUrl: "https://example.com/article",
+            relationshipToCanonical: "share",
             normalizedText: "in depth thread about agent orchestration and evaluation with link",
             engagementScore: 0.9,
             sourceWeightScore: 1,
@@ -52,5 +54,7 @@ describe("x-longform-hot", () => {
     expect(markdown).toContain("Hot Posts");
     expect(markdown).toContain("Linked Articles");
     expect(markdown).toContain("Clusters");
+    expect(markdown).toContain("[An in-depth thread about agent orchestration and evaluation](https://example.com/article)");
+    expect(markdown).toContain("linked article");
   });
 });

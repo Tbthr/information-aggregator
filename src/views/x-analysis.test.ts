@@ -19,6 +19,8 @@ const queryResult = {
       id: "tweet-1",
       title: "Agents are reshaping workflows",
       url: "https://x.com/example/status/1",
+      linkedCanonicalUrl: "https://example.com/article",
+      relationshipToCanonical: "share",
       sourceId: "x-bookmarks-1",
       normalizedText: "agents workflow agents workflow",
       sourceWeightScore: 1,
@@ -41,6 +43,8 @@ describe("x analysis views", () => {
     expect(markdown).toContain("Summary");
     expect(markdown).toContain("Top Themes");
     expect(markdown).toContain("Notable Items");
+    expect(markdown).toContain("https://example.com/article");
+    expect(markdown).toContain("linked article");
   });
 
   test("x-likes-analysis summarizes interest signals", () => {
@@ -60,5 +64,7 @@ describe("x analysis views", () => {
     expect(markdown).toContain("Summary");
     expect(markdown).toContain("Top Themes");
     expect(markdown).toContain("Notable Items");
+    expect(markdown).toContain("https://example.com/article");
+    expect(markdown).toContain("linked article");
   });
 });

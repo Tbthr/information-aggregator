@@ -125,12 +125,15 @@ bird --chrome-profile "Default" home --json
 - `opml_rss`
 - X family 全部类型
 
+当前 Phase 4 的 relation enrichment 只消费既有 `canonicalHints` 与 canonical URL，不新增外部网络抓取。  
+因此这类质量提升默认应通过单元测试、view 测试和 mock-source E2E 验证，而不是新增 real-network gate。
+
 ## source 有效性审计
 
-当你调整示例配置里的 source taxonomy、pack 归类或启用状态时，先做一次匿名可达性审计，再决定它属于 runnable public source 还是 reference source：
+当你调整示例配置里的 source taxonomy、pack 归类或启用状态时，先做一次匿名可达性审计，再决定它属于 runnable public source 还是本地扩展 source：
 
 - 使用 `curl -L --max-time 15 --connect-timeout 10` 做匿名探测
 - 返回非错误响应且内容语义仍是目标 source 时，才可视为 public runnable 候选
 - 如果跳转到登录页、权限页或依赖会话态，只能归为 auth-required reference source
-- `example.com`、空 `url`、`config.placeholderMode: schema` 这类条目只能归为 placeholder/reference，不应当作 live source
+- `example.com`、空 `url`、`config.placeholderMode: schema` 这类条目只能归为 source 级 placeholder，不应当作 live source，也不应进入默认 pack
 - `e2e:real` 只验证当前公开源，不要求 auth-required reference source 在匿名探测下可运行

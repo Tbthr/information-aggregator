@@ -180,20 +180,17 @@
 
 这些问题必须作为路线图的第一批修正项。
 
-### 3. 存在 reference-only packs
+### 3. 历史上曾存在 reference-only pack 设想
 
-当前已按数据源本质收敛为下列 reference-only packs，而不是继续保留参考项目命名：
+最初审计阶段曾考虑保留若干 reference-only packs，用于表达 taxonomy 覆盖和非匿名运行 source。
 
-- `community-api-reference`
-- `import-and-special-feed-reference`
-- `web-auth-reference`
-- `x-auth-reference`
+但截至 2026-03-11，主代码库已经收敛为：
 
-原因：
+- YAML 只保留 runnable source / pack
+- 不再通过 pack 暴露 reference-only 运行分组
+- 非可运行示例仅保留为 source 级 `config.placeholderMode: schema`
 
-- 它们表达的是 source taxonomy，而不是上游项目边界
-- 其中包含 disabled reference source、auth-required source 或 schema placeholder
-- 如果未来误接入 profile，会把不可匿名运行的 source 混入默认选择
+因此 reference-only pack 现在应被视为历史设计背景，而不是当前运行时语义。
 
 ### 4. 存在 placeholder 但并非可运行示例
 
@@ -206,12 +203,11 @@
 - 它当前的 URL 指向 Algolia HN 搜索接口
 - 但当前 `hn` adapter 期望的是另一种 payload 契约
 
-因此这类 source 不能只被标记为“disabled placeholder”，还要被文档明确标为“schema placeholder / non-runnable placeholder”。
+因此这类 source 不能只被标记为“disabled placeholder”，还要被文档明确标为 source 级“schema placeholder / non-runnable placeholder”，且不进入 runnable pack。
 
 ### 5. 文档与设计存在漂移
 
-当前 README 曾提到旧版 X placeholder 类型，这与最终确认的 `x_*` 设计不一致。  
-这类漂移必须纳入路线图中的文档对齐任务。
+当前这类漂移已在主 README 和 config 示例中完成收口；后续路线图文档必须继续与这一语义保持一致。
 
 ## Phase 规划
 
@@ -300,8 +296,12 @@
 
 本阶段不新增 source type，而是提升复杂源质量。
 
+截至 2026-03-11，Phase 4 的第一个已确认切片是确定性的 link relation enrichment。
+
 重点：
 
+- 消费已有 `canonicalHints`，显式区分 `original` / `discussion` / `share`
+- 在 ranking 与 render 中表达原始源、讨论源、转述源的关系
 - X thread / quote 扩展
 - t.co 展开
 - 外链正文提取
@@ -315,6 +315,7 @@
 
 内容：
 
+- 新增轻量 relation enrichment 边界，不引入额外网络抓取
 - 增加 enrichment worker 边界
 - 复用 `smaug` 的提取思路
 - 吸收 `x-ai-topic-selector` 的排序与报告思路
@@ -350,12 +351,15 @@
 1. 当前稳定支持的 source type
 2. 为了 reference-project 覆盖而存在的 roadmap / placeholder source type
 
-同时要再区分：
+同时当前运行时文档必须明确：
+
+- YAML 不保留 reference-only pack
+- `config.placeholderMode: schema` 是 source 级 placeholder 机制
+
+对于路线图说明，再区分：
 
 - disabled but structurally valid placeholder
 - non-runnable schema placeholder
-
-否则 pack 和 source config 会误导使用者。
 
 ## 结论
 
@@ -363,4 +367,4 @@
 - X 只走 `bird CLI`
 - `smaug` 作为 X ingestion / extraction 参考
 - `x-ai-topic-selector` 作为 X ranking / reporting 参考
-- 路线图必须先解决 config 与 pack 的命名、语义、文档边界问题，再逐步实现新 adapter
+- 路线图必须维持与当前 runnable config 语义一致，并以确定性 enrichment 作为 Phase 4 的首个落点

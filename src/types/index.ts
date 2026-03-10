@@ -1,6 +1,7 @@
 export type RunMode = "scan" | "digest";
 export type OutputFormat = "markdown" | "json";
 export type QuerySort = "ranked" | "recent" | "engagement";
+export type CanonicalRelationship = "original" | "discussion" | "share";
 export const CANONICAL_SOURCE_TYPES = [
   "rss",
   "json-feed",
@@ -83,6 +84,9 @@ export interface NormalizedItem {
   id: string;
   rawItemId: string;
   canonicalUrl: string;
+  linkedCanonicalUrl?: string;
+  relationshipToCanonical?: CanonicalRelationship;
+  isDiscussionSource?: boolean;
   normalizedTitle: string;
   normalizedSnippet?: string;
   normalizedText?: string;
@@ -181,6 +185,9 @@ export interface RankedCandidate {
   engagementScore: number;
   topicMatchScore: number;
   contentQualityAi: number;
+  linkedCanonicalUrl?: string;
+  relationshipToCanonical?: CanonicalRelationship;
+  isDiscussionSource?: boolean;
   finalScore?: number;
   rationale?: string;
   contentType?: string;

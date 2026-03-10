@@ -4,14 +4,16 @@ import type { ViewModel } from "./registry";
 export function buildXLongformHotView(result: QueryResult): ViewModel {
   const hotPosts = result.rankedItems.slice(0, 5).map((item) => ({
     title: item.title ?? item.normalizedTitle ?? item.id,
-    url: item.url ?? item.canonicalUrl,
+    url: item.linkedCanonicalUrl ?? item.url ?? item.canonicalUrl,
     score: item.finalScore,
+    summary: item.linkedCanonicalUrl ? "linked article" : undefined,
   }));
   const linkedArticles = result.rankedItems
-    .filter((item) => item.canonicalUrl && item.canonicalUrl !== item.url)
+    .filter((item) => item.linkedCanonicalUrl)
     .map((item) => ({
       title: item.title ?? item.normalizedTitle ?? item.id,
-      url: item.canonicalUrl,
+      url: item.linkedCanonicalUrl,
+      summary: item.relationshipToCanonical === "discussion" ? "discussion source" : "linked article",
     }));
   const clusters = result.clusters.map((cluster) => ({
     title: cluster.title ?? cluster.canonicalItemId,

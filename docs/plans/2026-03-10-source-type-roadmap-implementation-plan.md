@@ -12,6 +12,12 @@
 
 ### 任务 1：先做 config / pack 审计与命名收敛
 
+状态注记（2026-03-11）：
+
+- 该任务的核心目标已完成
+- 当前仓库已删除 reference-only pack 运行时语义
+- 当前应把这部分视为历史实施记录，而不是待执行项
+
 **文件：**
 - 修改：`config/sources.example.yaml`
 - 修改：`config/packs/*.yaml`
@@ -25,7 +31,7 @@
 - pack 中不存在悬空 `sourceIds`
 - `twitter_*` 不再作为仓库正式命名
 - `hackernews` 不再作为正式命名，统一为 `hn`
-- reference-only packs 必须被文档识别，而不是被误当成 runnable default packs
+- YAML 中不再保留 reference-only packs 作为运行时分组
 
 **步骤 2：运行测试，确认它失败**
 
@@ -36,7 +42,7 @@
 
 - 把 X 相关 placeholder 统一改成 `x_*`
 - 把 `hackernews` 统一改成 `hn`
-- 在 pack 与 README 中明确 reference-only pack 的语义
+- 从 pack 语义中移除 reference-only 运行分组
 - 区分“disabled 但结构有效”和“non-runnable schema placeholder”
 
 **步骤 4：运行测试，确认通过**
@@ -50,6 +56,17 @@
 git add config/sources.example.yaml config/packs README.md docs/plans/2026-03-10-source-type-roadmap-design.md src/config/load.test.ts
 git commit -m "refactor: normalize reference source config taxonomy"
 ```
+
+### 后续优先项（2026-03-11 更新）：确定性 relation enrichment
+
+在 source taxonomy、query runner、X ingestion 都已落地后，下一条优先链路不再是扩 source type，而是提升复杂源质量。
+
+当前优先切片：
+
+- 消费已有 `canonicalHints`
+- 显式标注 `original` / `discussion` / `share`
+- 让 ranking 与 X views 优先表达 linked article
+- 保持无额外网络请求、可 fixture-first 测试
 
 ### 任务 2：冻结 canonical source type taxonomy
 

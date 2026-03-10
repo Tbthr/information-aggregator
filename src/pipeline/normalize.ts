@@ -1,6 +1,6 @@
-import { parseRawItemMetadata, type NormalizedItem, type RawItem } from "../types/index";
+import { parseRawItemMetadata, type CanonicalRelationship, type NormalizedItem, type RawItem } from "../types/index";
 import { normalizeSnippet, normalizeTitle } from "./normalize-text";
-import { resolveCanonicalUrl } from "./normalize-url";
+import { normalizeUrl, resolveCanonicalUrl } from "./normalize-url";
 
 function toBoundedEngagementScore(metadataJson: string): number {
   const metadata = parseRawItemMetadata(metadataJson);
@@ -10,10 +10,45 @@ function toBoundedEngagementScore(metadataJson: string): number {
   return Math.min(1, Math.log10(total + 1) / 2);
 }
 
+function resolveRelationship(
+  item: Pick<RawItem, "url">,
+  canonicalUrl: string,
+  contentType: string | undefined,
+): {
+  linkedCanonicalUrl?: string;
+  relationshipToCanonical: CanonicalRelationship;
+  isDiscussionSource: boolean;
+} {
+  const normalizedUrl = normalizeUrl(item.url);
+  const linksToCanonical = canonicalUrl !== normalizedUrl;
+
+  if (!linksToCanonical) {
+    return {
+      relationshipToCanonical: "original",
+      isDiscussionSource: false,
+    };
+  }
+
+  if (contentType === "community_post") {
+    return {
+      linkedCanonicalUrl: canonicalUrl,
+      relationshipToCanonical: "discussion",
+      isDiscussionSource: true,
+    };
+  }
+
+  return {
+    linkedCanonicalUrl: canonicalUrl,
+    relationshipToCanonical: "share",
+    isDiscussionSource: false,
+  };
+}
+
 export function normalizeItems(items: RawItem[]): NormalizedItem[] {
   return items.map((item) => {
     const metadata = parseRawItemMetadata(item.metadataJson);
     const canonicalUrl = resolveCanonicalUrl(item.url, metadata);
+    const relation = resolveRelationship(item, canonicalUrl, metadata?.contentType);
     const normalizedTitle = normalizeTitle(item.title);
     const normalizedSnippet = normalizeSnippet(item.snippet);
 
@@ -24,6 +59,9 @@ export function normalizeItems(items: RawItem[]): NormalizedItem[] {
       title: item.title,
       url: item.url,
       canonicalUrl,
+      linkedCanonicalUrl: relation.linkedCanonicalUrl,
+      relationshipToCanonical: relation.relationshipToCanonical,
+      isDiscussionSource: relation.isDiscussionSource,
       normalizedTitle,
       normalizedSnippet,
       normalizedText: [normalizedTitle, normalizedSnippet].filter(Boolean).join(" "),

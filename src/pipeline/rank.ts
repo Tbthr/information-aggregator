@@ -1,5 +1,16 @@
 import type { RankedCandidate } from "../types/index";
 
+function relationshipPenalty(candidate: RankedCandidate): number {
+  switch (candidate.relationshipToCanonical) {
+    case "discussion":
+      return 0.08;
+    case "share":
+      return 0.04;
+    default:
+      return 0;
+  }
+}
+
 export function rankCandidates<T extends RankedCandidate>(candidates: T[]): Array<T & { finalScore: number }> {
   return candidates
     .map((candidate) => ({
@@ -11,7 +22,8 @@ export function rankCandidates<T extends RankedCandidate>(candidates: T[]): Arra
         Math.min(1, candidate.engagementScore) * 0.1 +
         candidate.topicMatchScore * 0.25 +
         candidate.contentQualityAi * 0.1 -
-        (candidate.contentType === "community_post" ? 0.12 : 0),
+        (candidate.contentType === "community_post" ? 0.12 : 0) -
+        relationshipPenalty(candidate),
     }))
     .sort((left, right) => right.finalScore - left.finalScore);
 }

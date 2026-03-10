@@ -25,7 +25,12 @@ export function buildXBookmarksAnalysisView(result: QueryResult): ViewModel {
         title: "Notable Items",
         items: result.rankedItems.slice(0, 5).map((item) => ({
           title: item.title ?? item.normalizedTitle ?? item.id,
-          url: item.url ?? item.canonicalUrl,
+          url: item.linkedCanonicalUrl ?? item.url ?? item.canonicalUrl,
+          summary: item.linkedCanonicalUrl
+            ? item.relationshipToCanonical === "discussion"
+              ? "discussion source"
+              : "linked article"
+            : undefined,
         })),
       },
     ],

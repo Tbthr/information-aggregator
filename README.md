@@ -474,6 +474,7 @@ profiles:
 - `config/sources.example.yaml` 默认只暴露可直接运行的公开 source
 - `custom_api`、`opml_rss`、X family 这类依赖本地文件、登录态或外部前置条件的 source，应由使用者在本地配置中按需添加
 - `config.placeholderMode: schema` 仍可用于 source 级 schema placeholder，但不再通过 pack 暴露为 reference-only 运行分组
+- 当前 Phase 4 的首个质量提升切片是确定性的 link relation enrichment：优先消费已有 `canonicalHints`，显式区分原文、讨论源与分享源，而不是直接引入正文抓取
 
 ## 命令
 
