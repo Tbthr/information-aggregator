@@ -69,6 +69,7 @@ async function runPostMvpFixture(): Promise<{
             permalink: "/r/artificial/comments/abc",
             author: "bob",
             subreddit: "artificial",
+            created_utc: 1773046800,
             score: 42,
             num_comments: 9,
           },
@@ -127,6 +128,7 @@ async function runPostMvpFixture(): Promise<{
       },
       {
         db,
+        now: () => "2026-03-09T12:00:00Z",
         loadSources: async () => sources,
         loadProfiles: async () => profiles,
         loadTopics: async () => topics,
