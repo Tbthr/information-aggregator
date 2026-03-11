@@ -1,11 +1,9 @@
 import type { AiClient } from "../ai/client";
 import { buildCandidateQualityPrompt } from "../ai/prompts";
-import { collectCustomApiSource } from "../adapters/custom-api";
 import { collectDigestFeedSource } from "../adapters/digest-feed";
 import { collectGitHubTrendingSource } from "../adapters/github-trending";
 import { collectHnSource } from "../adapters/hn";
 import { collectJsonFeedSource } from "../adapters/json-feed-collect";
-import { collectOpmlRssSource } from "../adapters/opml-rss";
 import { collectRedditSource } from "../adapters/reddit";
 import { collectRssSource } from "../adapters/rss";
 import { collectWebsiteSource } from "../adapters/website";
@@ -49,20 +47,17 @@ function buildTopicRule(keywords: string[]): TopicRule {
 function buildDefaultCollectDependencies(): CollectDependencies {
   return {
     adapters: {
-      custom_api: (source) => collectCustomApiSource(source),
       digest_feed: (source) => collectDigestFeedSource(source),
       github_trending: (source) => collectGitHubTrendingSource(source),
       hn: (source) => collectHnSource(source),
       reddit: (source) => collectRedditSource(source),
       "json-feed": (source) => collectJsonFeedSource(source),
-      opml_rss: (source) => collectOpmlRssSource(source),
       rss: (source) => collectRssSource(source),
       website: (source) => collectWebsiteSource(source),
       x_bookmarks: (source) => collectXBirdSource(source),
       x_home: (source) => collectXBirdSource(source),
       x_likes: (source) => collectXBirdSource(source),
       x_list: (source) => collectXBirdSource(source),
-      x_multi: (source) => collectXBirdSource(source),
     },
   };
 }

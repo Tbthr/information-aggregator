@@ -8,7 +8,6 @@ const ADAPTER_AUTH_MAP: Record<string, string> = {
   x_list: "x-family",
   x_bookmarks: "x-family",
   x_likes: "x-family",
-  x_multi: "x-family",
   reddit: "reddit",
 };
 

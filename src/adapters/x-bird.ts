@@ -3,7 +3,6 @@ import type { RawItem, Source } from "../types/index";
 interface BirdSourceConfig {
   birdMode?: string;
   listId?: string;
-  listIds?: string[];
   authToken?: string;
   ct0?: string;
   authTokenEnv?: string;
@@ -90,7 +89,7 @@ function getBirdMode(source: Pick<Source, "configJson">): string {
   return mode;
 }
 
-export function buildBirdCommand(source: Pick<Source, "type" | "configJson">): string[] | string[][] {
+export function buildBirdCommand(source: Pick<Source, "type" | "configJson">): string[] {
   const config = getBirdConfig(source);
   const mode = getBirdMode(source);
   const authArgs = getBirdAuthArgs(config);
@@ -105,14 +104,6 @@ export function buildBirdCommand(source: Pick<Source, "type" | "configJson">): s
     }
 
     return ["bird", ...authArgs, "list-timeline", config.listId, "--json"];
-  }
-
-  if (mode === "multi") {
-    if (!config.listIds || config.listIds.length === 0) {
-      throw new Error("x multi source requires listIds");
-    }
-
-    return config.listIds.map((listId) => ["bird", ...authArgs, "list-timeline", listId, "--json"]);
   }
 
   throw new Error(`Unsupported birdMode: ${mode}`);
@@ -180,10 +171,5 @@ export async function collectXBirdSource(
   },
 ): Promise<RawItem[]> {
   const command = buildBirdCommand(source);
-  if (Array.isArray(command[0])) {
-    const outputs = await Promise.all((command as string[][]).map((part) => execImpl(part)));
-    return outputs.flatMap((output) => parseBirdItems(output, source));
-  }
-
-  return parseBirdItems(await execImpl(command as string[]), source);
+  return parseBirdItems(await execImpl(command), source);
 }

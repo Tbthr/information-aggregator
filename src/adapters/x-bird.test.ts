@@ -8,15 +8,6 @@ describe("x bird integration", () => {
     expect(buildBirdCommand({ type: "x_likes", configJson: JSON.stringify({ birdMode: "likes" }) })).toEqual(["bird", "likes", "--json"]);
     expect(
       buildBirdCommand({
-        type: "x_multi",
-        configJson: JSON.stringify({ birdMode: "multi", listIds: ["1", "2"] }),
-      }),
-    ).toEqual([
-      ["bird", "list-timeline", "1", "--json"],
-      ["bird", "list-timeline", "2", "--json"],
-    ]);
-    expect(
-      buildBirdCommand({
         type: "x_list",
         configJson: JSON.stringify({ birdMode: "list", listId: "2021198996157710621" }),
       }),
@@ -131,38 +122,6 @@ describe("x bird integration", () => {
     expect(items).toHaveLength(1);
     expect(items[0]?.title).toBe("news-aggregator-skill 重磅更新");
     expect(items[0]?.snippet).toContain("后面还有非常长的一大段正文");
-  });
-
-  test("collects x_multi by merging multiple list timelines", async () => {
-    const commands: string[][] = [];
-    const items = await collectXBirdSource(
-      {
-        id: "x-multi",
-        name: "X Multi",
-        type: "x_multi",
-        enabled: false,
-        configJson: JSON.stringify({ birdMode: "multi", listIds: ["1", "2"] }),
-      },
-      async (command) => {
-        commands.push(command);
-        return JSON.stringify([
-          {
-            id: `tweet-${command[2]}`,
-            text: `Interesting thread ${command[2]}`,
-            url: `https://x.com/example/status/${command[2]}`,
-            author: "alice",
-            created_at: "2026-03-09T08:00:00Z",
-          },
-        ]);
-      },
-    );
-
-    expect(commands).toEqual([
-      ["bird", "list-timeline", "1", "--json"],
-      ["bird", "list-timeline", "2", "--json"],
-    ]);
-    expect(items).toHaveLength(2);
-    expect(items.map((item) => item.id)).toEqual(["tweet-1", "tweet-2"]);
   });
 
   test("prefers explicit auth token config over browser profile settings", () => {
