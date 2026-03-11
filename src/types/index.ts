@@ -1,4 +1,4 @@
-export type RunMode = "scan" | "digest";
+export type RunKind = "query";
 export type OutputFormat = "markdown" | "json";
 export type QuerySort = "ranked" | "recent" | "engagement";
 export type CanonicalRelationship = "original" | "discussion" | "share";
@@ -114,7 +114,7 @@ export interface Cluster {
 
 export interface RunRecord {
   id: string;
-  mode: RunMode;
+  kind: RunKind;
   startedAt?: string;
   createdAt?: string;
   finishedAt?: string;
@@ -126,7 +126,7 @@ export interface RunRecord {
 export interface OutputRecord {
   id: string;
   runId: string;
-  mode: RunMode;
+  kind: RunKind;
   format: "markdown" | "json";
   body: string;
   createdAt: string;
@@ -139,7 +139,6 @@ export interface TopicProfile {
   sourcePackIds?: string[];
   defaultView?: string;
   defaultWindow?: string;
-  mode?: RunMode;
 }
 
 export interface QueryViewDefinition {

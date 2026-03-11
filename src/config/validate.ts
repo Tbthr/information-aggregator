@@ -183,7 +183,6 @@ export function validateProfile(input: unknown): TopicProfile {
     sourcePackIds: Array.isArray(record.sourcePackIds) ? assertStringArray(record.sourcePackIds, "profile.sourcePackIds") : undefined,
     defaultView: assertOptionalString(record.defaultView, "profile.defaultView"),
     defaultWindow: assertOptionalString(record.defaultWindow, "profile.defaultWindow"),
-    mode: typeof record.mode === "string" ? (record.mode as TopicProfile["mode"]) : undefined,
   };
 }
 

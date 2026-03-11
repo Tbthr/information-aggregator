@@ -10,6 +10,8 @@ describe("getSmokeCommands", () => {
       "bun scripts/aggregator.ts config validate",
       "bun scripts/aggregator.ts run --view item-list",
       "bun scripts/aggregator.ts run --view daily-brief",
+      "bun scripts/aggregator.ts run --view item-list --format json",
+      "bun scripts/aggregator.ts sources list",
     ]);
   });
 });

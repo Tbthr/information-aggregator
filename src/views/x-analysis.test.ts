@@ -47,6 +47,28 @@ describe("x analysis views", () => {
     expect(markdown).toContain("linked article");
   });
 
+  test("x-bookmarks-analysis keeps mixed Chinese and English themes readable", () => {
+    const model = buildViewModel(
+      {
+        ...queryResult,
+        rankedItems: [
+          {
+            ...queryResult.rankedItems[0],
+            title: "高质量长文，推荐阅读。这文章只有长期使用 AI 和本身有很好写作功底的才写的出来。",
+            normalizedTitle: "高质量长文，推荐阅读。这文章只有长期使用 ai 和本身有很好写作功底的才写的出来。",
+            normalizedText: "高质量长文，推荐阅读。这文章只有长期使用 ai 和本身有很好写作功底的才写的出来。 人文工作者如果用好 ai 跟程序员用 ai 一样可以极大的放大自身能力。",
+          },
+        ],
+      },
+      "x-bookmarks-analysis",
+    );
+
+    const topThemes = model.sections.find((section) => section.title === "Top Themes");
+
+    expect(topThemes?.items[0]?.title).toBe("高质量长文，推荐阅读。这文章只有长期使用...");
+    expect(topThemes?.items[0]?.title.includes("使用 ai 和本身")).toBe(false);
+  });
+
   test("x-likes-analysis summarizes interest signals", () => {
     const model = buildViewModel(
       {

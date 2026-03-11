@@ -7,7 +7,7 @@ describe("run persistence", () => {
     const db = createDb(":memory:");
     createRun(db, {
       id: "run-1",
-      mode: "scan",
+      kind: "query",
       sourceSelectionJson: "[]",
       paramsJson: "{}",
       status: "running",

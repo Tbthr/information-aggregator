@@ -203,15 +203,15 @@ function getSources(): Source[] {
   ];
 }
 
-function getProfiles(mode: "scan" | "digest"): TopicProfile[] {
+function getProfiles(viewId: "item-list" | "daily-brief" | "x-bookmarks-analysis"): TopicProfile[] {
   return [
     {
       id: "all",
       name: "All Sources",
       topicIds: ["all-topics"],
       sourcePackIds: ["all-pack"],
-      defaultView: mode === "digest" ? "daily-brief" : "item-list",
-      defaultWindow: mode === "digest" ? "24h" : "7d",
+      defaultView: viewId,
+      defaultWindow: viewId === "daily-brief" ? "24h" : "7d",
     },
   ];
 }
@@ -286,7 +286,7 @@ describe("source runtime repair e2e", () => {
       format: "markdown",
     }, {
       loadSources: getSources,
-      loadProfiles: () => getProfiles("scan"),
+      loadProfiles: () => getProfiles("item-list"),
       loadTopics: getTopics,
       loadSourcePacks: getSourcePacks,
       loadViews: getViews,
@@ -310,7 +310,7 @@ describe("source runtime repair e2e", () => {
       format: "markdown",
     }, {
       loadSources: getSources,
-      loadProfiles: () => getProfiles("digest"),
+      loadProfiles: () => getProfiles("daily-brief"),
       loadTopics: getTopics,
       loadSourcePacks: getSourcePacks,
       loadViews: getViews,
@@ -332,7 +332,7 @@ describe("source runtime repair e2e", () => {
       format: "markdown",
     }, {
       loadSources: getSources,
-      loadProfiles: () => getProfiles("digest"),
+      loadProfiles: () => getProfiles("x-bookmarks-analysis"),
       loadTopics: getTopics,
       loadSourcePacks: getSourcePacks,
       loadViews: getViews,

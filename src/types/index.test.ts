@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import type { RawItem, RunMode } from "./index";
+import type { RawItem, RunKind } from "./index";
 
 describe("core types", () => {
-  test("RunMode includes scan and digest", () => {
-    const modes: RunMode[] = ["scan", "digest"];
-    expect(modes).toHaveLength(2);
+  test("RunKind supports query execution semantics", () => {
+    const kinds: RunKind[] = ["query"];
+    expect(kinds).toHaveLength(1);
   });
 
   test("RawItem supports basic ingestion fields", () => {

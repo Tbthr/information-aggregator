@@ -1,14 +1,32 @@
 import type { QueryResult } from "../query/run-query";
 import type { ViewModel } from "./registry";
 
-function topTerms(result: QueryResult): string[] {
-  const counts = new Map<string, number>();
+function truncateTheme(value: string): string {
+  const normalized = value.trim().replace(/\s+/g, " ");
+  if (normalized.length <= 20) {
+    return normalized;
+  }
+  return `${normalized.slice(0, 20).trimEnd()}...`;
+}
+
+function topThemes(result: QueryResult): string[] {
+  const seen = new Set<string>();
+  const themes: string[] = [];
+
   for (const item of result.rankedItems) {
-    for (const word of (item.normalizedText ?? "").split(/\s+/).filter((token) => token.length > 4)) {
-      counts.set(word, (counts.get(word) ?? 0) + 1);
+    const candidate = item.title ?? item.normalizedTitle ?? item.id;
+    const theme = truncateTheme(candidate);
+    if (theme === "" || seen.has(theme)) {
+      continue;
+    }
+    seen.add(theme);
+    themes.push(theme);
+    if (themes.length === 3) {
+      break;
     }
   }
-  return [...counts.entries()].sort((left, right) => right[1] - left[1]).slice(0, 3).map(([term]) => term);
+
+  return themes;
 }
 
 export function buildXBookmarksAnalysisView(result: QueryResult): ViewModel {
@@ -19,7 +37,7 @@ export function buildXBookmarksAnalysisView(result: QueryResult): ViewModel {
     sections: [
       {
         title: "Top Themes",
-        items: topTerms(result).map((term) => ({ title: term })),
+        items: topThemes(result).map((theme) => ({ title: theme })),
       },
       {
         title: "Notable Items",

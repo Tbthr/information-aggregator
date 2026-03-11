@@ -3,7 +3,7 @@
 日期：2026-03-09
 状态：历史设计归档
 
-> 2026-03-10 更新：主查询入口已迁移为 `run --view <view>`，`scan` / `digest` 当前仅保留为 deprecated thin wrapper。
+> 2026-03-11 更新：当前实际运行入口只保留 `run --view <view>`、`sources list`、`config validate`；`scan` / `digest` 已从 CLI surface 移除。
 
 ## 实现进展快照
 

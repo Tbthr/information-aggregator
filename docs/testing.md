@@ -17,6 +17,8 @@ bun scripts/aggregator.ts --help
 bun scripts/aggregator.ts config validate
 bun scripts/aggregator.ts run --view item-list
 bun scripts/aggregator.ts run --view daily-brief
+bun scripts/aggregator.ts run --view item-list --format json
+bun scripts/aggregator.ts sources list
 ```
 
 ## 人工验收清单
@@ -26,7 +28,11 @@ bun scripts/aggregator.ts run --view daily-brief
 - `bun scripts/aggregator.ts config validate` 能通过示例配置
 - `bun scripts/aggregator.ts run --view item-list` 能输出 Markdown
 - `bun scripts/aggregator.ts run --view daily-brief` 能输出 Markdown
+- `bun scripts/aggregator.ts run --view x-bookmarks-analysis` 能输出含 `Summary`、`Top Themes`、`Notable Items` 的 Markdown
+- `bun scripts/aggregator.ts run --view x-likes-analysis` 能输出 X 点赞分析 Markdown
+- `bun scripts/aggregator.ts run --view x-longform-hot` 能输出 X 长文热点 Markdown
 - `bun scripts/aggregator.ts run --view item-list --format json` 能输出结构化 JSON
+- `bun scripts/aggregator.ts sources list` 能输出 `sourceId<TAB>sourceType<TAB>sourceName`
 - 示例配置文件与文档保持一致且可读
 
 ## 端到端检查

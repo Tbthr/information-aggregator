@@ -7,7 +7,7 @@
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                              CLI Layer (cli/)                               │
-│   aggregator.ts → parse-cli.ts → run-digest.ts / run-scan.ts               │
+│   aggregator.ts → parse-cli.ts → runQuery() / renderViewMarkdown()         │
 └─────────────────────────────────────────────────────────────────────────────┘
                                       │
                                       ▼
@@ -25,7 +25,7 @@
 │ • validate.ts   │  │ • normalize.ts      │  │ • daily-brief.ts               │
 │                 │  │ • dedupe-exact.ts   │  │ • item-list.ts                 │
 │                 │  │ • dedupe-near.ts    │  │ • x-*.ts                       │
-│                 │  │ • topic-match.ts    │  │ • digest.ts / json.ts          │
+│                 │  │ • topic-match.ts    │  │ • render helpers / json.ts      │
 │                 │  │ • enrich.ts         │  │                                │
 │                 │  │ • rank.ts           │  │                                │
 │                 │  │ • cluster.ts        │  │                                │
@@ -485,12 +485,16 @@ bun run check
 bun run smoke
 bun run e2e
 bun scripts/aggregator.ts --help
+bun scripts/aggregator.ts --version
+bun scripts/aggregator.ts config validate
 bun scripts/aggregator.ts run --view item-list
 bun scripts/aggregator.ts run --view daily-brief
 bun scripts/aggregator.ts run --view x-bookmarks-analysis
+bun scripts/aggregator.ts run --view x-likes-analysis
+bun scripts/aggregator.ts run --view x-longform-hot
 bun scripts/aggregator.ts run --view item-list --format json
+bun scripts/aggregator.ts sources list
 bun scripts/aggregator.ts sources list --source-type rss
-bun scripts/aggregator.ts config validate
 ```
 
 ## 输出模式
@@ -500,7 +504,10 @@ bun scripts/aggregator.ts config validate
 - `x-bookmarks-analysis` / `x-likes-analysis`：面向 X 收藏/点赞的分析视图
 - `x-longform-hot`：面向 X 长文与外链热度的发现视图
 - `--format json`：输出稳定的中间层 JSON，包含 `query`、`selection`、`rankedItems`、`clusters` 与 `viewModel`
-- `scan` / `digest`：仍可调用，但仅作为 deprecated thin wrapper
+- `run --view <view>`：唯一查询入口；`item-list` 与 `daily-brief` 分别承接旧 `scan` / `digest` 的产品语义
+- `sources list`：输出 `sourceId<TAB>sourceType<TAB>sourceName`
+- `config validate`：输出 `Config validation passed`
+- `--help` / `--version`：分别输出帮助文案和版本号
 
 ## 示例工作流
 
@@ -568,7 +575,6 @@ bun scripts/aggregator.ts run --view daily-brief
 - 已完成：profile preset、view config、统一 selection resolution
 - 已完成：规范化、去重、topic match、排序、聚类
 - 已完成：`run --view` 查询入口、Markdown / JSON 输出
-- 已完成：`scan` 与 `digest` thin wrapper 兼容层
 - 已完成：候选评分、cluster summary、digest narration 的 AI hook
 - 已完成：raw items、normalized items、clusters 的 end-to-end 持久化
 - 尚未实现：深度 enrichment、feedback learning、Web UI、多用户能力

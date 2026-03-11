@@ -52,7 +52,7 @@ describe("config loading", () => {
     );
     const topics = YAML.parse(topicsFile) as { topics: Array<{ id: string }> };
     const profiles = YAML.parse(profilesFile) as {
-      profiles: Array<{ topicIds: string[]; sourcePackIds?: string[]; defaultView?: string; defaultWindow?: string; mode?: string }>;
+      profiles: Array<{ topicIds: string[]; sourcePackIds?: string[]; defaultView?: string; defaultWindow?: string }>;
     };
     const topicIds = new Set(topics.topics.map((topic) => topic.id));
 
@@ -70,7 +70,6 @@ describe("config loading", () => {
     expect(profiles.profiles[0]?.sourcePackIds).toEqual(["ai-news-sites", "engineering-blogs-core"]);
     expect(profiles.profiles[0]?.defaultView).toBe("daily-brief");
     expect(profiles.profiles[0]?.defaultWindow).toBe("24h");
-    expect(profiles.profiles[0]?.mode).toBeUndefined();
   });
 
   test("keeps default runnable packs limited to enabled public sources", async () => {

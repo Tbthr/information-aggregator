@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
 import { collectSources, type CollectDependencies } from "../pipeline/collect";
+import { resolveSelection } from "../query/resolve-selection";
 import { runQuery } from "../query/run-query";
 import { renderQueryJson } from "../render/json";
 import type { RawItem, QueryViewDefinition, Source, SourcePack, TopicDefinition, TopicProfile } from "../types/index";
@@ -328,6 +329,27 @@ describe("mock source end-to-end flow", () => {
     expect(json).toContain("\"query\"");
     expect(json).toContain("\"selection\"");
     expect(json).toContain("\"rankedItems\"");
+  });
+
+  test("sources list returns tab-separated source rows", () => {
+    const selection = resolveSelection({
+      query: {
+        command: "sources list",
+        profileId: "default",
+        sourceTypes: ["rss", "json-feed"],
+        format: "markdown",
+      },
+      profiles: getMockProfiles(),
+      sourcePacks: getMockSourcePacks(),
+      sources: getMockSources(),
+      views: getMockViews(),
+    });
+    const rows = selection.sources.map((source) => `${source.id}\t${source.type}\t${source.name}`);
+
+    expect(rows).toEqual([
+      "json-1\tjson-feed\tJSON Feed",
+      "rss-1\trss\tRSS",
+    ]);
   });
 });
 

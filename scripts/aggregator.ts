@@ -7,8 +7,6 @@ import { parseQueryCliArgs } from "../src/query/parse-cli";
 import { resolveSelection } from "../src/query/resolve-selection";
 import { runQuery } from "../src/query/run-query";
 import { renderQueryJson } from "../src/render/json";
-import { runDigest } from "../src/cli/run-digest";
-import { runScan } from "../src/cli/run-scan";
 import { buildViewModel, renderViewMarkdown } from "../src/views/registry";
 
 async function main(): Promise<void> {
@@ -53,18 +51,6 @@ async function main(): Promise<void> {
       views,
     });
     console.log(selection.sources.map((source) => `${source.id}\t${source.type}\t${source.name}`).join("\n"));
-    return;
-  }
-
-  if (parsed.command === "scan") {
-    const result = await runScan({ profileId: "default", dryRun: true });
-    console.log(result.markdown);
-    return;
-  }
-
-  if (parsed.command === "digest") {
-    const result = await runDigest({ profileId: "default", dryRun: true });
-    console.log(result.markdown);
     return;
   }
 

@@ -4,6 +4,8 @@
 
 **Goal:** 用统一的 `run --view` 查询入口替代当前 `scan` / `digest` 顶层模型，把时间窗口、source 选择、topic 与 view 变成一等参数，并保留 Markdown 输出与稳定中间层 JSON。
 
+> 2026-03-11 状态更新：本计划中的“thin wrapper 兼容阶段”已结束；当前仓库只保留 `run --view`、`sources list`、`config validate` 等新 CLI surface。
+
 **Architecture:** 先收紧配置语义，移除 `referenceOnly` 和 `profile.mode` 这类旧模型残留，再新增 `QuerySpec`、`SelectionResolver`、`QueryEngine` 和 `ViewRegistry`。实现采用短期兼容迁移：先引入新命令与新视图，把 `scan` / `digest` 降为 thin wrapper，待文档、测试和配置完成迁移后再删除旧入口。
 
 **Tech Stack:** TypeScript、Bun、YAML、SQLite、bun:test

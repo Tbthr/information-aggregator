@@ -1,6 +1,6 @@
 # Query Runner 与 View System 设计
 
-> 2026-03-10 实现状态：`run --view`、`sources list`、view config、shared query engine、Markdown / JSON renderer 已落地；`scan` / `digest` 仍保留为兼容 wrapper。
+> 2026-03-11 状态更新：`run --view`、`sources list`、view config、shared query engine、Markdown / JSON renderer 已落地；`scan` / `digest` 已从 CLI surface 移除。
 
 ## 背景
 

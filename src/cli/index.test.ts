@@ -6,17 +6,20 @@ describe("cli bootstrap", () => {
     expect(getCliVersion()).toBe("0.1.0");
   });
 
-  test("promotes run and sources list while marking legacy commands deprecated", () => {
+  test("only advertises supported commands", () => {
     const help = getHelpText();
     expect(help).toContain("run --view <view>");
     expect(help).toContain("sources list");
-    expect(help).toContain("scan (deprecated)");
-    expect(help).toContain("digest (deprecated)");
+    expect(help).toContain("config validate");
+    expect(help).not.toContain("scan");
+    expect(help).not.toContain("digest");
   });
 
-  test("parses run, sources list, and config validate commands", () => {
+  test("parses supported commands and rejects removed legacy commands", () => {
     expect(parseCliArgs(["run", "--view", "daily-brief"]).command).toBe("run");
     expect(parseCliArgs(["sources", "list"]).command).toBe("sources list");
     expect(parseCliArgs(["config", "validate"]).command).toBe("config validate");
+    expect(parseCliArgs(["scan"]).command).toBe("help");
+    expect(parseCliArgs(["digest"]).command).toBe("help");
   });
 });

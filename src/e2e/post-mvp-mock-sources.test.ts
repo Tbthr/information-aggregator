@@ -1,10 +1,16 @@
 import { describe, expect, test } from "bun:test";
-import { runDigest } from "../cli/run-digest";
 import { createDb } from "../db/client";
+import { insertClusters } from "../db/queries/clusters";
+import { insertNormalizedItems } from "../db/queries/normalized-items";
+import { createOutput } from "../db/queries/outputs";
+import { insertRawItems } from "../db/queries/raw-items";
+import { createRun, finishRun } from "../db/queries/runs";
+import { runQuery } from "../query/run-query";
 import type { Source, SourcePack, TopicDefinition, TopicProfile } from "../types/index";
+import { buildViewModel, renderViewMarkdown } from "../views/registry";
 
 describe("profile-bound e2e", () => {
-  test("runs digest with resolved profile binding and persisted pipeline entities", async () => {
+  test("runs daily-brief with resolved profile binding and persisted pipeline entities", async () => {
     const result = await runPostMvpFixture();
 
     expect(result.markdown).toContain("# Daily Digest");
@@ -122,13 +128,27 @@ async function runPostMvpFixture(): Promise<{
   ];
 
   try {
-    const result = await runDigest(
-      {
+    const runId = "run-query-1";
+    createRun(db, {
+      id: runId,
+      kind: "query",
+      sourceSelectionJson: JSON.stringify([]),
+      paramsJson: JSON.stringify({
         profileId: "default",
-        dryRun: false,
+        viewId: "daily-brief",
+        format: "markdown",
+      }),
+      status: "running",
+      createdAt: "2026-03-09T12:00:00Z",
+    });
+    const result = await runQuery(
+      {
+        command: "run",
+        profileId: "default",
+        viewId: "daily-brief",
+        format: "markdown",
       },
       {
-        db,
         now: () => "2026-03-09T12:00:00Z",
         loadSources: async () => sources,
         loadProfiles: async () => profiles,
@@ -136,6 +156,19 @@ async function runPostMvpFixture(): Promise<{
         loadSourcePacks: async () => sourcePacks,
       },
     );
+    const markdown = renderViewMarkdown(buildViewModel(result, "daily-brief"), "daily-brief");
+    insertRawItems(db, result.items);
+    insertNormalizedItems(db, result.normalizedItems);
+    insertClusters(db, result.clusters.map((cluster) => ({ ...cluster, runId })));
+    createOutput(db, {
+      id: `output-${runId}`,
+      runId,
+      kind: "query",
+      format: "markdown",
+      body: markdown,
+      createdAt: "2026-03-09T12:00:00Z",
+    });
+    finishRun(db, runId, "succeeded", "2026-03-09T12:00:00Z");
 
     const rawItems = db.prepare("SELECT COUNT(*) AS count FROM raw_items").get() as { count: number };
     const normalizedItems = db.prepare("SELECT COUNT(*) AS count FROM normalized_items").get() as { count: number };
@@ -143,7 +176,7 @@ async function runPostMvpFixture(): Promise<{
     const outputs = db.prepare("SELECT COUNT(*) AS count FROM outputs").get() as { count: number };
 
     return {
-      markdown: result.markdown,
+      markdown,
       persisted: {
         rawItems: rawItems.count,
         normalizedItems: normalizedItems.count,
