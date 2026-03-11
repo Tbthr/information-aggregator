@@ -248,7 +248,6 @@ bun run aggregator run --pack ai-news,tech-news --view daily-brief --window 24h
 | `json` | JSON | 原始数据，供程序消费 |
 | `daily-brief` | Markdown | 摘要格式：Highlights + Clusters + Supporting Items |
 | `item-list` | Markdown | 简单列表格式 |
-| `cluster-view` | Markdown | 按聚类组织的格式 |
 
 ### `item-list` 输出示例
 

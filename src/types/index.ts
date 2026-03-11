@@ -202,5 +202,4 @@ export const BUILTIN_VIEWS = new Set([
   "json",
   "daily-brief",
   "item-list",
-  "cluster-view",
 ]);
