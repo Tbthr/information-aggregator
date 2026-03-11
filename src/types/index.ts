@@ -204,4 +204,8 @@ export const BUILTIN_VIEWS = new Set([
   "json",
   "daily-brief",
   "item-list",
+  "x-bookmarks-analysis",
+  "x-likes-analysis",
+  "x-longform-hot",
+  "x-bookmarks-digest",
 ]);

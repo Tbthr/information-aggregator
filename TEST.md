@@ -61,6 +61,7 @@ bun scripts/aggregator.ts sources list
 - `bun scripts/aggregator.ts run --view x-longform-hot` 能输出 X 长文热点 Markdown
 - `bun scripts/aggregator.ts run --view item-list --format json` 能输出结构化 JSON
 - `bun scripts/aggregator.ts sources list` 能输出 `sourceId<TAB>sourceType<TAB>sourceName`
+- `bun scripts/aggregator.ts run --pack x-bookmarks --view x-bookmarks-digest --window all` 能输出完整日报格式（含 AI 评分、摘要、统计、选题建议）
 - 示例配置文件与文档保持一致且可读
 
 ## 端到端测试规则
