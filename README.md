@@ -1,6 +1,6 @@
 # Information Aggregator
 
-`information-aggregator` 是一个本地优先的 Bun + TypeScript 信息聚合工具，用于收集已配置的数据源、去除重复内容，并通过统一的 `run --view <view>` 查询入口输出 Markdown 或 JSON 结果。
+`information-aggregator` 是一个本地优先的 Bun + TypeScript 信息聚合工具，用于收集已配置的数据源、去除重复内容，并通过统一的 CLI 输出 Markdown 或 JSON 结果。
 
 ## 架构概览
 
@@ -13,7 +13,7 @@
                                       ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                            Query Layer (query/)                             │
-│   QuerySpec → resolveSelection() → runQuery() → QueryResult                │
+│   ParsedRunArgs → resolveSelection() → runQuery() → QueryResult            │
 └─────────────────────────────────────────────────────────────────────────────┘
           │                    │                      │
           ▼                    ▼                      ▼
@@ -21,8 +21,8 @@
 │ Config Layer    │  │   Pipeline Layer    │  │   Views/Render Layer           │
 │ (config/)       │  │   (pipeline/)       │  │   (views/, render/)            │
 ├─────────────────┤  ├─────────────────────┤  ├────────────────────────────────┤
-│ • load.ts       │  │ • collect.ts        │  │ • registry.ts                  │
-│ • validate.ts   │  │ • normalize.ts      │  │ • daily-brief.ts               │
+│ • load-pack.ts  │  │ • collect.ts        │  │ • registry.ts                  │
+│ • load-auth.ts  │  │ • normalize.ts      │  │ • daily-brief.ts               │
 │                 │  │ • dedupe-exact.ts   │  │ • item-list.ts                 │
 │                 │  │ • dedupe-near.ts    │  │ • x-*.ts                       │
 │                 │  │ • topic-match.ts    │  │ • render helpers / json.ts      │
@@ -37,13 +37,13 @@
 │ (adapters/)     │  │   SQLite: sources, raw_items, normalized_items,        │
 ├─────────────────┤  │           clusters, runs, outputs, source_health       │
 │ • rss.ts        │  └─────────────────────────────────────────────────────────┘
-│ • json-feed.ts  │
-│ • website.ts    │            ┌─────────────────────────────────────┐
-│ • hn.ts         │            │   AI Layer (ai/) - Optional         │
-│ • reddit.ts     │            │   • scoreCandidate()                │
-│ • x-bird.ts     │            │   • summarizeCluster()              │
-│ • custom-api.ts │            │   • narrateDigest()                 │
-│ • github-*      │            └─────────────────────────────────────┘
+│ • json-feed.ts  │            ┌─────────────────────────────────────┐
+│ • website.ts    │            │   AI Layer (ai/) - Optional         │
+│ • hn.ts         │            │   • scoreCandidate()                │
+│ • reddit.ts     │            │   • summarizeCluster()              │
+│ • x-bird.ts     │            │   • narrateDigest()                 │
+│ • custom-api.ts │            └─────────────────────────────────────┘
+│ • github-*      │
 │ • opml-rss.ts   │
 │ • digest-feed.ts│
 └─────────────────┘
@@ -53,8 +53,8 @@
 
 ```
 ┌──────────────┐    ┌─────────────────┐    ┌──────────────────┐
-│  QuerySpec   │───▶│ resolveSelection│───▶│  Selected Sources│
-│ (CLI/Profile)│    │  (Profile+View) │    │   + TopicRule    │
+│ ParsedRunArgs│───▶│ resolveSelection│───▶│  Selected Sources│
+│ (--pack etc) │    │   (Pack-based)  │    │   + TopicRule    │
 └──────────────┘    └─────────────────┘    └────────┬─────────┘
                                                      │
                                                      ▼
@@ -121,254 +121,15 @@
 │  buildViewModel(result, viewId) → ViewModel                      │
 │  renderViewMarkdown(model, viewId) → Markdown/JSON               │
 │                                                                  │
-│  内置视图: item-list / daily-brief / x-bookmarks-analysis /      │
-│           x-likes-analysis / x-longform-hot                      │
+│  内置视图: item-list / daily-brief / json                        │
 └───────────────────────────────────────────────────────────────────┘
 ```
-
-## 技术实现原理
-
-### 1. 数据采集适配器模式
-
-每个数据源类型对应一个适配器，遵循统一的函数签名：
-
-```typescript
-type AdapterFn = (source: Source) => Promise<RawItem[]>;
-
-interface CollectDependencies {
-  adapters: Record<string, AdapterFn>;
-  onSourceEvent?: (event: CollectSourceEvent) => void;
-}
-```
-
-**设计优势**：
-- 通过依赖注入实现可测试性（E2E 测试可注入 mock adapters）
-- 新增数据源只需实现 `AdapterFn` 并注册
-- 统一的 `onSourceEvent` 回调用于监控采集状态
-
-**已实现适配器**：
-
-| 类型 | 文件 | 数据来源 | 特殊配置 |
-|------|------|----------|----------|
-| `rss` | rss.ts | RSS/Atom XML | - |
-| `json-feed` | json-feed-collect.ts | JSON Feed 1.1 | - |
-| `website` | website.ts | HTML 链接提取 | - |
-| `hn` | hn.ts | HN Algolia API | - |
-| `reddit` | reddit.ts | Reddit JSON API | - |
-| `github_trending` | github-trending.ts | GitHub Trending HTML | - |
-| `opml_rss` | opml-rss.ts | 本地 OPML 文件 | `config.path` |
-| `digest_feed` | digest-feed.ts | 自定义格式 | `config.format` |
-| `custom_api` | custom-api.ts | 任意 JSON API | `config.itemPath`, `config.fieldMap` |
-| `x_*` | x-bird.ts | bird CLI | `config.birdMode`, `config.authTokenEnv` |
-
-### 2. 确定性流水线设计
-
-Pipeline 核心模块全部为**纯函数**，保证：
-- 相同输入 → 相同输出
-- 无副作用，易于测试
-- 可独立验证每个阶段
-
-```typescript
-// normalize.ts - 纯函数
-export function normalizeItems(items: RawItem[]): NormalizedItem[]
-
-// dedupe-exact.ts - 纯函数
-export function dedupeExact<T extends ExactDedupItem>(items: T[]): T[]
-
-// dedupe-near.ts - 纯函数
-export function dedupeNear<T extends NearDedupItem>(items: T[], threshold = 0.74): T[]
-
-// rank.ts - 纯函数
-export function rankCandidates<T extends RankedCandidate>(candidates: T[]): Array<T & { finalScore: number }>
-
-// cluster.ts - 纯函数
-export function buildClusters(items: ClusterableItem[], runId: string): Cluster[]
-```
-
-### 3. 评分算法详解
-
-**综合评分公式**：
-
-```
-finalScore = Σ(weight_i × score_i) - penalty
-
-where:
-  weight_source = 0.30  (来源权重)
-  weight_freshness = 0.25 (新鲜度)
-  weight_topic = 0.25  (主题匹配)
-  weight_engagement = 0.10 (互动量)
-  weight_ai = 0.10 (AI质量评分，可选)
-  penalty = 0.12 (仅 community_post)
-```
-
-**互动量评分归一化**（对数尺度）：
-
-```typescript
-function toBoundedEngagementScore(metadataJson: string): number {
-  const score = metadata?.engagement?.score ?? 0;
-  const comments = metadata?.engagement?.comments ?? 0;
-  const total = Math.max(0, score) + Math.max(0, comments * 0.5);
-  return Math.min(1, Math.log10(total + 1) / 2);
-}
-```
-
-**主题匹配评分**：
-
-```typescript
-function scoreTopicMatch(item: NormalizedItem, rule: TopicRule): number {
-  const text = item.normalizedText?.toLowerCase() ?? "";
-  const keywords = rule.includeKeywords ?? [];
-  const matches = keywords.filter(k => text.includes(k.toLowerCase()));
-  return keywords.length > 0 ? matches.length / keywords.length : 0;
-}
-```
-
-### 4. 去重策略
-
-**两阶段去重**：
-
-1. **精确去重** (`dedupeExact`)：按 `canonicalUrl` 完全匹配
-   - 内容类型优先级：`article (3) > digest_entry (2) > community_post (1)`
-   - 同 URL 多源时保留优先级高的
-
-2. **近似去重** (`dedupeNear`)：按标题相似度匹配
-   - 条件：同一天内 + Jaccard 相似度 >= 0.74
-   - 保留时间戳更新的条目
-
-```typescript
-function overlapRatio(a: Set<string>, b: Set<string>): number {
-  const intersection = new Set([...a].filter(x => b.has(x)));
-  const union = new Set([...a, ...b]);
-  return union.size > 0 ? intersection.size / union.size : 0;
-}
-```
-
-### 5. 视图系统
-
-视图系统采用 **Builder + Renderer** 分离模式：
-
-```typescript
-interface ViewModel {
-  viewId: string;
-  title: string;
-  summary?: string;      // AI 生成的摘要（可选）
-  highlights?: string[];
-  sections: ViewModelSection[];
-}
-
-// 构建器：QueryResult → ViewModel
-function buildViewModel(result: QueryResult, viewId: string): ViewModel
-
-// 渲染器：ViewModel → Markdown/JSON
-function renderViewMarkdown(model: ViewModel, viewId: string): string
-```
-
-**内置视图结构**：
-
-| 视图 | 结构 | 用途 |
-|------|------|------|
-| `item-list` | Ranked Items 列表 | 快速浏览 |
-| `daily-brief` | Highlights + Top Clusters + Supporting | 每日摘要 |
-| `x-bookmarks-analysis` | Summary + Top Themes + Notable Items | X 收藏分析 |
-| `x-likes-analysis` | 同上 | X 点赞分析 |
-| `x-longform-hot` | Hot Posts + Linked Articles + Clusters | X 长文发现 |
-
-### 6. 配置层级
-
-```
-Profile (预设)
-├── topicIds[] ──────▶ Topics (关键词)
-├── sourcePackIds[] ──▶ SourcePacks ▶▶ Sources
-├── defaultView ──────▶ View 定义
-└── defaultWindow ────▶ 时间窗口
-
-Query (运行时)
-├── profileId (继承上述默认值)
-├── sourceIds/sourceTypes/packIds (覆盖/合并)
-├── viewId (覆盖)
-└── window/since/until (覆盖)
-```
-
-**优先级**：CLI 参数 > Profile 默认值 > View 默认值
-
-### 7. AI 集成边界
-
-AI 功能设计为**可选扩展**，不影响核心流水线的确定性：
-
-```typescript
-interface AiClient {
-  scoreCandidate(prompt: string): Promise<number>;     // 内容质量 0-1
-  summarizeCluster(prompt: string): Promise<string>;   // 簇摘要
-  narrateDigest(prompt: string): Promise<string>;      // 摘要叙述
-}
-
-// 使用时：
-const rankedItems = rankCandidates(
-  await enrichCandidates(candidates, {
-    limit: 5,
-    scoreCandidate: aiClient
-      ? (c) => aiClient.scoreCandidate(buildPrompt(c))
-      : undefined,  // 无 AI 时跳过
-  })
-);
-```
-
-**设计原则**：
-- AI 评分仅占 `finalScore` 的 10% 权重
-- 无 AI 配置时，`contentQualityAi = 0`，不影响排序逻辑
-- 核心流程不依赖 AI 输出
-
-### 8. 依赖注入与可测试性
-
-所有外部依赖通过可选参数注入，便于 E2E 测试：
-
-```typescript
-// runQuery 的依赖注入接口
-interface RunQueryDependencies {
-  aiClient?: AiClient | null;
-  loadSources?: () => Promise<Source[]>;
-  loadProfiles?: () => Promise<TopicProfile[]>;
-  loadTopics?: () => Promise<TopicDefinition[]>;
-  loadSourcePacks?: () => Promise<SourcePack[]>;
-  loadViews?: () => Promise<QueryViewDefinition[]>;
-  collectSources?: (sources, deps) => Promise<RawItem[]>;
-  buildClusters?: typeof buildClusters;
-  now?: () => string;
-}
-
-// E2E 测试示例
-const result = await runQuery(query, {
-  loadSources: getXMockSources,
-  collectSources: (sources, deps) => {
-    return collectSources(sources, {
-      ...deps,
-      adapters: { ...deps.adapters, ...mockAdapters },
-    });
-  },
-});
-```
-
-### 9. 数据持久化
-
-SQLite schema 包含以下核心表：
-
-| 表名 | 职责 |
-|------|------|
-| `sources` | 数据源配置与元数据 |
-| `raw_items` | 原始采集数据 |
-| `normalized_items` | 规范化后的条目 |
-| `clusters` | 内容聚类结果 |
-| `runs` | 执行记录 |
-| `outputs` | 输出结果 |
-| `source_health` | 数据源健康状态监控 |
-
----
 
 ## 当前能力
 
 - TypeScript + Bun CLI
 - SQLite 持久化：sources、runs、outputs、source health
-- 配置驱动的 sources、source packs、topics、profiles、views
+- Pack 驱动的数据源配置（自包含 YAML 文件）
 - 已接入 `rss`、`json-feed`、`website`、`hn`、`reddit`
 - 已接入 `github_trending`、`digest_feed`、`custom_api`、`opml_rss`
 - 已接入基于 `bird CLI` 的 X family adapter
@@ -377,25 +138,21 @@ SQLite schema 包含以下核心表：
 
 ## 配置文件
 
-示例配置位于 [`config/`](./config)：
+配置位于 `config/packs/` 目录，每个 Pack 是一个自包含的 YAML 文件：
 
-- `sources.example.yaml`
-- `topics.example.yaml`
-- `profiles.example.yaml`
-- `views.example.yaml`
-- `config/packs/ai-news-sites.yaml`
-- `config/packs/engineering-blogs-core.yaml`
+```
+config/packs/
+├── ai-news.yaml        # AI 新闻与动态（5 sources）
+├── karpathy-picks.yaml # Karpathy 精选技术博客（90 sources）
+├── reference.yaml      # Adapter schema 示例（12 sources）
+├── security.yaml       # 网络安全（5 sources）
+└── tech-news.yaml      # 科技资讯聚合（8 sources）
+```
 
-当前默认使用本地 YAML 配置并运行在本地状态之上。
-
-### V2 Pack 配置格式（推荐）
-
-V2 配置格式采用自包含的 Pack 设计，将数据源直接内联到 Pack 文件中，简化了配置层级：
-
-**Pack 文件结构示例** (`config/packs-v2/ai-news.yaml`)：
+### Pack 文件结构
 
 ```yaml
-# config/packs-v2/ai-news.yaml
+# config/packs/ai-news.yaml
 pack:
   id: ai-news
   name: AI 新闻与动态
@@ -417,119 +174,33 @@ sources:
     enabled: false  # 可选，默认 true
 ```
 
-**V2 配置特点**：
-- Pack 自包含：不再需要单独的 `sources.yaml` 文件
-- 内联数据源：每个 Pack 文件包含完整的数据源定义
-- 简化 CLI：直接通过 `--pack` 参数指定 Pack，无需预先配置 Profile
-- 支持多 Pack 合并：可同时指定多个 Pack ID，自动去重
+**字段说明**：
 
-**V2 CLI 使用方式**：
+| 字段 | 必填 | 说明 |
+|------|------|------|
+| `pack.id` | ✅ | Pack 唯一标识 |
+| `pack.name` | ✅ | 显示名称 |
+| `pack.description` | ❌ | Pack 描述 |
+| `pack.keywords` | ❌ | 主题关键词列表，用于内容过滤 |
+| `sources[].type` | ✅ | 数据源类型 |
+| `sources[].url` | ✅ | 数据源 URL |
+| `sources[].description` | ❌ | 数据源描述 |
+| `sources[].enabled` | ❌ | 是否启用，默认 true |
 
-```bash
-# 单 Pack 查询
-bun run aggregator run --pack ai-news --view daily-brief --window 24h
+**数据源类型**：
 
-# 多 Pack 合并查询
-bun run aggregator run --pack ai-news,engineering --view daily-brief --window 7d
-
-# JSON 输出
-bun run aggregator run --pack ai-news --view json --window all
-```
-
-**V2 参数说明**：
-- `--pack`：Pack ID（必填），支持逗号分隔的多 Pack
-- `--view`：视图类型（必填）：`item-list`、`daily-brief`、`json` 等
-- `--window`：时间窗口（必填）：`24h`、`7d`、`30d` 或 `all`
-
-### V1 配置格式（传统）
-
-传统 V1 配置需要多个配置文件配合使用：
-
-```yaml
-# config/sources.example.yaml
-sources:
-  - id: openai-news
-    name: OpenAI News
-    type: rss
-    enabled: true
-    url: https://openai.com/news/rss.xml
-
-  - id: techurls
-    name: TechURLs
-    type: website
-    enabled: true
-    url: https://techurls.com/
-
-  - id: simon-willison
-    name: Simon Willison
-    type: website
-    enabled: true
-    url: https://simonwillison.net/
-```
-
-X family 最小配置示例：
-
-```yaml
-  - id: x-home-local
-    name: X Home Local
-    type: x_home
-    enabled: true
-    url: https://x.com/home
-    config:
-      birdMode: home
-      chromeProfile: Default
-      cookieSource:
-        - chrome
-```
-
-如果不走浏览器 cookie，也可以改用显式 token：
-
-```yaml
-    config:
-      birdMode: home
-      authTokenEnv: BIRD_AUTH_TOKEN
-      ct0Env: BIRD_CT0
-```
-
-```yaml
-# config/topics.example.yaml
-topics:
-  - id: ai-news
-    name: AI News
-    keywords:
-      - ai
-      - model
-```
-
-```yaml
-# config/profiles.example.yaml
-profiles:
-  - id: default
-    name: Default Query
-    topicIds:
-      - ai-news
-      - engineering-blogs
-    sourcePackIds:
-      - ai-news-sites
-      - engineering-blogs-core
-    defaultView: daily-brief
-    defaultWindow: 24h
-```
-
-## 默认配置与 Pack taxonomy
-
-当前 `config/packs` 只保留可直接参与 runtime resolution 的 pack：
-
-- `ai-news-sites`：默认启用的公开 AI 新闻站与聚合站
-- `engineering-blogs-core`：默认启用的工程博客核心源
-
-注意：
-
-- 当前仓库内部只保留 canonical source type 命名
-- `config/sources.example.yaml` 默认只暴露可直接运行的公开 source
-- `custom_api`、`opml_rss`、X family 这类依赖本地文件、登录态或外部前置条件的 source，应由使用者在本地配置中按需添加
-- `config.placeholderMode: schema` 仍可用于 source 级 schema placeholder，但不再通过 pack 暴露为 reference-only 运行分组
-- 当前 Phase 4 的首个质量提升切片是确定性的 link relation enrichment：优先消费已有 `canonicalHints`，显式区分原文、讨论源与分享源，而不是直接引入正文抓取
+| 类型 | 数据来源 | 特殊配置 |
+|------|----------|----------|
+| `rss` | RSS/Atom XML | - |
+| `json-feed` | JSON Feed 1.1 | - |
+| `website` | HTML 链接提取 | - |
+| `hn` | HN Algolia API | - |
+| `reddit` | Reddit JSON API | - |
+| `github_trending` | GitHub Trending HTML | - |
+| `opml_rss` | 本地 OPML 文件 | `config.path` |
+| `digest_feed` | 自定义格式 | `config.format` |
+| `custom_api` | 任意 JSON API | `config.itemPath`, `config.fieldMap` |
+| `x_*` | bird CLI | `config.birdMode`, `config.authTokenEnv` |
 
 ## 命令
 
@@ -543,57 +214,36 @@ bun scripts/aggregator.ts --help
 bun scripts/aggregator.ts --version
 bun scripts/aggregator.ts config validate
 bun scripts/aggregator.ts sources list
-bun scripts/aggregator.ts sources list --source-type rss
 ```
 
-### V2 Pack CLI（推荐）
+### 查询命令
 
 ```bash
 # 单 Pack 查询
 bun run aggregator run --pack ai-news --view daily-brief --window 24h
 bun run aggregator run --pack ai-news --view item-list --window 7d
-bun run aggregator run --pack ai-news --view json --window all
+bun run aggregator run --pack karpathy-picks --view json --window all
 
 # 多 Pack 合并查询
-bun run aggregator run --pack ai-news,engineering --view daily-brief --window 24h
+bun run aggregator run --pack ai-news,tech-news --view daily-brief --window 24h
 ```
 
-### V1 Profile CLI（传统）
+### 参数说明
 
-```bash
-bun scripts/aggregator.ts run --view item-list
-bun scripts/aggregator.ts run --view daily-brief
-bun scripts/aggregator.ts run --view x-bookmarks-analysis
-bun scripts/aggregator.ts run --view x-likes-analysis
-bun scripts/aggregator.ts run --view x-longform-hot
-bun scripts/aggregator.ts run --view item-list --format json
-```
+| 参数 | 必填 | 说明 | 示例值 |
+|------|------|------|--------|
+| `--pack` | ✅ | Pack ID，支持逗号分隔的多 Pack | `ai-news` 或 `ai-news,tech-news` |
+| `--view` | ✅ | 输出格式 | `json`, `daily-brief`, `item-list` |
+| `--window` | ✅ | 时间窗口 | `24h`, `7d`, `3d`, `all` |
 
 ## 输出模式
 
-- `item-list`：适合快速浏览的排序 Markdown 列表
-- `daily-brief`：带高亮与聚类的结构化 Markdown 摘要
-- `x-bookmarks-analysis` / `x-likes-analysis`：面向 X 收藏/点赞的分析视图
-- `x-longform-hot`：面向 X 长文与外链热度的发现视图
-- `--format json`：输出稳定的中间层 JSON，包含 `query`、`selection`、`rankedItems`、`clusters` 与 `viewModel`
-- `run --view <view>`：唯一查询入口；`item-list` 与 `daily-brief` 分别承接旧 `scan` / `digest` 的产品语义
-- `sources list`：输出 `sourceId<TAB>sourceType<TAB>sourceName`
-- `config validate`：输出 `Config validation passed`
-- `--help` / `--version`：分别输出帮助文案和版本号
-
-## 示例工作流
-
-```bash
-bun run smoke
-```
-
-更完整的验证说明请见 [`docs/testing.md`](./docs/testing.md)。
-
-```bash
-bun scripts/aggregator.ts config validate
-bun scripts/aggregator.ts run --view item-list
-bun scripts/aggregator.ts run --view daily-brief
-```
+| 视图 | 输出格式 | 说明 |
+|------|---------|------|
+| `json` | JSON | 原始数据，供程序消费 |
+| `daily-brief` | Markdown | 摘要格式：Highlights + Clusters + Supporting Items |
+| `item-list` | Markdown | 简单列表格式 |
+| `cluster-view` | Markdown | 按聚类组织的格式 |
 
 ### `item-list` 输出示例
 
@@ -620,6 +270,20 @@ bun scripts/aggregator.ts run --view daily-brief
   - Why it matters
 ```
 
+## 示例工作流
+
+```bash
+bun run smoke
+```
+
+更完整的验证说明请见 [`docs/testing.md`](./docs/testing.md)。
+
+```bash
+bun scripts/aggregator.ts config validate
+bun scripts/aggregator.ts run --pack ai-news --view daily-brief --window 24h
+bun scripts/aggregator.ts run --pack karpathy-picks --view item-list --window 7d
+```
+
 ## 后续计划
 
 以下内容已经进入持续迭代路线图：
@@ -638,15 +302,14 @@ bun scripts/aggregator.ts run --view daily-brief
 
 - 已完成：项目脚手架与 CLI
 - 已完成：本地 YAML 配置加载与校验
-- 已完成：按 source taxonomy 组织的 source config 与 source packs
+- 已完成：Pack 驱动的数据源配置
 - 已完成：SQLite schema 与核心表
 - 已完成：`rss`、`json-feed`、`website` adapter
 - 已完成：`hn`、`reddit` 的 collector 路径支持
 - 已完成：`github_trending`、`digest_feed`、`custom_api`、`opml_rss` adapter
 - 已完成：X family `bird CLI` adapter，需本地授权后手动 probe
-- 已完成：profile preset、view config、统一 selection resolution
 - 已完成：规范化、去重、topic match、排序、聚类
-- 已完成：`run --view` 查询入口、Markdown / JSON 输出
+- 已完成：`run --pack --view --window` 查询入口、Markdown / JSON 输出
 - 已完成：候选评分、cluster summary、digest narration 的 AI hook
 - 已完成：raw items、normalized items、clusters 的 end-to-end 持久化
 - 尚未实现：深度 enrichment、feedback learning、Web UI、多用户能力
