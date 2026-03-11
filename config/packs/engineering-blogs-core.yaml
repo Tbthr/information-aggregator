@@ -1,9 +1,0 @@
-pack:
-  id: engineering-blogs-core
-  name: Engineering Blogs Core
-  sourceIds:
-    - overreacted
-    - paul-graham
-    - gwern
-    - troy-hunt
-    - simon-willison

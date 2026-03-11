@@ -22,27 +22,21 @@ export const CANONICAL_SOURCE_TYPES = [
 export type SourceType = (typeof CANONICAL_SOURCE_TYPES)[number];
 export type RunStatus = "pending" | "running" | "completed" | "failed" | "succeeded";
 
-export interface Source {
-  id: string;
-  name: string;
+// 内联数据源定义
+export interface InlineSource {
   type: SourceType;
-  enabled: boolean;
-  url?: string;
-  configJson?: string;
-  weight?: number;
+  url: string;
+  description?: string;
+  enabled?: boolean;
 }
 
+// Pack 定义 - 自包含数据源
 export interface SourcePack {
   id: string;
   name: string;
   description?: string;
-  sourceIds: string[];
-}
-
-export interface TopicDefinition {
-  id: string;
-  name: string;
-  keywords: string[];
+  keywords?: string[];
+  sources: InlineSource[];
 }
 
 export interface RawItem {
@@ -132,23 +126,6 @@ export interface OutputRecord {
   createdAt: string;
 }
 
-export interface TopicProfile {
-  id: string;
-  name: string;
-  topicIds: string[];
-  sourcePackIds?: string[];
-  defaultView?: string;
-  defaultWindow?: string;
-}
-
-export interface QueryViewDefinition {
-  id: string;
-  name: string;
-  description?: string;
-  defaultWindow?: string;
-  defaultSort?: QuerySort;
-  defaultSourceTypes?: SourceType[];
-}
 
 export interface SourceHealth {
   sourceId: string;
@@ -206,34 +183,17 @@ export function parseRawItemMetadata(metadataJson: string | undefined): RawItemM
   }
 }
 
-// Pack 内联数据源定义 (V2)
-export interface InlineSource {
-  type: SourceType;
-  url: string;
-  description?: string;
-  enabled?: boolean;
-}
-
-// 新 Pack 定义 (V2) - 自包含数据源
-export interface SourcePackV2 {
-  id: string;
-  name: string;
-  description?: string;
-  keywords?: string[];
-  sources: InlineSource[];
+// CLI 运行参数
+export interface ParsedRunArgs {
+  packIds: string[];
+  viewId: string;
+  window: string;
 }
 
 // 授权配置
 export interface AuthConfig {
   adapter: string;
   config: Record<string, unknown>;
-}
-
-// CLI 运行参数 (V2)
-export interface ParsedRunArgsV2 {
-  packIds: string[];
-  viewId: string;
-  window: string;
 }
 
 // 内置视图列表

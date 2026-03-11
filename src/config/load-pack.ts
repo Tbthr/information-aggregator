@@ -1,7 +1,7 @@
 import { readFile, readdir } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import YAML from "yaml";
-import type { InlineSource, SourcePackV2, SourceType } from "../types/index";
+import type { InlineSource, SourcePack, SourceType } from "../types/index";
 import { CANONICAL_SOURCE_TYPES } from "../types/index";
 
 export const VALID_SOURCE_TYPES = new Set<SourceType>(CANONICAL_SOURCE_TYPES);
@@ -27,23 +27,23 @@ export function validateInlineSource(input: unknown): InlineSource {
   };
 }
 
-export function validateSourcePackV2(input: unknown): SourcePackV2 {
+export function validateSourcePack(input: unknown): SourcePack {
   if (typeof input !== "object" || input === null) {
-    throw new Error("SourcePackV2 must be an object");
+    throw new Error("SourcePack must be an object");
   }
   const record = input as Record<string, unknown>;
   const pack = record.pack;
 
   if (typeof pack !== "object" || pack === null) {
-    throw new Error("SourcePackV2.pack is required");
+    throw new Error("SourcePack.pack is required");
   }
   const packRecord = pack as Record<string, unknown>;
 
   if (typeof packRecord.id !== "string" || !packRecord.id) {
-    throw new Error("SourcePackV2.pack.id is required");
+    throw new Error("SourcePack.pack.id is required");
   }
   if (typeof packRecord.name !== "string" || !packRecord.name) {
-    throw new Error("SourcePackV2.pack.name is required");
+    throw new Error("SourcePack.pack.name is required");
   }
 
   const sources = Array.isArray(record.sources) ? record.sources : [];
@@ -66,23 +66,23 @@ async function loadYamlFile(filePath: string): Promise<Record<string, unknown>> 
   return (YAML.parse(fileContents) as Record<string, unknown> | null) ?? {};
 }
 
-export async function loadPackV2(filePath: string): Promise<SourcePackV2> {
+export async function loadPack(filePath: string): Promise<SourcePack> {
   const parsed = await loadYamlFile(filePath);
-  return validateSourcePackV2(parsed);
+  return validateSourcePack(parsed);
 }
 
-export async function loadAllPacksV2(directory: string): Promise<SourcePackV2[]> {
+export async function loadAllPacks(directory: string): Promise<SourcePack[]> {
   const files = await readdir(directory);
   const yamlFiles = files.filter((f) => f.endsWith(".yaml") || f.endsWith(".yml"));
 
   const packs = await Promise.all(
-    yamlFiles.map((f) => loadPackV2(join(directory, f)))
+    yamlFiles.map((f) => loadPack(join(directory, f)))
   );
 
   return packs;
 }
 
-export function dedupePacksBySourceUrl(packs: SourcePackV2[]): SourcePackV2[] {
+export function dedupePacksBySourceUrl(packs: SourcePack[]): SourcePack[] {
   const seen = new Set<string>();
 
   return packs.map((pack) => ({

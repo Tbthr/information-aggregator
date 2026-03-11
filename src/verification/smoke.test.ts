@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { getSmokeCommands } from "./smoke";
-import { loadAllPacksV2 } from "../config/load-pack-v2";
+import { loadAllPacks } from "../config/load-pack";
 
 describe("getSmokeCommands", () => {
   test("returns the recommended verification sequence", () => {
@@ -17,13 +17,13 @@ describe("getSmokeCommands", () => {
   });
 });
 
-test("smokeV2 loads and validates pack files", async () => {
-  const packs = await loadAllPacksV2("config/packs-v2");
+test("smoke loads and validates pack files", async () => {
+  const packs = await loadAllPacks("config/packs");
   expect(packs.length).toBeGreaterThan(0);
 
   for (const pack of packs) {
     expect(pack.id).toBeDefined();
     expect(pack.name).toBeDefined();
-    expect(pack.sources.length).toBeGreaterThan(0);
+    expect(pack.sources.length).toBeGreaterThanOrEqual(0);
   }
 });

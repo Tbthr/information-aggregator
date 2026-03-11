@@ -1,0 +1,37 @@
+pack:
+  id: ai-news
+  name: AI 新闻与动态
+  description: AI 领域的新闻站点、公司博客、研究动态
+  keywords:
+    - AI
+    - 人工智能
+    - GPT
+    - LLM
+    - 机器学习
+    - 深度学习
+    - OpenAI
+    - Claude
+    - Hugging Face
+
+sources:
+  # === 公司官方博客 ===
+  - type: rss
+    url: https://openai.com/news/rss.xml
+    description: OpenAI 官方新闻和产品发布
+
+  - type: rss
+    url: https://huggingface.co/blog/feed.xml
+    description: Hugging Face 技术博客，涵盖 ML 模型和工具更新
+
+  # === 中文 AI 资讯 ===
+  - type: website
+    url: https://www.aibase.com/zh/news
+    description: AIbase 中文 AI 新闻聚合
+
+  - type: website
+    url: https://aihot.today/
+    description: AI 今日热点，中文 AI 资讯聚合
+
+  - type: website
+    url: https://ai.hubtoday.app/
+    description: AI HubToday，AI 新闻聚合

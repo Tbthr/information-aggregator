@@ -1,86 +1,48 @@
-import type { SourceType } from "../types/index";
-import type { QuerySpec } from "./spec";
+import { BUILTIN_VIEWS } from "../types/index";
+import type { ParsedRunArgs } from "../types/index";
 
-const SOURCE_TYPES = new Set<SourceType>([
-  "rss",
-  "json-feed",
-  "website",
-  "hn",
-  "reddit",
-  "opml_rss",
-  "digest_feed",
-  "custom_api",
-  "github_trending",
-  "x_home",
-  "x_list",
-  "x_bookmarks",
-  "x_likes",
-  "x_multi",
-]);
+export function parseRunArgs(args: string[]): ParsedRunArgs {
+  const result: Partial<ParsedRunArgs> = {};
 
-function pushValue(target: string[] | undefined, value: string): string[] {
-  return [...(target ?? []), value];
-}
-
-export function parseQueryCliArgs(args: string[]): QuerySpec {
-  const command = args[0] === "sources" && args[1] === "list" ? "sources list" : "run";
-  const spec: QuerySpec = {
-    command,
-    format: "markdown",
-  };
-
-  for (let index = command === "sources list" ? 2 : 1; index < args.length; index += 1) {
-    const token = args[index];
-    const value = args[index + 1];
+  for (let i = 0; i < args.length; i++) {
+    const token = args[i];
 
     switch (token) {
-      case "--view":
-        spec.viewId = value;
-        index += 1;
-        break;
-      case "--format":
-        spec.format = value === "json" ? "json" : "markdown";
-        index += 1;
-        break;
-      case "--profile":
-        spec.profileId = value;
-        index += 1;
-        break;
       case "--pack":
-        spec.packIds = pushValue(spec.packIds, value);
-        index += 1;
+        result.packIds = args[++i]?.split(",") ?? [];
         break;
-      case "--source":
-        spec.sourceIds = pushValue(spec.sourceIds, value);
-        index += 1;
-        break;
-      case "--source-type":
-        if (!SOURCE_TYPES.has(value as SourceType)) {
-          throw new Error(`Unsupported source type: ${value}`);
-        }
-        spec.sourceTypes = [...(spec.sourceTypes ?? []), value as SourceType];
-        index += 1;
-        break;
-      case "--topic":
-        spec.topicIds = pushValue(spec.topicIds, value);
-        index += 1;
+      case "--view":
+        result.viewId = args[++i];
         break;
       case "--window":
-        spec.window = value;
-        index += 1;
-        break;
-      case "--since":
-        spec.since = value;
-        index += 1;
-        break;
-      case "--until":
-        spec.until = value;
-        index += 1;
+        result.window = args[++i];
         break;
       default:
-        break;
+        if (token?.startsWith("--")) {
+          throw new Error(`Unknown argument: ${token}`);
+        }
     }
   }
 
-  return spec;
+  if (!result.packIds?.length) {
+    throw new Error("--pack is required");
+  }
+  if (!result.viewId) {
+    throw new Error("--view is required");
+  }
+  if (!result.window) {
+    throw new Error("--window is required");
+  }
+
+  return result as ParsedRunArgs;
+}
+
+export function validateRunArgs(args: ParsedRunArgs): void {
+  if (!BUILTIN_VIEWS.has(args.viewId)) {
+    throw new Error(`Unknown view: ${args.viewId}. Valid views: ${[...BUILTIN_VIEWS].join(", ")}`);
+  }
+
+  if (args.window !== "all" && !/^\d+[hd]$/.test(args.window)) {
+    throw new Error(`Invalid window format: ${args.window}. Expected: <number><h|d> or "all"`);
+  }
 }

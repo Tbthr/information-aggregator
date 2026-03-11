@@ -1,0 +1,72 @@
+pack:
+  id: reference
+  name: Adapter 参考配置
+  description: 各类 adapter 的 schema 示例，默认禁用，仅供参考
+  keywords:
+    - reference
+    - adapter
+    - schema
+    - example
+
+sources:
+  # === Hacker News ===
+  - type: hn
+    url: https://hn.algolia.com/api/v1/search?tags=front_page
+    description: Hacker News 首页，通过 Algolia API 获取
+    enabled: false
+
+  # === Reddit ===
+  - type: reddit
+    url: https://www.reddit.com/r/MachineLearning/.json
+    description: Reddit r/MachineLearning 子版块
+    enabled: false
+
+  # === X/Twitter 系列 ===
+  - type: x_home
+    url: https://x.com/home
+    description: X 首页时间线，需要 bird CLI 和 Chrome 授权
+    enabled: false
+
+  - type: x_bookmarks
+    url: https://x.com/i/bookmarks
+    description: X 书签，需要 bird CLI
+    enabled: false
+
+  - type: x_list
+    url: https://x.com/i/lists/2021198996157710621
+    description: X 列表，需要 bird CLI 和 listId
+    enabled: false
+
+  - type: x_likes
+    url: https://x.com/i/likes
+    description: X 点赞，需要 bird CLI
+    enabled: false
+
+  - type: x_multi
+    url: https://x.com/home
+    description: X 多列表模式，需要 bird CLI 和 listIds
+    enabled: false
+
+  # === GitHub Trending ===
+  - type: github_trending
+    url: https://github.com/trending
+    description: GitHub 趋势仓库，支持按语言和时间范围筛选
+    enabled: false
+
+  # === Digest Feed ===
+  - type: digest_feed
+    url: https://clawfeed.kevinhe.io/feed/kevin
+    description: 摘要型 Feed，支持自定义 JSON 路径
+    enabled: false
+
+  # === Custom API ===
+  - type: custom_api
+    url: https://example.com/api/feed
+    description: 自定义 API 适配器，schema 占位符
+    enabled: false
+
+  # === OPML RSS ===
+  - type: opml_rss
+    url: local
+    description: 从本地 OPML 文件导入 RSS 订阅
+    enabled: false

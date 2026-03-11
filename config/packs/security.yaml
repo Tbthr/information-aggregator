@@ -1,0 +1,33 @@
+pack:
+  id: security
+  name: 网络安全
+  description: 网络安全新闻、漏洞分析、安全研究
+  keywords:
+    - 安全
+    - 网络安全
+    - 漏洞
+    - 隐私
+    - 渗透测试
+    - 安全研究
+
+sources:
+  # === 安全新闻与分析 ===
+  - type: rss
+    url: https://krebsonsecurity.com/feed/
+    description: Krebs on Security - 网络安全调查与深度分析
+
+  - type: rss
+    url: https://www.troyhunt.com/rss/
+    description: Troy Hunt - 安全专家，Have I Been Pwned 作者
+
+  - type: rss
+    url: https://micahflee.com/feed/
+    description: Micah Lee - 安全与隐私专家，Signal 基金会
+
+  - type: rss
+    url: https://lcamtuf.substack.com/feed
+    description: Michal Zalewski - 安全研究员，Google 工程师
+
+  - type: rss
+    url: https://mjg59.dreamwidth.org/data/rss
+    description: Matthew Garrett - Linux 安全与 UEFI 专家

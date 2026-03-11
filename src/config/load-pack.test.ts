@@ -1,8 +1,8 @@
 import { describe, expect, test, beforeEach, afterEach } from "bun:test";
 import { readdir, writeFile, mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
-import { validateInlineSource, validateSourcePackV2, loadAllPacksV2, dedupePacksBySourceUrl } from "./load-pack-v2";
-import type { InlineSource, SourcePackV2 } from "../types/index";
+import { validateInlineSource, validateSourcePack, loadAllPacks, dedupePacksBySourceUrl } from "./load-pack";
+import type { InlineSource, SourcePack } from "../types/index";
 
 describe("validateInlineSource", () => {
   test("validates required fields", () => {
@@ -41,7 +41,7 @@ describe("validateInlineSource", () => {
   });
 });
 
-describe("validateSourcePackV2", () => {
+describe("validateSourcePack", () => {
   test("validates required fields", () => {
     const input = {
       pack: {
@@ -52,7 +52,7 @@ describe("validateSourcePackV2", () => {
         { type: "rss", url: "https://example.com/feed.xml" },
       ],
     };
-    const result = validateSourcePackV2(input);
+    const result = validateSourcePack(input);
     expect(result.id).toBe("test-pack");
     expect(result.name).toBe("Test Pack");
     expect(result.sources).toHaveLength(1);
@@ -68,21 +68,21 @@ describe("validateSourcePackV2", () => {
       },
       sources: [],
     };
-    const result = validateSourcePackV2(input);
+    const result = validateSourcePack(input);
     expect(result.description).toBe("A test pack");
     expect(result.keywords).toEqual(["test", "example"]);
   });
 
   test("throws on missing pack.id", () => {
-    expect(() => validateSourcePackV2({ pack: { name: "Test" }, sources: [] })).toThrow();
+    expect(() => validateSourcePack({ pack: { name: "Test" }, sources: [] })).toThrow();
   });
 
   test("throws on missing pack.name", () => {
-    expect(() => validateSourcePackV2({ pack: { id: "test" }, sources: [] })).toThrow();
+    expect(() => validateSourcePack({ pack: { id: "test" }, sources: [] })).toThrow();
   });
 });
 
-describe("loadAllPacksV2", () => {
+describe("loadAllPacks", () => {
   const tempDir = join(process.cwd(), "temp-test-packs");
 
   beforeEach(async () => {
@@ -103,7 +103,7 @@ describe("loadAllPacksV2", () => {
       "pack:\n  id: pack2\n  name: Pack 2\nsources:\n  - type: rss\n    url: https://example.com/2.xml"
     );
 
-    const result = await loadAllPacksV2(tempDir);
+    const result = await loadAllPacks(tempDir);
     expect(result).toHaveLength(2);
     expect(result.map((p) => p.id).sort()).toEqual(["pack1", "pack2"]);
   });
@@ -115,19 +115,19 @@ describe("loadAllPacksV2", () => {
     );
     await writeFile(join(tempDir, "readme.txt"), "not a pack");
 
-    const result = await loadAllPacksV2(tempDir);
+    const result = await loadAllPacks(tempDir);
     expect(result).toHaveLength(1);
   });
 
   test("returns empty array for empty directory", async () => {
-    const result = await loadAllPacksV2(tempDir);
+    const result = await loadAllPacks(tempDir);
     expect(result).toEqual([]);
   });
 });
 
 describe("dedupePacksBySourceUrl", () => {
   test("removes duplicate URLs across packs", () => {
-    const packs: SourcePackV2[] = [
+    const packs: SourcePack[] = [
       {
         id: "pack1",
         name: "Pack 1",
@@ -152,7 +152,7 @@ describe("dedupePacksBySourceUrl", () => {
   });
 
   test("preserves first occurrence", () => {
-    const packs: SourcePackV2[] = [
+    const packs: SourcePack[] = [
       {
         id: "pack1",
         name: "Pack 1",
