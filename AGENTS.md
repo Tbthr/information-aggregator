@@ -6,14 +6,15 @@
 
 当前能力范围：
 
-- YAML 驱动的 source 配置
+- YAML 驱动的 source 配置（支持 V1 分离式和 V2 自包含 Pack 两种格式）
+- V2 Pack 配置：自包含数据源定义，简化 CLI 使用
 - query preset 与 view 配置
 - SQLite 持久化：sources、runs、outputs、source health
 - `rss`、`json-feed`、`website`、`hn`、`reddit`、`opml_rss`、`digest_feed`、`custom_api`、`github_trending` adapter
 - `bird CLI` 驱动的 X family adapter：`x_home`、`x_list`、`x_bookmarks`、`x_likes`、`x_multi`
 - 确定性的规范化、精确去重、近似去重、排序、聚类与 Markdown 输出
 - enrichment boundary 与有界 AI hook
-- `run --view`、`sources list`、`config validate` CLI
+- `run --pack`（V2）、`run --view`（V1）、`sources list`、`config validate` CLI
 - `scan` / `digest` deprecated thin wrapper
 - 稳定的本地 smoke 与 E2E 验证流程
 
@@ -54,6 +55,45 @@ QuerySpec -> SelectionResolver -> Collectors -> RawItem -> Normalize -> Dedup/Cl
 - 测试优先使用依赖注入，不依赖全局 mock
 - 新 adapter 必须通过既有 collector pattern 接入
 
+## 配置系统
+
+项目支持两种配置格式：
+
+### V2 Pack 配置（推荐）
+
+V2 格式采用自包含的 Pack 设计，数据源直接内联到 Pack 文件中：
+
+```yaml
+# config/packs-v2/ai-news.yaml
+pack:
+  id: ai-news
+  name: AI 新闻与动态
+  description: AI 领域的新闻站点、公司博客、研究动态
+  keywords: [GPT, LLM, 机器学习, AI]
+
+sources:
+  - type: rss
+    url: https://openai.com/news/rss.xml
+    description: OpenAI 官方新闻
+
+  - type: rss
+    url: https://huggingface.co/blog/feed.xml
+    description: Hugging Face 技术博客
+```
+
+相关模块：
+- `src/config/load-pack-v2.ts`：V2 Pack 加载与校验
+- `src/query/parse-cli-v2.ts`：V2 CLI 参数解析
+- `config/packs-v2/`：V2 Pack 配置目录
+
+### V1 传统配置
+
+V1 格式需要多个配置文件配合：
+- `config/sources.yaml`：数据源定义
+- `config/profiles.yaml`：查询预设
+- `config/topics.yaml`：主题关键词
+- `config/packs/`：Pack 引用（引用 sources 中的 ID）
+
 ## 开发流程
 
 安装与基线检查：
@@ -72,11 +112,28 @@ bun run e2e
 bun run e2e:real
 bun scripts/aggregator.ts --help
 bun scripts/aggregator.ts config validate
+bun scripts/aggregator.ts sources list --source-type rss
+```
+
+### V2 Pack CLI（推荐）
+
+```bash
+# 单 Pack 查询
+bun run aggregator run --pack ai-news --view daily-brief --window 24h
+bun run aggregator run --pack ai-news --view item-list --window 7d
+bun run aggregator run --pack ai-news --view json --window all
+
+# 多 Pack 合并查询
+bun run aggregator run --pack ai-news,engineering --view daily-brief --window 24h
+```
+
+### V1 Profile CLI（传统）
+
+```bash
 bun scripts/aggregator.ts run --view item-list
 bun scripts/aggregator.ts run --view daily-brief
 bun scripts/aggregator.ts run --view x-bookmarks-analysis
 bun scripts/aggregator.ts run --view item-list --format json
-bun scripts/aggregator.ts sources list --source-type rss
 ```
 
 ## 验证策略
@@ -135,6 +192,7 @@ bun scripts/aggregator.ts sources list --source-type rss
 
 - 项目脚手架与 CLI
 - config validation
+- V2 Pack 配置格式与加载（`load-pack-v2.ts`、`parse-cli-v2.ts`）
 - query runner / selection resolver / view registry
 - `rss`、`json-feed`、`website`、`hn`、`reddit`、`opml_rss`、`digest_feed`、`custom_api`、`github_trending` adapter
 - `bird CLI` 驱动的 X family adapter

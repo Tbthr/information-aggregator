@@ -388,7 +388,62 @@ SQLite schema 包含以下核心表：
 
 当前默认使用本地 YAML 配置并运行在本地状态之上。
 
-### 示例
+### V2 Pack 配置格式（推荐）
+
+V2 配置格式采用自包含的 Pack 设计，将数据源直接内联到 Pack 文件中，简化了配置层级：
+
+**Pack 文件结构示例** (`config/packs-v2/ai-news.yaml`)：
+
+```yaml
+# config/packs-v2/ai-news.yaml
+pack:
+  id: ai-news
+  name: AI 新闻与动态
+  description: AI 领域的新闻站点、公司博客、研究动态
+  keywords: [GPT, LLM, 机器学习, AI, 人工智能, OpenAI, Claude]
+
+sources:
+  - type: rss
+    url: https://openai.com/news/rss.xml
+    description: OpenAI 官方新闻和产品发布
+
+  - type: rss
+    url: https://huggingface.co/blog/feed.xml
+    description: Hugging Face 技术博客
+
+  - type: website
+    url: https://techurls.com/
+    description: 技术新闻聚合
+    enabled: false  # 可选，默认 true
+```
+
+**V2 配置特点**：
+- Pack 自包含：不再需要单独的 `sources.yaml` 文件
+- 内联数据源：每个 Pack 文件包含完整的数据源定义
+- 简化 CLI：直接通过 `--pack` 参数指定 Pack，无需预先配置 Profile
+- 支持多 Pack 合并：可同时指定多个 Pack ID，自动去重
+
+**V2 CLI 使用方式**：
+
+```bash
+# 单 Pack 查询
+bun run aggregator run --pack ai-news --view daily-brief --window 24h
+
+# 多 Pack 合并查询
+bun run aggregator run --pack ai-news,engineering --view daily-brief --window 7d
+
+# JSON 输出
+bun run aggregator run --pack ai-news --view json --window all
+```
+
+**V2 参数说明**：
+- `--pack`：Pack ID（必填），支持逗号分隔的多 Pack
+- `--view`：视图类型（必填）：`item-list`、`daily-brief`、`json` 等
+- `--window`：时间窗口（必填）：`24h`、`7d`、`30d` 或 `all`
+
+### V1 配置格式（传统）
+
+传统 V1 配置需要多个配置文件配合使用：
 
 ```yaml
 # config/sources.example.yaml
@@ -487,14 +542,31 @@ bun run e2e
 bun scripts/aggregator.ts --help
 bun scripts/aggregator.ts --version
 bun scripts/aggregator.ts config validate
+bun scripts/aggregator.ts sources list
+bun scripts/aggregator.ts sources list --source-type rss
+```
+
+### V2 Pack CLI（推荐）
+
+```bash
+# 单 Pack 查询
+bun run aggregator run --pack ai-news --view daily-brief --window 24h
+bun run aggregator run --pack ai-news --view item-list --window 7d
+bun run aggregator run --pack ai-news --view json --window all
+
+# 多 Pack 合并查询
+bun run aggregator run --pack ai-news,engineering --view daily-brief --window 24h
+```
+
+### V1 Profile CLI（传统）
+
+```bash
 bun scripts/aggregator.ts run --view item-list
 bun scripts/aggregator.ts run --view daily-brief
 bun scripts/aggregator.ts run --view x-bookmarks-analysis
 bun scripts/aggregator.ts run --view x-likes-analysis
 bun scripts/aggregator.ts run --view x-longform-hot
 bun scripts/aggregator.ts run --view item-list --format json
-bun scripts/aggregator.ts sources list
-bun scripts/aggregator.ts sources list --source-type rss
 ```
 
 ## 输出模式
