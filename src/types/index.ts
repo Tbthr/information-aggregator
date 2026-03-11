@@ -205,3 +205,41 @@ export function parseRawItemMetadata(metadataJson: string | undefined): RawItemM
     return null;
   }
 }
+
+// Pack 内联数据源定义 (V2)
+export interface InlineSource {
+  type: SourceType;
+  url: string;
+  description?: string;
+  enabled?: boolean;
+}
+
+// 新 Pack 定义 (V2) - 自包含数据源
+export interface SourcePackV2 {
+  id: string;
+  name: string;
+  description?: string;
+  keywords?: string[];
+  sources: InlineSource[];
+}
+
+// 授权配置
+export interface AuthConfig {
+  adapter: string;
+  config: Record<string, unknown>;
+}
+
+// CLI 运行参数 (V2)
+export interface ParsedRunArgsV2 {
+  packIds: string[];
+  viewId: string;
+  window: string;
+}
+
+// 内置视图列表
+export const BUILTIN_VIEWS = new Set([
+  "json",
+  "daily-brief",
+  "item-list",
+  "cluster-view",
+]);
