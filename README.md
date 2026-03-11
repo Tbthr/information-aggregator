@@ -42,9 +42,7 @@
 │ • hn.ts         │            │   • scoreCandidate()                │
 │ • reddit.ts     │            │   • summarizeCluster()              │
 │ • x-bird.ts     │            │   • narrateDigest()                 │
-│ • custom-api.ts │            └─────────────────────────────────────┘
-│ • github-*      │
-│ • opml-rss.ts   │
+│ • github-*      │            └─────────────────────────────────────┘
 │ • digest-feed.ts│
 └─────────────────┘
 ```
@@ -61,8 +59,8 @@
 ┌───────────────────────────────────────────────────────────────────┐
 │                        Collect Phase                              │
 │  adapters[type](source) → RawItem[] → normalizeCollectedItem()   │
-│  支持 14 种数据源类型: rss/json-feed/website/hn/reddit/          │
-│  opml_rss/digest_feed/custom_api/github_trending/x_*             │
+│  支持 11 种数据源类型: rss/json-feed/website/hn/reddit/          │
+│  digest_feed/github_trending/x_*                                 │
 └───────────────────────────────────────────────────────────────────┘
                                                      │
                                                      ▼
@@ -197,10 +195,17 @@ sources:
 | `hn` | HN Algolia API | - |
 | `reddit` | Reddit JSON API | - |
 | `github_trending` | GitHub Trending HTML | - |
-| `opml_rss` | 本地 OPML 文件 | `config.path` |
 | `digest_feed` | 自定义格式 | `config.format` |
-| `custom_api` | 任意 JSON API | `config.itemPath`, `config.fieldMap` |
 | `x_*` | bird CLI | `config.birdMode`, `config.authTokenEnv` |
+
+### 从 OPML 导入
+
+如果你有 OPML 文件（从 Feedly、Inoreader 等导出），可以让 AI 帮你转化为项目的 pack 配置：
+
+```
+请帮我把这个 OPML 文件转换为 information-aggregator 的 pack 配置：
+[粘贴 OPML 内容]
+```
 
 ## 命令
 
