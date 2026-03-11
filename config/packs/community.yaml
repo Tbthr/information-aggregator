@@ -1,0 +1,14 @@
+pack:
+  id: community
+  name: 技术社区
+  description: Reddit 等技术社区热门讨论
+  keywords:
+    - Reddit
+    - 社区
+    - 讨论
+    - Machine Learning
+
+sources:
+  - type: reddit
+    url: https://www.reddit.com/r/MachineLearning/.json
+    description: Reddit r/MachineLearning 子版块

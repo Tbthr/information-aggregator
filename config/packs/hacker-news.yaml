@@ -1,0 +1,14 @@
+pack:
+  id: hacker-news
+  name: Hacker News 热门
+  description: Hacker News 技术社区热门讨论
+  keywords:
+    - Hacker News
+    - 技术
+    - 编程
+    - 创业
+
+sources:
+  - type: hn
+    url: https://hn.algolia.com/api/v1/search?tags=front_page
+    description: Hacker News 首页热门讨论

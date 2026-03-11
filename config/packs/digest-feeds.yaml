@@ -1,0 +1,13 @@
+pack:
+  id: digest-feeds
+  name: 摘要型数据源
+  description: 各类摘要型 Feed 数据源，  keywords:
+    - 摘要
+    - 聚合
+    - clawfeed
+
+sources:
+  - type: digest_feed
+    url: https://clawfeed.kevinhe.io/feed/kevin
+    description: Clawfeed 摘要示例
+    enabled: false
