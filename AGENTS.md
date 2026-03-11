@@ -145,7 +145,6 @@ bun scripts/aggregator.ts run --view item-list --format json
 3. `bun run e2e`
 4. clean-clone 安装验证
 5. `bun run e2e:real`
-6. 仅在打包/分发变更时做 skill-installation 验证
 
 解释：
 
@@ -166,7 +165,6 @@ bun scripts/aggregator.ts run --view item-list --format json
 当你修改打包或安装行为时：
 
 - 从 clean clone 验证仓库
-- 只有当 skill 入口或打包契约变化时，才补 skill-installation 测试
 
 ## 文档规则
 
@@ -174,8 +172,7 @@ bun scripts/aggregator.ts run --view item-list --format json
 
 - `README.md`：用户视角说明与命令
 - `docs/testing.md`：验证流程与最佳实践
-- `docs/plans/2026-03-09-information-aggregator-skill-design.md`：架构意图与进度快照
-- `docs/plans/2026-03-09-information-aggregator-skill-implementation-plan.md`：历史执行计划
+- `docs/plans/2026-03-11-pack-config-simplification-design.md`：Pack 配置简化设计
 - 当前活跃路线图与实施计划文档
 
 如果某项能力故意未完成，必须写进文档，不能让配置或 README 暗示“已经支持”。

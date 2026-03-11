@@ -76,7 +76,6 @@ bun run smoke
 3. 再跑 `bun run smoke`
 4. 需要交付或发布时，再做 clean-clone 安装验证
 5. `bun run e2e:real` 仅作为手动公共网络探测
-6. 只有在 skill 打包或分发路径变更时才做 installation 验证
 
 ## source type 相关补充
 
