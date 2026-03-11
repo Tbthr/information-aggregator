@@ -276,6 +276,9 @@ bun run aggregator run --pack karpathy-picks --view json --window all
 
 # 多 Pack 合并查询
 bun run aggregator run --pack ai-news,tech-news --view daily-brief --window 24h
+
+# 输出到文件（推荐用于大数据量）
+bun run aggregator run --pack x-sources --view json --window all --output out/result.json
 ```
 
 ### 参数说明
@@ -285,6 +288,9 @@ bun run aggregator run --pack ai-news,tech-news --view daily-brief --window 24h
 | `--pack` | ✅ | Pack ID，支持逗号分隔的多 Pack | `ai-news` 或 `ai-news,tech-news` |
 | `--view` | ✅ | 输出格式 | `json`, `daily-brief`, `item-list` |
 | `--window` | ✅ | 时间窗口 | `24h`, `7d`, `3d`, `all` |
+| `--output` | ❌ | 输出文件路径，直接写入文件（避免大数据管道编码问题） | `out/result.json` |
+
+**注意**：输出大量数据时（如 X 数据源），建议使用 `--output` 参数直接写入文件，避免通过 stdout 管道可能出现的编码问题。
 
 ## 输出模式
 

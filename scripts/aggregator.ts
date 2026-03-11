@@ -1,4 +1,4 @@
-import { readdir } from "node:fs/promises";
+import { readdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import { loadAllPacks } from "../src/config/load-pack";
@@ -26,11 +26,16 @@ async function main(): Promise<void> {
     const viewId = queryResult.args.viewId;
     const viewModel = buildViewModel(queryResult, viewId);
 
-    console.log(
-      viewId === "json"
-        ? renderQueryJson({ queryResult, viewModel })
-        : renderViewMarkdown(viewModel, viewId),
-    );
+    const output = viewId === "json"
+      ? renderQueryJson({ queryResult, viewModel })
+      : renderViewMarkdown(viewModel, viewId);
+
+    if (args.outputFile) {
+      await writeFile(args.outputFile, output, "utf-8");
+      console.log(`Written to ${args.outputFile}`);
+    } else {
+      console.log(output);
+    }
     return;
   }
 

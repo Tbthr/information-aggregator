@@ -17,6 +17,9 @@ export function parseRunArgs(args: string[]): ParsedRunArgs {
       case "--window":
         result.window = args[++i];
         break;
+      case "--output":
+        result.outputFile = args[++i];
+        break;
       default:
         if (token?.startsWith("--")) {
           throw new Error(`Unknown argument: ${token}`);

@@ -189,6 +189,7 @@ export interface ParsedRunArgs {
   packIds: string[];
   viewId: string;
   window: string;
+  outputFile?: string;
 }
 
 // 授权配置
