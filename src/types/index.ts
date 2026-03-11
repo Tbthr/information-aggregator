@@ -8,15 +8,12 @@ export const CANONICAL_SOURCE_TYPES = [
   "website",
   "hn",
   "reddit",
-  "opml_rss",
   "digest_feed",
-  "custom_api",
   "github_trending",
   "x_home",
   "x_list",
   "x_bookmarks",
   "x_likes",
-  "x_multi",
 ] as const;
 
 export type SourceType = (typeof CANONICAL_SOURCE_TYPES)[number];
