@@ -1,6 +1,16 @@
 import type { QueryResult } from "../query/run-query";
-import type { ViewModel, ViewModelSection } from "./registry";
-import { parseRawItemMetadata, type RawItemMetadata, type RankedCandidate, type RawItem } from "../types/index";
+import type { ViewModel } from "./registry";
+import type { RawItemMetadata, RankedCandidate, RawItem } from "../types/index";
+import {
+  type DataStatistics,
+  type TaggedViewItem,
+  computeStatistics,
+  generateMermaidPieChart,
+  generateMermaidBarChart,
+  generateTextCategoryStats,
+  generateTextKeywordStats,
+  generateTagCloudMarkdown,
+} from "./statistics";
 
 /**
  * X Bookmark 数据视图项（扩展版）
@@ -36,6 +46,7 @@ export interface XBookmarksDigestModel extends ViewModel {
   };
   narration?: string;
   bookmarkItems: XBookmarkViewItem[];
+  statistics?: DataStatistics;
 }
 
 /**
@@ -219,6 +230,17 @@ function toItem(candidate: RankedCandidate, rawItemMap: Map<string, RawItem>): X
 }
 
 /**
+ * 将 XBookmarkViewItem 转换为 TaggedViewItem（用于统计）
+ */
+function toTaggedItem(item: XBookmarkViewItem): TaggedViewItem {
+  return {
+    title: item.title,
+    tags: item.tags,
+    snippet: item.snippet,
+  };
+}
+
+/**
  * 构建 X Bookmarks Digest 视图
  */
 export function buildXBookmarksDigestView(result: QueryResult): XBookmarksDigestModel {
@@ -228,6 +250,10 @@ export function buildXBookmarksDigestView(result: QueryResult): XBookmarksDigest
     .map((candidate) => toItem(candidate, rawItemMap));
 
   const date = new Date().toISOString().split("T")[0];
+
+  // 计算统计数据
+  const taggedItems = bookmarkItems.map(toTaggedItem);
+  const statistics = computeStatistics(taggedItems);
 
   return {
     viewId: "x-bookmarks-digest",
@@ -240,6 +266,7 @@ export function buildXBookmarksDigestView(result: QueryResult): XBookmarksDigest
     },
     highlights: bookmarkItems.slice(0, 3).map((item) => item.title),
     bookmarkItems,
+    statistics,
     sections: [
       {
         title: "精选内容",
@@ -345,6 +372,40 @@ export function renderXBookmarksDigestView(model: ViewModel): string {
         lines.push("", `**标签**: ${item.tags.map((t) => `\`${t}\``).join(" ")}`);
       }
     }
+  }
+
+  // 数据统计与可视化
+  if (digestModel.statistics) {
+    const stats = digestModel.statistics;
+
+    // 标签云
+    if (stats.tagCloud.length > 0) {
+      lines.push("", "## 🏷️ 话题标签云", "");
+      lines.push(generateTagCloudMarkdown(stats.tagCloud));
+    }
+
+    // Mermaid 可视化
+    lines.push("", "## 📈 数据可视化", "");
+
+    // 分类分布饼图
+    if (stats.categories.length > 0) {
+      lines.push("", "### 分类分布", "");
+      lines.push(generateMermaidPieChart(stats.categories));
+    }
+
+    // 关键词频次条形图
+    if (stats.keywords.length > 0) {
+      lines.push("", "### 高频关键词", "");
+      lines.push(generateMermaidBarChart(stats.keywords));
+    }
+
+    // 纯文本备用格式（终端友好）
+    lines.push("", "## 📋 文本统计（终端友好）", "");
+    lines.push("", "```");
+    lines.push(generateTextCategoryStats(stats.categories));
+    lines.push("");
+    lines.push(generateTextKeywordStats(stats.keywords));
+    lines.push("```");
   }
 
   // 页脚
