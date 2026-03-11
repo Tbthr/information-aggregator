@@ -1,105 +1,88 @@
-import type { QueryViewDefinition, Source, SourcePack, SourceType, TopicProfile } from "../types/index";
-import type { QuerySpec } from "./spec";
+import type { InlineSource, SourcePack, SourceType } from "../types/index";
+import type { ParsedRunArgs } from "../types/index";
+
+export interface ResolvedSource {
+  id: string;
+  type: SourceType;
+  url: string;
+  description?: string;
+  packId: string;
+}
 
 export interface ResolvedSelection {
-  profile?: TopicProfile;
-  view: QueryViewDefinition;
-  topicIds: string[];
-  sourceIds: string[];
-  sources: Source[];
-  window?: string;
-  since?: string;
-  until?: string;
+  packIds: string[];
+  viewId: string;
+  window: string;
+  sources: ResolvedSource[];
+  keywords: string[];
 }
 
-function requireView(viewId: string | undefined, views: QueryViewDefinition[], profile?: TopicProfile): QueryViewDefinition {
-  const resolvedId = viewId ?? profile?.defaultView ?? "daily-brief";
-  const view = views.find((item) => item.id === resolvedId);
-  if (!view) {
-    throw new Error(`View not found: ${resolvedId}`);
+function generateSourceId(url: string): string {
+  try {
+    const parsed = new URL(url);
+    const path = parsed.pathname.replace(/[^a-z0-9]/gi, "-").slice(0, 30);
+    return `${parsed.hostname.replace(/\./g, "-")}${path}`;
+  } catch {
+    return url.replace(/[^a-z0-9]/gi, "-").slice(0, 50);
   }
-  return view;
 }
 
-function requireProfile(profileId: string | undefined, profiles: TopicProfile[]): TopicProfile | undefined {
-  const resolvedId = profileId ?? "default";
-  return profiles.find((item) => item.id === resolvedId);
-}
+export function resolveSelection(
+  args: ParsedRunArgs,
+  packs: SourcePack[]
+): ResolvedSelection {
+  const selectedPackIds = new Set(args.packIds);
+  const selectedPacks = packs.filter((pack) => selectedPackIds.has(pack.id));
 
-function expandPackIds(packIds: string[] | undefined, sourcePacks: SourcePack[]): string[] {
-  const selected = new Set<string>();
+  if (selectedPacks.length === 0) {
+    throw new Error(`No packs found for IDs: ${args.packIds.join(", ")}`);
+  }
 
-  for (const packId of packIds ?? []) {
-    const pack = sourcePacks.find((item) => item.id === packId);
-    if (!pack) {
-      throw new Error(`Source pack not found: ${packId}`);
+  const missingPackIds = args.packIds.filter(
+    (id) => !packs.some((pack) => pack.id === id)
+  );
+  if (missingPackIds.length > 0) {
+    throw new Error(`Pack not found: ${missingPackIds.join(", ")}`);
+  }
+
+  const sources: ResolvedSource[] = [];
+  const keywords = new Set<string>();
+  const seenUrls = new Set<string>();
+
+  for (const pack of selectedPacks) {
+    for (const keyword of pack.keywords ?? []) {
+      keywords.add(keyword);
     }
-    for (const sourceId of pack.sourceIds) {
-      selected.add(sourceId);
+
+    for (const source of pack.sources) {
+      if (source.enabled === false) {
+        continue;
+      }
+
+      if (seenUrls.has(source.url)) {
+        continue;
+      }
+      seenUrls.add(source.url);
+
+      sources.push({
+        id: generateSourceId(source.url),
+        type: source.type,
+        url: source.url,
+        description: source.description,
+        packId: pack.id,
+      });
     }
   }
 
-  return [...selected];
-}
-
-function ensureValidRange(since: string | undefined, until: string | undefined): void {
-  if (!since || !until) {
-    return;
-  }
-
-  if (Date.parse(since) > Date.parse(until)) {
-    throw new Error("Invalid time range: since must be before until");
-  }
-}
-
-function applySourceTypeFilter(sources: Source[], sourceTypes: SourceType[] | undefined): Source[] {
-  if (!sourceTypes || sourceTypes.length === 0) {
-    return sources;
-  }
-
-  const allowed = new Set(sourceTypes);
-  return sources.filter((source) => allowed.has(source.type));
-}
-
-export function resolveSelection(input: {
-  query: QuerySpec;
-  profiles: TopicProfile[];
-  sourcePacks: SourcePack[];
-  sources: Source[];
-  views: QueryViewDefinition[];
-}): ResolvedSelection {
-  const profile = requireProfile(input.query.profileId, input.profiles);
-  const view = requireView(input.query.viewId, input.views, profile);
-  const packIds = [...(profile?.sourcePackIds ?? []), ...(input.query.packIds ?? [])];
-  const expandedPackSources = expandPackIds(packIds, input.sourcePacks);
-  const requestedSourceIds = new Set([...(expandedPackSources ?? []), ...(input.query.sourceIds ?? [])]);
-  const window = input.query.window ?? view.defaultWindow ?? profile?.defaultWindow;
-  const effectiveSourceTypes = input.query.sourceTypes && input.query.sourceTypes.length > 0
-    ? input.query.sourceTypes
-    : view.defaultSourceTypes;
-  const topicIds = [...new Set([...(profile?.topicIds ?? []), ...(input.query.topicIds ?? [])])];
-
-  ensureValidRange(input.query.since, input.query.until);
-
-  let selectedSources = input.sources.filter((source) => source.enabled);
-  selectedSources = applySourceTypeFilter(selectedSources, effectiveSourceTypes);
-
-  if (requestedSourceIds.size > 0) {
-    selectedSources = selectedSources.filter((source) => requestedSourceIds.has(source.id));
-  }
-
-  if (selectedSources.length === 0 && effectiveSourceTypes && effectiveSourceTypes.length > 0) {
-    throw new Error(`View ${view.id} requires at least one enabled source matching ${effectiveSourceTypes.join(", ")}`);
+  if (sources.length === 0) {
+    throw new Error(`No enabled sources found in selected packs: ${args.packIds.join(", ")}`);
   }
 
   return {
-    profile,
-    view,
-    topicIds,
-    sourceIds: selectedSources.map((source) => source.id).sort(),
-    sources: selectedSources.sort((left, right) => left.id.localeCompare(right.id)),
-    window,
-    since: input.query.since,
-    until: input.query.until,
+    packIds: args.packIds,
+    viewId: args.viewId,
+    window: args.window,
+    sources: sources.sort((a, b) => a.id.localeCompare(b.id)),
+    keywords: [...keywords],
   };
 }

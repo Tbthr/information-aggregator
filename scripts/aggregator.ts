@@ -1,10 +1,9 @@
 import { readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 
-import { loadProfilesConfig, loadSourcePacksConfig, loadSourcesConfig, loadTopicsConfig, loadViewsConfig } from "../src/config/load";
+import { loadAllPacks } from "../src/config/load-pack";
 import { getCliVersion, getHelpText, parseCliArgs } from "../src/cli/index";
-import { parseQueryCliArgs } from "../src/query/parse-cli";
-import { resolveSelection } from "../src/query/resolve-selection";
+import { parseRunArgs, validateRunArgs } from "../src/query/parse-cli";
 import { runQuery } from "../src/query/run-query";
 import { renderQueryJson } from "../src/render/json";
 import { buildViewModel, renderViewMarkdown } from "../src/views/registry";
@@ -18,12 +17,17 @@ async function main(): Promise<void> {
   }
 
   if (parsed.command === "run") {
-    const query = parseQueryCliArgs(process.argv.slice(2));
-    const queryResult = await runQuery(query);
-    const viewId = queryResult.selection.view.id;
+    const args = parseRunArgs(process.argv.slice(2));
+    validateRunArgs(args);
+
+    const packs = await loadAllPacks("config/packs");
+    const queryResult = await runQuery(args, { loadPacks: () => packs });
+
+    const viewId = queryResult.args.viewId;
     const viewModel = buildViewModel(queryResult, viewId);
+
     console.log(
-      query.format === "json"
+      viewId === "json"
         ? renderQueryJson({ queryResult, viewModel })
         : renderViewMarkdown(viewModel, viewId),
     );
@@ -31,42 +35,26 @@ async function main(): Promise<void> {
   }
 
   if (parsed.command === "sources list") {
-    const [sources, profiles, views, packFiles] = await Promise.all([
-      loadSourcesConfig("config/sources.example.yaml"),
-      loadProfilesConfig("config/profiles.example.yaml"),
-      loadViewsConfig("config/views.example.yaml"),
-      readdir(resolve(process.cwd(), "config/packs")),
-    ]);
-    const sourcePacks = (await Promise.all(
-      packFiles
-        .filter((fileName) => fileName.endsWith(".yaml"))
-        .sort()
-        .map((fileName) => loadSourcePacksConfig(`config/packs/${fileName}`)),
-    )).flat();
-    const selection = resolveSelection({
-      query: parseQueryCliArgs(process.argv.slice(2)),
-      profiles,
-      sourcePacks,
-      sources,
-      views,
-    });
-    console.log(selection.sources.map((source) => `${source.id}\t${source.type}\t${source.name}`).join("\n"));
-    return;
-  }
-
-  if (parsed.command === "config validate") {
     const packFiles = (await readdir(resolve(process.cwd(), "config/packs")))
       .filter((fileName) => fileName.endsWith(".yaml"))
       .sort();
 
-    await Promise.all([
-      loadSourcesConfig("config/sources.example.yaml", { includeDisabled: true }),
-      loadTopicsConfig("config/topics.example.yaml"),
-      loadProfilesConfig("config/profiles.example.yaml"),
-      loadViewsConfig("config/views.example.yaml"),
-      ...packFiles.map((fileName) => loadSourcePacksConfig(`config/packs/${fileName}`)),
-    ]);
-    console.log("Config validation passed");
+    const packs = await loadAllPacks("config/packs");
+
+    console.log(`Found ${packs.length} packs with ${packFiles.length} files:`);
+    for (const pack of packs) {
+      console.log(`\n[${pack.id}] ${pack.name}`);
+      if (pack.description) {
+        console.log(`  ${pack.description}`);
+      }
+      console.log(`  Sources: ${pack.sources.filter((s) => s.enabled !== false).length}`);
+    }
+    return;
+  }
+
+  if (parsed.command === "config validate") {
+    const packs = await loadAllPacks("config/packs");
+    console.log(`Config validation passed: ${packs.length} packs loaded`);
     return;
   }
 

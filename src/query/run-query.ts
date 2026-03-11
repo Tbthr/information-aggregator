@@ -10,7 +10,7 @@ import { collectRedditSource } from "../adapters/reddit";
 import { collectRssSource } from "../adapters/rss";
 import { collectWebsiteSource } from "../adapters/website";
 import { collectXBirdSource } from "../adapters/x-bird";
-import { loadProfilesConfig, loadSourcePacksConfig, loadSourcesConfig, loadTopicsConfig, loadViewsConfig } from "../config/load";
+import { loadAllPacks } from "../config/load-pack";
 import { buildClusters } from "../pipeline/cluster";
 import { collectSources, type CollectDependencies } from "../pipeline/collect";
 import { dedupeExact } from "../pipeline/dedupe-exact";
@@ -19,24 +19,19 @@ import { enrichCandidates } from "../pipeline/enrich";
 import { normalizeItems } from "../pipeline/normalize";
 import { rankCandidates } from "../pipeline/rank";
 import { scoreTopicMatch } from "../pipeline/topic-match";
-import { parseRawItemMetadata, type Cluster, type NormalizedItem, type QueryViewDefinition, type RankedCandidate, type RawItem, type Source, type SourcePack, type TopicDefinition, type TopicProfile, type TopicRule } from "../types/index";
-import { resolveSelection, type ResolvedSelection } from "./resolve-selection";
-import type { QuerySpec } from "./spec";
+import { parseRawItemMetadata, type Cluster, type NormalizedItem, type ParsedRunArgs, type RankedCandidate, type RawItem, type SourcePack, type TopicRule } from "../types/index";
+import { resolveSelection, type ResolvedSelection, type ResolvedSource } from "./resolve-selection";
 
 export interface RunQueryDependencies {
   aiClient?: AiClient | null;
-  loadSources?: () => Promise<Source[]> | Source[];
-  loadProfiles?: () => Promise<TopicProfile[]> | TopicProfile[];
-  loadTopics?: () => Promise<TopicDefinition[]> | TopicDefinition[];
-  loadSourcePacks?: () => Promise<SourcePack[]> | SourcePack[];
-  loadViews?: () => Promise<QueryViewDefinition[]> | QueryViewDefinition[];
-  collectSources?: (sources: Source[], dependencies: CollectDependencies) => Promise<RawItem[]>;
+  loadPacks?: () => Promise<SourcePack[]> | SourcePack[];
+  collectSources?: (sources: ResolvedSource[], dependencies: CollectDependencies) => Promise<RawItem[]>;
   buildClusters?: typeof buildClusters;
   now?: () => string;
 }
 
 export interface QueryResult {
-  query: QuerySpec;
+  args: ParsedRunArgs;
   selection: ResolvedSelection;
   items: RawItem[];
   normalizedItems: NormalizedItem[];
@@ -45,20 +40,9 @@ export interface QueryResult {
   warnings: string[];
 }
 
-async function loadDefaultSourcePacks(): Promise<SourcePack[]> {
-  const [newsSites, blogPacks] = await Promise.all([
-    loadSourcePacksConfig("config/packs/ai-news-sites.yaml"),
-    loadSourcePacksConfig("config/packs/engineering-blogs-core.yaml"),
-  ]);
-
-  return [...newsSites, ...blogPacks];
-}
-
-function buildTopicRule(topics: TopicDefinition[], topicIds: string[]): TopicRule {
-  const selectedTopics = topics.filter((topic) => topicIds.includes(topic.id));
-
+function buildTopicRule(keywords: string[]): TopicRule {
   return {
-    includeKeywords: selectedTopics.flatMap((topic) => topic.keywords).map((keyword) => keyword.toLowerCase()),
+    includeKeywords: keywords.map((keyword) => keyword.toLowerCase()),
   };
 }
 
@@ -89,9 +73,9 @@ function resolveItemTimestamp(item: RawItem): number | null {
   return Number.isNaN(parsed) ? null : parsed;
 }
 
-function resolveWindowRange(window: string | undefined, nowIso: string): { since?: number; until?: number } {
+function resolveWindowRange(window: string, nowIso: string): { since?: number; until?: number } {
   const nowMs = Date.parse(nowIso);
-  if (window === undefined || Number.isNaN(nowMs)) {
+  if (Number.isNaN(nowMs)) {
     return {};
   }
 
@@ -113,12 +97,9 @@ function resolveWindowRange(window: string | undefined, nowIso: string): { since
   };
 }
 
-function filterItemsToRange(items: RawItem[], selection: ResolvedSelection, nowIso: string): RawItem[] {
-  const explicitSince = selection.since ? Date.parse(selection.since) : undefined;
-  const explicitUntil = selection.until ? Date.parse(selection.until) : undefined;
-  const windowRange = resolveWindowRange(selection.window, nowIso);
-  const since = explicitSince ?? windowRange.since;
-  const until = explicitUntil ?? windowRange.until;
+function filterItemsToRange(items: RawItem[], window: string, nowIso: string): RawItem[] {
+  const windowRange = resolveWindowRange(window, nowIso);
+  const { since, until } = windowRange;
 
   return items.filter((item) => {
     const timestamp = resolveItemTimestamp(item);
@@ -162,23 +143,19 @@ function toCandidates(items: NormalizedItem[], topicRule: TopicRule): RankedCand
   });
 }
 
-export async function runQuery(query: QuerySpec, dependencies: RunQueryDependencies = {}): Promise<QueryResult> {
+export async function runQuery(args: ParsedRunArgs, dependencies: RunQueryDependencies = {}): Promise<QueryResult> {
   const now = dependencies.now ?? (() => new Date().toISOString());
   const collectImpl = dependencies.collectSources ?? collectSources;
   const buildClustersImpl = dependencies.buildClusters ?? buildClusters;
 
-  const [sources, profiles, topics, sourcePacks, views] = await Promise.all([
-    Promise.resolve(dependencies.loadSources?.() ?? loadSourcesConfig("config/sources.example.yaml")),
-    Promise.resolve(dependencies.loadProfiles?.() ?? loadProfilesConfig("config/profiles.example.yaml")),
-    Promise.resolve(dependencies.loadTopics?.() ?? loadTopicsConfig("config/topics.example.yaml")),
-    Promise.resolve(dependencies.loadSourcePacks?.() ?? loadDefaultSourcePacks()),
-    Promise.resolve(dependencies.loadViews?.() ?? loadViewsConfig("config/views.example.yaml")),
-  ]);
+  const packs = await Promise.resolve(
+    dependencies.loadPacks?.() ?? loadAllPacks("config/packs")
+  );
 
-  const selection = resolveSelection({ query, profiles, sourcePacks, sources, views });
-  const topicRule = buildTopicRule(topics, selection.topicIds);
+  const selection = resolveSelection(args, packs);
+  const topicRule = buildTopicRule(selection.keywords);
   const collectedItems = await collectImpl(selection.sources, buildDefaultCollectDependencies());
-  const items = filterItemsToRange(collectedItems, selection, now());
+  const items = filterItemsToRange(collectedItems, selection.window, now());
   const normalizedItems = normalizeItems(items);
   const exact = dedupeExact(normalizedItems.filter((item) => item.exactDedupKey) as Array<NormalizedItem & { exactDedupKey: string }>);
   const near = dedupeNear(exact.filter((item) => item.processedAt) as Array<NormalizedItem & { processedAt: string }>);
@@ -203,7 +180,7 @@ export async function runQuery(query: QuerySpec, dependencies: RunQueryDependenc
   );
 
   return {
-    query,
+    args,
     selection,
     items,
     normalizedItems,
