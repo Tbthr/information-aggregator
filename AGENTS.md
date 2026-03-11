@@ -172,10 +172,9 @@ bun scripts/aggregator.ts run --view item-list --format json
 
 - `README.md`：用户视角说明与命令
 - `docs/testing.md`：验证流程与最佳实践
-- `docs/plans/2026-03-11-pack-config-simplification-design.md`：Pack 配置简化设计
-- 当前活跃路线图与实施计划文档
+- `AGENTS.md`：项目概览与架构
 
-如果某项能力故意未完成，必须写进文档，不能让配置或 README 暗示“已经支持”。
+如果某项能力故意未完成，必须写进文档，不能让配置或 README 暗示”已经支持”。
 
 ### Markdown 语言规则
 
