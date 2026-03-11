@@ -6,6 +6,7 @@ import { buildItemListView, renderItemListView } from "./item-list";
 import { buildXBookmarksAnalysisView, renderXAnalysisView } from "./x-bookmarks-analysis";
 import { buildXLikesAnalysisView } from "./x-likes-analysis";
 import { buildXLongformHotView, renderXLongformHotView } from "./x-longform-hot";
+import { buildXBookmarksDigestView, renderXBookmarksDigestView } from "./x-bookmarks-digest";
 
 export interface ViewModelItem {
   title: string;
@@ -39,6 +40,8 @@ export function buildViewModel(result: QueryResult, viewId: string): ViewModel {
       return buildXLikesAnalysisView(result);
     case "x-longform-hot":
       return buildXLongformHotView(result);
+    case "x-bookmarks-digest":
+      return buildXBookmarksDigestView(result);
     default:
       return buildItemListView(result);
   }
@@ -55,6 +58,8 @@ export function renderViewMarkdown(model: ViewModel, viewId: string): string {
       return renderXAnalysisView(model);
     case "x-longform-hot":
       return renderXLongformHotView(model);
+    case "x-bookmarks-digest":
+      return renderXBookmarksDigestView(model);
     default:
       return renderItemListView(model, renderScanMarkdown);
   }
