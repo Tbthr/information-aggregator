@@ -6,16 +6,13 @@
 
 当前能力范围：
 
-- YAML 驱动的 source 配置（支持 V1 分离式和 V2 自包含 Pack 两种格式）
-- V2 Pack 配置：自包含数据源定义，简化 CLI 使用
-- query preset 与 view 配置
+- Pack 驱动的数据源配置（自包含 YAML 文件）
 - SQLite 持久化：sources、runs、outputs、source health
 - `rss`、`json-feed`、`website`、`hn`、`reddit`、`opml_rss`、`digest_feed`、`custom_api`、`github_trending` adapter
 - `bird CLI` 驱动的 X family adapter：`x_home`、`x_list`、`x_bookmarks`、`x_likes`、`x_multi`
 - 确定性的规范化、精确去重、近似去重、排序、聚类与 Markdown 输出
 - enrichment boundary 与有界 AI hook
-- `run --pack`（V2）、`run --view`（V1）、`sources list`、`config validate` CLI
-- `scan` / `digest` deprecated thin wrapper
+- `run --pack --view --window`、`sources list`、`config validate` CLI
 - 稳定的本地 smoke 与 E2E 验证流程
 
 当前仍明确不包含：
@@ -57,14 +54,10 @@ QuerySpec -> SelectionResolver -> Collectors -> RawItem -> Normalize -> Dedup/Cl
 
 ## 配置系统
 
-项目支持两种配置格式：
-
-### V2 Pack 配置（推荐）
-
-V2 格式采用自包含的 Pack 设计，数据源直接内联到 Pack 文件中：
+配置采用自包含的 Pack 设计，数据源直接内联到 Pack 文件中：
 
 ```yaml
-# config/packs-v2/ai-news.yaml
+# config/packs/ai-news.yaml
 pack:
   id: ai-news
   name: AI 新闻与动态
@@ -82,17 +75,9 @@ sources:
 ```
 
 相关模块：
-- `src/config/load-pack-v2.ts`：V2 Pack 加载与校验
-- `src/query/parse-cli-v2.ts`：V2 CLI 参数解析
-- `config/packs-v2/`：V2 Pack 配置目录
-
-### V1 传统配置
-
-V1 格式需要多个配置文件配合：
-- `config/sources.yaml`：数据源定义
-- `config/profiles.yaml`：查询预设
-- `config/topics.yaml`：主题关键词
-- `config/packs/`：Pack 引用（引用 sources 中的 ID）
+- `src/config/load-pack.ts`：Pack 加载与校验
+- `src/query/parse-cli.ts`：CLI 参数解析
+- `config/packs/`：Pack 配置目录
 
 ## 开发流程
 
@@ -112,10 +97,10 @@ bun run e2e
 bun run e2e:real
 bun scripts/aggregator.ts --help
 bun scripts/aggregator.ts config validate
-bun scripts/aggregator.ts sources list --source-type rss
+bun scripts/aggregator.ts sources list
 ```
 
-### V2 Pack CLI（推荐）
+### Pack CLI
 
 ```bash
 # 单 Pack 查询
@@ -127,14 +112,18 @@ bun run aggregator run --pack ai-news --view json --window all
 bun run aggregator run --pack ai-news,engineering --view daily-brief --window 24h
 ```
 
-### V1 Profile CLI（传统）
+## 开发工作流
 
-```bash
-bun scripts/aggregator.ts run --view item-list
-bun scripts/aggregator.ts run --view daily-brief
-bun scripts/aggregator.ts run --view x-bookmarks-analysis
-bun scripts/aggregator.ts run --view item-list --format json
-```
+本项目采用结构化的开发工作流，使用 Superpowers 技能：
+
+1. **需求探索 (Brainstorming)** → 产出设计文档
+2. **编写计划 (Writing Plans)** → 详细的实施计划
+3. **执行计划 (Executing Plans)** → 批量执行（每批最多 3 个任务）
+4. **代码审查 (Code Review)** → 每批完成后必须审查
+5. **系统调试 (Systematic Debugging)** → Bug 的根因分析
+6. **测试驱动开发 (Test-Driven Development)** → Red-Green-Refactor 循环
+
+任务执行阶段，无需反复向我确认，除非遇到重大问题或者关键决策。
 
 ## 验证策略
 
@@ -172,7 +161,6 @@ bun scripts/aggregator.ts run --view item-list --format json
 
 - `README.md`：用户视角说明与命令
 - `docs/testing.md`：验证流程与最佳实践
-- `AGENTS.md`：项目概览与架构
 
 如果某项能力故意未完成，必须写进文档，不能让配置或 README 暗示”已经支持”。
 
@@ -181,35 +169,3 @@ bun scripts/aggregator.ts run --view item-list --format json
 - 本仓库新增或修改的 Markdown 文档必须使用中文
 - 代码标识符、CLI 命令、source type 名称、协议名称等保留原文
 - 引用英文上游名称时，用中文解释，不要把整份文档切回英文
-
-## 当前实现进展
-
-目前已完成：
-
-- 项目脚手架与 CLI
-- config validation
-- V2 Pack 配置格式与加载（`load-pack-v2.ts`、`parse-cli-v2.ts`）
-- query runner / selection resolver / view registry
-- `rss`、`json-feed`、`website`、`hn`、`reddit`、`opml_rss`、`digest_feed`、`custom_api`、`github_trending` adapter
-- `bird CLI` 驱动的 X family adapter
-- SQLite bootstrap 与核心 queries
-- normalize、dedupe、topic scoring、ranking、clustering、enrichment boundary
-- Markdown / JSON 输出
-- `scan` / `digest` thin wrapper
-- smoke 验证
-- mock-source E2E
-- real-network probe
-
-按设计仍延期：
-
-- 更深的 enrichment 与 feedback loop
-- Web / 多用户表面
-
-## 协作说明
-
-给后续 agent 的约束：
-
-- 优先做小而清晰的改动
-- commit 必须逻辑分组
-- 不要悄悄扩大当前路线图 scope
-- 如果一项能力被延期，记录在 docs，而不是半实现地留在代码里
