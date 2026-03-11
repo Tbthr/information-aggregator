@@ -1,0 +1,33 @@
+# X/Twitter 数据源
+# 需要配置 bird CLI 和 Chrome 授权才能使用
+
+pack:
+  id: x-sources
+  name: X/Twitter 数据源
+  description: X 平台数据采集，需要 bird CLI 和 Chrome 授权
+  keywords:
+    - X
+    - Twitter
+    - 社交媒体
+
+sources:
+  # === X/Twitter 系列 ===
+  - type: x_home
+    url: https://x.com/home
+    description: X 首页时间线
+    enabled: false
+
+  - type: x_list
+    url: https://x.com/i/lists/replace-with-your-list-id
+    description: X 列表，需要替换为实际的 list ID
+    enabled: false
+
+  - type: x_bookmarks
+    url: https://x.com/i/bookmarks
+    description: X 书签
+    enabled: false
+
+  - type: x_likes
+    url: https://x.com/i/likes
+    description: X 点赞
+    enabled: false
