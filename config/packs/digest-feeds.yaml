@@ -1,7 +1,8 @@
 pack:
   id: digest-feeds
   name: 摘要型数据源
-  description: 各类摘要型 Feed 数据源，  keywords:
+  description: 各类摘要型 Feed 数据源
+  keywords:
     - 摘要
     - 聚合
     - clawfeed
