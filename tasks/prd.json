@@ -63,10 +63,11 @@
         "Prompts 使用中文输出"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "US-001"
-      ]
+      ],
+      "completionNotes": "Completed by agent"
     },
     {
       "id": "US-005",
@@ -146,6 +147,6 @@
     }
   ],
   "metadata": {
-    "updatedAt": "2026-03-11T18:33:59.795Z"
+    "updatedAt": "2026-03-11T18:35:36.008Z"
   }
 }
