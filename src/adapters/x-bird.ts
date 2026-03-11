@@ -3,6 +3,9 @@ import type { RawItem, Source } from "../types/index";
 interface BirdSourceConfig {
   birdMode?: string;
   listId?: string;
+  count?: number;
+  fetchAll?: boolean;
+  maxPages?: number;
   authToken?: string;
   ct0?: string;
   authTokenEnv?: string;
@@ -89,13 +92,30 @@ function getBirdMode(source: Pick<Source, "configJson">): string {
   return mode;
 }
 
+function getCountArgs(config: BirdSourceConfig, mode: string): string[] {
+  const args: string[] = [];
+
+  // --all 仅支持 list/bookmarks/likes，不支持 home
+  if (config.fetchAll && mode !== "home") {
+    args.push("--all");
+    if (config.maxPages) {
+      args.push("--max-pages", String(config.maxPages));
+    }
+  } else if (config.count) {
+    args.push("-n", String(config.count));
+  }
+
+  return args;
+}
+
 export function buildBirdCommand(source: Pick<Source, "type" | "configJson">): string[] {
   const config = getBirdConfig(source);
   const mode = getBirdMode(source);
   const authArgs = getBirdAuthArgs(config);
+  const countArgs = getCountArgs(config, mode);
 
   if (mode === "home" || mode === "bookmarks" || mode === "likes") {
-    return ["bird", ...authArgs, mode, "--json"];
+    return ["bird", ...authArgs, mode, ...countArgs, "--json"];
   }
 
   if (mode === "list") {
@@ -103,16 +123,18 @@ export function buildBirdCommand(source: Pick<Source, "type" | "configJson">): s
       throw new Error("x list source requires listId");
     }
 
-    return ["bird", ...authArgs, "list-timeline", config.listId, "--json"];
+    return ["bird", ...authArgs, "list-timeline", config.listId, ...countArgs, "--json"];
   }
 
   throw new Error(`Unsupported birdMode: ${mode}`);
 }
 
 function parseBirdItems(payload: string, source: Source): RawItem[] {
-  const items = JSON.parse(payload) as BirdItem[];
+  const parsed = JSON.parse(payload) as BirdItem[] | { tweets: BirdItem[] };
+  // --all 参数会返回 {"tweets": [...]} 结构，需要提取 tweets 数组
+  const items = Array.isArray(parsed) ? parsed : (parsed as { tweets: BirdItem[] }).tweets;
   if (!Array.isArray(items)) {
-    throw new Error("bird CLI output must be a JSON array");
+    throw new Error("bird CLI output must be a JSON array or {tweets: [...]}");
   }
 
   return items

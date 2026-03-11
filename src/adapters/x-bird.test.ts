@@ -15,12 +15,37 @@ describe("x bird integration", () => {
     expect(buildBirdCommand({ type: "x_home", configJson: JSON.stringify({ birdMode: "home" }) })).toEqual(["bird", "home", "--json"]);
   });
 
+  test("supports count parameter", () => {
+    expect(buildBirdCommand({ type: "x_home", configJson: JSON.stringify({ birdMode: "home", count: 50 }) })).toEqual(["bird", "home", "-n", "50", "--json"]);
+    expect(buildBirdCommand({ type: "x_bookmarks", configJson: JSON.stringify({ birdMode: "bookmarks", count: 100 }) })).toEqual(["bird", "bookmarks", "-n", "100", "--json"]);
+    expect(
+      buildBirdCommand({
+        type: "x_list",
+        configJson: JSON.stringify({ birdMode: "list", listId: "123", count: 200 }),
+      }),
+    ).toEqual(["bird", "list-timeline", "123", "-n", "200", "--json"]);
+  });
+
+  test("supports fetchAll parameter for list/bookmarks/likes", () => {
+    expect(buildBirdCommand({ type: "x_list", configJson: JSON.stringify({ birdMode: "list", listId: "123", fetchAll: true }) })).toEqual(["bird", "list-timeline", "123", "--all", "--json"]);
+    expect(buildBirdCommand({ type: "x_list", configJson: JSON.stringify({ birdMode: "list", listId: "123", fetchAll: true, maxPages: 5 }) })).toEqual(["bird", "list-timeline", "123", "--all", "--max-pages", "5", "--json"]);
+    expect(buildBirdCommand({ type: "x_bookmarks", configJson: JSON.stringify({ birdMode: "bookmarks", fetchAll: true }) })).toEqual(["bird", "bookmarks", "--all", "--json"]);
+    expect(buildBirdCommand({ type: "x_likes", configJson: JSON.stringify({ birdMode: "likes", fetchAll: true, maxPages: 3 }) })).toEqual(["bird", "likes", "--all", "--max-pages", "3", "--json"]);
+  });
+
+  test("ignores fetchAll for home timeline", () => {
+    // home 不支持 --all，应该忽略
+    expect(buildBirdCommand({ type: "x_home", configJson: JSON.stringify({ birdMode: "home", fetchAll: true }) })).toEqual(["bird", "home", "--json"]);
+    // 但 count 仍然有效
+    expect(buildBirdCommand({ type: "x_home", configJson: JSON.stringify({ birdMode: "home", fetchAll: true, count: 50 }) })).toEqual(["bird", "home", "-n", "50", "--json"]);
+  });
+
   test("converts bird output into raw items", async () => {
     const items = await collectXBirdSource(
       {
         id: "x-home",
-        name: "X Home",
         type: "x_home",
+        url: "https://x.com/home",
         enabled: false,
         configJson: JSON.stringify({ birdMode: "home" }),
       },
@@ -53,8 +78,8 @@ describe("x bird integration", () => {
     const items = await collectXBirdSource(
       {
         id: "x-home",
-        name: "X Home",
         type: "x_home",
+        url: "https://x.com/home",
         enabled: false,
         configJson: JSON.stringify({ birdMode: "home" }),
       },
@@ -97,8 +122,8 @@ describe("x bird integration", () => {
     const items = await collectXBirdSource(
       {
         id: "x-home",
-        name: "X Home",
         type: "x_home",
+        url: "https://x.com/home",
         enabled: false,
         configJson: JSON.stringify({ birdMode: "home" }),
       },
@@ -140,6 +165,19 @@ describe("x bird integration", () => {
         }),
       }),
     ).toEqual(["bird", "--auth-token", "auth-token-from-env", "--ct0", "ct0-from-env", "home", "--json"]);
+
+    // 带 count 参数
+    expect(
+      buildBirdCommand({
+        type: "x_home",
+        configJson: JSON.stringify({
+          birdMode: "home",
+          count: 100,
+          authTokenEnv: "BIRD_AUTH_TOKEN_TEST",
+          ct0Env: "BIRD_CT0_TEST",
+        }),
+      }),
+    ).toEqual(["bird", "--auth-token", "auth-token-from-env", "--ct0", "ct0-from-env", "home", "-n", "100", "--json"]);
 
     delete process.env.BIRD_AUTH_TOKEN_TEST;
     delete process.env.BIRD_CT0_TEST;

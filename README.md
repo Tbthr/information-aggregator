@@ -196,7 +196,52 @@ sources:
 | `reddit` | Reddit JSON API | - |
 | `github_trending` | GitHub Trending HTML | - |
 | `digest_feed` | 自定义格式 | `config.format` |
-| `x_*` | bird CLI | `config.birdMode`, `config.authTokenEnv` |
+| `x_*` | bird CLI | 见下方详细配置 |
+
+### X/Twitter 数据源配置
+
+X/Twitter 数据源需要 [bird CLI](https://github.com/nicoulaj/bird) 和浏览器授权。通过 `configJson` 字段配置：
+
+```yaml
+sources:
+  - type: x_home
+    url: https://x.com/home
+    description: X 首页时间线
+    configJson: '{"birdMode":"home","count":50}'
+
+  - type: x_list
+    url: https://x.com/i/lists/123456789
+    description: X 列表
+    configJson: '{"birdMode":"list","listId":"123456789","count":100}'
+```
+
+**支持的 birdMode**：
+
+| birdMode | 说明 | 数据源类型 |
+|----------|------|-----------|
+| `home` | 首页时间线 | `x_home` |
+| `list` | 列表时间线 | `x_list` |
+| `bookmarks` | 书签 | `x_bookmarks` |
+| `likes` | 点赞 | `x_likes` |
+
+**configJson 参数**：
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| `birdMode` | string | 必填，bird CLI 模式 |
+| `listId` | string | list 模式必填，列表 ID |
+| `count` | number | 拉取数量，默认 20 |
+| `fetchAll` | boolean | 分页拉取全部（仅 list/bookmarks/likes，有封号风险） |
+| `maxPages` | number | 配合 fetchAll，限制最大页数（每页约 100 条） |
+| `authTokenEnv` | string | 环境变量名，提供 Twitter auth_token |
+| `ct0Env` | string | 环境变量名，提供 Twitter ct0 token |
+| `chromeProfile` | string | Chrome 配置文件名（用于提取 cookie） |
+| `chromeProfileDir` | string | Chrome 配置文件目录 |
+
+**认证方式**（二选一）：
+
+1. **浏览器 Cookie**：设置 `chromeProfile` 让 bird 自动提取 cookie
+2. **环境变量**：设置 `authTokenEnv` 和 `ct0Env` 从环境变量读取 token
 
 ### 从 OPML 导入
 
