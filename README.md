@@ -276,7 +276,7 @@ bun run aggregator run --pack ai-news,tech-news --view daily-brief --window 24h
 bun run smoke
 ```
 
-更完整的验证说明请见 [`docs/testing.md`](./docs/testing.md)。
+更完整的验证说明请见 [`TEST.md`](./TEST.md)。
 
 ```bash
 bun scripts/aggregator.ts config validate

@@ -1,5 +1,17 @@
 # 测试指南
 
+## 核心原则
+
+- **测试先行**：新功能先写测试，80%+ 覆盖率
+- **确定性优先**：Pipeline 必须可复现，真实网络探测仅作为补充验证
+
+## 成功指标
+
+- `bun test` 全部通过
+- `bun run smoke` 无错误
+- `bun run e2e` 输出符合预期
+- 无遗漏的"已支持但未文档化"能力
+
 ## 最快的日常检查
 
 开发过程中优先使用：
@@ -21,6 +33,22 @@ bun scripts/aggregator.ts run --view item-list --format json
 bun scripts/aggregator.ts sources list
 ```
 
+## 验证策略
+
+默认顺序：
+
+1. `bun test`
+2. `bun run smoke`
+3. `bun run e2e`
+4. clean-clone 安装验证
+5. `bun run e2e:real`
+
+解释：
+
+- `smoke` 是开发期最快的回归检查
+- `e2e` 是稳定的 fetch-to-output 本地基线
+- `e2e:real` 不应作为 CI gate，因为它受上游和网络波动影响
+
 ## 人工验收清单
 
 - `bun run smoke` 无需手工修复即可通过
@@ -34,6 +62,20 @@ bun scripts/aggregator.ts sources list
 - `bun scripts/aggregator.ts run --view item-list --format json` 能输出结构化 JSON
 - `bun scripts/aggregator.ts sources list` 能输出 `sourceId<TAB>sourceType<TAB>sourceName`
 - 示例配置文件与文档保持一致且可读
+
+## 端到端测试规则
+
+### 新增或修改 source/runtime 行为时
+
+- 先补本地 mock-source E2E 测试
+- 优先使用本地 HTTP test server，而不是脆弱的网络 mock
+- 断言最终 Markdown 输出，而不只检查中间结构
+- 真实网络 probe 只能作为补充验证，不能是唯一验证
+- X family source 要优先做 `bird CLI` 参数映射和 fixture 输出测试，再做手动 probe
+
+### 修改打包或安装行为时
+
+- 从 clean clone 验证仓库
 
 ## 端到端检查
 
@@ -51,7 +93,7 @@ bun run e2e
 bun run e2e:real
 ```
 
-它会访问当前公开可用的数据源，确认运行时仍能与真实 source 协同工作。  
+它会访问当前公开可用的数据源，确认运行时仍能与真实 source 协同工作。
 它不应该作为稳定 CI gate，因为上游可用性会变化。
 
 ## 安装验证
@@ -66,16 +108,6 @@ bun run smoke
 ```
 
 这通常足以覆盖本地使用与交付前检查。
-
-## 当前最佳实践
-
-推荐验证顺序：
-
-1. 先跑变更模块对应的 unit / integration tests
-2. 再跑 `bun run e2e`
-3. 再跑 `bun run smoke`
-4. 需要交付或发布时，再做 clean-clone 安装验证
-5. `bun run e2e:real` 仅作为手动公共网络探测
 
 ## source type 相关补充
 
@@ -129,9 +161,6 @@ bird --chrome-profile "Default" home --json
 - `custom_api`
 - `opml_rss`
 - X family 全部类型
-
-当前 Phase 4 的 relation enrichment 只消费既有 `canonicalHints` 与 canonical URL，不新增外部网络抓取。  
-因此这类质量提升默认应通过单元测试、view 测试和 mock-source E2E 验证，而不是新增 real-network gate。
 
 ## source 有效性审计
 
