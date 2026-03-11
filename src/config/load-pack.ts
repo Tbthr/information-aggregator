@@ -24,6 +24,7 @@ export function validateInlineSource(input: unknown): InlineSource {
     url: record.url,
     description: typeof record.description === "string" ? record.description : undefined,
     enabled: typeof record.enabled === "boolean" ? record.enabled : true,
+    configJson: typeof record.configJson === "string" ? record.configJson : undefined,
   };
 }
 

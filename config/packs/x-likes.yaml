@@ -1,0 +1,12 @@
+# X/Twitter 数据源
+# 需要配置 bird CLI 和 Chrome 授权才能使用
+
+pack:
+  id: x-likes
+  name: X/Twitter 数据源
+  description: X 平台数据采集，需要 bird CLI 和 Chrome 授权
+
+sources:
+  - type: x_likes
+    url: https://x.com/i/likes
+    description: X 点赞

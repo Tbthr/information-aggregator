@@ -7,6 +7,7 @@ export interface ResolvedSource {
   url: string;
   description?: string;
   packId: string;
+  configJson?: string;
 }
 
 export interface ResolvedSelection {
@@ -70,6 +71,7 @@ export function resolveSelection(
         url: source.url,
         description: source.description,
         packId: pack.id,
+        configJson: source.configJson,
       });
     }
   }

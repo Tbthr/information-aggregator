@@ -25,7 +25,11 @@ export interface InlineSource {
   url: string;
   description?: string;
   enabled?: boolean;
+  configJson?: string;
 }
+
+// Source 类型别名，用于 adapter 函数签名
+export type Source = InlineSource & { id: string };
 
 // Pack 定义 - 自包含数据源
 export interface SourcePack {

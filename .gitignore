@@ -1,6 +1,8 @@
 node_modules/
 *.db
 output/
+out/
 coverage/
 .worktrees/
 docs/plans/
+.ralph-tui/
