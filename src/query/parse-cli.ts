@@ -20,6 +20,9 @@ export function parseRunArgs(args: string[]): ParsedRunArgs {
       case "--output":
         result.outputFile = args[++i];
         break;
+      case "--no-ai":
+        result.noAi = true;
+        break;
       default:
         if (token?.startsWith("--")) {
           throw new Error(`Unknown argument: ${token}`);

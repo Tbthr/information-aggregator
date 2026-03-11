@@ -190,6 +190,7 @@ export interface ParsedRunArgs {
   viewId: string;
   window: string;
   outputFile?: string;
+  noAi?: boolean;
 }
 
 // 授权配置

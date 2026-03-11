@@ -28,10 +28,11 @@
         "添加 --no-ai 参数显式禁用 AI"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "US-001"
-      ]
+      ],
+      "completionNotes": "Completed by agent"
     },
     {
       "id": "US-003",
@@ -144,6 +145,6 @@
     }
   ],
   "metadata": {
-    "updatedAt": "2026-03-11T18:25:22.501Z"
+    "updatedAt": "2026-03-11T18:28:09.162Z"
   }
 }

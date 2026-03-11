@@ -1,6 +1,7 @@
 import { readdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
+import { createAnthropicClient } from "../src/ai/client";
 import { loadAllPacks } from "../src/config/load-pack";
 import { getCliVersion, getHelpText, parseCliArgs } from "../src/cli/index";
 import { parseRunArgs, validateRunArgs } from "../src/query/parse-cli";
@@ -20,8 +21,11 @@ async function main(): Promise<void> {
     const args = parseRunArgs(process.argv.slice(2));
     validateRunArgs(args);
 
+    // 创建 AI client（除非显式禁用）
+    const aiClient = args.noAi ? null : createAnthropicClient();
+
     const packs = await loadAllPacks("config/packs");
-    const queryResult = await runQuery(args, { loadPacks: () => packs });
+    const queryResult = await runQuery(args, { loadPacks: () => packs, aiClient });
 
     const viewId = queryResult.args.viewId;
     const viewModel = buildViewModel(queryResult, viewId);
