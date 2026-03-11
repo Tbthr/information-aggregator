@@ -13,10 +13,17 @@ export interface AnthropicConfig {
   fetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 }
 
+export interface TopicSuggestion {
+  title: string;
+  description: string;
+  sourceLinks: string[];
+}
+
 export interface AiClient {
   scoreCandidate(prompt: string): Promise<number>;
   summarizeCluster(prompt: string): Promise<string>;
   narrateDigest(prompt: string): Promise<string>;
+  suggestTopics(prompt: string): Promise<TopicSuggestion[]>;
 }
 
 function getFetchImpl(fetchFn?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>): (input: RequestInfo | URL, init?: RequestInit) => Promise<Response> {
@@ -100,6 +107,32 @@ function parseScore(payload: unknown, responseParser: (p: unknown) => string): n
   return Number(match[0]);
 }
 
+function parseTopicSuggestions(text: string): TopicSuggestion[] {
+  // 尝试从文本中提取 JSON
+  const jsonMatch = text.match(/\{[\s\S]*"suggestions"[\s\S]*\}/);
+  if (!jsonMatch) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(jsonMatch[0]) as { suggestions?: Array<{ title?: string; description?: string; sourceIndices?: number[] }> };
+    if (!Array.isArray(parsed.suggestions)) {
+      return [];
+    }
+
+    return parsed.suggestions
+      .filter((s): s is { title: string; description: string; sourceIndices?: number[] } =>
+        typeof s.title === "string" && typeof s.description === "string")
+      .map((s) => ({
+        title: s.title,
+        description: s.description,
+        sourceLinks: Array.isArray(s.sourceIndices) ? s.sourceIndices.map(String) : [],
+      }));
+  } catch {
+    return [];
+  }
+}
+
 class ProviderAiClient implements AiClient {
   constructor(private readonly config: Required<Pick<AiProviderConfig, "apiKey" | "model">> & AiProviderConfig) {}
 
@@ -133,6 +166,11 @@ class ProviderAiClient implements AiClient {
 
   async narrateDigest(prompt: string): Promise<string> {
     return getOpenAiResponseText(await this.request(prompt));
+  }
+
+  async suggestTopics(prompt: string): Promise<TopicSuggestion[]> {
+    const text = getOpenAiResponseText(await this.request(prompt));
+    return parseTopicSuggestions(text);
   }
 }
 
@@ -172,6 +210,11 @@ class AnthropicClient implements AiClient {
 
   async narrateDigest(prompt: string): Promise<string> {
     return getAnthropicResponseText(await this.request(prompt));
+  }
+
+  async suggestTopics(prompt: string): Promise<TopicSuggestion[]> {
+    const text = getAnthropicResponseText(await this.request(prompt));
+    return parseTopicSuggestions(text);
   }
 }
 

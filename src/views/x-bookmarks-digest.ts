@@ -1,6 +1,7 @@
 import type { QueryResult } from "../query/run-query";
 import type { ViewModel } from "./registry";
 import type { RawItemMetadata, RankedCandidate, RawItem } from "../types/index";
+import type { TopicSuggestion } from "../ai/client";
 import {
   type DataStatistics,
   type TaggedViewItem,
@@ -34,6 +35,15 @@ interface XBookmarkViewItem {
 }
 
 /**
+ * 选题建议（扩展版，包含素材来源链接）
+ */
+export interface TopicSuggestionViewItem {
+  title: string;
+  description: string;
+  sourceLinks: Array<{ title: string; url: string }>;
+}
+
+/**
  * X Bookmarks Digest 视图模型（扩展版）
  */
 export interface XBookmarksDigestModel extends ViewModel {
@@ -47,6 +57,7 @@ export interface XBookmarksDigestModel extends ViewModel {
   narration?: string;
   bookmarkItems: XBookmarkViewItem[];
   statistics?: DataStatistics;
+  topicSuggestions?: TopicSuggestionViewItem[];
 }
 
 /**
@@ -241,6 +252,29 @@ function toTaggedItem(item: XBookmarkViewItem): TaggedViewItem {
 }
 
 /**
+ * 将 AI 返回的选题建议转换为视图项
+ * @param suggestions AI 返回的原始选题建议
+ * @param items 用于解析来源链接的视图项列表
+ */
+export function resolveTopicSuggestions(
+  suggestions: TopicSuggestion[],
+  items: XBookmarkViewItem[],
+): TopicSuggestionViewItem[] {
+  return suggestions.map((s) => ({
+    title: s.title,
+    description: s.description,
+    sourceLinks: s.sourceLinks
+      .map((idxStr) => {
+        const idx = parseInt(idxStr, 10) - 1; // 转为 0-based index
+        const item = items[idx];
+        if (!item) return null;
+        return { title: item.title, url: item.url };
+      })
+      .filter((link): link is { title: string; url: string } => link !== null),
+  }));
+}
+
+/**
  * 构建 X Bookmarks Digest 视图
  */
 export function buildXBookmarksDigestView(result: QueryResult): XBookmarksDigestModel {
@@ -406,6 +440,25 @@ export function renderXBookmarksDigestView(model: ViewModel): string {
     lines.push("");
     lines.push(generateTextKeywordStats(stats.keywords));
     lines.push("```");
+  }
+
+  // 选题思路
+  if (digestModel.topicSuggestions && digestModel.topicSuggestions.length > 0) {
+    lines.push("", "## 💡 选题思路", "");
+    lines.push("基于今日精选内容，AI 推荐以下创作选题：");
+
+    for (let i = 0; i < digestModel.topicSuggestions.length; i++) {
+      const suggestion = digestModel.topicSuggestions[i];
+      lines.push("", `### ${i + 1}. ${suggestion.title}`);
+      lines.push("", `**角度说明**: ${suggestion.description}`);
+
+      if (suggestion.sourceLinks.length > 0) {
+        lines.push("", "**素材来源**:");
+        for (const link of suggestion.sourceLinks) {
+          lines.push(`- [${link.title}](${link.url})`);
+        }
+      }
+    }
   }
 
   // 页脚

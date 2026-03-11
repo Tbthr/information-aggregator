@@ -89,20 +89,27 @@ export function buildTopicSuggestionPrompt(items: string[]): string {
   return `你是内容策划专家，请基于以下 X/Twitter 热门帖子生成选题建议。
 
 热门帖子：
-${items.map((item, i) => `${i + 1}. ${item}`).join("\n")}
+${items.map((item, i) => `[${i + 1}] ${item}`).join("\n")}
 
 要求：
 1. 分析帖子中的热点话题和趋势
 2. 提出 3-5 个可以深入报道或创作的选题方向
-3. 每个选题包含：标题、简要说明、目标受众
+3. 每个选题需要标注来源帖子的序号（sourceIndices 数组）
 4. 用中文回答
 
-请按以下 JSON 格式返回：
+请严格按以下 JSON 格式返回（不要添加其他文字）：
 {
-  "trends": ["<识别到的趋势1>", "<趋势2>"],
   "suggestions": [
-    {"title": "<选题标题>", "description": "<简要说明>", "audience": "<目标受众>"},
-    ...
+    {
+      "title": "<吸引人的选题标题>",
+      "description": "<选题角度说明，包含为什么这个选题值得做>",
+      "sourceIndices": [<来源帖子序号，从1开始>]
+    },
+    {
+      "title": "<第二个选题标题>",
+      "description": "<角度说明>",
+      "sourceIndices": [1, 3]
+    }
   ]
 }`;
 }
