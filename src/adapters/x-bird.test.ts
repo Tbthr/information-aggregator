@@ -182,4 +182,248 @@ describe("x bird integration", () => {
     delete process.env.BIRD_AUTH_TOKEN_TEST;
     delete process.env.BIRD_CT0_TEST;
   });
+
+  test("parses article with url into metadataJson", async () => {
+    const items = await collectXBirdSource(
+      {
+        id: "x-home",
+        type: "x_home",
+        url: "https://x.com/home",
+        enabled: false,
+        configJson: JSON.stringify({ birdMode: "home" }),
+      },
+      async () =>
+        JSON.stringify([
+          {
+            id: "2031007472094461985",
+            text: "Long article content here...",
+            createdAt: "Mon Mar 09 14:01:30 +0000 2026",
+            author: {
+              username: "techwriter",
+              name: "Tech Writer",
+            },
+            article: {
+              title: "The Future of AI Agents",
+              previewText: "A deep dive into autonomous systems...",
+              url: "https://example.com/ai-agents",
+            },
+          },
+        ]),
+    );
+
+    expect(items).toHaveLength(1);
+    expect(items[0]?.title).toBe("The Future of AI Agents");
+    const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
+    expect(metadata.article).toEqual({
+      title: "The Future of AI Agents",
+      previewText: "A deep dive into autonomous systems...",
+      url: "https://example.com/ai-agents",
+    });
+  });
+
+  test("parses media array with different types into metadataJson", async () => {
+    const items = await collectXBirdSource(
+      {
+        id: "x-home",
+        type: "x_home",
+        url: "https://x.com/home",
+        enabled: false,
+        configJson: JSON.stringify({ birdMode: "home" }),
+      },
+      async () =>
+        JSON.stringify([
+          {
+            id: "media-tweet",
+            text: "Check out this content!",
+            author: { username: "mediatest" },
+            media: [
+              {
+                type: "photo",
+                url: "https://pbs.twimg.com/media/photo1.jpg",
+                width: 1200,
+                height: 800,
+                previewUrl: "https://pbs.twimg.com/media/photo1.jpg:small",
+              },
+              {
+                type: "video",
+                url: "https://video.twimg.com/video1.mp4",
+                previewUrl: "https://pbs.twimg.com/video1_thumb.jpg",
+              },
+              {
+                type: "animated_gif",
+                url: "https://pbs.twimg.com/media/gif1.gif",
+                previewUrl: "https://pbs.twimg.com/media/gif1_thumb.jpg",
+              },
+            ],
+          },
+        ]),
+    );
+
+    expect(items).toHaveLength(1);
+    const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
+    expect(metadata.media).toHaveLength(3);
+    expect(metadata.media[0]).toEqual({
+      type: "photo",
+      url: "https://pbs.twimg.com/media/photo1.jpg",
+      previewUrl: "https://pbs.twimg.com/media/photo1.jpg:small",
+    });
+    expect(metadata.media[1].type).toBe("video");
+    expect(metadata.media[2].type).toBe("animated_gif");
+  });
+
+  test("parses quote tweet into metadataJson", async () => {
+    const items = await collectXBirdSource(
+      {
+        id: "x-home",
+        type: "x_home",
+        url: "https://x.com/home",
+        enabled: false,
+        configJson: JSON.stringify({ birdMode: "home" }),
+      },
+      async () =>
+        JSON.stringify([
+          {
+            id: "quote-tweet",
+            text: "This is my commentary on the original",
+            author: { username: "quoter" },
+            quote: {
+              id: "original-tweet-id",
+              text: "Original tweet content",
+              author: { username: "original_author" },
+              url: "https://x.com/original_author/status/original-tweet-id",
+            },
+          },
+        ]),
+    );
+
+    expect(items).toHaveLength(1);
+    const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
+    expect(metadata.quote).toEqual({
+      id: "original-tweet-id",
+      text: "Original tweet content",
+      author: "original_author",
+      url: "https://x.com/original_author/status/original-tweet-id",
+    });
+  });
+
+  test("parses thread into metadataJson", async () => {
+    const items = await collectXBirdSource(
+      {
+        id: "x-home",
+        type: "x_home",
+        url: "https://x.com/home",
+        enabled: false,
+        configJson: JSON.stringify({ birdMode: "home" }),
+      },
+      async () =>
+        JSON.stringify([
+          {
+            id: "thread-root",
+            text: "Starting a thread about AI",
+            author: { username: "threader" },
+            thread: [
+              { id: "thread-1", text: "Point 1: AI is evolving", author: { username: "threader" } },
+              { id: "thread-2", text: "Point 2: Agents are the future", author: { username: "threader" } },
+            ],
+          },
+        ]),
+    );
+
+    expect(items).toHaveLength(1);
+    const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
+    expect(metadata.thread).toHaveLength(2);
+    expect(metadata.thread[0]).toEqual({
+      id: "thread-1",
+      text: "Point 1: AI is evolving",
+      author: "threader",
+    });
+    expect(metadata.thread[1].text).toBe("Point 2: Agents are the future");
+  });
+
+  test("parses parent (reply) into metadataJson", async () => {
+    const items = await collectXBirdSource(
+      {
+        id: "x-home",
+        type: "x_home",
+        url: "https://x.com/home",
+        enabled: false,
+        configJson: JSON.stringify({ birdMode: "home" }),
+      },
+      async () =>
+        JSON.stringify([
+          {
+            id: "reply-tweet",
+            text: "I agree with your point!",
+            author: { username: "replier" },
+            parent: {
+              id: "parent-tweet-id",
+              text: "What do you think about this?",
+              author: { username: "original_poster" },
+            },
+          },
+        ]),
+    );
+
+    expect(items).toHaveLength(1);
+    const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
+    expect(metadata.parent).toEqual({
+      id: "parent-tweet-id",
+      text: "What do you think about this?",
+      author: "original_poster",
+    });
+  });
+
+  test("parses conversationId into metadataJson", async () => {
+    const items = await collectXBirdSource(
+      {
+        id: "x-home",
+        type: "x_home",
+        url: "https://x.com/home",
+        enabled: false,
+        configJson: JSON.stringify({ birdMode: "home" }),
+      },
+      async () =>
+        JSON.stringify([
+          {
+            id: "tweet-with-conv",
+            text: "Part of a conversation",
+            author: { username: "user" },
+            conversationId: "1234567890",
+          },
+        ]),
+    );
+
+    expect(items).toHaveLength(1);
+    const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
+    expect(metadata.conversationId).toBe("1234567890");
+  });
+
+  test("handles empty/undefined extended fields gracefully", async () => {
+    const items = await collectXBirdSource(
+      {
+        id: "x-home",
+        type: "x_home",
+        url: "https://x.com/home",
+        enabled: false,
+        configJson: JSON.stringify({ birdMode: "home" }),
+      },
+      async () =>
+        JSON.stringify([
+          {
+            id: "simple-tweet",
+            text: "Just a simple tweet",
+            author: { username: "simple" },
+            // No article, media, quote, thread, or parent
+          },
+        ]),
+    );
+
+    expect(items).toHaveLength(1);
+    const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
+    expect(metadata.article).toBeUndefined();
+    expect(metadata.media).toBeUndefined();
+    expect(metadata.quote).toBeUndefined();
+    expect(metadata.thread).toBeUndefined();
+    expect(metadata.parent).toBeUndefined();
+  });
 });

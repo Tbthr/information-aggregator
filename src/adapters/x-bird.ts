@@ -16,6 +16,39 @@ interface BirdSourceConfig {
   cookieTimeoutMs?: number;
 }
 
+interface BirdMedia {
+  type?: "photo" | "video" | "animated_gif";
+  url?: string;
+  width?: number;
+  height?: number;
+  previewUrl?: string;
+}
+
+interface BirdAuthor {
+  username?: string;
+  name?: string;
+}
+
+interface BirdArticle {
+  title?: string;
+  previewText?: string;
+  url?: string;
+}
+
+interface BirdQuote {
+  id?: string;
+  text?: string;
+  author?: string | BirdAuthor;
+  url?: string;
+}
+
+interface BirdThreadItem {
+  id?: string;
+  text?: string;
+  author?: string | BirdAuthor;
+  createdAt?: string;
+}
+
 interface BirdItem {
   id?: string;
   text?: string;
@@ -23,19 +56,18 @@ interface BirdItem {
   expandedUrl?: string;
   expanded_url?: string;
   authorId?: string;
-  author?: string | {
-    username?: string;
-    name?: string;
-  };
-  article?: {
-    title?: string;
-    previewText?: string;
-  };
+  author?: string | BirdAuthor;
+  article?: BirdArticle;
   createdAt?: string;
   created_at?: string;
   likeCount?: number;
   replyCount?: number;
   retweetCount?: number;
+  conversationId?: string;
+  media?: BirdMedia[];
+  quote?: BirdQuote;
+  parent?: BirdThreadItem;
+  thread?: BirdThreadItem[];
 }
 
 function normalizeBirdTitle(text: string): string {
@@ -129,6 +161,71 @@ export function buildBirdCommand(source: Pick<Source, "type" | "configJson">): s
   throw new Error(`Unsupported birdMode: ${mode}`);
 }
 
+function extractAuthorUsername(author: string | BirdAuthor | undefined): string | undefined {
+  if (typeof author === "string") {
+    return author;
+  }
+  return author?.username;
+}
+
+function buildArticleMetadata(article: BirdArticle | undefined): { title: string; previewText?: string; url?: string } | undefined {
+  if (!article || (!article.title && !article.previewText && !article.url)) {
+    return undefined;
+  }
+  return {
+    title: article.title ?? "",
+    previewText: article.previewText,
+    url: article.url,
+  };
+}
+
+function buildMediaMetadata(media: BirdMedia[] | undefined): { type: string; url: string; previewUrl?: string }[] | undefined {
+  if (!media || media.length === 0) {
+    return undefined;
+  }
+  return media
+    .filter((m) => m.type && m.url)
+    .map((m) => ({
+      type: m.type as string,
+      url: m.url as string,
+      previewUrl: m.previewUrl,
+    }));
+}
+
+function buildQuoteMetadata(quote: BirdQuote | undefined): { id?: string; text?: string; author?: string; url?: string } | undefined {
+  if (!quote || !quote.id) {
+    return undefined;
+  }
+  return {
+    id: quote.id,
+    text: quote.text,
+    author: extractAuthorUsername(quote.author),
+    url: quote.url,
+  };
+}
+
+function buildThreadMetadata(thread: BirdThreadItem[] | undefined): { id?: string; text?: string; author?: string }[] | undefined {
+  if (!thread || thread.length === 0) {
+    return undefined;
+  }
+  return thread.map((t) => ({
+    id: t.id,
+    text: t.text,
+    author: extractAuthorUsername(t.author),
+  }));
+}
+
+function buildParentMetadata(parent: BirdThreadItem | undefined): { id?: string; text?: string; author?: string } | undefined {
+  if (!parent || !parent.id) {
+    return undefined;
+  }
+  return {
+    id: parent.id,
+    text: parent.text,
+    author: extractAuthorUsername(parent.author),
+  };
+}
+
 function parseBirdItems(payload: string, source: Source): RawItem[] {
   const parsed = JSON.parse(payload) as BirdItem[] | { tweets: BirdItem[] };
   // --all 参数会返回 {"tweets": [...]} 结构，需要提取 tweets 数组
@@ -141,18 +238,21 @@ function parseBirdItems(payload: string, source: Source): RawItem[] {
     .filter((item) => typeof item.text === "string")
     .map((item, index) => {
       const rawText = item.text ?? `Post ${index + 1}`;
-      const title = typeof item.article?.title === "string" && item.article.title.trim() !== ""
-        ? item.article.title.trim()
+      const article = item.article;
+      const title = typeof article?.title === "string" && article.title.trim() !== ""
+        ? article.title.trim()
         : normalizeBirdTitle(rawText);
+      const authorUsername = extractAuthorUsername(item.author);
+
       return {
         id: item.id ?? `${source.id}-${index + 1}`,
         sourceId: source.id,
         title,
         url: item.url
-        ?? (typeof item.author === "object" && typeof item.author?.username === "string" && typeof item.id === "string"
-          ? `https://x.com/${item.author.username}/status/${item.id}`
+        ?? (typeof authorUsername === "string" && typeof item.id === "string"
+          ? `https://x.com/${authorUsername}/status/${item.id}`
           : ""),
-        author: typeof item.author === "string" ? item.author : item.author?.username,
+        author: authorUsername,
         snippet: rawText,
         publishedAt: item.created_at ?? item.createdAt,
         fetchedAt: new Date().toISOString(),
@@ -160,6 +260,7 @@ function parseBirdItems(payload: string, source: Source): RawItem[] {
           provider: "bird",
           sourceType: source.type,
           contentType: "social_post",
+          conversationId: item.conversationId,
           engagement: item.likeCount === undefined && item.replyCount === undefined && item.retweetCount === undefined
             ? undefined
             : {
@@ -170,6 +271,11 @@ function parseBirdItems(payload: string, source: Source): RawItem[] {
           canonicalHints: item.expanded_url || item.expandedUrl
             ? { expandedUrl: item.expanded_url ?? item.expandedUrl }
             : undefined,
+          article: buildArticleMetadata(article),
+          media: buildMediaMetadata(item.media),
+          quote: buildQuoteMetadata(item.quote),
+          thread: buildThreadMetadata(item.thread),
+          parent: buildParentMetadata(item.parent),
         }),
       };
     })
