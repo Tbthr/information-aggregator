@@ -1,0 +1,15 @@
+# config/packs-v2/ai-news.yaml
+pack:
+  id: ai-news
+  name: AI 新闻与动态
+  description: AI 领域的新闻站点、公司博客、研究动态
+  keywords: [GPT, LLM, 机器学习, AI, 人工智能, OpenAI, Claude]
+
+sources:
+  - type: rss
+    url: https://openai.com/news/rss.xml
+    description: OpenAI 官方新闻和产品发布
+
+  - type: rss
+    url: https://huggingface.co/blog/feed.xml
+    description: Hugging Face 技术博客
