@@ -1,5 +1,5 @@
-import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { readFile, readdir } from "node:fs/promises";
+import { resolve, join } from "node:path";
 import YAML from "yaml";
 import type { InlineSource, SourcePackV2, SourceType } from "../types/index";
 import { CANONICAL_SOURCE_TYPES } from "../types/index";
@@ -69,4 +69,30 @@ async function loadYamlFile(filePath: string): Promise<Record<string, unknown>> 
 export async function loadPackV2(filePath: string): Promise<SourcePackV2> {
   const parsed = await loadYamlFile(filePath);
   return validateSourcePackV2(parsed);
+}
+
+export async function loadAllPacksV2(directory: string): Promise<SourcePackV2[]> {
+  const files = await readdir(directory);
+  const yamlFiles = files.filter((f) => f.endsWith(".yaml") || f.endsWith(".yml"));
+
+  const packs = await Promise.all(
+    yamlFiles.map((f) => loadPackV2(join(directory, f)))
+  );
+
+  return packs;
+}
+
+export function dedupePacksBySourceUrl(packs: SourcePackV2[]): SourcePackV2[] {
+  const seen = new Set<string>();
+
+  return packs.map((pack) => ({
+    ...pack,
+    sources: pack.sources.filter((source) => {
+      if (seen.has(source.url)) {
+        return false;
+      }
+      seen.add(source.url);
+      return true;
+    }),
+  }));
 }
