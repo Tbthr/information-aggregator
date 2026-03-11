@@ -33,10 +33,6 @@ sources:
     description: BestBlogs Newsletter，优质博客精选
 
   - type: website
-    url: https://tophub.today/
-    description: TopHub 今日热榜，多平台热点聚合
-
-  - type: website
     url: https://zeli.app/
     description: Zeli，科技资讯聚合
 
