@@ -80,6 +80,31 @@ describe("validateSourcePack", () => {
   test("throws on missing pack.name", () => {
     expect(() => validateSourcePack({ pack: { id: "test" }, sources: [] })).toThrow();
   });
+
+  test("preserves auth field", () => {
+    const input = {
+      pack: {
+        id: "test-pack",
+        name: "Test Pack",
+        auth: "x-family",
+      },
+      sources: [],
+    };
+    const result = validateSourcePack(input);
+    expect(result.auth).toBe("x-family");
+  });
+
+  test("auth field is optional", () => {
+    const input = {
+      pack: {
+        id: "test-pack",
+        name: "Test Pack",
+      },
+      sources: [],
+    };
+    const result = validateSourcePack(input);
+    expect(result.auth).toBeUndefined();
+  });
 });
 
 describe("loadAllPacks", () => {

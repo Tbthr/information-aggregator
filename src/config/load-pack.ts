@@ -57,6 +57,7 @@ export function validateSourcePack(input: unknown): SourcePack {
     keywords: Array.isArray(packRecord.keywords)
       ? packRecord.keywords.filter((k): k is string => typeof k === "string")
       : undefined,
+    auth: typeof packRecord.auth === "string" ? packRecord.auth : undefined,
     sources: validatedSources,
   };
 }
