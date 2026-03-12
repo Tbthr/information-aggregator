@@ -50,7 +50,6 @@ describe("parseDigestFeedItems", () => {
     const items = await collectDigestFeedSource(
       {
         id: "digest-source",
-        name: "Digest Source",
         type: "digest_feed",
         enabled: true,
         url: "https://clawfeed.kevinhe.io/feed/kevin",

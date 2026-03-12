@@ -77,7 +77,6 @@ describe("parseRedditListing", () => {
     const items = await collectRedditSource(
       {
         id: "reddit-ml",
-        name: "Reddit ML",
         type: "reddit",
         enabled: true,
         url: "https://www.reddit.com/r/MachineLearning/.json",
@@ -119,7 +118,6 @@ describe("parseRedditListing", () => {
     await collectRedditSource(
       {
         id: "reddit-ml",
-        name: "Reddit ML",
         type: "reddit",
         enabled: true,
         url: "https://www.reddit.com/r/MachineLearning/.json",

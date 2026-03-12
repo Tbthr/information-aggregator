@@ -5,48 +5,40 @@ import type { Source } from "../../types/index";
 function toRecord(row: Record<string, unknown>): Source {
   return {
     id: String(row.id),
-    name: String(row.name),
     type: String(row.type) as Source["type"],
     enabled: Boolean(row.enabled),
-    url: row.url ? String(row.url) : undefined,
+    url: row.url ? String(row.url) : "",
     configJson: String(row.config_json ?? "{}"),
-    weight: typeof row.weight === "number" ? row.weight : Number(row.weight ?? 1),
   };
 }
 
 export function insertSource(db: Database, source: Source): void {
   db.prepare(
-    "INSERT INTO sources (id, name, type, enabled, url, config_json, weight) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    "INSERT INTO sources (id, type, enabled, url, config_json) VALUES (?, ?, ?, ?, ?)",
   ).run(
     source.id,
-    source.name,
     source.type,
     source.enabled ? 1 : 0,
     source.url ?? null,
     source.configJson ?? "{}",
-    source.weight ?? 1,
   );
 }
 
 export function upsertSource(db: Database, source: Source): void {
   db.prepare(
-    `INSERT INTO sources (id, name, type, enabled, url, config_json, weight)
-     VALUES (?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO sources (id, type, enabled, url, config_json)
+     VALUES (?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
-       name = excluded.name,
        type = excluded.type,
        enabled = excluded.enabled,
        url = excluded.url,
-       config_json = excluded.config_json,
-       weight = excluded.weight`,
+       config_json = excluded.config_json`,
   ).run(
     source.id,
-    source.name,
     source.type,
     source.enabled ? 1 : 0,
     source.url ?? null,
     source.configJson ?? "{}",
-    source.weight ?? 1,
   );
 }
 

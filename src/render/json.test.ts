@@ -7,12 +7,17 @@ describe("renderQueryJson", () => {
   test("serializes query results and view models", () => {
     const json = renderQueryJson({
       queryResult: {
-        query: { command: "run", viewId: "item-list", format: "json" },
+        args: {
+          packIds: ["ai-news"],
+          viewId: "item-list",
+          window: "7d",
+        },
         selection: {
-          view: { id: "item-list", name: "Item List" },
-          topicIds: [],
-          sourceIds: ["rss-1"],
+          packIds: ["ai-news"],
+          viewId: "item-list",
+          window: "7d",
           sources: [],
+          keywords: [],
         },
         items: [],
         normalizedItems: [],
@@ -28,8 +33,10 @@ describe("renderQueryJson", () => {
     });
 
     const parsed = JSON.parse(json) as Record<string, unknown>;
-    expect(parsed.query).toBeDefined();
+    expect(parsed.args).toBeDefined();
     expect(parsed.selection).toBeDefined();
+    expect(parsed.items).toBeDefined();
+    expect(parsed.normalizedItems).toBeDefined();
     expect(parsed.rankedItems).toBeDefined();
     expect(parsed.clusters).toBeDefined();
     expect(parsed.viewModel).toBeDefined();

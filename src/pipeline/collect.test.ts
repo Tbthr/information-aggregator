@@ -4,7 +4,7 @@ import { collectSources } from "./collect";
 describe("collectSources", () => {
   test("collects from multiple sources and flattens results", async () => {
     const items = await collectSources(
-      [{ id: "s1", name: "A", type: "rss", enabled: true, configJson: "{}", url: "https://a.com/feed" }],
+      [{ id: "s1", type: "rss", enabled: true, configJson: "{}", url: "https://a.com/feed" }],
       {
         adapters: {
           rss: async () => [
@@ -33,8 +33,8 @@ describe("collectSources", () => {
 
     await collectSources(
       [
-        { id: "s1", name: "A", type: "rss", enabled: true, configJson: "{}", url: "https://a.com/feed" },
-        { id: "s2", name: "B", type: "rss", enabled: true, configJson: "{}", url: "https://b.com/feed" },
+        { id: "s1", type: "rss", enabled: true, configJson: "{}", url: "https://a.com/feed" },
+        { id: "s2", type: "rss", enabled: true, configJson: "{}", url: "https://b.com/feed" },
       ],
       {
         adapters: {
@@ -70,7 +70,7 @@ describe("collectSources", () => {
 
   test("dispatches to the hn adapter when configured", async () => {
     const items = await collectSources(
-      [{ id: "hn-1", name: "HN", type: "hn", enabled: true, configJson: "{}", url: "https://example.com/hn" }],
+      [{ id: "hn-1", type: "hn", enabled: true, configJson: "{}", url: "https://example.com/hn" }],
       {
         adapters: {
           hn: async () => [
@@ -102,7 +102,7 @@ describe("collectSources", () => {
 
   test("dispatches to the reddit adapter when configured", async () => {
     const items = await collectSources(
-      [{ id: "reddit-1", name: "Reddit", type: "reddit", enabled: true, configJson: "{}", url: "https://example.com/reddit" }],
+      [{ id: "reddit-1", type: "reddit", enabled: true, configJson: "{}", url: "https://example.com/reddit" }],
       {
         adapters: {
           reddit: async () => [

@@ -1,11 +1,9 @@
 CREATE TABLE IF NOT EXISTS sources (
   id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
   type TEXT NOT NULL,
-  enabled INTEGER NOT NULL,
-  url TEXT,
-  config_json TEXT NOT NULL DEFAULT '{}',
-  weight REAL NOT NULL DEFAULT 1
+  enabled INTEGER NOT NULL DEFAULT 0,
+  url TEXT NOT NULL DEFAULT '',
+  config_json TEXT NOT NULL DEFAULT '{}'
 );
 
 CREATE TABLE IF NOT EXISTS source_packs (
