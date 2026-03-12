@@ -6,3 +6,5 @@ coverage/
 .worktrees/
 docs/plans/
 .ralph-tui/
+.ralph/
+.ralphrc
