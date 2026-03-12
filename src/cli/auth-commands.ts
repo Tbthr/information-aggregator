@@ -1,18 +1,38 @@
-import { loadAllAuthConfigs } from "../config/load-auth.js";
+import { loadAuthByRef } from "../config/load-auth.js";
+import { readdir } from "node:fs/promises";
+
+/**
+ * 加载所有可用的 auth 配置
+ */
+async function loadAllAvailableAuths(): Promise<Record<string, Record<string, unknown>>> {
+  const authConfigs: Record<string, Record<string, unknown>> = {};
+  const authDir = "config/auth";
+
+  try {
+    const files = await readdir(authDir);
+    const yamlFiles = files.filter((f) => f.endsWith(".yaml") || f.endsWith(".yml"));
+
+    for (const file of yamlFiles) {
+      const authRef = file.replace(/\.(ya?ml)$/, "");
+      try {
+        authConfigs[authRef] = await loadAuthByRef(authRef, authDir);
+      } catch {
+        // 忽略加载失败
+      }
+    }
+  } catch {
+    // 目录不存在
+  }
+
+  return authConfigs;
+}
 
 /**
  * 验证指定类型的 auth 配置
  */
 export async function checkAuthConfig(type: string): Promise<boolean> {
   try {
-    const authConfigs = await loadAllAuthConfigs("config/auth");
-    const config = authConfigs[type];
-
-    if (!config) {
-      console.error(`❌ Auth 配置不存在: ${type}`);
-      console.error(`   请检查 config/auth/${type}.yaml 文件是否存在`);
-      return false;
-    }
+    const config = await loadAuthByRef(type);
 
     console.log(`✅ Auth 配置加载成功: ${type}`);
     console.log(`   配置项: ${Object.keys(config).join(", ")}`);
@@ -36,7 +56,12 @@ export async function checkAuthConfig(type: string): Promise<boolean> {
 
     return true;
   } catch (error) {
-    console.error(`❌ 加载 Auth 配置失败: ${error}`);
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      console.error(`❌ Auth 配置不存在: ${type}`);
+      console.error(`   请检查 config/auth/${type}.yaml 文件是否存在`);
+    } else {
+      console.error(`❌ 加载 Auth 配置失败: ${error}`);
+    }
     return false;
   }
 }
@@ -47,7 +72,7 @@ export async function checkAuthConfig(type: string): Promise<boolean> {
 export async function showAuthStatus(): Promise<void> {
   console.log("Auth 配置状态:\n");
 
-  const authConfigs = await loadAllAuthConfigs("config/auth");
+  const authConfigs = await loadAllAvailableAuths();
   const types = Object.keys(authConfigs);
 
   if (types.length === 0) {
