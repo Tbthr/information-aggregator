@@ -1,13 +1,9 @@
 import type { AiClient } from "../ai/client";
+import type { HighlightsResult } from "../types/index";
 import { renderDigestMarkdown } from "../render/digest";
-import { renderScanMarkdown } from "../render/scan";
 import type { QueryResult } from "../query/run-query";
 import { buildDailyBriefView, renderDailyBriefView } from "./daily-brief";
-import { buildItemListView, renderItemListView } from "./item-list";
-import { buildXBookmarksAnalysisView, renderXAnalysisView } from "./x-bookmarks-analysis";
-import { buildXLikesAnalysisView } from "./x-likes-analysis";
-import { buildXLongformHotView, renderXLongformHotView } from "./x-longform-hot";
-import { buildXBookmarksDigestView, renderXBookmarksDigestView } from "./x-bookmarks-digest";
+import { buildXAnalysisView, renderXAnalysisView } from "./x-analysis";
 
 export interface ViewModelItem {
   title: string;
@@ -27,6 +23,8 @@ export interface ViewModel {
   summary?: string;
   highlights?: string[];
   sections: ViewModelSection[];
+  /** AI 生成的趋势洞察 */
+  aiHighlights?: HighlightsResult;
 }
 
 /**
@@ -42,37 +40,22 @@ export async function buildViewModel(
   dependencies?: BuildViewDependencies,
 ): Promise<ViewModel> {
   switch (viewId) {
-    case "item-list":
-      return buildItemListView(result);
     case "daily-brief":
-      return buildDailyBriefView(result);
-    case "x-bookmarks-analysis":
-      return buildXBookmarksAnalysisView(result);
-    case "x-likes-analysis":
-      return buildXLikesAnalysisView(result);
-    case "x-longform-hot":
-      return buildXLongformHotView(result);
-    case "x-bookmarks-digest":
-      return buildXBookmarksDigestView(result, dependencies);
+      return buildDailyBriefView(result, { aiClient: dependencies?.aiClient });
+    case "x-analysis":
+      return buildXAnalysisView(result, dependencies);
     default:
-      return buildItemListView(result);
+      return buildDailyBriefView(result, { aiClient: dependencies?.aiClient });
   }
 }
 
 export function renderViewMarkdown(model: ViewModel, viewId: string): string {
   switch (viewId) {
-    case "item-list":
-      return renderItemListView(model, renderScanMarkdown);
     case "daily-brief":
       return renderDailyBriefView(model, renderDigestMarkdown);
-    case "x-bookmarks-analysis":
-    case "x-likes-analysis":
+    case "x-analysis":
       return renderXAnalysisView(model);
-    case "x-longform-hot":
-      return renderXLongformHotView(model);
-    case "x-bookmarks-digest":
-      return renderXBookmarksDigestView(model);
     default:
-      return renderItemListView(model, renderScanMarkdown);
+      return renderDailyBriefView(model, renderDigestMarkdown);
   }
 }

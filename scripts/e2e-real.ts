@@ -12,18 +12,18 @@ const sourcePacks: SourcePack[] = [
   },
 ];
 
-console.log("Running real-source item-list probe...");
+console.log("Running real-source daily-brief probe...");
 const scanResult = await runQuery({
   packIds: ["real-probe-pack"],
-  viewId: "item-list",
+  viewId: "daily-brief",
   window: "7d",
 }, {
   loadPacks: async () => sourcePacks,
 });
-const scanMarkdown = renderViewMarkdown(await buildViewModel(scanResult, "item-list"), "item-list");
+const scanMarkdown = renderViewMarkdown(await buildViewModel(scanResult, "daily-brief"), "daily-brief");
 
 if (!probeLooksHealthy(scanMarkdown)) {
-  console.error("Real item-list probe failed to produce healthy markdown output.");
+  console.error("Real daily-brief probe failed to produce healthy markdown output.");
   process.exit(1);
 }
 

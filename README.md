@@ -23,9 +23,9 @@
 ├─────────────────┤  ├─────────────────────┤  ├────────────────────────────────┤
 │ • load-pack.ts  │  │ • collect.ts        │  │ • registry.ts                  │
 │ • load-auth.ts  │  │ • normalize.ts      │  │ • daily-brief.ts               │
-│                 │  │ • dedupe-exact.ts   │  │ • item-list.ts                 │
-│                 │  │ • dedupe-near.ts    │  │ • x-*.ts                       │
-│                 │  │ • topic-match.ts    │  │ • render helpers / json.ts      │
+│                 │  │ • dedupe-exact.ts   │  │ • x-analysis.ts                │
+│                 │  │ • dedupe-near.ts    │  │ • render helpers / json.ts     │
+│                 │  │ • topic-match.ts    │  │                                │
 │                 │  │ • enrich.ts         │  │                                │
 │                 │  │ • rank.ts           │  │                                │
 │                 │  │ • cluster.ts        │  │                                │
@@ -117,7 +117,7 @@
 │  buildViewModel(result, viewId) → ViewModel                      │
 │  renderViewMarkdown(model, viewId) → Markdown/JSON               │
 │                                                                  │
-│  内置视图: item-list / daily-brief / json                        │
+│  内置视图: daily-brief / x-analysis / json                      │
 └───────────────────────────────────────────────────────────────────┘
 ```
 
@@ -308,7 +308,7 @@ bun scripts/aggregator.ts sources list
 ```bash
 # 单 Pack 查询
 bun run aggregator run --pack ai-news --view daily-brief --window 24h
-bun run aggregator run --pack ai-news --view item-list --window 7d
+bun run aggregator run --pack ai-news --view x-analysis --window 7d
 bun run aggregator run --pack karpathy-picks --view json --window all
 
 # 多 Pack 合并查询
@@ -326,7 +326,7 @@ bun run aggregator run --pack ai-news --view daily-brief --window 24h --no-ai
 | 参数 | 必填 | 说明 | 示例值 |
 |------|------|------|--------|
 | `--pack` | ✅ | Pack ID，支持逗号分隔的多 Pack | `ai-news` 或 `ai-news,tech-news` |
-| `--view` | ✅ | 输出格式 | `json`, `daily-brief`, `item-list`, `x-bookmarks-digest` 等 |
+| `--view` | ✅ | 输出格式 | `json`, `daily-brief`, `x-analysis` |
 | `--window` | ✅ | 时间窗口 | `24h`, `7d`, `3d`, `all` |
 | `--output` | ❌ | 输出文件路径，直接写入文件（避免大数据管道编码问题） | `out/result.json` |
 | `--no-ai` | ❌ | 禁用 AI 增强功能 | （无值） |
@@ -339,37 +339,7 @@ bun run aggregator run --pack ai-news --view daily-brief --window 24h --no-ai
 |------|---------|------|
 | `json` | JSON | 原始数据，供程序消费 |
 | `daily-brief` | Markdown | 摘要格式：Highlights + Clusters + Supporting Items |
-| `item-list` | Markdown | 简单列表格式 |
-| `x-bookmarks-analysis` | Markdown | 书签分析：Top Themes + Notable Items |
-| `x-likes-analysis` | Markdown | 点赞分析 |
-| `x-longform-hot` | Markdown | 长文热点：Hot Posts + Linked Articles + Clusters |
-| `x-bookmarks-digest` | Markdown | AI 增强书签日报：含选题建议、可视化图表 |
-
-### X 数据源专用视图
-
-```bash
-# X 书签分析
-bun run aggregator run --pack x-bookmarks --view x-bookmarks-analysis --window 24h
-
-# X 点赞分析
-bun run aggregator run --pack x-likes --view x-likes-analysis --window 7d
-
-# X 长文热点
-bun run aggregator run --pack x-sources --view x-longform-hot --window 24h
-
-# AI 增强书签日报（含选题建议、可视化图表）
-bun run aggregator run --pack x-bookmarks --view x-bookmarks-digest --window 24h
-```
-
-### `item-list` 输出示例
-
-```md
-# Scan Results
-
-- [Example title](https://example.com/post)
-  - Source: Query View
-  - Score: 0.82
-```
+| `x-analysis` | Markdown | AI 增强分析：含选题建议、可视化图表 |
 
 ### `daily-brief` 输出示例
 
@@ -397,7 +367,7 @@ bun run smoke
 ```bash
 bun scripts/aggregator.ts config validate
 bun scripts/aggregator.ts run --pack ai-news --view daily-brief --window 24h
-bun scripts/aggregator.ts run --pack karpathy-picks --view item-list --window 7d
+bun scripts/aggregator.ts run --pack karpathy-picks --view daily-brief --window 7d
 ```
 
 ## 后续计划
@@ -428,7 +398,7 @@ bun scripts/aggregator.ts run --pack karpathy-picks --view item-list --window 7d
 - 已完成：候选评分、cluster summary、digest narration 的 AI hook
 - 已完成：raw items、normalized items、clusters 的 end-to-end 持久化
 - 已完成：深度 enrichment（正文提取、AI 关键点提取、标签生成）
-- 已完成：4 个 X 专用视图（bookmarks-analysis、likes-analysis、longform-hot、bookmarks-digest）
+- 已完成：2 个视图（daily-brief、x-analysis）
 - 已完成：统计模块（分类分布、关键词提取、Mermaid 图表）
 - 已完成：Enrichment 结果持久化（`enrichment_results`、`extracted_content_cache` 表）
 - 尚未实现：feedback learning、Web UI、多用户能力

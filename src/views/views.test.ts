@@ -81,22 +81,6 @@ const queryResult = {
 } satisfies QueryResult;
 
 describe("views", () => {
-  test("item-list builds a stable view model", async () => {
-    const model = await buildViewModel(
-      {
-        ...queryResult,
-        args: { ...queryResult.args, viewId: "item-list" },
-        selection: { ...queryResult.selection, viewId: "item-list" },
-      },
-      "item-list",
-    );
-
-    expect(model.title).toBe("Item List");
-    expect(model.sections[0]?.items[0]?.title).toBe("Fresh AI launch");
-    expect(model.sections[0]?.items[3]?.url).toBe("https://example.com/fresh");
-    expect(model.sections[0]?.items[3]?.summary).toContain("linked article");
-  });
-
   test("daily-brief builds highlights and cluster sections and renders markdown", async () => {
     const model = await buildViewModel(queryResult, "daily-brief");
     const markdown = renderViewMarkdown(model, "daily-brief");

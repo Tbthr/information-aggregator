@@ -40,7 +40,7 @@
 ```bash
 # Pack 查询
 bun run aggregator run --pack ai-news --view daily-brief --window 24h
-bun run aggregator run --pack ai-news,engineering --view item-list --window 7d
+bun run aggregator run --pack ai-news,engineering --view daily-brief --window 7d
 
 # 常用验证
 bun test && bun run smoke && bun run e2e

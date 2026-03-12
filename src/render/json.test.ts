@@ -9,12 +9,12 @@ describe("renderQueryJson", () => {
       queryResult: {
         args: {
           packIds: ["ai-news"],
-          viewId: "item-list",
+          viewId: "daily-brief",
           window: "7d",
         },
         selection: {
           packIds: ["ai-news"],
-          viewId: "item-list",
+          viewId: "daily-brief",
           window: "7d",
           sources: [],
           keywords: [],
@@ -26,8 +26,8 @@ describe("renderQueryJson", () => {
         warnings: [],
       } satisfies QueryResult,
       viewModel: {
-        viewId: "item-list",
-        title: "Item List",
+        viewId: "daily-brief",
+        title: "Daily Brief",
         sections: [],
       },
     });

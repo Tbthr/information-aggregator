@@ -15,9 +15,9 @@ import {
 } from "./statistics";
 
 /**
- * X Bookmark 数据视图项（扩展版）
+ * X 数据分析视图项
  */
-interface XBookmarkViewItem {
+interface XAnalysisViewItem {
   id: string;
   title: string;
   url: string;
@@ -45,10 +45,10 @@ export interface TopicSuggestionViewItem {
 }
 
 /**
- * X Bookmarks Digest 视图模型（扩展版）
+ * X Analysis 视图模型
  */
-export interface XBookmarksDigestModel extends ViewModel {
-  viewId: "x-bookmarks-digest";
+export interface XAnalysisModel extends ViewModel {
+  viewId: "x-analysis";
   date: string;
   stats: {
     scanned: number;
@@ -56,7 +56,7 @@ export interface XBookmarksDigestModel extends ViewModel {
     selected: number;
   };
   narration?: string;
-  bookmarkItems: XBookmarkViewItem[];
+  bookmarkItems: XAnalysisViewItem[];
   statistics?: DataStatistics;
   topicSuggestions?: TopicSuggestionViewItem[];
 }
@@ -204,9 +204,9 @@ function buildRawItemMap(items: RawItem[]): Map<string, RawItem> {
 }
 
 /**
- * 将 RankedCandidate 转换为 XBookmarkViewItem
+ * 将 RankedCandidate 转换为 XAnalysisViewItem
  */
-function toItem(candidate: RankedCandidate, rawItemMap: Map<string, RawItem>): XBookmarkViewItem {
+function toItem(candidate: RankedCandidate, rawItemMap: Map<string, RawItem>): XAnalysisViewItem {
   const rawItem = rawItemMap.get(candidate.id);
   const fullMeta = rawItem ? extractFullMetadata(rawItem) : {};
 
@@ -238,9 +238,9 @@ function toItem(candidate: RankedCandidate, rawItemMap: Map<string, RawItem>): X
 }
 
 /**
- * 将 XBookmarkViewItem 转换为 TaggedViewItem（用于统计）
+ * 将 XAnalysisViewItem 转换为 TaggedViewItem（用于统计）
  */
-function toTaggedItem(item: XBookmarkViewItem): TaggedViewItem {
+function toTaggedItem(item: XAnalysisViewItem): TaggedViewItem {
   return {
     title: item.title,
     tags: item.tags,
@@ -255,7 +255,7 @@ function toTaggedItem(item: XBookmarkViewItem): TaggedViewItem {
  */
 export function resolveTopicSuggestions(
   suggestions: TopicSuggestion[],
-  items: XBookmarkViewItem[],
+  items: XAnalysisViewItem[],
 ): TopicSuggestionViewItem[] {
   return suggestions.map((s) => ({
     title: s.title,
@@ -272,12 +272,12 @@ export function resolveTopicSuggestions(
 }
 
 /**
- * 构建 X Bookmarks Digest 视图
+ * 构建 X Analysis 视图
  */
-export async function buildXBookmarksDigestView(
+export async function buildXAnalysisView(
   result: QueryResult,
   dependencies?: BuildViewDependencies,
-): Promise<XBookmarksDigestModel> {
+): Promise<XAnalysisModel> {
   const { aiClient } = dependencies ?? {};
 
   const rawItemMap = buildRawItemMap(result.items);
@@ -326,8 +326,8 @@ export async function buildXBookmarksDigestView(
   }
 
   return {
-    viewId: "x-bookmarks-digest",
-    title: `📰 书签日报 — ${date}`,
+    viewId: "x-analysis",
+    title: `📰 X 数据分析 — ${date}`,
     date,
     stats: {
       scanned: result.items.length,
@@ -354,28 +354,28 @@ export async function buildXBookmarksDigestView(
 }
 
 /**
- * 渲染 X Bookmarks Digest 视图为 Markdown
+ * 渲染 X Analysis 视图为 Markdown
  */
-export function renderXBookmarksDigestView(model: ViewModel): string {
+export function renderXAnalysisView(model: ViewModel): string {
   const lines: string[] = [];
-  const digestModel = model as XBookmarksDigestModel;
+  const analysisModel = model as XAnalysisModel;
 
   // 标题
   lines.push(`# ${model.title}`);
 
   // 今日看点（AI 摘要，如果有）
-  if (digestModel.narration) {
-    lines.push("", "## 📌 今日看点", "", digestModel.narration);
+  if (analysisModel.narration) {
+    lines.push("", "## 📌 今日看点", "", analysisModel.narration);
   }
 
   // 数据概览表格
-  if (digestModel.stats) {
+  if (analysisModel.stats) {
     lines.push("", "## 📊 数据概览", "");
     lines.push("| 指标 | 数量 |");
     lines.push("|------|------|");
-    lines.push(`| 扫描条目 | ${digestModel.stats.scanned} |`);
-    lines.push(`| 筛选后 | ${digestModel.stats.filtered} |`);
-    lines.push(`| 精选推荐 | ${digestModel.stats.selected} |`);
+    lines.push(`| 扫描条目 | ${analysisModel.stats.scanned} |`);
+    lines.push(`| 筛选后 | ${analysisModel.stats.filtered} |`);
+    lines.push(`| 精选推荐 | ${analysisModel.stats.selected} |`);
   }
 
   // 高亮内容
@@ -387,10 +387,10 @@ export function renderXBookmarksDigestView(model: ViewModel): string {
   }
 
   // 精选内容详情
-  if (digestModel.bookmarkItems && digestModel.bookmarkItems.length > 0) {
+  if (analysisModel.bookmarkItems && analysisModel.bookmarkItems.length > 0) {
     lines.push("", "## 📝 精选内容", "");
 
-    for (const item of digestModel.bookmarkItems) {
+    for (const item of analysisModel.bookmarkItems) {
       // 标题和链接
       const titleLink = item.url ? `[${item.title}](${item.url})` : item.title;
       lines.push("", `### ${titleLink}`);
@@ -447,8 +447,8 @@ export function renderXBookmarksDigestView(model: ViewModel): string {
   }
 
   // 数据统计与可视化
-  if (digestModel.statistics) {
-    const stats = digestModel.statistics;
+  if (analysisModel.statistics) {
+    const stats = analysisModel.statistics;
 
     // 标签云
     if (stats.tagCloud.length > 0) {
@@ -481,12 +481,12 @@ export function renderXBookmarksDigestView(model: ViewModel): string {
   }
 
   // 选题思路
-  if (digestModel.topicSuggestions && digestModel.topicSuggestions.length > 0) {
+  if (analysisModel.topicSuggestions && analysisModel.topicSuggestions.length > 0) {
     lines.push("", "## 💡 选题思路", "");
     lines.push("基于今日精选内容，AI 推荐以下创作选题：");
 
-    for (let i = 0; i < digestModel.topicSuggestions.length; i++) {
-      const suggestion = digestModel.topicSuggestions[i];
+    for (let i = 0; i < analysisModel.topicSuggestions.length; i++) {
+      const suggestion = analysisModel.topicSuggestions[i];
       lines.push("", `### ${i + 1}. ${suggestion.title}`);
       lines.push("", `**角度说明**: ${suggestion.description}`);
 

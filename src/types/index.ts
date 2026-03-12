@@ -195,6 +195,29 @@ export interface AiEnrichmentResult {
   tags?: string[];         // 自动生成的标签
   summary?: string;        // AI 摘要
   score?: number;          // 基于完整内容的质量评分
+  multiScore?: MultiDimensionalScore;  // 多维评分
+}
+
+/**
+ * 多维评分系统
+ * 从相关性、质量、时效性三个维度评估内容
+ */
+export interface MultiDimensionalScore {
+  relevance: number;    // 相关性 1-10
+  quality: number;      // 质量 1-10
+  timeliness: number;   // 时效性 1-10
+  total: number;        // 总分（加权平均）
+  reason: string;       // 评价理由
+}
+
+/**
+ * 趋势洞察结果
+ * AI 生成的趋势总结和主要趋势
+ */
+export interface HighlightsResult {
+  summary: string;       // 3-5 句话的趋势总结
+  trends: string[];      // 2-3 个主要趋势
+  generatedAt: string;   // 生成时间
 }
 
 /**
@@ -243,9 +266,5 @@ export interface AuthConfig {
 export const BUILTIN_VIEWS = new Set([
   "json",
   "daily-brief",
-  "item-list",
-  "x-bookmarks-analysis",
-  "x-likes-analysis",
-  "x-longform-hot",
-  "x-bookmarks-digest",
+  "x-analysis",
 ]);
