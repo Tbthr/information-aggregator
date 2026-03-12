@@ -129,9 +129,8 @@
 - TypeScript + Bun CLI
 - SQLite 持久化：sources、runs、outputs、source health、enrichment results
 - Pack 驱动的数据源配置（自包含 YAML 文件）
-- 已接入 `rss`、`json-feed`、`website`、`hn`、`reddit`
-- 已接入 `github_trending`、`digest_feed`、`custom_api`、`opml_rss`
-- 已接入基于 `bird CLI` 的 X family adapter
+- 已接入 `rss`、`json-feed`、`website`、`hn`、`reddit`、`github_trending`、`digest_feed`
+- 已接入基于 `bird CLI` 的 X family adapter（x_home、x_list、x_bookmarks、x_likes）
 - 确定性的规范化、精确去重、近似去重、排序与聚类
 - **深度 enrichment**：正文提取（使用 @mozilla/readability）、AI 关键点提取、标签生成
 - 可选的 AI 抽象层，用于候选评分、cluster summary 与 digest narration 扩展
@@ -245,6 +244,35 @@ sources:
 1. **浏览器 Cookie**：设置 `chromeProfile` 让 bird 自动提取 cookie
 2. **环境变量**：设置 `authTokenEnv` 和 `ct0Env` 从环境变量读取 token
 
+### Auth 配置目录
+
+授权相关配置统一存放在 `config/auth/` 目录，系统会自动将这些配置合并到对应类型的 source 中：
+
+```
+config/auth/
+├── x-family.yaml    # X/Twitter 系列（x_home, x_list, x_bookmarks, x_likes）
+└── reddit.yaml      # Reddit API（预留）
+```
+
+配置文件示例（`config/auth/x-family.yaml`）：
+
+```yaml
+adapter: x_family
+config:
+  chromeProfile: Default
+  cookieSource: chrome
+  # 或使用直接 Token
+  # authToken: "your_auth_token"
+  # ct0: "your_ct0_token"
+```
+
+**验证命令**：
+```bash
+bun run aggregator auth check        # 检查默认类型（x-family）
+bun run aggregator auth check reddit # 检查指定类型
+bun run aggregator auth status       # 显示所有 auth 配置状态
+```
+
 ### 从 OPML 导入
 
 如果你有 OPML 文件（从 Feedly、Inoreader 等导出），可以让 AI 帮你转化为项目的 pack 配置：
@@ -281,6 +309,9 @@ bun run aggregator run --pack ai-news,tech-news --view daily-brief --window 24h
 
 # 输出到文件（推荐用于大数据量）
 bun run aggregator run --pack x-sources --view json --window all --output out/result.json
+
+# 禁用 AI 增强
+bun run aggregator run --pack ai-news --view daily-brief --window 24h --no-ai
 ```
 
 ### 参数说明
@@ -288,9 +319,10 @@ bun run aggregator run --pack x-sources --view json --window all --output out/re
 | 参数 | 必填 | 说明 | 示例值 |
 |------|------|------|--------|
 | `--pack` | ✅ | Pack ID，支持逗号分隔的多 Pack | `ai-news` 或 `ai-news,tech-news` |
-| `--view` | ✅ | 输出格式 | `json`, `daily-brief`, `item-list` |
+| `--view` | ✅ | 输出格式 | `json`, `daily-brief`, `item-list`, `x-bookmarks-digest` 等 |
 | `--window` | ✅ | 时间窗口 | `24h`, `7d`, `3d`, `all` |
 | `--output` | ❌ | 输出文件路径，直接写入文件（避免大数据管道编码问题） | `out/result.json` |
+| `--no-ai` | ❌ | 禁用 AI 增强功能 | （无值） |
 
 **注意**：输出大量数据时（如 X 数据源），建议使用 `--output` 参数直接写入文件，避免通过 stdout 管道可能出现的编码问题。
 
@@ -301,6 +333,26 @@ bun run aggregator run --pack x-sources --view json --window all --output out/re
 | `json` | JSON | 原始数据，供程序消费 |
 | `daily-brief` | Markdown | 摘要格式：Highlights + Clusters + Supporting Items |
 | `item-list` | Markdown | 简单列表格式 |
+| `x-bookmarks-analysis` | Markdown | 书签分析：Top Themes + Notable Items |
+| `x-likes-analysis` | Markdown | 点赞分析 |
+| `x-longform-hot` | Markdown | 长文热点：Hot Posts + Linked Articles + Clusters |
+| `x-bookmarks-digest` | Markdown | AI 增强书签日报：含选题建议、可视化图表 |
+
+### X 数据源专用视图
+
+```bash
+# X 书签分析
+bun run aggregator run --pack x-bookmarks --view x-bookmarks-analysis --window 24h
+
+# X 点赞分析
+bun run aggregator run --pack x-likes --view x-likes-analysis --window 7d
+
+# X 长文热点
+bun run aggregator run --pack x-sources --view x-longform-hot --window 24h
+
+# AI 增强书签日报（含选题建议、可视化图表）
+bun run aggregator run --pack x-bookmarks --view x-bookmarks-digest --window 24h
+```
 
 ### `item-list` 输出示例
 
@@ -345,8 +397,7 @@ bun scripts/aggregator.ts run --pack karpathy-picks --view item-list --window 7d
 
 以下内容已经进入持续迭代路线图：
 
-- X family 的授权配置、手动 probe 与兼容性收敛
-- 更稳的 `github_trending` / `digest_feed` / `custom_api` / `opml_rss` source 治理
+- 更稳的 `github_trending` / `digest_feed` source 治理
 - feedback loop 与自适应排序
 - Web UI
 - 多用户能力
@@ -362,11 +413,16 @@ bun scripts/aggregator.ts run --pack karpathy-picks --view item-list --window 7d
 - 已完成：SQLite schema 与核心表
 - 已完成：`rss`、`json-feed`、`website` adapter
 - 已完成：`hn`、`reddit` 的 collector 路径支持
-- 已完成：`github_trending`、`digest_feed`、`custom_api`、`opml_rss` adapter
-- 已完成：X family `bird CLI` adapter，需本地授权后手动 probe
+- 已完成：`github_trending`、`digest_feed` adapter
+- 已完成：X family `bird CLI` adapter（x_home、x_list、x_bookmarks、x_likes）
+- 已完成：Auth 配置统一管理（`config/auth/` 目录）
+- 已完成：CLI `auth check/status` 命令
 - 已完成：规范化、去重、topic match、排序、聚类
 - 已完成：`run --pack --view --window` 查询入口、Markdown / JSON 输出
 - 已完成：候选评分、cluster summary、digest narration 的 AI hook
 - 已完成：raw items、normalized items、clusters 的 end-to-end 持久化
 - 已完成：深度 enrichment（正文提取、AI 关键点提取、标签生成）
+- 已完成：4 个 X 专用视图（bookmarks-analysis、likes-analysis、longform-hot、bookmarks-digest）
+- 已完成：统计模块（分类分布、关键词提取、Mermaid 图表）
+- 已完成：Enrichment 结果持久化（`enrichment_results`、`extracted_content_cache` 表）
 - 尚未实现：feedback learning、Web UI、多用户能力
