@@ -39,8 +39,9 @@
 │ • rss.ts        │  └─────────────────────────────────────────────────────────┘
 │ • json-feed.ts  │            ┌─────────────────────────────────────┐
 │ • x-bird.ts     │            │   AI Layer (ai/) - Optional         │
-│ • github-*      │            │   • scoreCandidate()                │
-└─────────────────┘            │   • narrateDigest()                 │
+│ • github-*      │            │   • enrichArticle()                 │
+└─────────────────┘            │   • generateDailyBriefOverview()    │
+                                │   • summarizePost()                 │
                                 └─────────────────────────────────────┘
 ```
 
@@ -138,11 +139,15 @@
 
 ```
 config/packs/
-├── ai-news.yaml        # AI 新闻与动态（5 sources）
-├── karpathy-picks.yaml # Karpathy 精选技术博客（90 sources）
-├── reference.yaml      # Adapter schema 示例（12 sources）
-├── security.yaml       # 网络安全（5 sources）
-└── tech-news.yaml      # 科技资讯聚合（8 sources）
+├── github.yaml           # GitHub Trending
+├── karpathy-picks.yaml   # Karpathy 精选技术博客
+├── tech-news.yaml        # 科技资讯聚合
+├── test_daily.yaml       # 测试 Pack - Daily Brief
+├── test_x_analysis.yaml  # 测试 Pack - X Analysis
+├── x-bookmarks.yaml      # X 书签
+├── x-home.yaml           # X 首页时间线
+├── x-likes.yaml          # X 点赞
+└── x-lists.yaml          # X 列表
 ```
 
 ### Pack 文件结构
@@ -338,22 +343,37 @@ bun run aggregator run --pack ai-news --view daily-brief --window 24h --no-ai
 | 视图 | 输出格式 | 说明 |
 |------|---------|------|
 | `json` | JSON | 原始数据，供程序消费 |
-| `daily-brief` | Markdown | 摘要格式：Highlights + Clusters + Supporting Items |
-| `x-analysis` | Markdown | AI 增强分析：含选题建议、可视化图表 |
+| `daily-brief` | Markdown | AI 生成：今日看点、主要看点、Top 10 文章（描述+推荐理由+标签）、标签云 |
+| `x-analysis` | Markdown | AI 生成：每篇帖子摘要+标签，互动数据，标签云 |
 
 ### `daily-brief` 输出示例
 
 ```md
 # Daily Digest
 
-## Highlights
+## 今日看点
 
-- Example title
+今日技术社区动态呈现出...
 
-## Top Clusters
+### 主要看点
 
-- [Example title](https://example.com/post)
-  - Why it matters
+- 看点1
+- 看点2
+- 看点3
+
+## 精选文章
+
+### [文章标题](https://example.com/post)
+
+> 一句话描述
+
+**为什么值得关注**: 推荐理由
+
+**标签**: `tag1` `tag2` `tag3`
+
+## 标签云
+
+`标签1` `标签2` `标签3`
 ```
 
 ## 示例工作流
@@ -382,7 +402,7 @@ bun scripts/aggregator.ts run --pack karpathy-picks --view daily-brief --window 
 
 ## 当前实现状态
 
-截至 2026-03-12，仓库当前状态为：
+截至 2026-03-13，仓库当前状态为：
 
 - 已完成：项目脚手架与 CLI
 - 已完成：本地 YAML 配置加载与校验
@@ -395,10 +415,8 @@ bun scripts/aggregator.ts run --pack karpathy-picks --view daily-brief --window 
 - 已完成：CLI `auth check/status` 命令
 - 已完成：规范化、去重、topic match、排序、聚类
 - 已完成：`run --pack --view --window` 查询入口、Markdown / JSON 输出
-- 已完成：候选评分、cluster summary、digest narration 的 AI hook
+- 已完成：AI 增强视图（daily-brief、x-analysis）
 - 已完成：raw items、normalized items、clusters 的 end-to-end 持久化
 - 已完成：深度 enrichment（正文提取、AI 关键点提取、标签生成）
-- 已完成：2 个视图（daily-brief、x-analysis）
-- 已完成：统计模块（分类分布、关键词提取、Mermaid 图表）
 - 已完成：Enrichment 结果持久化（`enrichment_results`、`extracted_content_cache` 表）
 - 尚未实现：feedback learning、Web UI、多用户能力
