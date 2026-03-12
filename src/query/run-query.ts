@@ -15,7 +15,8 @@ import { enrichCandidates } from "../pipeline/enrich";
 import { normalizeItems } from "../pipeline/normalize";
 import { rankCandidates } from "../pipeline/rank";
 import { scoreTopicMatch } from "../pipeline/topic-match";
-import { parseRawItemMetadata, type Cluster, type NormalizedItem, type ParsedRunArgs, type RankedCandidate, type RawItem, type SourcePack, type TopicRule, type EnrichmentConfig } from "../types/index";
+import { type Cluster, type NormalizedItem, type ParsedRunArgs, type RankedCandidate, type RawItem, type SourcePack, type TopicRule, type EnrichmentConfig } from "../types/index";
+import { parseRawItemMetadata } from "../utils/metadata";
 import { createContentCache, type ContentCache } from "../cache/content-cache";
 import { resolveSelection, type ResolvedSelection, type ResolvedSource } from "./resolve-selection";
 

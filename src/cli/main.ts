@@ -1,14 +1,14 @@
 import { readdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
-import { createAnthropicClient } from "../src/ai/client";
-import { loadAllPacks } from "../src/config/load-pack";
-import { checkAuthConfig, showAuthStatus } from "../src/cli/auth-commands";
-import { getCliVersion, getHelpText, parseCliArgs } from "../src/cli/index";
-import { parseRunArgs, validateRunArgs } from "../src/query/parse-cli";
-import { runQuery } from "../src/query/run-query";
-import { renderQueryJson } from "../src/render/json";
-import { buildViewModel, renderViewMarkdown } from "../src/views/registry";
+import { createAnthropicClient } from "../ai/client";
+import { loadAllPacks } from "../config/load-pack";
+import { checkAuthConfig, showAuthStatus } from "./auth-commands";
+import { getCliVersion, getHelpText, parseCliArgs } from "./index";
+import { parseRunArgs, validateRunArgs } from "../query/parse-cli";
+import { runQuery } from "../query/run-query";
+import { renderQueryJson } from "../render/json";
+import { buildViewModel, renderViewMarkdown } from "../views/registry";
 
 async function main(): Promise<void> {
   const parsed = parseCliArgs(process.argv.slice(2));

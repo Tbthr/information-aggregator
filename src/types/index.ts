@@ -235,19 +235,6 @@ export interface EnrichmentConfig {
   maxContentLength?: number;            // 最大内容长度（字符数），默认不限制
 }
 
-export function parseRawItemMetadata(metadataJson: string | undefined): RawItemMetadata | null {
-  if (typeof metadataJson !== "string" || metadataJson.trim() === "") {
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(metadataJson) as RawItemMetadata | null;
-    return parsed && typeof parsed === "object" ? parsed : null;
-  } catch {
-    return null;
-  }
-}
-
 // CLI 运行参数
 export interface ParsedRunArgs {
   packIds: string[];

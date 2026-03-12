@@ -1,7 +1,13 @@
-import { runQuery } from "../src/query/run-query";
-import { loadAllPacks } from "../src/config/load-pack";
-import { buildViewModel, renderViewMarkdown } from "../src/views/registry";
-import { probeLooksHealthy } from "../src/verification/real-probe";
+import { runQuery } from "../query/run-query";
+import { loadAllPacks } from "../config/load-pack";
+import { buildViewModel, renderViewMarkdown } from "../views/registry";
+
+/**
+ * 检查 markdown 输出是否包含链接
+ */
+function probeLooksHealthy(markdown: string): boolean {
+  return markdown.includes("](") || markdown.includes("http");
+}
 
 // 测试 daily-brief view
 console.log("Running daily-brief probe with test_daily pack...");

@@ -1,4 +1,5 @@
-import { parseRawItemMetadata, type CanonicalRelationship, type NormalizedItem, type RawItem } from "../types/index";
+import { type CanonicalRelationship, type NormalizedItem, type RawItem } from "../types/index";
+import { parseRawItemMetadata } from "../utils/metadata";
 import { normalizeSnippet, normalizeTitle } from "./normalize-text";
 import { normalizeUrl, resolveCanonicalUrl } from "./normalize-url";
 

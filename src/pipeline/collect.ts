@@ -1,4 +1,5 @@
-import { parseRawItemMetadata, type RawItem, type RawItemMetadata, type Source } from "../types/index";
+import { type RawItem, type RawItemMetadata, type Source } from "../types/index";
+import { parseRawItemMetadata } from "../utils/metadata";
 
 export interface CollectSourceEvent {
   sourceId: string;

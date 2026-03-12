@@ -1,8 +1,9 @@
 import type { AiClient } from "../ai/client";
 import type { HighlightsResult } from "../types/index";
 import type { QueryResult } from "../query/run-query";
-import { buildDailyBriefView, renderDailyBriefView, type DailyBriefViewModel } from "./daily-brief";
-import { buildXAnalysisView, renderXAnalysisView, type XAnalysisViewModel } from "./x-analysis";
+import { buildDailyBriefView, type DailyBriefViewModel } from "./daily-brief";
+import { buildXAnalysisView, type XAnalysisViewModel } from "./x-analysis";
+import { renderDailyBriefView, renderXAnalysisView } from "./render";
 
 export interface ViewModelItem {
   title: string;

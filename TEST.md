@@ -25,12 +25,12 @@ bun run smoke
 ```bash
 bun test
 bun run check
-bun scripts/aggregator.ts --help
-bun scripts/aggregator.ts config validate
-bun scripts/aggregator.ts run --view item-list
-bun scripts/aggregator.ts run --view daily-brief
-bun scripts/aggregator.ts run --view item-list --format json
-bun scripts/aggregator.ts sources list
+bun src/cli/main.ts --help
+bun src/cli/main.ts config validate
+bun src/cli/main.ts run --pack test_daily --view daily-brief --window 24h
+bun src/cli/main.ts run --pack test_x_analysis --view x-analysis --window all
+bun src/cli/main.ts sources list --pack test_daily
+bun src/cli/main.ts sources list --pack test_x_analysis
 ```
 
 ## 验证策略
@@ -39,25 +39,22 @@ bun scripts/aggregator.ts sources list
 
 1. `bun test`
 2. `bun run smoke`
-3. `bun run e2e`
-4. clean-clone 安装验证
-5. `bun run e2e:real`
+3. clean-clone 安装验证
+4. `bun run e2e:real`
 
 解释：
 
 - `smoke` 是开发期最快的回归检查
-- `e2e` 是稳定的 fetch-to-output 本地基线
 - `e2e:real` 不应作为 CI gate，因为它受上游和网络波动影响
 
 ## 人工验收清单
 
 - `bun run smoke` 无需手工修复即可通过
-- `bun scripts/aggregator.ts --help` 展示 `run --view <view>`、`sources list`、`config validate`
-- `bun scripts/aggregator.ts config validate` 能通过示例配置
-- `bun scripts/aggregator.ts run --view daily-brief` 能输出 Markdown
-- `bun scripts/aggregator.ts run --view x-analysis` 能输出完整分析格式（含 AI 评分、摘要、统计、选题建议）
-- `bun scripts/aggregator.ts run --view daily-brief --format json` 能输出结构化 JSON
-- `bun scripts/aggregator.ts sources list` 能输出 `sourceId<TAB>sourceType<TAB>sourceName`
+- `bun src/cli/main.ts --help` 展示 `run`、`sources`、`config` 命令
+- `bun src/cli/main.ts config validate` 能通过示例配置
+- `bun src/cli/main.ts run --pack test_daily --view daily-brief --window 24h` 能输出 Markdown
+- `bun src/cli/main.ts run --pack test_x_analysis --view x-analysis --window all` 能输出完整分析格式
+- `bun src/cli/main.ts sources list --pack test_daily` 能输出 `sourceId<TAB>sourceType<TAB>sourceName`
 - 示例配置文件与文档保持一致且可读
 
 ## 端到端测试规则
@@ -75,14 +72,6 @@ bun scripts/aggregator.ts sources list
 - 从 clean clone 验证仓库
 
 ## 端到端检查
-
-稳定的本地 E2E 基线：
-
-```bash
-bun run e2e
-```
-
-这个命令不会依赖外部服务，而是通过本地 mock HTTP sources 验证从 fetch 到 render 的完整流程。
 
 可选的真实网络探测：
 

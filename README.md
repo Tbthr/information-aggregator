@@ -6,8 +6,8 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                              CLI Layer (cli/)                               │
-│   aggregator.ts → parse-cli.ts → runQuery() / renderViewMarkdown()         │
+│                              CLI Layer (src/cli/)                            │
+│   main.ts → parse-cli.ts → runQuery() / renderViewMarkdown()               │
 └─────────────────────────────────────────────────────────────────────────────┘
                                       │
                                       ▼
@@ -24,7 +24,7 @@
 │ • load-pack.ts  │  │ • collect.ts        │  │ • registry.ts                  │
 │ • load-auth.ts  │  │ • normalize.ts      │  │ • daily-brief.ts               │
 │                 │  │ • dedupe-exact.ts   │  │ • x-analysis.ts                │
-│                 │  │ • dedupe-near.ts    │  │ • render helpers / json.ts     │
+│                 │  │ • dedupe-near.ts    │  │ • render/ (Markdown 输出)      │
 │                 │  │ • topic-match.ts    │  │                                │
 │                 │  │ • enrich.ts         │  │                                │
 │                 │  │ • rank.ts           │  │                                │
@@ -36,11 +36,13 @@
 │ Adapters Layer  │  │   DB Layer (db/)                                        │
 │ (adapters/)     │  │   SQLite: sources, raw_items, normalized_items,        │
 ├─────────────────┤  │           clusters, runs, outputs, source_health       │
-│ • rss.ts        │  └─────────────────────────────────────────────────────────┘
-│ • json-feed.ts  │            ┌─────────────────────────────────────┐
-│ • x-bird.ts     │            │   AI Layer (ai/) - Optional         │
-│ • github-*      │            │   • enrichArticle()                 │
-└─────────────────┘            │   • generateDailyBriefOverview()    │
+│ • rss.ts        │  │           enrichment_results, extracted_content_cache  │
+│ • json-feed.ts  │  └─────────────────────────────────────────────────────────┘
+│ • x-bird.ts     │            ┌─────────────────────────────────────┐
+│ • github-*      │            │   AI Layer (ai/) - Optional         │
+└─────────────────┘            │   • providers/ (OpenAI/Anthropic/Gemini)│
+                                │   • enrichArticle()                 │
+                                │   • generateDailyBriefOverview()    │
                                 │   • summarizePost()                 │
                                 └─────────────────────────────────────┘
 ```
@@ -281,8 +283,8 @@ config:
 
 **验证命令**：
 ```bash
-bun run aggregator auth check    # 检查默认类型（x-family）
-bun run aggregator auth status   # 显示所有 auth 配置状态
+bun src/cli/main.ts auth check    # 检查默认类型（x-family）
+bun src/cli/main.ts auth status   # 显示所有 auth 配置状态
 ```
 
 ### 从 OPML 导入
@@ -302,28 +304,28 @@ bun test
 bun run check
 bun run smoke
 bun run e2e
-bun scripts/aggregator.ts --help
-bun scripts/aggregator.ts --version
-bun scripts/aggregator.ts config validate
-bun scripts/aggregator.ts sources list
+bun src/cli/main.ts --help
+bun src/cli/main.ts --version
+bun src/cli/main.ts config validate
+bun src/cli/main.ts sources list
 ```
 
 ### 查询命令
 
 ```bash
 # 单 Pack 查询
-bun run aggregator run --pack ai-news --view daily-brief --window 24h
-bun run aggregator run --pack ai-news --view x-analysis --window 7d
-bun run aggregator run --pack karpathy-picks --view json --window all
+bun src/cli/main.ts run --pack ai-news --view daily-brief --window 24h
+bun src/cli/main.ts run --pack ai-news --view x-analysis --window 7d
+bun src/cli/main.ts run --pack karpathy-picks --view json --window all
 
 # 多 Pack 合并查询
-bun run aggregator run --pack ai-news,tech-news --view daily-brief --window 24h
+bun src/cli/main.ts run --pack ai-news,tech-news --view daily-brief --window 24h
 
 # 输出到文件（推荐用于大数据量）
-bun run aggregator run --pack x-sources --view json --window all --output out/result.json
+bun src/cli/main.ts run --pack x-sources --view json --window all --output out/result.json
 
 # 禁用 AI 增强
-bun run aggregator run --pack ai-news --view daily-brief --window 24h --no-ai
+bun src/cli/main.ts run --pack ai-news --view daily-brief --window 24h --no-ai
 ```
 
 ### 参数说明
@@ -385,9 +387,9 @@ bun run smoke
 更完整的验证说明请见 [`TEST.md`](./TEST.md)。
 
 ```bash
-bun scripts/aggregator.ts config validate
-bun scripts/aggregator.ts run --pack ai-news --view daily-brief --window 24h
-bun scripts/aggregator.ts run --pack karpathy-picks --view daily-brief --window 7d
+bun src/cli/main.ts config validate
+bun src/cli/main.ts run --pack ai-news --view daily-brief --window 24h
+bun src/cli/main.ts run --pack karpathy-picks --view daily-brief --window 7d
 ```
 
 ## 后续计划

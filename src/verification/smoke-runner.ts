@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 
-import { getSmokeCommands } from "../src/verification/smoke";
+import { getSmokeCommands } from "./smoke";
 
 for (const command of getSmokeCommands()) {
   console.log(`$ ${command}`);

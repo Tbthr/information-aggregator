@@ -1,7 +1,6 @@
 # AGENTS.md
 
 > CLAUDE.md 是指向此文件的软链接，两者内容相同。
-> .claude/CLAUDE.md 是指向此文件的软链接，两者内容相同。
 
 ## 项目概览
 `information-aggregator` 是一个本地优先的 Bun + TypeScript 信息聚合工具，用于收集已配置的数据源、去除重复内容，并通过统一的 CLI 输出 Markdown 或 JSON 结果。
@@ -14,10 +13,12 @@
 - `src/pipeline/`：collect、normalize、dedupe、topic match、rank、cluster
 - `src/query/`：query spec、CLI parser、selection resolver、shared query engine
 - `src/views/`：view registry 与 view model 构建
-- `src/render/`：Markdown 输出格式化
-- `src/cli/`：兼容层 wrapper 与顶层 CLI surface
-- `src/verification/`：可复用的验证辅助
-- `scripts/`：开发与验证入口
+- `src/views/render/`：Markdown 渲染输出
+- `src/render/`：JSON 等其他格式输出
+- `src/ai/`：AI 客户端抽象层（providers、prompts、concurrency）
+- `src/cli/`：CLI 命令与入口点（main.ts）
+- `src/utils/`：通用工具函数
+- `src/verification/`：可复用的验证辅助（smoke、e2e）
 - `config/packs/`：Pack 配置目录
 
 ## 设计约束
@@ -38,26 +39,21 @@
 ## 开发命令
 
 ```bash
-# Pack 查询
-bun run aggregator run --pack ai-news --view daily-brief --window 24h
-bun run aggregator run --pack ai-news,engineering --view daily-brief --window 7d
-
 # 常用验证
-bun test && bun run smoke && bun run e2e
+bun test && bun run smoke
 ```
 
 详细的测试和验证指南请参阅 [TEST.md](TEST.md)。
 
 ## 开发工作流
 
-本项目采用结构化的开发工作流，使用 Superpowers 技能：
-
-1. **需求探索 (Brainstorming)** → 产出设计文档
-2. **编写计划 (Writing Plans)** → 详细的实施计划
-3. **执行计划 (Executing Plans)** → 批量执行（每批最多 3 个任务）
-4. **代码审查 (Code Review)** → 每批完成后必须审查
-5. **系统调试 (Systematic Debugging)** → Bug 的根因分析
-6. **测试驱动开发 (Test-Driven Development)** → Red-Green-Refactor 循环
+This project follows a structured development workflow using Superpowers skills:
+1. **Brainstorming** → Design documentation
+2. **Writing Plans** → Detailed implementation plans
+3. **Executing Plans** → Batch execution (max 3 tasks per batch)
+4. **Code Review** → Mandatory review after each batch
+5. **Systematic Debugging** → Root cause analysis for bugs
+6. **Test-Driven Development** → Red-Green-Refactor cycle
 
 任务执行阶段，无需反复向我确认，除非遇到重大问题或者关键决策。
 
