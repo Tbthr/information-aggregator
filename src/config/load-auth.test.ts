@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { validateAuthConfig, getAuthFileForSourceType, mergeAuthConfig } from "./load-auth";
+import { validateAuthConfig, mergeAuthConfig } from "./load-auth";
 
 describe("validateAuthConfig", () => {
   test("validates required fields", () => {
@@ -18,28 +18,6 @@ describe("validateAuthConfig", () => {
 
   test("throws on missing config", () => {
     expect(() => validateAuthConfig({ adapter: "test" })).toThrow();
-  });
-});
-
-describe("getAuthFileForSourceType", () => {
-  test("returns x-family for x_home", () => {
-    expect(getAuthFileForSourceType("x_home")).toBe("x-family");
-  });
-
-  test("returns x-family for x_list", () => {
-    expect(getAuthFileForSourceType("x_list")).toBe("x-family");
-  });
-
-  test("returns x-family for x_bookmarks", () => {
-    expect(getAuthFileForSourceType("x_bookmarks")).toBe("x-family");
-  });
-
-  test("returns undefined for rss", () => {
-    expect(getAuthFileForSourceType("rss")).toBeUndefined();
-  });
-
-  test("returns undefined for website", () => {
-    expect(getAuthFileForSourceType("website")).toBeUndefined();
   });
 });
 

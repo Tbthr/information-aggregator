@@ -1,19 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import YAML from "yaml";
-import type { AuthConfig, SourceType } from "../types/index";
-
-const ADAPTER_AUTH_MAP: Record<string, string> = {
-  x_home: "x-family",
-  x_list: "x-family",
-  x_bookmarks: "x-family",
-  x_likes: "x-family",
-  reddit: "reddit",
-};
-
-export function getAuthFileForSourceType(sourceType: SourceType): string | undefined {
-  return ADAPTER_AUTH_MAP[sourceType];
-}
+import type { AuthConfig } from "../types/index";
 
 export function validateAuthConfig(input: unknown): AuthConfig {
   if (typeof input !== "object" || input === null) {
@@ -46,6 +34,21 @@ export async function loadAuthConfig(filePath: string): Promise<AuthConfig> {
 }
 
 /**
+ * 加载指定 auth 配置文件
+ * @param authRef auth 引用名称（不含 .yaml 后缀）
+ * @param authDir auth 配置目录路径，如 "config/auth"
+ * @returns auth 配置对象
+ */
+export async function loadAuthByRef(
+  authRef: string,
+  authDir: string = "config/auth"
+): Promise<Record<string, unknown>> {
+  const filePath = resolve(authDir, `${authRef}.yaml`);
+  const config = await loadAuthConfig(filePath);
+  return config.config;
+}
+
+/**
  * 加载指定目录下所有 auth 配置文件
  * @param authDir auth 配置目录路径，如 "config/auth"
  * @returns 按 adapter 名称分组的配置映射
@@ -74,28 +77,9 @@ export async function loadAllAuthConfigs(authDir: string): Promise<Record<string
 }
 
 /**
- * 将 auth 配置扁平化为一层对象
- * 例如：{ chromeProfile: "Default", cookieSource: ["chrome"] }
- */
-function flattenConfig(config: Record<string, unknown>): Record<string, unknown> {
-  const flat: Record<string, unknown> = {};
-
-  for (const [key, value] of Object.entries(config)) {
-    if (value !== null && typeof value === "object" && !Array.isArray(value)) {
-      // 递归处理嵌套对象
-      Object.assign(flat, flattenConfig(value as Record<string, unknown>));
-    } else {
-      flat[key] = value;
-    }
-  }
-
-  return flat;
-}
-
-/**
  * 将 source 配置与 auth 配置合并
  * @param source 原始 source
- * @param authConfig auth 配置对象（扁平化后的）
+ * @param authConfig auth 配置对象
  * @returns 合并后的 source
  */
 export function mergeAuthConfig(source: { configJson?: string }, authConfig: Record<string, unknown>): { configJson: string } {
