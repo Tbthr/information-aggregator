@@ -123,6 +123,49 @@ ${truncatedContent}
 }
 
 /**
+ * 多维评分 prompt
+ * 从相关性、质量、时效性三个维度评估内容
+ */
+export function buildMultiDimensionalScorePrompt(title: string, content: string, url?: string): string {
+  const urlInfo = url ? `\n链接: ${url}` : "";
+  const truncatedContent = content.length > 4000
+    ? content.slice(0, 4000) + "..."
+    : content;
+
+  return `你是一个内容质量评估专家。请从三个维度对以下文章进行评分。
+
+标题: ${title}${urlInfo}
+
+正文内容:
+${truncatedContent}
+
+评分维度说明：
+1. 相关性（relevance）：内容与 AI/技术领域相关的程度
+   - 1-3: 不太相关
+   - 4-6: 一般相关
+   - 7-10: 高度相关
+
+2. 质量（quality）：内容的信息价值、原创性、深度
+   - 1-3: 低质量，信息量少
+   - 4-6: 中等质量，有一定价值
+   - 7-10: 高质量，有深度见解
+
+3. 时效性（timeliness）：内容的时效价值和长期价值
+   - 1-3: 过时或短期价值
+   - 4-6: 有一定时效价值
+   - 7-10: 长期有价值或当前热点
+
+请严格按以下 JSON 格式返回（不要添加其他文字）：
+{
+  "relevance": <1-10>,
+  "quality": <1-10>,
+  "timeliness": <1-10>,
+  "total": <加权总分，计算公式: relevance*0.3 + quality*0.5 + timeliness*0.2，保留一位小数>,
+  "reason": "<一句话评价，不超过50字>"
+}`;
+}
+
+/**
  * 综合 enrichment prompt
  * 一次性获取评分、关键点、标签和摘要
  */

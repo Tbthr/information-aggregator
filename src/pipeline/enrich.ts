@@ -9,6 +9,7 @@ import type { Database } from "bun:sqlite";
 import type { ContentCache } from "../cache/content-cache";
 
 import { extractArticleContent, isExtractionSuccess } from "./extract-content";
+import { processWithConcurrency } from "../ai/concurrency";
 import type { EnrichmentResultDb, getEnrichmentResult, setExtractedContentCache, upsertEnrichmentResult } from "../db/client";
 
 /**
@@ -158,63 +159,71 @@ export async function enrichCandidates<T extends RankedCandidate>(
 
   // ========== 第三阶段：AI 增强（基于完整正文） ==========
   if (aiClient) {
-    const aiPromises = extractionResults.map(async ({ candidate, result }) => {
-      if (!result || !isExtractionSuccess(result)) {
-        return { candidate, aiResult: null };
-      }
+    // 过滤出有效的提取结果
+    const validResults = extractionResults.filter(
+      ({ result }) => result && isExtractionSuccess(result)
+    );
 
-      const title = candidate.title ?? candidate.normalizedTitle ?? "";
-      const content = result.textContent ?? result.content ?? "";
+    // 使用并发控制处理 AI 请求
+    const aiResults = await processWithConcurrency(
+      validResults,
+      { batchSize: 5, concurrency: 2 },
+      async ({ candidate, result }) => {
+        if (!result || !isExtractionSuccess(result)) {
+          return { candidate, aiResult: null };
+        }
 
-      if (!content) {
-        return { candidate, aiResult: null };
-      }
+        const title = candidate.title ?? candidate.normalizedTitle ?? "";
+        const content = result.textContent ?? result.content ?? "";
 
-      try {
-        const aiEnrichment: AiEnrichmentResult = {};
+        if (!content) {
+          return { candidate, aiResult: null };
+        }
 
-        // 基于完整内容的质量评分
         try {
-          const score = await aiClient.scoreWithContent(title, content, candidate.url);
-          aiEnrichment.score = score;
-          // 更新 contentQualityAi（覆盖之前的评分）
-          candidate.contentQualityAi = score;
-        } catch {
-          // 评分失败，保留原有评分
-        }
+          const aiEnrichment: AiEnrichmentResult = {};
 
-        // 关键点提取
-        if (enableKeyPoints) {
+          // 基于完整内容的质量评分
           try {
-            const keyPoints = await aiClient.extractKeyPoints(title, content);
-            if (keyPoints.length > 0) {
-              aiEnrichment.keyPoints = keyPoints;
-            }
+            const score = await aiClient.scoreWithContent(title, content, candidate.url);
+            aiEnrichment.score = score;
+            // 更新 contentQualityAi（覆盖之前的评分）
+            candidate.contentQualityAi = score;
           } catch {
-            // 关键点提取失败，忽略
+            // 评分失败，保留原有评分
           }
-        }
 
-        // 标签生成
-        if (enableTagging) {
-          try {
-            const tags = await aiClient.generateTags(title, content);
-            if (tags.length > 0) {
-              aiEnrichment.tags = tags;
+          // 关键点提取
+          if (enableKeyPoints) {
+            try {
+              const keyPoints = await aiClient.extractKeyPoints(title, content);
+              if (keyPoints.length > 0) {
+                aiEnrichment.keyPoints = keyPoints;
+              }
+            } catch {
+              // 关键点提取失败，忽略
             }
-          } catch {
-            // 标签生成失败，忽略
           }
-        }
 
-        return { candidate, aiResult: aiEnrichment };
-      } catch (error) {
-        console.error(`AI enrichment failed for ${candidate.id}:`, error);
-        return { candidate, aiResult: null };
+          // 标签生成
+          if (enableTagging) {
+            try {
+              const tags = await aiClient.generateTags(title, content);
+              if (tags.length > 0) {
+                aiEnrichment.tags = tags;
+              }
+            } catch {
+              // 标签生成失败，忽略
+            }
+          }
+
+          return { candidate, aiResult: aiEnrichment };
+        } catch (error) {
+          console.error(`AI enrichment failed for ${candidate.id}:`, error);
+          return { candidate, aiResult: null };
+        }
       }
-    });
-
-    const aiResults = await Promise.all(aiPromises);
+    );
 
     // 将 AI 增强结果附加到候选项
     for (const { candidate, aiResult } of aiResults) {

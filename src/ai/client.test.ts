@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeEach, afterEach } from "bun:test";
-import { createAiClient, createAnthropicClient } from "./client";
+import { createAiClient, createAnthropicClient, createGeminiClient } from "./client";
 
 describe("createAiClient", () => {
   test("returns null when no provider config exists", () => {
@@ -210,6 +210,154 @@ describe("createAnthropicClient", () => {
 
     await expect(client?.summarizeCluster("test")).rejects.toThrow(
       "Anthropic response did not contain text content"
+    );
+  });
+});
+
+describe("createGeminiClient", () => {
+  const originalEnv = { ...process.env };
+
+  beforeEach(() => {
+    delete process.env.GEMINI_API_KEY;
+    delete process.env.GEMINI_MODEL;
+    delete process.env.GEMINI_BASE_URL;
+  });
+
+  afterEach(() => {
+    Object.assign(process.env, originalEnv);
+  });
+
+  test("returns null when no config or env vars exist", () => {
+    expect(createGeminiClient()).toBeNull();
+  });
+
+  test("returns client when apiKey is provided via config", () => {
+    const client = createGeminiClient({ apiKey: "test-key" });
+    expect(client).not.toBeNull();
+  });
+
+  test("returns client when GEMINI_API_KEY env var is set", () => {
+    process.env.GEMINI_API_KEY = "env-key";
+    const client = createGeminiClient();
+    expect(client).not.toBeNull();
+  });
+
+  test("uses explicit config over env vars", async () => {
+    process.env.GEMINI_API_KEY = "env-key";
+    process.env.GEMINI_MODEL = "env-model";
+
+    const calls: { url: string; body: unknown }[] = [];
+    const client = createGeminiClient({
+      apiKey: "config-key",
+      model: "gemini-2.0-pro",
+      fetch: async (url, init) => {
+        calls.push({
+          url: String(url),
+          body: JSON.parse(String(init?.body)),
+        });
+        return new Response(
+          JSON.stringify({
+            candidates: [{ content: { parts: [{ text: "0.88" }] } }],
+          }),
+          { status: 200 }
+        );
+      },
+    });
+
+    const result = await client?.scoreCandidate("test prompt");
+    expect(result).toBe(0.88);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].url).toContain("gemini-2.0-pro:generateContent");
+    expect(calls[0].url).toContain("key=config-key");
+    expect(calls[0].body).toEqual({
+      contents: [{ parts: [{ text: "test prompt" }] }],
+      generationConfig: { temperature: 0.3, topP: 0.8, topK: 40 },
+    });
+  });
+
+  test("defaults to gemini-2.0-flash model", async () => {
+    const calls: string[] = [];
+    const client = createGeminiClient({
+      apiKey: "test-key",
+      fetch: async (url) => {
+        calls.push(String(url));
+        return new Response(
+          JSON.stringify({
+            candidates: [{ content: { parts: [{ text: "ok" }] } }],
+          }),
+          { status: 200 }
+        );
+      },
+    });
+
+    await client?.narrateDigest("prompt");
+    expect(calls[0]).toContain("gemini-2.0-flash:generateContent");
+  });
+
+  test("parses score from Gemini response format", async () => {
+    const client = createGeminiClient({
+      apiKey: "test-key",
+      fetch: async () =>
+        new Response(
+          JSON.stringify({
+            candidates: [{ content: { parts: [{ text: "The score is 8.5" }] } }],
+          }),
+          { status: 200 }
+        ),
+    });
+
+    const result = await client?.scoreCandidate("rate this");
+    expect(result).toBe(8.5);
+  });
+
+  test("extracts text from Gemini response for summaries", async () => {
+    const client = createGeminiClient({
+      apiKey: "test-key",
+      fetch: async () =>
+        new Response(
+          JSON.stringify({
+            candidates: [{ content: { parts: [{ text: "  This is a summary.  " }] } }],
+          }),
+          { status: 200 }
+        ),
+    });
+
+    const result = await client?.summarizeCluster("summarize this");
+    expect(result).toBe("This is a summary.");
+  });
+
+  test("throws on failed request", async () => {
+    const client = createGeminiClient({
+      apiKey: "test-key",
+      fetch: async () => new Response("error", { status: 401 }),
+    });
+
+    await expect(client?.scoreCandidate("test")).rejects.toThrow("Gemini request failed: 401");
+  });
+
+  test("throws on invalid response format", async () => {
+    const client = createGeminiClient({
+      apiKey: "test-key",
+      fetch: async () => new Response(JSON.stringify({ candidates: [] }), { status: 200 }),
+    });
+
+    await expect(client?.summarizeCluster("test")).rejects.toThrow(
+      "Gemini response did not contain candidates"
+    );
+  });
+
+  test("throws on missing text in response", async () => {
+    const client = createGeminiClient({
+      apiKey: "test-key",
+      fetch: async () =>
+        new Response(
+          JSON.stringify({ candidates: [{ content: { parts: [{}] } }] }),
+          { status: 200 }
+        ),
+    });
+
+    await expect(client?.summarizeCluster("test")).rejects.toThrow(
+      "Gemini response did not contain text"
     );
   });
 });
