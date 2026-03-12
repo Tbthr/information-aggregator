@@ -1,0 +1,15 @@
+pack:
+  id: dev-tools
+  name: 开发工具与 CLI
+  description: 开发工具、CLI 工具和开发者体验相关内容
+  keywords:
+    - 开发工具
+    - CLI
+    - 开发者体验
+    - DevEx
+    - 工具链
+
+sources:
+  - type: rss
+    url: https://ghuntley.com/rss/
+    description: GHuntley 博客，Ralph-loop 作者，专注开发工具和 CLI

@@ -4,13 +4,17 @@ import type { QueryResult } from "../query/run-query";
 import { buildViewModel, renderViewMarkdown } from "./registry";
 
 const queryResult = {
-  query: { command: "run", viewId: "x-bookmarks-analysis", format: "markdown" },
-  selection: {
-    view: { id: "x-bookmarks-analysis", name: "X Bookmarks Analysis" },
-    topicIds: [],
-    sourceIds: ["x-bookmarks-1"],
-    sources: [],
+  args: {
+    packIds: ["x-bookmarks"],
+    viewId: "x-bookmarks-analysis",
     window: "7d",
+  },
+  selection: {
+    packIds: ["x-bookmarks"],
+    viewId: "x-bookmarks-analysis",
+    window: "7d",
+    sources: [],
+    keywords: [],
   },
   items: [],
   normalizedItems: [],
@@ -36,8 +40,8 @@ const queryResult = {
 } satisfies QueryResult;
 
 describe("x analysis views", () => {
-  test("x-bookmarks-analysis summarizes themes and notable items", () => {
-    const model = buildViewModel(queryResult, "x-bookmarks-analysis");
+  test("x-bookmarks-analysis summarizes themes and notable items", async () => {
+    const model = await buildViewModel(queryResult, "x-bookmarks-analysis");
     const markdown = renderViewMarkdown(model, "x-bookmarks-analysis");
 
     expect(markdown).toContain("Summary");
@@ -47,8 +51,8 @@ describe("x analysis views", () => {
     expect(markdown).toContain("linked article");
   });
 
-  test("x-bookmarks-analysis keeps mixed Chinese and English themes readable", () => {
-    const model = buildViewModel(
+  test("x-bookmarks-analysis keeps mixed Chinese and English themes readable", async () => {
+    const model = await buildViewModel(
       {
         ...queryResult,
         rankedItems: [
@@ -69,15 +73,12 @@ describe("x analysis views", () => {
     expect(topThemes?.items[0]?.title.includes("使用 ai 和本身")).toBe(false);
   });
 
-  test("x-likes-analysis summarizes interest signals", () => {
-    const model = buildViewModel(
+  test("x-likes-analysis summarizes interest signals", async () => {
+    const model = await buildViewModel(
       {
         ...queryResult,
-        query: { ...queryResult.query, viewId: "x-likes-analysis" },
-        selection: {
-          ...queryResult.selection,
-          view: { id: "x-likes-analysis", name: "X Likes Analysis" },
-        },
+        args: { ...queryResult.args, viewId: "x-likes-analysis" },
+        selection: { ...queryResult.selection, viewId: "x-likes-analysis" },
       },
       "x-likes-analysis",
     );

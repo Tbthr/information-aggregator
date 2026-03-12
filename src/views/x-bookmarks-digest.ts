@@ -1,7 +1,8 @@
 import type { QueryResult } from "../query/run-query";
-import type { ViewModel } from "./registry";
+import type { ViewModel, BuildViewDependencies } from "./registry";
 import type { RawItemMetadata, RankedCandidate, RawItem } from "../types/index";
-import type { TopicSuggestion } from "../ai/client";
+import type { AiClient, TopicSuggestion } from "../ai/client";
+import { buildXPostSummaryPrompt, buildDigestNarrationPromptX, buildTopicSuggestionPrompt } from "../ai/prompts";
 import {
   type DataStatistics,
   type TaggedViewItem,
@@ -218,12 +219,8 @@ function toItem(candidate: RankedCandidate, rawItemMap: Map<string, RawItem>): X
   const author = rawItem?.author ?? fullMeta.author ?? candidate.sourceName;
   const authorUrl = author ? `https://x.com/${author}` : undefined;
 
-  // 生成 50 字摘要
-  let aiSummary: string | undefined;
+  // 摘要由 AI 在 aggregator.ts 中生成，此处仅保存原始内容
   const snippet = candidate.normalizedText ?? rawItem?.snippet;
-  if (snippet) {
-    aiSummary = snippet.length > 50 ? `${snippet.slice(0, 50)}...` : snippet;
-  }
 
   return {
     id: candidate.id,
@@ -232,7 +229,7 @@ function toItem(candidate: RankedCandidate, rawItemMap: Map<string, RawItem>): X
     author,
     authorUrl,
     snippet,
-    aiSummary,
+    aiSummary: undefined, // 由 AI 在 aggregator.ts 中填充
     aiScore: candidate.finalScore,
     engagement: fullMeta.engagement,
     tags,
@@ -277,7 +274,12 @@ export function resolveTopicSuggestions(
 /**
  * 构建 X Bookmarks Digest 视图
  */
-export function buildXBookmarksDigestView(result: QueryResult): XBookmarksDigestModel {
+export async function buildXBookmarksDigestView(
+  result: QueryResult,
+  dependencies?: BuildViewDependencies,
+): Promise<XBookmarksDigestModel> {
+  const { aiClient } = dependencies ?? {};
+
   const rawItemMap = buildRawItemMap(result.items);
   const bookmarkItems = result.rankedItems
     .slice(0, 10)
@@ -289,6 +291,40 @@ export function buildXBookmarksDigestView(result: QueryResult): XBookmarksDigest
   const taggedItems = bookmarkItems.map(toTaggedItem);
   const statistics = computeStatistics(taggedItems);
 
+  const highlights = bookmarkItems.slice(0, 3).map((item) => item.title);
+
+  // AI 增强（如果有 AI client）
+  let narration: string | undefined;
+  let topicSuggestions: TopicSuggestionViewItem[] | undefined;
+
+  if (aiClient && bookmarkItems.length > 0) {
+    try {
+      // 1. 为每条内容生成 AI 摘要
+      for (const item of bookmarkItems) {
+        if (item.snippet && !item.aiSummary) {
+          item.aiSummary = await aiClient.summarizeItem(item.title, item.snippet);
+        }
+      }
+
+      // 2. 生成今日看点摘要
+      if (highlights.length > 0) {
+        const narrationPrompt = buildDigestNarrationPromptX(highlights);
+        narration = await aiClient.narrateDigest(narrationPrompt);
+      }
+
+      // 3. 生成选题建议
+      const itemTexts = bookmarkItems
+        .slice(0, 10)
+        .map((item) => `${item.title}: ${item.snippet ?? ""}`);
+      const topicPrompt = buildTopicSuggestionPrompt(itemTexts);
+      const suggestions = await aiClient.suggestTopics(topicPrompt);
+      topicSuggestions = resolveTopicSuggestions(suggestions, bookmarkItems);
+    } catch (error) {
+      // AI 调用失败时不影响主流程
+      console.error("Failed to generate AI enhancements:", error);
+    }
+  }
+
   return {
     viewId: "x-bookmarks-digest",
     title: `📰 书签日报 — ${date}`,
@@ -298,9 +334,11 @@ export function buildXBookmarksDigestView(result: QueryResult): XBookmarksDigest
       filtered: result.normalizedItems.length,
       selected: result.rankedItems.length,
     },
-    highlights: bookmarkItems.slice(0, 3).map((item) => item.title),
+    highlights,
     bookmarkItems,
     statistics,
+    narration,
+    topicSuggestions,
     sections: [
       {
         title: "精选内容",
@@ -326,8 +364,8 @@ export function renderXBookmarksDigestView(model: ViewModel): string {
   lines.push(`# ${model.title}`);
 
   // 今日看点（AI 摘要，如果有）
-  if (model.summary) {
-    lines.push("", "## 📌 今日看点", "", model.summary);
+  if (digestModel.narration) {
+    lines.push("", "## 📌 今日看点", "", digestModel.narration);
   }
 
   // 数据概览表格

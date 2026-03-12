@@ -4,13 +4,17 @@ import type { QueryResult } from "../query/run-query";
 import { buildViewModel, renderViewMarkdown } from "./registry";
 
 const queryResult = {
-  query: { command: "run", viewId: "daily-brief", format: "markdown" },
-  selection: {
-    view: { id: "daily-brief", name: "Daily Brief", defaultWindow: "24h", defaultSort: "ranked" },
-    topicIds: ["ai-news"],
-    sourceIds: ["rss-1"],
-    sources: [],
+  args: {
+    packIds: ["ai-news"],
+    viewId: "daily-brief",
     window: "24h",
+  },
+  selection: {
+    packIds: ["ai-news"],
+    viewId: "daily-brief",
+    window: "24h",
+    sources: [],
+    keywords: ["ai", "news"],
   },
   items: [],
   normalizedItems: [],
@@ -77,15 +81,12 @@ const queryResult = {
 } satisfies QueryResult;
 
 describe("views", () => {
-  test("item-list builds a stable view model", () => {
-    const model = buildViewModel(
+  test("item-list builds a stable view model", async () => {
+    const model = await buildViewModel(
       {
         ...queryResult,
-        query: { ...queryResult.query, viewId: "item-list" },
-        selection: {
-          ...queryResult.selection,
-          view: { id: "item-list", name: "Item List", defaultWindow: "7d", defaultSort: "recent" },
-        },
+        args: { ...queryResult.args, viewId: "item-list" },
+        selection: { ...queryResult.selection, viewId: "item-list" },
       },
       "item-list",
     );
@@ -96,8 +97,8 @@ describe("views", () => {
     expect(model.sections[0]?.items[3]?.summary).toContain("linked article");
   });
 
-  test("daily-brief builds highlights and cluster sections and renders markdown", () => {
-    const model = buildViewModel(queryResult, "daily-brief");
+  test("daily-brief builds highlights and cluster sections and renders markdown", async () => {
+    const model = await buildViewModel(queryResult, "daily-brief");
     const markdown = renderViewMarkdown(model, "daily-brief");
 
     expect(model.highlights).toEqual(["Fresh AI launch", "Second ranked item", "Third ranked item"]);

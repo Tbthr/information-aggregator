@@ -24,6 +24,7 @@ export interface AiClient {
   summarizeCluster(prompt: string): Promise<string>;
   narrateDigest(prompt: string): Promise<string>;
   suggestTopics(prompt: string): Promise<TopicSuggestion[]>;
+  summarizeItem(title: string, snippet: string): Promise<string>;
 }
 
 function getFetchImpl(fetchFn?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>): (input: RequestInfo | URL, init?: RequestInit) => Promise<Response> {
@@ -172,6 +173,10 @@ class ProviderAiClient implements AiClient {
     const text = getOpenAiResponseText(await this.request(prompt));
     return parseTopicSuggestions(text);
   }
+
+  async summarizeItem(title: string, snippet: string): Promise<string> {
+    return getOpenAiResponseText(await this.request(`${title}\n\n${snippet}`));
+  }
 }
 
 class AnthropicClient implements AiClient {
@@ -215,6 +220,10 @@ class AnthropicClient implements AiClient {
   async suggestTopics(prompt: string): Promise<TopicSuggestion[]> {
     const text = getAnthropicResponseText(await this.request(prompt));
     return parseTopicSuggestions(text);
+  }
+
+  async summarizeItem(title: string, snippet: string): Promise<string> {
+    return getAnthropicResponseText(await this.request(`${title}\n\n${snippet}`));
   }
 }
 

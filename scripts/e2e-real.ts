@@ -46,7 +46,7 @@ const scanResult = await runQuery({
   loadSourcePacks: () => sourcePacks,
   loadViews: () => views,
 });
-const scanMarkdown = renderViewMarkdown(buildViewModel(scanResult, "item-list"), "item-list");
+const scanMarkdown = renderViewMarkdown(await buildViewModel(scanResult, "item-list"), "item-list");
 
 if (!probeLooksHealthy(scanMarkdown)) {
   console.error("Real item-list probe failed to produce healthy markdown output.");
@@ -66,7 +66,7 @@ const digestResult = await runQuery({
   loadSourcePacks: () => sourcePacks,
   loadViews: () => views,
 });
-const digestMarkdown = renderViewMarkdown(buildViewModel(digestResult, "daily-brief"), "daily-brief");
+const digestMarkdown = renderViewMarkdown(await buildViewModel(digestResult, "daily-brief"), "daily-brief");
 
 if (!probeLooksHealthy(digestMarkdown)) {
   console.error("Real daily-brief probe failed to produce healthy markdown output.");

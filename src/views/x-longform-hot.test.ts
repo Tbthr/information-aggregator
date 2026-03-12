@@ -4,16 +4,16 @@ import type { QueryResult } from "../query/run-query";
 import { buildViewModel, renderViewMarkdown } from "./registry";
 
 describe("x-longform-hot", () => {
-  test("ranks long posts and linked articles and renders the expected sections", () => {
-    const model = buildViewModel(
+  test("ranks long posts and linked articles and renders the expected sections", async () => {
+    const model = await buildViewModel(
       {
-        query: { command: "run", viewId: "x-longform-hot", format: "markdown", window: "all" },
+        args: { packIds: ["x-home"], viewId: "x-longform-hot", window: "all" },
         selection: {
-          view: { id: "x-longform-hot", name: "X Longform Hot", defaultWindow: "all", defaultSourceTypes: ["x_home"] },
-          topicIds: [],
-          sourceIds: ["x-home-1"],
-          sources: [],
+          packIds: ["x-home"],
+          viewId: "x-longform-hot",
           window: "all",
+          sources: [],
+          keywords: [],
         },
         items: [],
         normalizedItems: [],

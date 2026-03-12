@@ -1,3 +1,4 @@
+import type { AiClient } from "../ai/client";
 import { renderDigestMarkdown } from "../render/digest";
 import { renderScanMarkdown } from "../render/scan";
 import type { QueryResult } from "../query/run-query";
@@ -28,7 +29,18 @@ export interface ViewModel {
   sections: ViewModelSection[];
 }
 
-export function buildViewModel(result: QueryResult, viewId: string): ViewModel {
+/**
+ * 视图构建依赖项
+ */
+export interface BuildViewDependencies {
+  aiClient?: AiClient | null;
+}
+
+export async function buildViewModel(
+  result: QueryResult,
+  viewId: string,
+  dependencies?: BuildViewDependencies,
+): Promise<ViewModel> {
   switch (viewId) {
     case "item-list":
       return buildItemListView(result);
@@ -41,7 +53,7 @@ export function buildViewModel(result: QueryResult, viewId: string): ViewModel {
     case "x-longform-hot":
       return buildXLongformHotView(result);
     case "x-bookmarks-digest":
-      return buildXBookmarksDigestView(result);
+      return buildXBookmarksDigestView(result, dependencies);
     default:
       return buildItemListView(result);
   }
