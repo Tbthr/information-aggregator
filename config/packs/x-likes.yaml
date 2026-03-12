@@ -5,6 +5,7 @@ pack:
   id: x-likes
   name: X/Twitter 数据源
   description: X 平台数据采集，需要 bird CLI 和 Chrome 授权
+  auth: x-family
 
 sources:
   - type: x_likes
