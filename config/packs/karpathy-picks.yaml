@@ -2,13 +2,6 @@ pack:
   id: karpathy-picks
   name: Karpathy 精选技术博客
   description: 90个来自 Hacker News Popularity Contest 2025 的优质 RSS 源（由 Karpathy 精选）
-  keywords:
-    - 技术博客
-    - 个人博客
-    - 编程
-    - 软件工程
-    - 创业
-    - AI
 
 sources:
   # === 技术领袖与知名博主 ===

@@ -4,7 +4,8 @@ import { collectGitHubTrendingSource } from "../adapters/github-trending";
 import { collectJsonFeedSource } from "../adapters/json-feed";
 import { collectRssSource } from "../adapters/rss";
 import { collectXBirdSource } from "../adapters/x-bird";
-import { getAuthFileForSourceType, loadAllAuthConfigs, mergeAuthConfig } from "../config/load-auth";
+import { loadAllAuthConfigs } from "../config/load-auth";
+import { registerAdapterFamilies, type AdapterFamily } from "../adapters/registry";
 import { loadAllPacks } from "../config/load-pack";
 import { buildClusters } from "../pipeline/cluster";
 import { collectSources, type CollectDependencies } from "../pipeline/collect";
@@ -46,32 +47,25 @@ function buildTopicRule(keywords: string[]): TopicRule {
   };
 }
 
+// 定义适配器家族
+const ADAPTER_FAMILIES: AdapterFamily[] = [
+  {
+    names: ["x_bookmarks", "x_home", "x_likes", "x_list"],
+    collect: collectXBirdSource,
+    authKey: "x-family",
+  },
+];
+
 function buildDefaultCollectDependencies(authConfigs: Record<string, Record<string, unknown>> = {}): CollectDependencies {
-  // 获取 X family auth 配置
-  const xFamilyAuth = authConfigs["x-family"];
+  // 批量注册适配器家族
+  const familyAdapters = registerAdapterFamilies(ADAPTER_FAMILIES, authConfigs);
 
   return {
     adapters: {
       github_trending: (source) => collectGitHubTrendingSource(source),
       "json-feed": (source) => collectJsonFeedSource(source),
       rss: (source) => collectRssSource(source),
-      // X family adapters - 合并 auth 配置
-      x_bookmarks: (source) => {
-        const merged = xFamilyAuth ? mergeAuthConfig(source, xFamilyAuth) : source;
-        return collectXBirdSource(merged);
-      },
-      x_home: (source) => {
-        const merged = xFamilyAuth ? mergeAuthConfig(source, xFamilyAuth) : source;
-        return collectXBirdSource(merged);
-      },
-      x_likes: (source) => {
-        const merged = xFamilyAuth ? mergeAuthConfig(source, xFamilyAuth) : source;
-        return collectXBirdSource(merged);
-      },
-      x_list: (source) => {
-        const merged = xFamilyAuth ? mergeAuthConfig(source, xFamilyAuth) : source;
-        return collectXBirdSource(merged);
-      },
+      ...familyAdapters,
     },
   };
 }

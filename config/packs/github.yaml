@@ -2,11 +2,6 @@ pack:
   id: github
   name: GitHub 趋势
   description: GitHub 仓库趋势和热门开源项目
-  keywords:
-    - GitHub
-    - 开源
-    - 趋势
-    - 编程
 
 sources:
   - type: github_trending

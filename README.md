@@ -173,11 +173,31 @@ sources:
 | `pack.id` | ✅ | Pack 唯一标识 |
 | `pack.name` | ✅ | 显示名称 |
 | `pack.description` | ❌ | Pack 描述 |
-| `pack.keywords` | ❌ | 主题关键词列表，用于内容过滤 |
+| `pack.keywords` | ❌ | 主题关键词列表，用于内容排序（见下方说明） |
 | `sources[].type` | ✅ | 数据源类型 |
 | `sources[].url` | ✅ | 数据源 URL |
 | `sources[].description` | ❌ | 数据源描述 |
 | `sources[].enabled` | ❌ | 是否启用，默认 true |
+
+**keywords 工作原理**：
+
+keywords 是一个**软过滤**机制，用于提升相关内容的排名，而非完全排除不匹配的内容：
+
+1. **解析阶段**：当选择多个 pack 运行时，所有 pack 的 keywords 会被合并
+2. **评分阶段**：系统遍历每条内容的标题和正文，根据关键词匹配情况计算 `topicMatchScore`
+3. **排序阶段**：`topicMatchScore` 占最终排序权重的 **25%**
+
+评分规则：
+
+| 匹配条件 | 分数影响 |
+|----------|----------|
+| 标题或正文包含 include 关键词 | **+1** / 每个匹配 |
+| 标题或正文包含 exclude 关键词 | **-2** / 每个匹配 |
+
+**使用建议**：
+- 选择能区分主题的**专有名词**（如 `OpenAI`、`Transformer`）而非通用词（如 `技术`）
+- 关键词列表不宜过长，3-10 个为佳
+- 多 pack 合并时，所有关键词会叠加生效
 
 **数据源类型**：
 

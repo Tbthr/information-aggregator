@@ -2,12 +2,6 @@ pack:
   id: tech-news
   name: 科技资讯聚合
   description: 中文科技资讯、热点聚合与信息流
-  keywords:
-    - 科技资讯
-    - 热点
-    - 信息流
-    - 聚合
-    - 中文
 
 sources:
   # === 技术媒体 ===
