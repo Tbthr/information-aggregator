@@ -59,7 +59,22 @@ function extractTodayStars(text: string): string | undefined {
  * 从 HTML 文本中移除标签并清理空白
  */
 function stripHtml(text: string): string {
-  return text.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  return text
+    .replace(/<svg\b[\s\S]*?<\/svg>/gi, "") // 移除 SVG 元素
+    .replace(/<[^>]+>/g, " ") // 移除其他 HTML 标签
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * 清理标题中的 SVG 和多余空白
+ */
+function cleanTitle(title: string): string {
+  return title
+    .replace(/<svg\b[\s\S]*?<\/svg>/gi, "")
+    .replace(/<[^>]+>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 /**
@@ -83,7 +98,7 @@ export function parseGitHubTrendingHtml(html: string, sourceId: string): RawItem
 
         // 提取标题（作者 / 仓库名）
         const titleMatch = article.match(/<h2[^>]*>\s*<a[^>]*>([\s\S]*?)<\/a>\s*<\/h2>/i);
-        const title = titleMatch?.[1]?.replace(/\s+/g, " ").trim() ?? `Repo ${index + 1}`;
+        const title = cleanTitle(titleMatch?.[1] ?? "") || `Repo ${index + 1}`;
 
         // 解析作者和仓库名
         const parts = title.split("/").map((p) => p.trim());
