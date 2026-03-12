@@ -1,4 +1,4 @@
-import type { RawItem } from "../types/index";
+import type { RawItem, Source } from "../types/index";
 
 interface JsonFeedItem {
   id?: string;
@@ -36,4 +36,13 @@ export function parseJsonFeedItems(payload: JsonFeedPayload, sourceId: string): 
       }),
     }))
     .filter((item) => item.url);
+}
+
+export async function collectJsonFeedSource(
+  source: Source,
+  fetchImpl: typeof fetch = fetch,
+): Promise<RawItem[]> {
+  const response = await fetchImpl(source.url ?? "");
+  const payload = await response.json();
+  return parseJsonFeedItems(payload, source.id);
 }

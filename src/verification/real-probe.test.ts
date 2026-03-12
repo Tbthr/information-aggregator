@@ -12,7 +12,6 @@ describe("real probe helpers", () => {
       "hn",
       "reddit",
       "github_trending",
-      "digest_feed",
     ]);
   });
 

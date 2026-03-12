@@ -38,13 +38,10 @@
 ├─────────────────┤  │           clusters, runs, outputs, source_health       │
 │ • rss.ts        │  └─────────────────────────────────────────────────────────┘
 │ • json-feed.ts  │            ┌─────────────────────────────────────┐
-│ • website.ts    │            │   AI Layer (ai/) - Optional         │
-│ • hn.ts         │            │   • scoreCandidate()                │
-│ • reddit.ts     │            │   • summarizeCluster()              │
-│ • x-bird.ts     │            │   • narrateDigest()                 │
-│ • github-*      │            └─────────────────────────────────────┘
-│ • digest-feed.ts│
-└─────────────────┘
+│ • x-bird.ts     │            │   AI Layer (ai/) - Optional         │
+│ • github-*      │            │   • scoreCandidate()                │
+└─────────────────┘            │   • narrateDigest()                 │
+                                └─────────────────────────────────────┘
 ```
 
 ### 核心数据流
@@ -59,8 +56,8 @@
 ┌───────────────────────────────────────────────────────────────────┐
 │                        Collect Phase                              │
 │  adapters[type](source) → RawItem[] → normalizeCollectedItem()   │
-│  支持 11 种数据源类型: rss/json-feed/website/hn/reddit/          │
-│  digest_feed/github_trending/x_*                                 │
+│  支持 4 种数据源类型: rss/json-feed/                               │
+│  github_trending/x_*                                                │
 └───────────────────────────────────────────────────────────────────┘
                                                      │
                                                      ▼
@@ -129,7 +126,7 @@
 - TypeScript + Bun CLI
 - SQLite 持久化：sources、runs、outputs、source health、enrichment results
 - Pack 驱动的数据源配置（自包含 YAML 文件）
-- 已接入 `rss`、`json-feed`、`website`、`hn`、`reddit`、`github_trending`、`digest_feed`
+- 已接入 `rss`、`json-feed`、`github_trending`
 - 已接入基于 `bird CLI` 的 X family adapter（x_home、x_list、x_bookmarks、x_likes）
 - 确定性的规范化、精确去重、近似去重、排序与聚类
 - **深度 enrichment**：正文提取（使用 @mozilla/readability）、AI 关键点提取、标签生成
@@ -166,10 +163,6 @@ sources:
   - type: rss
     url: https://huggingface.co/blog/feed.xml
     description: Hugging Face 技术博客
-
-  - type: website
-    url: https://techurls.com/
-    description: 技术新闻聚合
     enabled: false  # 可选，默认 true
 ```
 
@@ -192,11 +185,7 @@ sources:
 |------|----------|----------|
 | `rss` | RSS/Atom XML | - |
 | `json-feed` | JSON Feed 1.1 | - |
-| `website` | HTML 链接提取 | - |
-| `hn` | HN Algolia API | - |
-| `reddit` | Reddit JSON API | - |
 | `github_trending` | GitHub Trending HTML | - |
-| `digest_feed` | 自定义格式 | `config.format` |
 | `x_*` | bird CLI | 见下方详细配置 |
 
 ### X/Twitter 数据源配置
@@ -250,8 +239,7 @@ sources:
 
 ```
 config/auth/
-├── x-family.yaml    # X/Twitter 系列（x_home, x_list, x_bookmarks, x_likes）
-└── reddit.yaml      # Reddit API（预留）
+└── x-family.yaml    # X/Twitter 系列（x_home, x_list, x_bookmarks, x_likes）
 ```
 
 配置文件示例（`config/auth/x-family.yaml`）：
@@ -268,9 +256,8 @@ config:
 
 **验证命令**：
 ```bash
-bun run aggregator auth check        # 检查默认类型（x-family）
-bun run aggregator auth check reddit # 检查指定类型
-bun run aggregator auth status       # 显示所有 auth 配置状态
+bun run aggregator auth check    # 检查默认类型（x-family）
+bun run aggregator auth status   # 显示所有 auth 配置状态
 ```
 
 ### 从 OPML 导入
@@ -397,7 +384,7 @@ bun scripts/aggregator.ts run --pack karpathy-picks --view item-list --window 7d
 
 以下内容已经进入持续迭代路线图：
 
-- 更稳的 `github_trending` / `digest_feed` source 治理
+- 更稳的 `github_trending` source 治理
 - feedback loop 与自适应排序
 - Web UI
 - 多用户能力
@@ -411,9 +398,8 @@ bun scripts/aggregator.ts run --pack karpathy-picks --view item-list --window 7d
 - 已完成：本地 YAML 配置加载与校验
 - 已完成：Pack 驱动的数据源配置
 - 已完成：SQLite schema 与核心表
-- 已完成：`rss`、`json-feed`、`website` adapter
-- 已完成：`hn`、`reddit` 的 collector 路径支持
-- 已完成：`github_trending`、`digest_feed` adapter
+- 已完成：`rss`、`json-feed` adapter
+- 已完成：`github_trending` adapter
 - 已完成：X family `bird CLI` adapter（x_home、x_list、x_bookmarks、x_likes）
 - 已完成：Auth 配置统一管理（`config/auth/` 目录）
 - 已完成：CLI `auth check/status` 命令

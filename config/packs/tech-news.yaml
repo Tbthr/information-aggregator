@@ -16,26 +16,6 @@ sources:
     description: InfoQ 中文，企业级技术资讯
 
   # === 资讯聚合 ===
-  - type: website
-    url: https://techurls.com/
-    description: TechURLs，科技资讯聚合
-
   - type: json-feed
     url: https://www.buzzing.cc/feed.json
     description: Buzzing，中英双语资讯聚合
-
-  - type: website
-    url: https://iris.findtruman.io/web/info_flow
-    description: Info Flow，信息流聚合
-
-  - type: website
-    url: https://www.bestblogs.dev/en/newsletter
-    description: BestBlogs Newsletter，优质博客精选
-
-  - type: website
-    url: https://zeli.app/
-    description: Zeli，科技资讯聚合
-
-  - type: website
-    url: https://newsnow.busiyi.world/
-    description: NewsNow，即时新闻聚合

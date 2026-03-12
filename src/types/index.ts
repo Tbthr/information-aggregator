@@ -8,7 +8,6 @@ export const CANONICAL_SOURCE_TYPES = [
   "website",
   "hn",
   "reddit",
-  "digest_feed",
   "github_trending",
   "x_home",
   "x_list",

@@ -151,11 +151,7 @@ bird --chrome-profile "Default" home --json
 
 - `rss`
 - `json-feed`
-- `website`
-- `hn`
-- `reddit`
 - `github_trending`
-- `digest_feed`
 
 当前仍建议保留为手动或本地依赖验证的类型：
 

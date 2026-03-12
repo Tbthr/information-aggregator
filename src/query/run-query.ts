@@ -1,12 +1,8 @@
 import type { AiClient } from "../ai/client";
 import { buildCandidateQualityPrompt } from "../ai/prompts";
-import { collectDigestFeedSource } from "../adapters/digest-feed";
 import { collectGitHubTrendingSource } from "../adapters/github-trending";
-import { collectHnSource } from "../adapters/hn";
-import { collectJsonFeedSource } from "../adapters/json-feed-collect";
-import { collectRedditSource } from "../adapters/reddit";
+import { collectJsonFeedSource } from "../adapters/json-feed";
 import { collectRssSource } from "../adapters/rss";
-import { collectWebsiteSource } from "../adapters/website";
 import { collectXBirdSource } from "../adapters/x-bird";
 import { getAuthFileForSourceType, loadAllAuthConfigs, mergeAuthConfig } from "../config/load-auth";
 import { loadAllPacks } from "../config/load-pack";
@@ -56,13 +52,9 @@ function buildDefaultCollectDependencies(authConfigs: Record<string, Record<stri
 
   return {
     adapters: {
-      digest_feed: (source) => collectDigestFeedSource(source),
       github_trending: (source) => collectGitHubTrendingSource(source),
-      hn: (source) => collectHnSource(source),
-      reddit: (source) => collectRedditSource(source),
       "json-feed": (source) => collectJsonFeedSource(source),
       rss: (source) => collectRssSource(source),
-      website: (source) => collectWebsiteSource(source),
       // X family adapters - 合并 auth 配置
       x_bookmarks: (source) => {
         const merged = xFamilyAuth ? mergeAuthConfig(source, xFamilyAuth) : source;

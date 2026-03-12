@@ -1,6 +1,7 @@
 # AGENTS.md
 
 > CLAUDE.md 是指向此文件的软链接，两者内容相同。
+> .claude/CLAUDE.md 是指向此文件的软链接，两者内容相同。
 
 ## 项目概览
 `information-aggregator` 是一个本地优先的 Bun + TypeScript 信息聚合工具，用于收集已配置的数据源、去除重复内容，并通过统一的 CLI 输出 Markdown 或 JSON 结果。

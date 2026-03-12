@@ -14,7 +14,7 @@ export function extractPageTitle(html: string): string {
   return html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.trim() ?? "Untitled page";
 }
 
-export async function collectWebsiteSource(source: Source, fetchImpl: typeof fetch = fetch): Promise<RawItem[]> {
+export async function collectFeedDiscoverySource(source: Source, fetchImpl: typeof fetch = fetch): Promise<RawItem[]> {
   const response = await fetchImpl(source.url ?? "");
   const html = await response.text();
   const feedUrl = discoverFeedUrl(source.url ?? "", html);
@@ -29,8 +29,8 @@ export async function collectWebsiteSource(source: Source, fetchImpl: typeof fet
         url: source.url ?? "",
         fetchedAt: new Date().toISOString(),
         metadataJson: JSON.stringify({
-          provider: "website",
-          sourceType: "website",
+          provider: "feed-discovery",
+          sourceType: "feed-discovery",
           contentType: "page",
         }),
       },
@@ -45,8 +45,8 @@ export async function collectWebsiteSource(source: Source, fetchImpl: typeof fet
       url: feedUrl,
       fetchedAt: new Date().toISOString(),
       metadataJson: JSON.stringify({
-        provider: "website",
-        sourceType: "website",
+        provider: "feed-discovery",
+        sourceType: "feed-discovery",
         contentType: "feed_discovery",
         discoveredFrom: source.url,
       }),

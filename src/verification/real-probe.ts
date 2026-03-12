@@ -44,17 +44,6 @@ export function getRealProbeSources(): Source[] {
       url: "https://github.com/trending",
       configJson: "{}",
     },
-    {
-      id: "clawfeed-kevin",
-      type: "digest_feed",
-      enabled: true,
-      url: "https://clawfeed.kevinhe.io/feed/kevin",
-      configJson: JSON.stringify({
-        format: "json",
-        itemPath: "digests",
-        contentField: "content",
-      }),
-    },
   ];
 }
 
