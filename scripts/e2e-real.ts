@@ -1,45 +1,40 @@
 import { runQuery } from "../src/query/run-query";
-import type { SourcePack } from "../src/types/index";
-import { getRealProbeSources, probeLooksHealthy } from "../src/verification/real-probe";
+import { loadAllPacks } from "../src/config/load-pack";
 import { buildViewModel, renderViewMarkdown } from "../src/views/registry";
+import { probeLooksHealthy } from "../src/verification/real-probe";
 
-const sources = getRealProbeSources();
-const sourcePacks: SourcePack[] = [
-  {
-    id: "real-probe-pack",
-    name: "Real Probe Pack",
-    sources: sources,
-  },
-];
-
-console.log("Running real-source daily-brief probe...");
-const scanResult = await runQuery({
-  packIds: ["real-probe-pack"],
-  viewId: "daily-brief",
-  window: "7d",
-}, {
-  loadPacks: async () => sourcePacks,
-});
-const scanMarkdown = renderViewMarkdown(await buildViewModel(scanResult, "daily-brief"), "daily-brief");
-
-if (!probeLooksHealthy(scanMarkdown)) {
-  console.error("Real daily-brief probe failed to produce healthy markdown output.");
-  process.exit(1);
-}
-
-console.log("Running real-source daily-brief probe...");
-const digestResult = await runQuery({
-  packIds: ["real-probe-pack"],
+// 测试 daily-brief view
+console.log("Running daily-brief probe with test_daily pack...");
+const dailyResult = await runQuery({
+  packIds: ["test_daily"],
   viewId: "daily-brief",
   window: "24h",
 }, {
-  loadPacks: async () => sourcePacks,
+  loadPacks: () => loadAllPacks("config/packs"),
 });
-const digestMarkdown = renderViewMarkdown(await buildViewModel(digestResult, "daily-brief"), "daily-brief");
+const dailyMarkdown = renderViewMarkdown(await buildViewModel(dailyResult, "daily-brief"), "daily-brief");
 
-if (!probeLooksHealthy(digestMarkdown)) {
-  console.error("Real daily-brief probe failed to produce healthy markdown output.");
+if (!probeLooksHealthy(dailyMarkdown)) {
+  console.error("Daily-brief probe failed.");
   process.exit(1);
 }
+console.log("Daily-brief probe passed.");
 
-console.log("Real-source probe passed.");
+// 测试 x-analysis view
+console.log("Running x-analysis probe with test_x_analysis pack...");
+const xResult = await runQuery({
+  packIds: ["test_x_analysis"],
+  viewId: "x-analysis",
+  window: "all",
+}, {
+  loadPacks: () => loadAllPacks("config/packs"),
+});
+const xMarkdown = renderViewMarkdown(await buildViewModel(xResult, "x-analysis"), "x-analysis");
+
+if (!probeLooksHealthy(xMarkdown)) {
+  console.error("X-analysis probe failed.");
+  process.exit(1);
+}
+console.log("X-analysis probe passed.");
+
+console.log("All e2e probes passed.");

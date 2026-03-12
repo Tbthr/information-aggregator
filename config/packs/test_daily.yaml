@@ -1,0 +1,23 @@
+# 测试用 Pack - Daily Brief
+# 用于测试 daily-brief view
+
+pack:
+  id: test_daily
+  name: 测试 Pack - Daily Brief
+  description: 用于测试 daily-brief view 的 Pack
+
+sources:
+  # === RSS 类型 ===
+  - type: rss
+    url: https://simonwillison.net/atom/everything/
+    description: Simon Willison 博客
+
+  # === JSON Feed 类型 ===
+  - type: json-feed
+    url: https://www.buzzing.cc/feed.json
+    description: Buzzing，中英双语资讯聚合
+
+  # === GitHub Trending 类型 ===
+  - type: github_trending
+    url: https://github.com/trending
+    description: GitHub 趋势页面
