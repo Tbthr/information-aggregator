@@ -36,6 +36,7 @@ export interface SourcePack {
   name: string;
   description?: string;
   keywords?: string[];
+  auth?: string;           // auth 引用
   sources: InlineSource[];
 }
 
