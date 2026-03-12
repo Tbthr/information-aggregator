@@ -23,7 +23,7 @@ describe("extractArticleContent", () => {
       );
 
     const result = await extractArticleContent("https://example.com/article", {
-      fetchImpl: mockFetch as typeof fetch,
+      fetchImpl: mockFetch as unknown as typeof fetch,
     });
 
     expect(result.error).toBeUndefined();
@@ -38,7 +38,7 @@ describe("extractArticleContent", () => {
     const mockFetch = async () => new Response("Not Found", { status: 404 });
 
     const result = await extractArticleContent("https://example.com/notfound", {
-      fetchImpl: mockFetch as typeof fetch,
+      fetchImpl: mockFetch as unknown as typeof fetch,
     });
 
     expect(result.error).toBeDefined();
@@ -52,7 +52,7 @@ describe("extractArticleContent", () => {
       });
 
     const result = await extractArticleContent("https://example.com/slow", {
-      fetchImpl: mockFetch as typeof fetch,
+      fetchImpl: mockFetch as unknown as typeof fetch,
       timeout: 10, // 10ms 超时
     });
 
@@ -72,7 +72,7 @@ describe("extractArticleContent", () => {
       );
 
     const result = await extractArticleContent("https://example.com/long", {
-      fetchImpl: mockFetch as typeof fetch,
+      fetchImpl: mockFetch as unknown as typeof fetch,
       maxLength: 100,
     });
 
@@ -84,7 +84,7 @@ describe("extractArticleContent", () => {
     const mockFetch = async () => new Response("Not HTML", { status: 200 });
 
     const result = await extractArticleContent("https://example.com/invalid", {
-      fetchImpl: mockFetch as typeof fetch,
+      fetchImpl: mockFetch as unknown as typeof fetch,
     });
 
     // Readability 应该仍然返回一些内容
@@ -172,7 +172,7 @@ describe("extractArticleContentBatch", () => {
     ];
 
     const results = await extractArticleContentBatch(urls, {
-      fetchImpl: mockFetch as typeof fetch,
+      fetchImpl: mockFetch as unknown as typeof fetch,
     });
 
     expect(results).toHaveLength(3);
@@ -198,7 +198,7 @@ describe("extractArticleContentBatch", () => {
     ];
 
     const results = await extractArticleContentBatch(urls, {
-      fetchImpl: mockFetch as typeof fetch,
+      fetchImpl: mockFetch as unknown as typeof fetch,
     });
 
     expect(results).toHaveLength(3);

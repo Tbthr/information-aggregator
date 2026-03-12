@@ -104,7 +104,13 @@ function getBirdAuthArgs(config: BirdSourceConfig): string[] {
     if (config.chromeProfileDir) {
       args.push("--chrome-profile-dir", config.chromeProfileDir);
     }
-    for (const source of config.cookieSource ?? []) {
+    // cookieSource 可能是字符串或数组，统一处理为数组
+    const cookieSources = Array.isArray(config.cookieSource)
+      ? config.cookieSource
+      : config.cookieSource
+        ? [config.cookieSource]
+        : [];
+    for (const source of cookieSources) {
       args.push("--cookie-source", source);
     }
     if (typeof config.cookieTimeoutMs === "number") {

@@ -192,7 +192,7 @@ describe("collectGitHubTrendingSource", () => {
         url: "https://github.com/trending",
       };
 
-      await expect(collectGitHubTrendingSource(source, mockFetch as typeof fetch)).rejects.toThrow(
+      await expect(collectGitHubTrendingSource(source, mockFetch as unknown as typeof fetch)).rejects.toThrow(
         "GitHub Trending returned 404: Not Found",
       );
     });
@@ -223,7 +223,7 @@ describe("collectGitHubTrendingSource", () => {
         return mockFetch(url, { ...init, signal: controller.signal });
       };
 
-      await expect(collectGitHubTrendingSource(source, fetchWithAbort as typeof fetch)).rejects.toThrow();
+      await expect(collectGitHubTrendingSource(source, fetchWithAbort as unknown as typeof fetch)).rejects.toThrow();
     });
 
     test("throws on empty response", async () => {
@@ -237,7 +237,7 @@ describe("collectGitHubTrendingSource", () => {
         url: "https://github.com/trending",
       };
 
-      await expect(collectGitHubTrendingSource(source, mockFetch as typeof fetch)).rejects.toThrow(
+      await expect(collectGitHubTrendingSource(source, mockFetch as unknown as typeof fetch)).rejects.toThrow(
         "returned empty response",
       );
     });
@@ -253,7 +253,7 @@ describe("collectGitHubTrendingSource", () => {
         url: "https://github.com/trending",
       };
 
-      await expect(collectGitHubTrendingSource(source, mockFetch as typeof fetch)).rejects.toThrow(
+      await expect(collectGitHubTrendingSource(source, mockFetch as unknown as typeof fetch)).rejects.toThrow(
         "unexpected content type",
       );
     });
@@ -272,7 +272,7 @@ describe("collectGitHubTrendingSource", () => {
         url: "https://github.com/trending",
       };
 
-      await expect(collectGitHubTrendingSource(source, mockFetch as typeof fetch)).rejects.toThrow(
+      await expect(collectGitHubTrendingSource(source, mockFetch as unknown as typeof fetch)).rejects.toThrow(
         "no <article> elements found",
       );
     });
@@ -303,7 +303,7 @@ describe("collectGitHubTrendingSource", () => {
         url: "https://github.com/trending",
       };
 
-      const items = await collectGitHubTrendingSource(source, mockFetch as typeof fetch);
+      const items = await collectGitHubTrendingSource(source, mockFetch as unknown as typeof fetch);
 
       expect(items).toHaveLength(1);
       expect(items[0]?.title).toBe("test / repo");
@@ -327,7 +327,7 @@ describe("collectGitHubTrendingSource", () => {
         url: "https://github.com/trending/python",
       };
 
-      await collectGitHubTrendingSource(source, mockFetch as typeof fetch);
+      await collectGitHubTrendingSource(source, mockFetch as unknown as typeof fetch);
 
       // 验证使用了正确的 URL
       expect(fetchedUrl).toContain("python");

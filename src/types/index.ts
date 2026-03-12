@@ -30,6 +30,9 @@ export interface InlineSource {
 // Source 类型别名，用于 adapter 函数签名
 export type Source = InlineSource & { id: string };
 
+// Adapter 函数类型
+export type AdapterFn = (source: Source) => Promise<RawItem[]>;
+
 // Pack 定义 - 自包含数据源
 export interface SourcePack {
   id: string;
@@ -169,6 +172,8 @@ export interface RankedCandidate {
   rationale?: string;
   contentType?: string;
   sourceType?: SourceType;
+  metadataJson?: string;  // 原始元数据 JSON
+  author?: string;        // 作者信息
   // 深度 enrichment 相关字段
   extractedContent?: ExtractedContent;
   aiEnrichment?: AiEnrichmentResult;

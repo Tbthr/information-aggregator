@@ -54,7 +54,10 @@ export async function loadAuthByRef(
  * @param authConfig auth 配置对象
  * @returns 合并后的 source
  */
-export function mergeAuthConfig(source: { configJson?: string }, authConfig: Record<string, unknown>): { configJson: string } {
+export function mergeAuthConfig<T extends { configJson?: string }>(
+  source: T,
+  authConfig: Record<string, unknown>,
+): T & { configJson: string } {
   const sourceConfig = JSON.parse(source.configJson || "{}");
   const merged = { ...sourceConfig, ...authConfig };
   return { ...source, configJson: JSON.stringify(merged) };

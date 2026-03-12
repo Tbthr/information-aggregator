@@ -302,8 +302,8 @@ bun src/cli/main.ts auth status   # 显示所有 auth 配置状态
 bun install
 bun test
 bun run check
-bun run smoke
-bun run e2e
+bun run smoke          # 纯本地验证（无网络依赖）
+bun run e2e:real       # 完整数据流验证（需要网络和认证）
 bun src/cli/main.ts --help
 bun src/cli/main.ts --version
 bun src/cli/main.ts config validate

@@ -68,8 +68,7 @@ function extractAuthor(item: QueryResult["rankedItems"][number]): {
   author?: string;
   authorUrl?: string;
 } {
-  const rawItem = item as Record<string, unknown>;
-  const author = (rawItem.author as string) ?? item.sourceName;
+  const author = item.author ?? item.sourceName;
   const authorUrl = author ? `https://x.com/${author}` : undefined;
   return { author, authorUrl };
 }

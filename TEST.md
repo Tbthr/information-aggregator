@@ -20,17 +20,13 @@
 bun run smoke
 ```
 
-它会执行当前推荐的验证链：
+它会执行纯本地的验证链（无网络依赖）：
 
 ```bash
 bun test
 bun run check
 bun src/cli/main.ts --help
 bun src/cli/main.ts config validate
-bun src/cli/main.ts run --pack test_daily --view daily-brief --window 24h
-bun src/cli/main.ts run --pack test_x_analysis --view x-analysis --window all
-bun src/cli/main.ts sources list --pack test_daily
-bun src/cli/main.ts sources list --pack test_x_analysis
 ```
 
 ## 验证策略
@@ -52,10 +48,11 @@ bun src/cli/main.ts sources list --pack test_x_analysis
 - `bun run smoke` 无需手工修复即可通过
 - `bun src/cli/main.ts --help` 展示 `run`、`sources`、`config` 命令
 - `bun src/cli/main.ts config validate` 能通过示例配置
-- `bun src/cli/main.ts run --pack test_daily --view daily-brief --window 24h` 能输出 Markdown
-- `bun src/cli/main.ts run --pack test_x_analysis --view x-analysis --window all` 能输出完整分析格式
-- `bun src/cli/main.ts sources list --pack test_daily` 能输出 `sourceId<TAB>sourceType<TAB>sourceName`
 - 示例配置文件与文档保持一致且可读
+
+完整数据流验证（需要网络和认证）：
+
+- `bun run e2e:real` 能成功运行并输出有效内容
 
 ## 端到端测试规则
 

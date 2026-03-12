@@ -85,7 +85,7 @@ describe("ContentCache", () => {
 
   describe("最大容量", () => {
     test("超过最大容量时删除最旧条目", () => {
-      const smallCache = new ContentCache({ ttl: 10, maxSize: 3 });
+      const smallCache = new ContentCache<string>({ ttl: 10, maxSize: 3 });
 
       smallCache.set("key1", "value1");
       smallCache.set("key2", "value2");
@@ -145,7 +145,7 @@ describe("createContentCache", () => {
   });
 
   test("创建自定义配置的缓存", () => {
-    const cache = createContentCache({ ttl: 100, maxSize: 50 });
+    const cache = new ContentCache<string>({ ttl: 100, maxSize: 50 });
     cache.set("key", "value");
     expect(cache.get("key")).toBe("value");
   });

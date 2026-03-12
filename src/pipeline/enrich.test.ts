@@ -52,7 +52,7 @@ describe("enrichCandidates", () => {
         enrichmentConfig: {
           enableContentExtraction: false,
         },
-        fetchImpl: mockFetch as typeof fetch,
+        fetchImpl: mockFetch as unknown as typeof fetch,
       });
 
       expect(enriched[0]?.extractedContent).toBeUndefined();
@@ -75,7 +75,7 @@ describe("enrichCandidates", () => {
         enrichmentConfig: {
           contentExtractionLimit: 2,
         },
-        fetchImpl: mockFetch as typeof fetch,
+        fetchImpl: mockFetch as unknown as typeof fetch,
       });
 
       // 只有前 2 个被提取
@@ -122,7 +122,7 @@ describe("enrichCandidates", () => {
         enrichmentConfig: {
           cacheEnabled: true,
         },
-        fetchImpl: mockFetch as typeof fetch,
+        fetchImpl: mockFetch as unknown as typeof fetch,
         cache: mockCache as any,
       });
 
@@ -153,7 +153,7 @@ describe("enrichCandidates", () => {
           enableKeyPoints: true,
           enableTagging: true,
         },
-        fetchImpl: mockFetch as typeof fetch,
+        fetchImpl: mockFetch as unknown as typeof fetch,
         aiClient: mockAiClient as any,
       });
 
@@ -184,7 +184,7 @@ describe("enrichCandidates", () => {
           enableKeyPoints: false,
           enableTagging: true,
         },
-        fetchImpl: mockFetch as typeof fetch,
+        fetchImpl: mockFetch as unknown as typeof fetch,
         aiClient: mockAiClient as any,
       });
 
@@ -211,7 +211,7 @@ describe("enrichCandidates", () => {
           enableKeyPoints: true,
           enableTagging: false,
         },
-        fetchImpl: mockFetch as typeof fetch,
+        fetchImpl: mockFetch as unknown as typeof fetch,
         aiClient: mockAiClient as any,
       });
 
@@ -238,7 +238,7 @@ describe("enrichCandidates", () => {
 
       const enriched = await enrichCandidates(candidates, {
         enrichmentConfig: {},
-        fetchImpl: mockFetch as typeof fetch,
+        fetchImpl: mockFetch as unknown as typeof fetch,
       });
 
       // 两个请求都执行了
@@ -273,7 +273,7 @@ describe("enrichCandidates", () => {
 
       const enriched = await enrichCandidates(candidates, {
         enrichmentConfig: {},
-        fetchImpl: mockFetch as typeof fetch,
+        fetchImpl: mockFetch as unknown as typeof fetch,
         aiClient: mockAiClient as any,
       });
 

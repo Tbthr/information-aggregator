@@ -69,7 +69,8 @@ export function registerAdapterFamilies(
   const result: Record<string, AdapterFn> = {};
 
   for (const family of families) {
-    const getAuth = family.authKey ? () => authConfigs[family.authKey] : undefined;
+    const key = family.authKey;
+    const getAuth = key ? () => authConfigs[key] : undefined;
     const collectors = registerAdapterFamily(family, getAuth);
     Object.assign(result, collectors);
   }

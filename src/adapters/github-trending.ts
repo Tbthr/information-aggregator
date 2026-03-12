@@ -84,8 +84,8 @@ export function parseGitHubTrendingHtml(html: string, sourceId: string): RawItem
   // 查找所有 article 元素
   const articles = [...html.matchAll(/<article\b[\s\S]*?<\/article>/gi)].map((match) => match[0]);
 
-  return articles
-    .map((article, index) => {
+  const items = articles
+    .map((article, index): RawItem | null => {
       try {
         // 提取链接 - 优先匹配 trending 页面的链接
         const hrefMatch = article.match(/<a[^>]+href="\/trending\/([^"]+)"/i) || article.match(/<a[^>]+href="([^"]*\/[^"]*)"/i);
@@ -133,14 +133,16 @@ export function parseGitHubTrendingHtml(html: string, sourceId: string): RawItem
           repo,
         };
 
+        const snippet = [description, language, todayStars ? `+${todayStars} stars today` : ""]
+          .filter(Boolean)
+          .join(" | ");
+
         return {
           id: `${sourceId}-${index + 1}`,
           sourceId,
           title,
           url,
-          snippet: [description, language, todayStars ? `+${todayStars} stars today` : ""]
-            .filter(Boolean)
-            .join(" | "),
+          snippet: snippet || undefined,
           fetchedAt: new Date().toISOString(),
           metadataJson: JSON.stringify({
             provider: "github_trending",
@@ -154,8 +156,9 @@ export function parseGitHubTrendingHtml(html: string, sourceId: string): RawItem
         console.warn(`[github-trending] Failed to parse article ${index + 1}:`, error);
         return null;
       }
-    })
-    .filter((item): item is RawItem => item !== null && item.url !== "https://github.com/");
+    });
+
+  return items.filter((item): item is RawItem => item !== null && item.url !== "https://github.com/");
 }
 
 /**
