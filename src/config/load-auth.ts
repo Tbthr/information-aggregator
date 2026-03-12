@@ -49,34 +49,6 @@ export async function loadAuthByRef(
 }
 
 /**
- * 加载指定目录下所有 auth 配置文件
- * @param authDir auth 配置目录路径，如 "config/auth"
- * @returns 按 adapter 名称分组的配置映射
- */
-export async function loadAllAuthConfigs(authDir: string): Promise<Record<string, Record<string, unknown>>> {
-  const authConfigs: Record<string, Record<string, unknown>> = {};
-
-  // 定义需要加载的 auth 配置文件
-  const authFiles = ["x-family.yaml", "reddit.yaml"];
-
-  for (const filename of authFiles) {
-    const filePath = resolve(authDir, filename);
-    try {
-      const config = await loadAuthConfig(filePath);
-      const adapterName = filename.replace(".yaml", "");
-      authConfigs[adapterName] = config.config;
-    } catch (error) {
-      // 如果文件不存在或加载失败，继续处理其他文件
-      if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-        throw error;
-      }
-    }
-  }
-
-  return authConfigs;
-}
-
-/**
  * 将 source 配置与 auth 配置合并
  * @param source 原始 source
  * @param authConfig auth 配置对象
