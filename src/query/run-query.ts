@@ -4,7 +4,7 @@ import { collectGitHubTrendingSource } from "../adapters/github-trending";
 import { collectJsonFeedSource } from "../adapters/json-feed";
 import { collectRssSource } from "../adapters/rss";
 import { collectXBirdSource } from "../adapters/x-bird";
-import { loadAllAuthConfigs } from "../config/load-auth";
+import { loadAuthByRef } from "../config/load-auth";
 import { registerAdapterFamilies, type AdapterFamily } from "../adapters/registry";
 import { loadAllPacks } from "../config/load-pack";
 import { buildClusters } from "../pipeline/cluster";
@@ -155,8 +155,20 @@ export async function runQuery(args: ParsedRunArgs, dependencies: RunQueryDepend
     dependencies.loadPacks?.() ?? loadAllPacks("config/packs")
   );
 
-  // 加载 auth 配置
-  const authConfigs = await loadAllAuthConfigs("config/auth");
+  // 加载 auth 配置（基于 pack.auth 引用）
+  const authConfigs: Record<string, Record<string, unknown>> = {};
+  for (const pack of packs) {
+    if (pack.auth && !authConfigs[pack.auth]) {
+      try {
+        authConfigs[pack.auth] = await loadAuthByRef(pack.auth);
+      } catch (error) {
+        // 文件不存在时忽略，让 adapter 层自然报错
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+          throw error;
+        }
+      }
+    }
+  }
 
   const selection = resolveSelection(args, packs);
   const topicRule = buildTopicRule(selection.keywords);
