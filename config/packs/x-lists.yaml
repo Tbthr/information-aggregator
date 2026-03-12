@@ -13,22 +13,7 @@ pack:
 
 sources:
   # === X/Twitter 系列 ===
-  - type: x_home
-    url: https://x.com/home
-    description: X 首页时间线
-    configJson: '{"birdMode":"home","count":50}'
-
   - type: x_list
     url: https://x.com/i/lists/2021198996157710621
     description: X 列表
     configJson: '{"birdMode":"list","listId":"2021198996157710621","count":100}'
-
-  - type: x_bookmarks
-    url: https://x.com/i/bookmarks
-    description: X 书签
-    configJson: '{"birdMode":"bookmarks","count":50}'
-
-  - type: x_likes
-    url: https://x.com/i/likes
-    description: X 点赞
-    configJson: '{"birdMode":"likes","count":50}'

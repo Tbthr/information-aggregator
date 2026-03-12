@@ -1,0 +1,19 @@
+# X/Twitter 数据源
+# 需要配置 bird CLI 和 Chrome 授权才能使用
+#
+# configJson 参数说明:
+#   - count: 拉取数量 (默认 20)
+#   - fetchAll: 是否分页拉取全部 (仅 list/bookmarks/likes 支持，有封号风险)
+#   - maxPages: 配合 fetchAll 使用，限制最大页数
+
+pack:
+  id: x-home
+  name: X/Twitter 数据源
+  description: X 平台数据采集，需要 bird CLI 和 Chrome 授权
+
+sources:
+  # === X/Twitter 系列 ===
+  - type: x_home
+    url: https://x.com/home
+    description: X 首页时间线
+    configJson: '{"birdMode":"home","count":50}'
