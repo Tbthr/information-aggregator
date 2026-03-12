@@ -1,9 +1,8 @@
 import type { AiClient } from "../ai/client";
 import type { HighlightsResult } from "../types/index";
-import { renderDigestMarkdown } from "../render/digest";
 import type { QueryResult } from "../query/run-query";
-import { buildDailyBriefView, renderDailyBriefView } from "./daily-brief";
-import { buildXAnalysisView, renderXAnalysisView } from "./x-analysis";
+import { buildDailyBriefView, renderDailyBriefView, type DailyBriefViewModel } from "./daily-brief";
+import { buildXAnalysisView, renderXAnalysisView, type XAnalysisViewModel } from "./x-analysis";
 
 export interface ViewModelItem {
   title: string;
@@ -25,6 +24,8 @@ export interface ViewModel {
   sections: ViewModelSection[];
   /** AI 生成的趋势洞察 */
   aiHighlights?: HighlightsResult;
+  /** 标签云 */
+  tagCloud?: string[];
 }
 
 /**
@@ -52,10 +53,14 @@ export async function buildViewModel(
 export function renderViewMarkdown(model: ViewModel, viewId: string): string {
   switch (viewId) {
     case "daily-brief":
-      return renderDailyBriefView(model, renderDigestMarkdown);
+      return renderDailyBriefView(model);
     case "x-analysis":
-      return renderXAnalysisView(model);
+      return renderXAnalysisView(model as XAnalysisViewModel);
     default:
-      return renderDailyBriefView(model, renderDigestMarkdown);
+      return renderDailyBriefView(model);
   }
 }
+
+// 重新导出类型
+export type { DailyBriefViewModel } from "./daily-brief";
+export type { XAnalysisViewModel } from "./x-analysis";

@@ -1,274 +1,129 @@
 import type { QueryResult } from "../query/run-query";
-import type { ViewModel, BuildViewDependencies } from "./registry";
-import type { RawItemMetadata, RankedCandidate, RawItem } from "../types/index";
-import type { AiClient, TopicSuggestion } from "../ai/client";
-import { buildXPostSummaryPrompt, buildDigestNarrationPromptX, buildTopicSuggestionPrompt } from "../ai/prompts";
-import {
-  type DataStatistics,
-  type TaggedViewItem,
-  computeStatistics,
-  generateMermaidPieChart,
-  generateMermaidBarChart,
-  generateTextCategoryStats,
-  generateTextKeywordStats,
-  generateTagCloudMarkdown,
-} from "./statistics";
+import type { ViewModel, ViewModelItem, BuildViewDependencies } from "./registry";
+import type { AiClient, PostSummaryResult } from "../ai/client";
+import { extractArticleContent, isExtractionSuccess } from "../pipeline/extract-content";
 
 /**
- * X 数据分析视图项
+ * X Analysis 帖子视图项
  */
-interface XAnalysisViewItem {
-  id: string;
+export interface XAnalysisPost extends ViewModelItem {
   title: string;
   url: string;
   author?: string;
   authorUrl?: string;
-  snippet?: string;
-  aiSummary?: string;
-  aiScore?: number;
+  summary: string;  // AI 生成
+  tags: string[];   // AI 生成
   engagement?: {
     likes: number;
     retweets: number;
     replies: number;
   };
-  tags: string[];
-  whyMatters?: string;
-}
-
-/**
- * 选题建议（扩展版，包含素材来源链接）
- */
-export interface TopicSuggestionViewItem {
-  title: string;
-  description: string;
-  sourceLinks: Array<{ title: string; url: string }>;
 }
 
 /**
  * X Analysis 视图模型
  */
-export interface XAnalysisModel extends ViewModel {
+export interface XAnalysisViewModel extends ViewModel {
   viewId: "x-analysis";
-  date: string;
-  stats: {
-    scanned: number;
-    filtered: number;
-    selected: number;
-  };
-  narration?: string;
-  bookmarkItems: XAnalysisViewItem[];
-  statistics?: DataStatistics;
-  topicSuggestions?: TopicSuggestionViewItem[];
+  title: string;
+  posts: XAnalysisPost[];
+  tagCloud: string[];  // 汇总所有帖子 tags
 }
 
 /**
  * 从 metadataJson 中提取 engagement 数据
  */
-function extractEngagement(metadata: RawItemMetadata | null): { likes: number; retweets: number; replies: number } | undefined {
-  if (!metadata?.engagement) {
-    return undefined;
-  }
-  const { score, comments, reactions } = metadata.engagement;
-  if (score === undefined && comments === undefined && reactions === undefined) {
-    return undefined;
-  }
-  return {
-    likes: score ?? 0,
-    retweets: reactions ?? 0,
-    replies: comments ?? 0,
-  };
-}
-
-/**
- * 从 RawItem.metadataJson 中提取完整的扩展数据
- */
-function extractFullMetadata(rawItem: RawItem): {
-  engagement?: { likes: number; retweets: number; replies: number };
-  article?: { title: string; previewText?: string; url?: string };
-  author?: string;
-} {
-  const result: {
-    engagement?: { likes: number; retweets: number; replies: number };
-    article?: { title: string; previewText?: string; url?: string };
-    author?: string;
-  } = {};
-
-  if (!rawItem.metadataJson) {
-    return result;
-  }
+function extractEngagement(metadataJson: string | undefined): {
+  likes: number;
+  retweets: number;
+  replies: number;
+} | undefined {
+  if (!metadataJson) return undefined;
 
   try {
-    const full = JSON.parse(rawItem.metadataJson) as Record<string, unknown>;
+    const metadata = JSON.parse(metadataJson) as Record<string, unknown>;
+    if (!metadata?.engagement) return undefined;
 
-    // 提取 engagement
-    if (full.engagement && typeof full.engagement === "object") {
-      const eng = full.engagement as Record<string, unknown>;
-      result.engagement = {
-        likes: (typeof eng.score === "number" ? eng.score : 0),
-        retweets: (typeof eng.reactions === "number" ? eng.reactions : 0),
-        replies: (typeof eng.comments === "number" ? eng.comments : 0),
-      };
-    }
+    const eng = metadata.engagement as Record<string, unknown>;
+    const score = typeof eng.score === "number" ? eng.score : 0;
+    const reactions = typeof eng.reactions === "number" ? eng.reactions : 0;
+    const comments = typeof eng.comments === "number" ? eng.comments : 0;
 
-    // 提取 article
-    if (full.article && typeof full.article === "object") {
-      const art = full.article as Record<string, unknown>;
-      if (typeof art.title === "string") {
-        result.article = {
-          title: art.title,
-          previewText: typeof art.previewText === "string" ? art.previewText : undefined,
-          url: typeof art.url === "string" ? art.url : undefined,
-        };
-      }
-    }
+    if (score === 0 && reactions === 0 && comments === 0) return undefined;
 
-    // 提取 author（如果在顶层）
-    if (typeof full.author === "string") {
-      result.author = full.author;
-    }
+    return {
+      likes: score,
+      retweets: reactions,
+      replies: comments,
+    };
   } catch {
-    // ignore parse errors
+    return undefined;
   }
-
-  return result;
 }
 
 /**
- * 简单的标签提取（基于关键词匹配）
+ * 从 RawItem 提取作者信息
  */
-function extractTags(title: string, snippet?: string): string[] {
-  const text = `${title} ${snippet ?? ""}`.toLowerCase();
-  const tags: string[] = [];
-  const seen = new Set<string>();
-
-  const tagPatterns: Array<[RegExp, string]> = [
-    [/\bai\b|\bartificial intelligence\b|人工智能|智能/g, "AI"],
-    [/\bmachine learning\b|机器学习|深度学习/g, "ML"],
-    [/\bllm\b|large language model|大模型|语言模型/g, "LLM"],
-    [/\bgpt\b|chatgpt|gpt-4|gpt-4o/g, "GPT"],
-    [/\bclaude\b|anthropic/g, "Claude"],
-    [/\bopenai\b/g, "OpenAI"],
-    [/\bcode\b|编程|代码|开发/g, "编程"],
-    [/\bstartup\b|创业|初创/g, "创业"],
-    [/\bproduct\b|产品/g, "产品"],
-    [/\bdesign\b|设计/g, "设计"],
-    [/\bcrypto\b|区块链|比特币|以太坊/g, "Crypto"],
-    [/\bweb3\b/g, "Web3"],
-    [/\bdefi\b|去中心化金融/g, "DeFi"],
-    [/\bsecurity\b|安全|漏洞/g, "安全"],
-    [/\bperformance\b|性能|优化/g, "性能"],
-    [/\bapi\b/g, "API"],
-    [/\bopen source\b|开源/g, "开源"],
-    [/\btutorial\b|教程|指南|入门/g, "教程"],
-    [/\bnews\b|新闻|发布|公告/g, "新闻"],
-    [/\bdata\b|数据/g, "数据"],
-    [/\brust\b/g, "Rust"],
-    [/\btypescript\b|javascript/g, "TypeScript"],
-    [/\bpython\b/g, "Python"],
-    [/\bgolang\b|go语言/g, "Go"],
-  ];
-
-  for (const [pattern, tag] of tagPatterns) {
-    if (pattern.test(text) && !seen.has(tag)) {
-      seen.add(tag);
-      tags.push(tag);
-      if (tags.length >= 3) break;
-    }
-  }
-
-  return tags;
+function extractAuthor(item: QueryResult["rankedItems"][number]): {
+  author?: string;
+  authorUrl?: string;
+} {
+  const rawItem = item as Record<string, unknown>;
+  const author = (rawItem.author as string) ?? item.sourceName;
+  const authorUrl = author ? `https://x.com/${author}` : undefined;
+  return { author, authorUrl };
 }
 
 /**
  * 格式化数字（简化大数字）
  */
 function formatNumber(n: number): string {
-  if (n >= 1000000) {
-    return `${(n / 1000000).toFixed(1)}M`;
-  }
-  if (n >= 1000) {
-    return `${(n / 1000).toFixed(1)}K`;
-  }
+  if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
   return String(n);
 }
 
 /**
- * 构建 ID 到 RawItem 的映射
+ * 并发处理单篇帖子的 AI 摘要
  */
-function buildRawItemMap(items: RawItem[]): Map<string, RawItem> {
-  const map = new Map<string, RawItem>();
-  for (const item of items) {
-    map.set(item.id, item);
+async function summarizePostWithContent(
+  item: QueryResult["rankedItems"][number],
+  aiClient: AiClient,
+): Promise<PostSummaryResult | null> {
+  const url = item.url ?? item.canonicalUrl;
+  if (!url) return null;
+
+  // 提取全文
+  let content = "";
+  try {
+    const extractionResult = await extractArticleContent(url, {
+      timeout: 15000,
+      maxLength: 8000,
+    });
+    if (isExtractionSuccess(extractionResult)) {
+      content = extractionResult.textContent ?? extractionResult.content ?? "";
+    }
+  } catch (error) {
+    console.error(`Failed to extract content for ${url}:`, error);
   }
-  return map;
-}
 
-/**
- * 将 RankedCandidate 转换为 XAnalysisViewItem
- */
-function toItem(candidate: RankedCandidate, rawItemMap: Map<string, RawItem>): XAnalysisViewItem {
-  const rawItem = rawItemMap.get(candidate.id);
-  const fullMeta = rawItem ? extractFullMetadata(rawItem) : {};
+  // 如果没有提取到内容，使用 snippet
+  if (!content) {
+    content = item.normalizedText ?? "";
+  }
 
-  const tags = extractTags(
-    candidate.title ?? candidate.normalizedTitle ?? "",
-    candidate.normalizedText ?? rawItem?.snippet
-  );
+  if (!content) return null;
 
-  // 构建作者 URL
-  const author = rawItem?.author ?? fullMeta.author ?? candidate.sourceName;
-  const authorUrl = author ? `https://x.com/${author}` : undefined;
-
-  // 摘要由 AI 在 aggregator.ts 中生成，此处仅保存原始内容
-  const snippet = candidate.normalizedText ?? rawItem?.snippet;
-
-  return {
-    id: candidate.id,
-    title: candidate.title ?? candidate.normalizedTitle ?? candidate.id,
-    url: candidate.url ?? candidate.canonicalUrl ?? "",
-    author,
-    authorUrl,
-    snippet,
-    aiSummary: undefined, // 由 AI 在 aggregator.ts 中填充
-    aiScore: candidate.finalScore,
-    engagement: fullMeta.engagement,
-    tags,
-    whyMatters: candidate.rationale,
-  };
-}
-
-/**
- * 将 XAnalysisViewItem 转换为 TaggedViewItem（用于统计）
- */
-function toTaggedItem(item: XAnalysisViewItem): TaggedViewItem {
-  return {
-    title: item.title,
-    tags: item.tags,
-    snippet: item.snippet,
-  };
-}
-
-/**
- * 将 AI 返回的选题建议转换为视图项
- * @param suggestions AI 返回的原始选题建议
- * @param items 用于解析来源链接的视图项列表
- */
-export function resolveTopicSuggestions(
-  suggestions: TopicSuggestion[],
-  items: XAnalysisViewItem[],
-): TopicSuggestionViewItem[] {
-  return suggestions.map((s) => ({
-    title: s.title,
-    description: s.description,
-    sourceLinks: s.sourceLinks
-      .map((idxStr) => {
-        const idx = parseInt(idxStr, 10) - 1; // 转为 0-based index
-        const item = items[idx];
-        if (!item) return null;
-        return { title: item.title, url: item.url };
-      })
-      .filter((link): link is { title: string; url: string } => link !== null),
-  }));
+  // 调用 AI 摘要
+  try {
+    return await aiClient.summarizePost(
+      item.title ?? item.normalizedTitle ?? "",
+      content,
+    );
+  } catch (error) {
+    console.error(`Failed to summarize post ${item.id}:`, error);
+    return null;
+  }
 }
 
 /**
@@ -277,77 +132,58 @@ export function resolveTopicSuggestions(
 export async function buildXAnalysisView(
   result: QueryResult,
   dependencies?: BuildViewDependencies,
-): Promise<XAnalysisModel> {
-  const { aiClient } = dependencies ?? {};
+): Promise<XAnalysisViewModel> {
+  const aiClient = dependencies?.aiClient;
 
-  const rawItemMap = buildRawItemMap(result.items);
-  const bookmarkItems = result.rankedItems
-    .slice(0, 10)
-    .map((candidate) => toItem(candidate, rawItemMap));
+  // 取全部 rankedItems
+  const rankedItems = result.rankedItems;
 
-  const date = new Date().toISOString().split("T")[0];
+  // 默认值（无 AI 时）
+  let posts: XAnalysisPost[] = rankedItems.map((item) => ({
+    title: item.title ?? item.normalizedTitle ?? item.id,
+    url: item.url ?? item.canonicalUrl ?? "",
+    ...extractAuthor(item),
+    summary: "",
+    tags: [],
+    engagement: extractEngagement(item.metadataJson),
+  }));
 
-  // 计算统计数据
-  const taggedItems = bookmarkItems.map(toTaggedItem);
-  const statistics = computeStatistics(taggedItems);
+  let tagCloud: string[] = [];
 
-  const highlights = bookmarkItems.slice(0, 3).map((item) => item.title);
+  if (aiClient && rankedItems.length > 0) {
+    // 并发请求：为每篇帖子生成 AI 摘要 + tags
+    const summaryPromises = rankedItems.map((item) =>
+      summarizePostWithContent(item, aiClient)
+    );
+    const summaryResults = await Promise.all(summaryPromises);
 
-  // AI 增强（如果有 AI client）
-  let narration: string | undefined;
-  let topicSuggestions: TopicSuggestionViewItem[] | undefined;
+    // 构建帖子列表
+    posts = rankedItems.map((item, index) => {
+      const summaryResult = summaryResults[index];
+      return {
+        title: item.title ?? item.normalizedTitle ?? item.id,
+        url: item.url ?? item.canonicalUrl ?? "",
+        ...extractAuthor(item),
+        summary: summaryResult?.summary ?? "",
+        tags: summaryResult?.tags ?? [],
+        engagement: extractEngagement(item.metadataJson),
+      };
+    });
 
-  if (aiClient && bookmarkItems.length > 0) {
-    try {
-      // 1. 为每条内容生成 AI 摘要
-      for (const item of bookmarkItems) {
-        if (item.snippet && !item.aiSummary) {
-          item.aiSummary = await aiClient.summarizeItem(item.title, item.snippet);
-        }
-      }
-
-      // 2. 生成今日看点摘要
-      if (highlights.length > 0) {
-        const narrationPrompt = buildDigestNarrationPromptX(highlights);
-        narration = await aiClient.narrateDigest(narrationPrompt);
-      }
-
-      // 3. 生成选题建议
-      const itemTexts = bookmarkItems
-        .slice(0, 10)
-        .map((item) => `${item.title}: ${item.snippet ?? ""}`);
-      const topicPrompt = buildTopicSuggestionPrompt(itemTexts);
-      const suggestions = await aiClient.suggestTopics(topicPrompt);
-      topicSuggestions = resolveTopicSuggestions(suggestions, bookmarkItems);
-    } catch (error) {
-      // AI 调用失败时不影响主流程
-      console.error("Failed to generate AI enhancements:", error);
-    }
+    // 汇总所有 tags
+    const allTags = posts.flatMap((p) => p.tags);
+    tagCloud = [...new Set(allTags)];
   }
 
   return {
     viewId: "x-analysis",
-    title: `📰 X 数据分析 — ${date}`,
-    date,
-    stats: {
-      scanned: result.items.length,
-      filtered: result.normalizedItems.length,
-      selected: result.rankedItems.length,
-    },
-    highlights,
-    bookmarkItems,
-    statistics,
-    narration,
-    topicSuggestions,
+    title: "X 数据分析",
+    posts,
+    tagCloud,
     sections: [
       {
-        title: "精选内容",
-        items: bookmarkItems.map((item) => ({
-          title: item.title,
-          url: item.url,
-          summary: item.aiSummary,
-          score: item.aiScore,
-        })),
+        title: "Posts",
+        items: posts,
       },
     ],
   };
@@ -356,72 +192,41 @@ export async function buildXAnalysisView(
 /**
  * 渲染 X Analysis 视图为 Markdown
  */
-export function renderXAnalysisView(model: ViewModel): string {
+export function renderXAnalysisView(model: XAnalysisViewModel): string {
   const lines: string[] = [];
-  const analysisModel = model as XAnalysisModel;
 
   // 标题
   lines.push(`# ${model.title}`);
 
-  // 今日看点（AI 摘要，如果有）
-  if (analysisModel.narration) {
-    lines.push("", "## 📌 今日看点", "", analysisModel.narration);
-  }
+  // 帖子列表
+  if (model.posts && model.posts.length > 0) {
+    lines.push("", "## 精选帖子", "");
 
-  // 数据概览表格
-  if (analysisModel.stats) {
-    lines.push("", "## 📊 数据概览", "");
-    lines.push("| 指标 | 数量 |");
-    lines.push("|------|------|");
-    lines.push(`| 扫描条目 | ${analysisModel.stats.scanned} |`);
-    lines.push(`| 筛选后 | ${analysisModel.stats.filtered} |`);
-    lines.push(`| 精选推荐 | ${analysisModel.stats.selected} |`);
-  }
-
-  // 高亮内容
-  if (model.highlights && model.highlights.length > 0) {
-    lines.push("", "## ✨ 今日热点", "");
-    for (const highlight of model.highlights) {
-      lines.push(`- ${highlight}`);
-    }
-  }
-
-  // 精选内容详情
-  if (analysisModel.bookmarkItems && analysisModel.bookmarkItems.length > 0) {
-    lines.push("", "## 📝 精选内容", "");
-
-    for (const item of analysisModel.bookmarkItems) {
-      // 标题和链接
-      const titleLink = item.url ? `[${item.title}](${item.url})` : item.title;
+    for (const post of model.posts) {
+      const titleLink = post.url ? `[${post.title}](${post.url})` : post.title;
       lines.push("", `### ${titleLink}`);
 
-      // 元数据行：作者、AI评分、互动数据
+      // 元数据行
       const metaParts: string[] = [];
 
-      // 作者链接
-      if (item.author) {
-        if (item.authorUrl) {
-          metaParts.push(`[@${item.author}](${item.authorUrl})`);
+      if (post.author) {
+        if (post.authorUrl) {
+          metaParts.push(`[@${post.author}](${post.authorUrl})`);
         } else {
-          metaParts.push(`@${item.author}`);
+          metaParts.push(`@${post.author}`);
         }
-      }
-
-      // AI 评分
-      if (item.aiScore !== undefined) {
-        metaParts.push(`⭐ ${item.aiScore.toFixed(1)}`);
       }
 
       // 互动数据
-      if (item.engagement) {
-        if (item.engagement.likes > 0) {
-          metaParts.push(`❤️ ${formatNumber(item.engagement.likes)}`);
+      if (post.engagement) {
+        if (post.engagement.likes > 0) {
+          metaParts.push(`❤️ ${formatNumber(post.engagement.likes)}`);
         }
-        if (item.engagement.retweets > 0) {
-          metaParts.push(`🔄 ${formatNumber(item.engagement.retweets)}`);
+        if (post.engagement.retweets > 0) {
+          metaParts.push(`🔄 ${formatNumber(post.engagement.retweets)}`);
         }
-        if (item.engagement.replies > 0) {
-          metaParts.push(`💬 ${formatNumber(item.engagement.replies)}`);
+        if (post.engagement.replies > 0) {
+          metaParts.push(`💬 ${formatNumber(post.engagement.replies)}`);
         }
       }
 
@@ -429,74 +234,22 @@ export function renderXAnalysisView(model: ViewModel): string {
         lines.push("", metaParts.join(" | "));
       }
 
-      // AI 生成的 50 字摘要
-      if (item.aiSummary) {
-        lines.push("", `> **摘要**: ${item.aiSummary}`);
-      }
-
-      // 为什么值得关注
-      if (item.whyMatters) {
-        lines.push("", `**为什么值得关注**: ${item.whyMatters}`);
+      // AI 摘要
+      if (post.summary) {
+        lines.push("", `> ${post.summary}`);
       }
 
       // 标签
-      if (item.tags.length > 0) {
-        lines.push("", `**标签**: ${item.tags.map((t) => `\`${t}\``).join(" ")}`);
+      if (post.tags && post.tags.length > 0) {
+        lines.push("", `**标签**: ${post.tags.map((t) => `\`${t}\``).join(" ")}`);
       }
     }
   }
 
-  // 数据统计与可视化
-  if (analysisModel.statistics) {
-    const stats = analysisModel.statistics;
-
-    // 标签云
-    if (stats.tagCloud.length > 0) {
-      lines.push("", "## 🏷️ 话题标签云", "");
-      lines.push(generateTagCloudMarkdown(stats.tagCloud));
-    }
-
-    // Mermaid 可视化
-    lines.push("", "## 📈 数据可视化", "");
-
-    // 分类分布饼图
-    if (stats.categories.length > 0) {
-      lines.push("", "### 分类分布", "");
-      lines.push(generateMermaidPieChart(stats.categories));
-    }
-
-    // 关键词频次条形图
-    if (stats.keywords.length > 0) {
-      lines.push("", "### 高频关键词", "");
-      lines.push(generateMermaidBarChart(stats.keywords));
-    }
-
-    // 纯文本备用格式（终端友好）
-    lines.push("", "## 📋 文本统计（终端友好）", "");
-    lines.push("", "```");
-    lines.push(generateTextCategoryStats(stats.categories));
-    lines.push("");
-    lines.push(generateTextKeywordStats(stats.keywords));
-    lines.push("```");
-  }
-
-  // 选题思路
-  if (analysisModel.topicSuggestions && analysisModel.topicSuggestions.length > 0) {
-    lines.push("", "## 💡 选题思路", "");
-    lines.push("基于今日精选内容，AI 推荐以下创作选题：");
-
-    for (let i = 0; i < analysisModel.topicSuggestions.length; i++) {
-      const suggestion = analysisModel.topicSuggestions[i];
-      lines.push("", `### ${i + 1}. ${suggestion.title}`);
-      lines.push("", `**角度说明**: ${suggestion.description}`);
-
-      if (suggestion.sourceLinks.length > 0) {
-        lines.push("", "**素材来源**:");
-        for (const link of suggestion.sourceLinks) {
-          lines.push(`- [${link.title}](${link.url})`);
-        }
-      }
-    }
+  // 标签云
+  if (model.tagCloud && model.tagCloud.length > 0) {
+    lines.push("", "## 标签云", "");
+    lines.push(model.tagCloud.map((t) => `\`${t}\``).join(" "));
   }
 
   // 页脚

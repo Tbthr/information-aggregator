@@ -66,32 +66,41 @@ const queryResult = {
       finalScore: 2.9,
     },
   ],
-  clusters: [
-    {
-      id: "cluster-1",
-      canonicalItemId: "item-1",
-      memberItemIds: ["item-1"],
-      dedupeMethod: "exact" as const,
-      title: "Fresh AI launch",
-      url: "https://example.com/fresh",
-      summary: "Why it matters",
-    },
-  ],
+  clusters: [],
   warnings: [],
 } satisfies QueryResult;
 
 describe("views", () => {
-  test("daily-brief builds highlights and cluster sections and renders markdown", async () => {
+  test("daily-brief builds articles list without AI client", async () => {
+    // 无 AI client 时，视图仍能正常构建
     const model = await buildViewModel(queryResult, "daily-brief");
     const markdown = renderViewMarkdown(model, "daily-brief");
 
-    expect(model.highlights).toEqual(["Fresh AI launch", "Second ranked item", "Third ranked item"]);
-    expect(model.sections.map((section) => section.title)).toEqual(["Top Clusters", "Supporting Items"]);
+    // 验证基本结构
+    expect(model.viewId).toBe("daily-brief");
+    expect(model.title).toBe("Daily Brief");
+
+    // 无 AI client 时，summary 和 highlights 为空
+    expect(model.summary).toBe("");
+    expect(model.highlights).toEqual([]);
+
+    // 应该有 articles section
+    expect(model.sections.map((section) => section.title)).toContain("Articles");
+    const articlesSection = model.sections.find((s) => s.title === "Articles");
+    expect(articlesSection?.items).toHaveLength(4);
+    expect(articlesSection?.items[0]?.title).toBe("Fresh AI launch");
+
+    // 验证 markdown 渲染
     expect(markdown).toContain("# Daily Digest");
     expect(markdown).toContain("Fresh AI launch");
-    expect(markdown).toContain("Why it matters");
-    expect(model.sections[1]?.items[0]?.url).toBe("https://example.com/fresh");
-    expect(model.sections[1]?.items[0]?.summary).toContain("linked article");
-    expect(markdown).toContain("linked article");
+  });
+
+  test("daily-brief markdown contains expected sections", async () => {
+    const model = await buildViewModel(queryResult, "daily-brief");
+    const markdown = renderViewMarkdown(model, "daily-brief");
+
+    // 验证 markdown 结构
+    expect(markdown).toContain("# Daily Digest");
+    expect(markdown).toContain("## 精选文章");
   });
 });

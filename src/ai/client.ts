@@ -7,6 +7,16 @@ import {
   buildMultiDimensionalScorePrompt,
 } from "./prompts-enrichment";
 import { buildHighlightsPrompt } from "./prompts-highlights";
+import {
+  buildArticleEnrichPrompt,
+  buildDailyBriefOverviewPrompt,
+  parseArticleEnrichResult,
+  parseDailyBriefOverviewResult,
+} from "./prompts-daily-brief";
+import {
+  buildPostSummaryPrompt,
+  parsePostSummaryResult,
+} from "./prompts-x-analysis";
 
 // 默认模型常量
 const DEFAULT_GEMINI_MODEL = "gemini-2.0-flash";
@@ -57,6 +67,25 @@ export interface TopicSuggestion {
   sourceLinks: string[];
 }
 
+// Daily Brief 文章增强结果
+export interface ArticleEnrichResult {
+  description: string;
+  whyMatters: string;
+  tags: string[];
+}
+
+// X Analysis 帖子摘要结果
+export interface PostSummaryResult {
+  summary: string;
+  tags: string[];
+}
+
+// Daily Brief 整体概览结果
+export interface DailyBriefOverviewResult {
+  summary: string;
+  highlights: string[];
+}
+
 export interface AiClient {
   scoreCandidate(prompt: string): Promise<number>;
   summarizeCluster(prompt: string): Promise<string>;
@@ -72,6 +101,11 @@ export interface AiClient {
   scoreMultiDimensional(title: string, content: string, url?: string): Promise<MultiDimensionalScore | null>;
   // 趋势洞察
   generateHighlights(titles: string[]): Promise<HighlightsResult | null>;
+  // Daily Brief 视图方法
+  enrichArticle(title: string, content: string): Promise<ArticleEnrichResult | null>;
+  generateDailyBriefOverview(descriptions: string[]): Promise<DailyBriefOverviewResult | null>;
+  // X Analysis 视图方法
+  summarizePost(title: string, content: string): Promise<PostSummaryResult | null>;
 }
 
 function getFetchImpl(fetchFn?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>): (input: RequestInfo | URL, init?: RequestInit) => Promise<Response> {
@@ -392,6 +426,26 @@ class ProviderAiClient implements AiClient {
     const parsed = parseJsonObject(response);
     return parsed ? parseHighlightsResult(parsed) : null;
   }
+
+  // Daily Brief 方法
+  async enrichArticle(title: string, content: string): Promise<ArticleEnrichResult | null> {
+    const prompt = buildArticleEnrichPrompt(title, content);
+    const response = getOpenAiResponseText(await this.request(prompt));
+    return parseArticleEnrichResult(response);
+  }
+
+  async generateDailyBriefOverview(descriptions: string[]): Promise<DailyBriefOverviewResult | null> {
+    const prompt = buildDailyBriefOverviewPrompt(descriptions);
+    const response = getOpenAiResponseText(await this.request(prompt));
+    return parseDailyBriefOverviewResult(response);
+  }
+
+  // X Analysis 方法
+  async summarizePost(title: string, content: string): Promise<PostSummaryResult | null> {
+    const prompt = buildPostSummaryPrompt(title, content);
+    const response = getOpenAiResponseText(await this.request(prompt));
+    return parsePostSummaryResult(response);
+  }
 }
 
 class AnthropicClient implements AiClient {
@@ -484,6 +538,26 @@ class AnthropicClient implements AiClient {
     const response = getAnthropicResponseText(await this.request(prompt));
     const parsed = parseJsonObject(response);
     return parsed ? parseHighlightsResult(parsed) : null;
+  }
+
+  // Daily Brief 方法
+  async enrichArticle(title: string, content: string): Promise<ArticleEnrichResult | null> {
+    const prompt = buildArticleEnrichPrompt(title, content);
+    const response = getAnthropicResponseText(await this.request(prompt));
+    return parseArticleEnrichResult(response);
+  }
+
+  async generateDailyBriefOverview(descriptions: string[]): Promise<DailyBriefOverviewResult | null> {
+    const prompt = buildDailyBriefOverviewPrompt(descriptions);
+    const response = getAnthropicResponseText(await this.request(prompt));
+    return parseDailyBriefOverviewResult(response);
+  }
+
+  // X Analysis 方法
+  async summarizePost(title: string, content: string): Promise<PostSummaryResult | null> {
+    const prompt = buildPostSummaryPrompt(title, content);
+    const response = getAnthropicResponseText(await this.request(prompt));
+    return parsePostSummaryResult(response);
   }
 }
 
@@ -584,6 +658,26 @@ class GeminiClient implements AiClient {
     const response = getGeminiResponseText(await this.request(prompt));
     const parsed = parseJsonObject(response);
     return parsed ? parseHighlightsResult(parsed) : null;
+  }
+
+  // Daily Brief 方法
+  async enrichArticle(title: string, content: string): Promise<ArticleEnrichResult | null> {
+    const prompt = buildArticleEnrichPrompt(title, content);
+    const response = getGeminiResponseText(await this.request(prompt));
+    return parseArticleEnrichResult(response);
+  }
+
+  async generateDailyBriefOverview(descriptions: string[]): Promise<DailyBriefOverviewResult | null> {
+    const prompt = buildDailyBriefOverviewPrompt(descriptions);
+    const response = getGeminiResponseText(await this.request(prompt));
+    return parseDailyBriefOverviewResult(response);
+  }
+
+  // X Analysis 方法
+  async summarizePost(title: string, content: string): Promise<PostSummaryResult | null> {
+    const prompt = buildPostSummaryPrompt(title, content);
+    const response = getGeminiResponseText(await this.request(prompt));
+    return parsePostSummaryResult(response);
   }
 }
 
