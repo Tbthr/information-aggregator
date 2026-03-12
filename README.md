@@ -394,6 +394,7 @@ bun scripts/aggregator.ts run --pack karpathy-picks --view daily-brief --window 
 
 以下内容已经进入持续迭代路线图：
 
+- 排序逻辑重构
 - 更稳的 `github_trending` source 治理
 - feedback loop 与自适应排序
 - Web UI
