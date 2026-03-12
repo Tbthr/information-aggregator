@@ -10,3 +10,4 @@ sources:
   - type: x_likes
     url: https://x.com/i/likes
     description: X 点赞
+    configJson: '{"birdMode":"likes","count":50}'

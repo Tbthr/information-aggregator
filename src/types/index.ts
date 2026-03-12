@@ -169,6 +169,47 @@ export interface RankedCandidate {
   rationale?: string;
   contentType?: string;
   sourceType?: SourceType;
+  // 深度 enrichment 相关字段
+  extractedContent?: ExtractedContent;
+  aiEnrichment?: AiEnrichmentResult;
+}
+
+/**
+ * 提取的正文内容
+ */
+export interface ExtractedContent {
+  url: string;
+  title?: string;
+  content?: string;        // HTML 清理后的正文
+  textContent?: string;    // 纯文本正文
+  excerpt?: string;        // 摘要段落
+  length?: number;         // 正文长度
+  extractedAt: string;
+  error?: string;
+}
+
+/**
+ * AI 增强结果
+ */
+export interface AiEnrichmentResult {
+  keyPoints?: string[];    // 关键点（3-5 个）
+  tags?: string[];         // 自动生成的标签
+  summary?: string;        // AI 摘要
+  score?: number;          // 基于完整内容的质量评分
+}
+
+/**
+ * enrichment 配置
+ */
+export interface EnrichmentConfig {
+  enableContentExtraction?: boolean;    // 是否启用正文提取，默认 true
+  contentExtractionLimit?: number;      // 正文提取数量限制，默认 5
+  contentExtractionTimeout?: number;    // 正文提取超时（毫秒），默认 15000
+  enableKeyPoints?: boolean;            // 是否启用关键点提取，默认 true
+  enableTagging?: boolean;              // 是否启用标签生成，默认 true
+  cacheEnabled?: boolean;               // 是否启用缓存，默认 true
+  cacheTtl?: number;                    // 缓存 TTL（秒），默认 86400
+  maxContentLength?: number;            // 最大内容长度（字符数），默认不限制
 }
 
 export function parseRawItemMetadata(metadataJson: string | undefined): RawItemMetadata | null {

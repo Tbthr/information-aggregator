@@ -44,3 +44,62 @@ export async function loadAuthConfig(filePath: string): Promise<AuthConfig> {
   const parsed = await loadYamlFile(filePath);
   return validateAuthConfig(parsed);
 }
+
+/**
+ * 加载指定目录下所有 auth 配置文件
+ * @param authDir auth 配置目录路径，如 "config/auth"
+ * @returns 按 adapter 名称分组的配置映射
+ */
+export async function loadAllAuthConfigs(authDir: string): Promise<Record<string, Record<string, unknown>>> {
+  const authConfigs: Record<string, Record<string, unknown>> = {};
+
+  // 定义需要加载的 auth 配置文件
+  const authFiles = ["x-family.yaml", "reddit.yaml"];
+
+  for (const filename of authFiles) {
+    const filePath = resolve(authDir, filename);
+    try {
+      const config = await loadAuthConfig(filePath);
+      const adapterName = filename.replace(".yaml", "");
+      authConfigs[adapterName] = config.config;
+    } catch (error) {
+      // 如果文件不存在或加载失败，继续处理其他文件
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+        throw error;
+      }
+    }
+  }
+
+  return authConfigs;
+}
+
+/**
+ * 将 auth 配置扁平化为一层对象
+ * 例如：{ chromeProfile: "Default", cookieSource: ["chrome"] }
+ */
+function flattenConfig(config: Record<string, unknown>): Record<string, unknown> {
+  const flat: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(config)) {
+    if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+      // 递归处理嵌套对象
+      Object.assign(flat, flattenConfig(value as Record<string, unknown>));
+    } else {
+      flat[key] = value;
+    }
+  }
+
+  return flat;
+}
+
+/**
+ * 将 source 配置与 auth 配置合并
+ * @param source 原始 source
+ * @param authConfig auth 配置对象（扁平化后的）
+ * @returns 合并后的 source
+ */
+export function mergeAuthConfig(source: { configJson?: string }, authConfig: Record<string, unknown>): { configJson: string } {
+  const sourceConfig = JSON.parse(source.configJson || "{}");
+  const merged = { ...sourceConfig, ...authConfig };
+  return { ...source, configJson: JSON.stringify(merged) };
+}

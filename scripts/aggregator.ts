@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 
 import { createAnthropicClient } from "../src/ai/client";
 import { loadAllPacks } from "../src/config/load-pack";
+import { checkAuthConfig, showAuthStatus } from "../src/cli/auth-commands";
 import { getCliVersion, getHelpText, parseCliArgs } from "../src/cli/index";
 import { parseRunArgs, validateRunArgs } from "../src/query/parse-cli";
 import { runQuery } from "../src/query/run-query";
@@ -65,6 +66,18 @@ async function main(): Promise<void> {
   if (parsed.command === "config validate") {
     const packs = await loadAllPacks("config/packs");
     console.log(`Config validation passed: ${packs.length} packs loaded`);
+    return;
+  }
+
+  if (parsed.command === "auth check") {
+    const authType = parsed.authType ?? "x-family";
+    const success = await checkAuthConfig(authType);
+    process.exit(success ? 0 : 1);
+    return;
+  }
+
+  if (parsed.command === "auth status") {
+    await showAuthStatus();
     return;
   }
 

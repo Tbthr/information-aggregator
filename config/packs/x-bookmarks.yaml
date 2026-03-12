@@ -10,4 +10,4 @@ sources:
   - type: x_bookmarks
     url: https://x.com/i/bookmarks
     description: X 书签
-    configJson: '{"birdMode":"bookmarks"}'
+    configJson: '{"birdMode":"bookmarks","count":50}'

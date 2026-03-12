@@ -88,7 +88,8 @@
 │                       Enrich Phase                               │
 │  toCandidates() → enrichCandidates()                             │
 │  • scoreTopicMatch() - 关键词匹配评分                             │
-│  • contentQualityAi - 可选 AI 质量评分                            │
+│  • extractContent() - 正文提取（可选）                            │
+│  • AI enrichment - 关键点提取、标签生成、质量评分                  │
 │  • 计算 sourceWeightScore / freshnessScore                       │
 └───────────────────────────────────────────────────────────────────┘
                                                      │
@@ -126,12 +127,13 @@
 ## 当前能力
 
 - TypeScript + Bun CLI
-- SQLite 持久化：sources、runs、outputs、source health
+- SQLite 持久化：sources、runs、outputs、source health、enrichment results
 - Pack 驱动的数据源配置（自包含 YAML 文件）
 - 已接入 `rss`、`json-feed`、`website`、`hn`、`reddit`
 - 已接入 `github_trending`、`digest_feed`、`custom_api`、`opml_rss`
 - 已接入基于 `bird CLI` 的 X family adapter
 - 确定性的规范化、精确去重、近似去重、排序与聚类
+- **深度 enrichment**：正文提取（使用 @mozilla/readability）、AI 关键点提取、标签生成
 - 可选的 AI 抽象层，用于候选评分、cluster summary 与 digest narration 扩展
 
 ## 配置文件
@@ -345,7 +347,6 @@ bun scripts/aggregator.ts run --pack karpathy-picks --view item-list --window 7d
 
 - X family 的授权配置、手动 probe 与兼容性收敛
 - 更稳的 `github_trending` / `digest_feed` / `custom_api` / `opml_rss` source 治理
-- 更深的正文提取与 enrichment
 - feedback loop 与自适应排序
 - Web UI
 - 多用户能力
@@ -353,7 +354,7 @@ bun scripts/aggregator.ts run --pack karpathy-picks --view item-list --window 7d
 
 ## 当前实现状态
 
-截至 2026-03-11，仓库当前状态为：
+截至 2026-03-12，仓库当前状态为：
 
 - 已完成：项目脚手架与 CLI
 - 已完成：本地 YAML 配置加载与校验
@@ -367,4 +368,5 @@ bun scripts/aggregator.ts run --pack karpathy-picks --view item-list --window 7d
 - 已完成：`run --pack --view --window` 查询入口、Markdown / JSON 输出
 - 已完成：候选评分、cluster summary、digest narration 的 AI hook
 - 已完成：raw items、normalized items、clusters 的 end-to-end 持久化
-- 尚未实现：深度 enrichment、feedback learning、Web UI、多用户能力
+- 已完成：深度 enrichment（正文提取、AI 关键点提取、标签生成）
+- 尚未实现：feedback learning、Web UI、多用户能力

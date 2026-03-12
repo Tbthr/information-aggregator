@@ -8,6 +8,7 @@ import { collectRedditSource } from "../adapters/reddit";
 import { collectRssSource } from "../adapters/rss";
 import { collectWebsiteSource } from "../adapters/website";
 import { collectXBirdSource } from "../adapters/x-bird";
+import { getAuthFileForSourceType, loadAllAuthConfigs, mergeAuthConfig } from "../config/load-auth";
 import { loadAllPacks } from "../config/load-pack";
 import { buildClusters } from "../pipeline/cluster";
 import { collectSources, type CollectDependencies } from "../pipeline/collect";
@@ -17,7 +18,8 @@ import { enrichCandidates } from "../pipeline/enrich";
 import { normalizeItems } from "../pipeline/normalize";
 import { rankCandidates } from "../pipeline/rank";
 import { scoreTopicMatch } from "../pipeline/topic-match";
-import { parseRawItemMetadata, type Cluster, type NormalizedItem, type ParsedRunArgs, type RankedCandidate, type RawItem, type SourcePack, type TopicRule } from "../types/index";
+import { parseRawItemMetadata, type Cluster, type NormalizedItem, type ParsedRunArgs, type RankedCandidate, type RawItem, type SourcePack, type TopicRule, type EnrichmentConfig } from "../types/index";
+import { createContentCache, type ContentCache } from "../cache/content-cache";
 import { resolveSelection, type ResolvedSelection, type ResolvedSource } from "./resolve-selection";
 
 export interface RunQueryDependencies {
@@ -26,6 +28,10 @@ export interface RunQueryDependencies {
   collectSources?: (sources: ResolvedSource[], dependencies: CollectDependencies) => Promise<RawItem[]>;
   buildClusters?: typeof buildClusters;
   now?: () => string;
+  // 深度 enrichment 配置
+  enrichmentConfig?: EnrichmentConfig;
+  db?: import("bun:sqlite").Database | null;
+  cache?: ContentCache | null;
 }
 
 export interface QueryResult {
@@ -44,7 +50,10 @@ function buildTopicRule(keywords: string[]): TopicRule {
   };
 }
 
-function buildDefaultCollectDependencies(): CollectDependencies {
+function buildDefaultCollectDependencies(authConfigs: Record<string, Record<string, unknown>> = {}): CollectDependencies {
+  // 获取 X family auth 配置
+  const xFamilyAuth = authConfigs["x-family"];
+
   return {
     adapters: {
       digest_feed: (source) => collectDigestFeedSource(source),
@@ -54,10 +63,23 @@ function buildDefaultCollectDependencies(): CollectDependencies {
       "json-feed": (source) => collectJsonFeedSource(source),
       rss: (source) => collectRssSource(source),
       website: (source) => collectWebsiteSource(source),
-      x_bookmarks: (source) => collectXBirdSource(source),
-      x_home: (source) => collectXBirdSource(source),
-      x_likes: (source) => collectXBirdSource(source),
-      x_list: (source) => collectXBirdSource(source),
+      // X family adapters - 合并 auth 配置
+      x_bookmarks: (source) => {
+        const merged = xFamilyAuth ? mergeAuthConfig(source, xFamilyAuth) : source;
+        return collectXBirdSource(merged);
+      },
+      x_home: (source) => {
+        const merged = xFamilyAuth ? mergeAuthConfig(source, xFamilyAuth) : source;
+        return collectXBirdSource(merged);
+      },
+      x_likes: (source) => {
+        const merged = xFamilyAuth ? mergeAuthConfig(source, xFamilyAuth) : source;
+        return collectXBirdSource(merged);
+      },
+      x_list: (source) => {
+        const merged = xFamilyAuth ? mergeAuthConfig(source, xFamilyAuth) : source;
+        return collectXBirdSource(merged);
+      },
     },
   };
 }
@@ -147,14 +169,18 @@ export async function runQuery(args: ParsedRunArgs, dependencies: RunQueryDepend
     dependencies.loadPacks?.() ?? loadAllPacks("config/packs")
   );
 
+  // 加载 auth 配置
+  const authConfigs = await loadAllAuthConfigs("config/auth");
+
   const selection = resolveSelection(args, packs);
   const topicRule = buildTopicRule(selection.keywords);
-  const collectedItems = await collectImpl(selection.sources, buildDefaultCollectDependencies());
+  const collectedItems = await collectImpl(selection.sources, buildDefaultCollectDependencies(authConfigs));
   const items = filterItemsToRange(collectedItems, selection.window, now());
   const normalizedItems = normalizeItems(items);
   const exact = dedupeExact(normalizedItems.filter((item) => item.exactDedupKey) as Array<NormalizedItem & { exactDedupKey: string }>);
   const near = dedupeNear(exact.filter((item) => item.processedAt) as Array<NormalizedItem & { processedAt: string }>);
   const rankedItems = rankCandidates(await enrichCandidates(toCandidates(near, topicRule), {
+    // 传统 AI 评分（向后兼容）
     limit: 5,
     scoreCandidate: dependencies.aiClient
       ? async (candidate) =>
@@ -162,6 +188,13 @@ export async function runQuery(args: ParsedRunArgs, dependencies: RunQueryDepend
           buildCandidateQualityPrompt(candidate.title ?? candidate.normalizedTitle ?? candidate.id, candidate.normalizedText ?? ""),
         ) ?? 0
       : undefined,
+    // 深度 enrichment 配置
+    enrichmentConfig: dependencies.enrichmentConfig,
+    aiClient: dependencies.aiClient,
+    db: dependencies.db,
+    cache: dependencies.cache ?? (dependencies.enrichmentConfig?.cacheEnabled !== false ? createContentCache({
+      ttl: dependencies.enrichmentConfig?.cacheTtl,
+    }) : null),
   }));
   const clusters = buildClustersImpl(
     rankedItems.map((candidate) => ({

@@ -25,6 +25,11 @@ export interface AiClient {
   narrateDigest(prompt: string): Promise<string>;
   suggestTopics(prompt: string): Promise<TopicSuggestion[]>;
   summarizeItem(title: string, snippet: string): Promise<string>;
+  // 深度 enrichment 方法
+  scoreWithContent(title: string, content: string, url?: string): Promise<number>;
+  extractKeyPoints(title: string, content: string, maxPoints?: number): Promise<string[]>;
+  generateTags(title: string, content: string, maxTags?: number): Promise<string[]>;
+  summarizeContent(title: string, content: string, maxLength?: number): Promise<string>;
 }
 
 function getFetchImpl(fetchFn?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>): (input: RequestInfo | URL, init?: RequestInit) => Promise<Response> {
@@ -134,6 +139,67 @@ function parseTopicSuggestions(text: string): TopicSuggestion[] {
   }
 }
 
+/**
+ * 从 AI 响应中解析 JSON 对象
+ */
+function parseJsonObject(text: string): Record<string, unknown> | null {
+  // 尝试提取 JSON 对象（处理可能的 markdown 代码块）
+  let cleaned = text.trim();
+
+  // 移除 markdown 代码块标记
+  cleaned = cleaned.replace(/^```(?:json)?\s*/i, "");
+  cleaned = cleaned.replace(/```\s*$/, "");
+
+  // 尝试找到最外层的 JSON 对象
+  const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(jsonMatch[0]) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 从 JSON 对象中提取字符串数组
+ */
+function parseStringArray(obj: Record<string, unknown>, key: string): string[] {
+  const value = obj[key];
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.filter((v): v is string => typeof v === "string");
+}
+
+/**
+ * 从 JSON 对象中提取数字
+ */
+function parseNumber(obj: Record<string, unknown>, key: string): number | null {
+  const value = obj[key];
+  if (typeof value === "number") {
+    return value;
+  }
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return isNaN(parsed) ? null : parsed;
+  }
+  return null;
+}
+
+/**
+ * 从 JSON 对象中提取字符串
+ */
+function parseString(obj: Record<string, unknown>, key: string): string | null {
+  const value = obj[key];
+  if (typeof value === "string") {
+    return value;
+  }
+  return null;
+}
+
 class ProviderAiClient implements AiClient {
   constructor(private readonly config: Required<Pick<AiProviderConfig, "apiKey" | "model">> & AiProviderConfig) {}
 
@@ -176,6 +242,39 @@ class ProviderAiClient implements AiClient {
 
   async summarizeItem(title: string, snippet: string): Promise<string> {
     return getOpenAiResponseText(await this.request(`${title}\n\n${snippet}`));
+  }
+
+  // 深度 enrichment 方法
+
+  async scoreWithContent(title: string, content: string, url?: string): Promise<number> {
+    const { buildDeepQualityPrompt } = await import("./prompts-enrichment");
+    const prompt = buildDeepQualityPrompt(title, content, url);
+    const response = getOpenAiResponseText(await this.request(prompt));
+    const parsed = parseJsonObject(response);
+    const score = parsed ? parseNumber(parsed, "score") : null;
+    return score ?? 0;
+  }
+
+  async extractKeyPoints(title: string, content: string, maxPoints = 5): Promise<string[]> {
+    const { buildKeyPointsPrompt } = await import("./prompts-enrichment");
+    const prompt = buildKeyPointsPrompt(title, content, maxPoints);
+    const response = getOpenAiResponseText(await this.request(prompt));
+    const parsed = parseJsonObject(response);
+    return parsed ? parseStringArray(parsed, "keyPoints") : [];
+  }
+
+  async generateTags(title: string, content: string, maxTags = 5): Promise<string[]> {
+    const { buildTaggingPrompt } = await import("./prompts-enrichment");
+    const prompt = buildTaggingPrompt(title, content, maxTags);
+    const response = getOpenAiResponseText(await this.request(prompt));
+    const parsed = parseJsonObject(response);
+    return parsed ? parseStringArray(parsed, "tags") : [];
+  }
+
+  async summarizeContent(title: string, content: string, maxLength = 150): Promise<string> {
+    const { buildSummaryPrompt } = await import("./prompts-enrichment");
+    const prompt = buildSummaryPrompt(title, content, maxLength);
+    return getOpenAiResponseText(await this.request(prompt));
   }
 }
 
@@ -224,6 +323,39 @@ class AnthropicClient implements AiClient {
 
   async summarizeItem(title: string, snippet: string): Promise<string> {
     return getAnthropicResponseText(await this.request(`${title}\n\n${snippet}`));
+  }
+
+  // 深度 enrichment 方法
+
+  async scoreWithContent(title: string, content: string, url?: string): Promise<number> {
+    const { buildDeepQualityPrompt } = await import("./prompts-enrichment");
+    const prompt = buildDeepQualityPrompt(title, content, url);
+    const response = getAnthropicResponseText(await this.request(prompt));
+    const parsed = parseJsonObject(response);
+    const score = parsed ? parseNumber(parsed, "score") : null;
+    return score ?? 0;
+  }
+
+  async extractKeyPoints(title: string, content: string, maxPoints = 5): Promise<string[]> {
+    const { buildKeyPointsPrompt } = await import("./prompts-enrichment");
+    const prompt = buildKeyPointsPrompt(title, content, maxPoints);
+    const response = getAnthropicResponseText(await this.request(prompt));
+    const parsed = parseJsonObject(response);
+    return parsed ? parseStringArray(parsed, "keyPoints") : [];
+  }
+
+  async generateTags(title: string, content: string, maxTags = 5): Promise<string[]> {
+    const { buildTaggingPrompt } = await import("./prompts-enrichment");
+    const prompt = buildTaggingPrompt(title, content, maxTags);
+    const response = getAnthropicResponseText(await this.request(prompt));
+    const parsed = parseJsonObject(response);
+    return parsed ? parseStringArray(parsed, "tags") : [];
+  }
+
+  async summarizeContent(title: string, content: string, maxLength = 150): Promise<string> {
+    const { buildSummaryPrompt } = await import("./prompts-enrichment");
+    const prompt = buildSummaryPrompt(title, content, maxLength);
+    return getAnthropicResponseText(await this.request(prompt));
   }
 }
 
