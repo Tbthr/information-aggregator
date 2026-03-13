@@ -40,7 +40,8 @@
 │ • json-feed.ts  │  └─────────────────────────────────────────────────────────┘
 │ • x-bird.ts     │            ┌─────────────────────────────────────┐
 │ • github-*      │            │   AI Layer (ai/) - Optional         │
-└─────────────────┘            │   • providers/ (OpenAI/Anthropic/Gemini)│
+└─────────────────┘            │   • config/ (配置加载)              │
+                                │   • providers/ (策略模式)            │
                                 │   • enrichArticle()                 │
                                 │   • generateDailyBriefOverview()    │
                                 │   • summarizePost()                 │
@@ -137,7 +138,56 @@
 
 ## 配置文件
 
-配置位于 `config/packs/` 目录，每个 Pack 是一个自包含的 YAML 文件：
+配置位于 `config/` 目录：
+
+```
+config/
+├── packs/           # Pack 配置目录
+├── auth/            # Auth 配置目录
+└── settings.yaml    # AI 配置（可选）
+```
+
+### AI 配置（settings.yaml）
+
+AI 功能通过 `config/settings.yaml` 配置：
+
+```yaml
+# config/settings.yaml
+ai:
+  # 默认使用的 provider: anthropic | gemini | openai
+  defaultProvider: anthropic
+
+  anthropic:
+    # 支持环境变量引用
+    authToken: ${ANTHROPIC_AUTH_TOKEN}
+    model: claude-3-5-sonnet-latest
+    # baseUrl: https://api.anthropic.com
+
+  gemini:
+    apiKey: ${GEMINI_API_KEY}
+    # model: gemini-2.0-flash  # 可选，默认 gemini-2.0-flash
+```
+
+**配置优先级**（从高到低）：
+
+| 优先级 | 来源 | 场景 |
+|--------|------|------|
+| 1 | 显式传参 | 单元测试、特殊场景 |
+| 2 | 配置文件 (settings.yaml) | **推荐方式** |
+| 3 | 环境变量 | 回退方式 |
+| 4 | 默认值 | 仅 model 有默认值 |
+
+**环境变量**：
+
+| Provider | 环境变量 |
+|----------|---------|
+| Anthropic | `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_MODEL`, `ANTHROPIC_BASE_URL` |
+| Gemini | `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_BASE_URL` |
+| OpenAI | `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_BASE_URL` |
+
+### Pack 配置目录
+
+每个 Pack 是一个自包含的 YAML 文件：
 
 ```
 config/packs/

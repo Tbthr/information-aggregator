@@ -1,7 +1,7 @@
 import { readdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
-import { createAnthropicClient } from "../ai/client";
+import { createAiClient } from "../ai/client";
 import { loadAllPacks } from "../config/load-pack";
 import { checkAuthConfig, showAuthStatus } from "./auth-commands";
 import { getCliVersion, getHelpText, parseCliArgs } from "./index";
@@ -23,7 +23,7 @@ async function main(): Promise<void> {
     validateRunArgs(args);
 
     // 创建 AI client（除非显式禁用）
-    const aiClient = args.noAi ? null : createAnthropicClient();
+    const aiClient = args.noAi ? null : await createAiClient();
 
     const packs = await loadAllPacks("config/packs");
     const queryResult = await runQuery(args, { loadPacks: () => packs, aiClient });

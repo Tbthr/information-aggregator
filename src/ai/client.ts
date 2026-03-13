@@ -13,13 +13,13 @@ export type {
   AiClient,
 } from "./types";
 
+export type { AiSettings, AiProviderType } from "./config/schema";
+
 export {
   createAiClient,
-  createAnthropicClient,
-  createGeminiClient,
+  loadSettings,
+  clearSettingsCache,
   ProviderAiClient,
   AnthropicClient,
   GeminiClient,
-  DEFAULT_GEMINI_MODEL,
-  DEFAULT_ANTHROPIC_MODEL,
 } from "./providers";

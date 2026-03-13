@@ -1,5 +1,3 @@
-# AGENTS.md
-
 > CLAUDE.md 是指向此文件的软链接，两者内容相同。
 
 ## 项目概览
@@ -15,7 +13,11 @@
 - `src/views/`：view registry 与 view model 构建
 - `src/views/render/`：Markdown 渲染输出
 - `src/render/`：JSON 等其他格式输出
-- `src/ai/`：AI 客户端抽象层（providers、prompts、concurrency）
+- `src/ai/`：AI 客户端抽象层
+  - `src/ai/config/`：配置 schema 与加载（settings.yaml → 环境变量，4 层优先级）
+  - `src/ai/providers/`：策略模式实现（base.ts 抽象基类 + 各 provider 策略）
+  - `src/ai/prompts*.ts`：各场景 prompt 构建
+  - `src/ai/concurrency.ts`：并发控制
 - `src/cli/`：CLI 命令与入口点（main.ts）
 - `src/utils/`：通用工具函数
 - `src/verification/`：可复用的验证辅助（smoke、e2e）

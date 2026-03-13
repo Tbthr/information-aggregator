@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { runQuery } from "../query/run-query";
 import { loadAllPacks } from "../config/load-pack";
 import { buildViewModel, renderViewMarkdown } from "../views/registry";
-import { createAnthropicClient, createGeminiClient } from "../ai/providers";
+import { createAiClient } from "../ai/providers";
 import type { AiClient } from "../ai/types";
 
 // 确保 out 目录存在
@@ -13,16 +13,16 @@ mkdirSync(outDir, { recursive: true });
 /**
  * 创建 AI client（优先 Anthropic，回退 Gemini）
  */
-function createAiClientForE2e(): AiClient | null {
+async function createAiClientForE2e(): Promise<AiClient | null> {
   // 优先尝试 Anthropic
-  const anthropic = createAnthropicClient();
+  const anthropic = await createAiClient("anthropic");
   if (anthropic) {
     console.log("Using Anthropic AI client");
     return anthropic;
   }
 
   // 回退到 Gemini
-  const gemini = createGeminiClient();
+  const gemini = await createAiClient("gemini");
   if (gemini) {
     console.log("Using Gemini AI client");
     return gemini;
@@ -32,7 +32,7 @@ function createAiClientForE2e(): AiClient | null {
   return null;
 }
 
-const aiClient = createAiClientForE2e();
+const aiClient = await createAiClientForE2e();
 
 /**
  * 检查 markdown 输出是否包含链接
