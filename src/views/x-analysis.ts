@@ -53,6 +53,41 @@ function saveContentDebug(
 }
 
 /**
+ * 媒体项（图片/视频）
+ */
+export interface XAnalysisMedia {
+  type: "photo" | "video" | "animated_gif";
+  url: string;
+  previewUrl?: string;
+}
+
+/**
+ * 外链文章
+ */
+export interface XAnalysisArticle {
+  title: string;
+  url: string;
+  previewText?: string;
+}
+
+/**
+ * 引用帖子
+ */
+export interface XAnalysisQuote {
+  text?: string;
+  author?: string;
+  url?: string;
+}
+
+/**
+ * Thread 项
+ */
+export interface XAnalysisThreadItem {
+  text?: string;
+  author?: string;
+}
+
+/**
  * X Analysis 帖子视图项
  */
 export interface XAnalysisPost extends ViewModelItem {
@@ -67,6 +102,12 @@ export interface XAnalysisPost extends ViewModelItem {
     retweets: number;
     replies: number;
   };
+  // 引用内容字段
+  fullText?: string;  // 原始帖子全文
+  media?: XAnalysisMedia[];  // 图片/视频数组
+  article?: XAnalysisArticle;  // 外链文章
+  quote?: XAnalysisQuote;  // 引用帖子
+  thread?: XAnalysisThreadItem[];  // thread 数组
 }
 
 /**
@@ -120,6 +161,91 @@ function extractAuthor(item: QueryResult["rankedItems"][number]): {
   const author = item.author ?? item.sourceName;
   const authorUrl = author ? `https://x.com/${author}` : undefined;
   return { author, authorUrl };
+}
+
+/**
+ * 从 metadataJson 中提取 media 数据
+ */
+function extractMedia(metadataJson: string | undefined): XAnalysisMedia[] | undefined {
+  if (!metadataJson) return undefined;
+
+  try {
+    const metadata = JSON.parse(metadataJson) as Record<string, unknown>;
+    const media = metadata.media as Array<Record<string, unknown>> | undefined;
+    if (!media || !Array.isArray(media) || media.length === 0) return undefined;
+
+    return media
+      .filter((m) => typeof m.url === "string")
+      .map((m) => ({
+        type: (m.type as "photo" | "video" | "animated_gif") ?? "photo",
+        url: m.url as string,
+        previewUrl: typeof m.previewUrl === "string" ? m.previewUrl : undefined,
+      }));
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * 从 metadataJson 中提取 article 数据
+ */
+function extractArticle(metadataJson: string | undefined): XAnalysisArticle | undefined {
+  if (!metadataJson) return undefined;
+
+  try {
+    const metadata = JSON.parse(metadataJson) as Record<string, unknown>;
+    const article = metadata.article as Record<string, unknown> | undefined;
+    if (!article || typeof article.title !== "string" || typeof article.url !== "string") return undefined;
+
+    return {
+      title: article.title,
+      url: article.url,
+      previewText: typeof article.previewText === "string" ? article.previewText : undefined,
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * 从 metadataJson 中提取 quote 数据
+ */
+function extractQuote(metadataJson: string | undefined): XAnalysisQuote | undefined {
+  if (!metadataJson) return undefined;
+
+  try {
+    const metadata = JSON.parse(metadataJson) as Record<string, unknown>;
+    const quote = metadata.quote as Record<string, unknown> | undefined;
+    if (!quote) return undefined;
+
+    return {
+      text: typeof quote.text === "string" ? quote.text : undefined,
+      author: typeof quote.author === "string" ? quote.author : undefined,
+      url: typeof quote.url === "string" ? quote.url : undefined,
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * 从 metadataJson 中提取 thread 数据
+ */
+function extractThread(metadataJson: string | undefined): XAnalysisThreadItem[] | undefined {
+  if (!metadataJson) return undefined;
+
+  try {
+    const metadata = JSON.parse(metadataJson) as Record<string, unknown>;
+    const thread = metadata.thread as Array<Record<string, unknown>> | undefined;
+    if (!thread || !Array.isArray(thread) || thread.length === 0) return undefined;
+
+    return thread.map((t) => ({
+      text: typeof t.text === "string" ? t.text : undefined,
+      author: typeof t.author === "string" ? t.author : undefined,
+    }));
+  } catch {
+    return undefined;
+  }
 }
 
 /**
@@ -253,6 +379,12 @@ export async function buildXAnalysisView(
     summary: "",
     tags: [],
     engagement: extractEngagement(item.metadataJson),
+    // 引用内容字段
+    fullText: item.normalizedText,
+    media: extractMedia(item.metadataJson),
+    article: extractArticle(item.metadataJson),
+    quote: extractQuote(item.metadataJson),
+    thread: extractThread(item.metadataJson),
   }));
 
   let tagCloud: string[] = [];
@@ -284,6 +416,12 @@ export async function buildXAnalysisView(
         summary: summaryResult?.summary ?? "",
         tags: summaryResult?.tags ?? [],
         engagement: extractEngagement(item.metadataJson),
+        // 引用内容字段
+        fullText: item.normalizedText,
+        media: extractMedia(item.metadataJson),
+        article: extractArticle(item.metadataJson),
+        quote: extractQuote(item.metadataJson),
+        thread: extractThread(item.metadataJson),
       };
     });
 
