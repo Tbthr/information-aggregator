@@ -51,7 +51,8 @@ function buildTopicRule(keywords: string[]): TopicRule {
 // 定义适配器家族
 const ADAPTER_FAMILIES: AdapterFamily[] = [
   {
-    names: ["x_bookmarks", "x_home", "x_likes", "x_list"],
+    names: ["x_bookmarks", "x_home", "x_likes", "x_list",
+            "x_user_tweets", "x_search", "x_trending"],
     collect: collectXBirdSource,
     authKey: "x-family",
   },
