@@ -64,14 +64,15 @@ describe("x bird integration", () => {
 
     expect(items).toHaveLength(1);
     expect(items[0]?.title).toBe("Interesting thread");
-    expect(JSON.parse(items[0]?.metadataJson ?? "{}")).toEqual({
-      provider: "bird",
-      sourceType: "x_home",
-      contentType: "social_post",
-      canonicalHints: {
-        expandedUrl: "https://example.com/article",
-      },
-    });
+    const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
+    expect(metadata.provider).toBe("bird");
+    expect(metadata.sourceType).toBe("x_home");
+    expect(metadata.contentType).toBe("social_post");
+    expect(metadata.canonicalHints?.expandedUrl).toBe("https://example.com/article");
+    expect(metadata.tweetId).toBe("tweet-1");
+    // author 是字符串 "alice"，所以 authorName 是 undefined
+    expect(metadata.authorName).toBeUndefined();
+    expect(metadata.expandedUrl).toBe("https://example.com/article");
   });
 
   test("converts real bird json shape without explicit url fields", async () => {
@@ -106,16 +107,17 @@ describe("x bird integration", () => {
     expect(items[0]?.url).toBe("https://x.com/GoSailGlobal/status/2030994765169205673");
     expect(items[0]?.author).toBe("GoSailGlobal");
     expect(items[0]?.publishedAt).toBe("Mon Mar 09 13:11:00 +0000 2026");
-    expect(JSON.parse(items[0]?.metadataJson ?? "{}")).toEqual({
-      provider: "bird",
-      sourceType: "x_home",
-      contentType: "social_post",
-      engagement: {
-        score: 42,
-        comments: 17,
-        reactions: 2,
-      },
+    const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
+    expect(metadata.provider).toBe("bird");
+    expect(metadata.sourceType).toBe("x_home");
+    expect(metadata.contentType).toBe("social_post");
+    expect(metadata.engagement).toEqual({
+      score: 42,
+      comments: 17,
+      reactions: 2,
     });
+    expect(metadata.tweetId).toBe("2030994765169205673");
+    expect(metadata.authorName).toBe("Jason Zhu");
   });
 
   test("prefers article titles and truncates long tweet text for scan output", async () => {
@@ -425,5 +427,91 @@ describe("x bird integration", () => {
     expect(metadata.quote).toBeUndefined();
     expect(metadata.thread).toBeUndefined();
     expect(metadata.parent).toBeUndefined();
+  });
+
+  // ========== 新 birdMode 测试 ==========
+
+  test("builds user-tweets command with username", () => {
+    expect(
+      buildBirdCommand({
+        type: "x_user_tweets",
+        configJson: JSON.stringify({ birdMode: "user-tweets", username: "elonmusk", count: 20 }),
+      }),
+    ).toEqual(["bird", "user-tweets", "elonmusk", "-n", "20", "--json"]);
+  });
+
+  test("builds search command with query", () => {
+    expect(
+      buildBirdCommand({
+        type: "x_search",
+        configJson: JSON.stringify({ birdMode: "search", query: "AI agents", count: 10 }),
+      }),
+    ).toEqual(["bird", "search", "AI agents", "-n", "10", "--json"]);
+  });
+
+  test("builds news/trending command", () => {
+    expect(
+      buildBirdCommand({
+        type: "x_trending",
+        configJson: JSON.stringify({ birdMode: "news", count: 20 }),
+      }),
+    ).toEqual(["bird", "news", "-n", "20", "--json"]);
+
+    expect(
+      buildBirdCommand({
+        type: "x_trending",
+        configJson: JSON.stringify({ birdMode: "trending", count: 30 }),
+      }),
+    ).toEqual(["bird", "news", "-n", "30", "--json"]);
+  });
+
+  test("throws for user-tweets without username", () => {
+    expect(() =>
+      buildBirdCommand({
+        type: "x_user_tweets",
+        configJson: JSON.stringify({ birdMode: "user-tweets", count: 20 }),
+      }),
+    ).toThrow("requires username");
+  });
+
+  test("throws for search without query", () => {
+    expect(() =>
+      buildBirdCommand({
+        type: "x_search",
+        configJson: JSON.stringify({ birdMode: "search", count: 20 }),
+      }),
+    ).toThrow("requires query");
+  });
+
+  test("parses new metadata fields (tweetId, authorId, authorName, expandedUrl)", async () => {
+    const items = await collectXBirdSource(
+      {
+        id: "x-home",
+        type: "x_home",
+        url: "https://x.com/home",
+        enabled: false,
+        configJson: JSON.stringify({ birdMode: "home" }),
+      },
+      async () =>
+        JSON.stringify([
+          {
+            id: "tweet-123",
+            text: "Test tweet",
+            author: {
+              username: "testuser",
+              name: "Test User Name",
+            },
+            authorId: "author-456",
+            expandedUrl: "https://example.com/expanded",
+          },
+        ]),
+    );
+
+    expect(items).toHaveLength(1);
+    const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
+    expect(metadata.tweetId).toBe("tweet-123");
+    expect(metadata.authorId).toBe("author-456");
+    expect(metadata.authorName).toBe("Test User Name");
+    expect(metadata.expandedUrl).toBe("https://example.com/expanded");
   });
 });
