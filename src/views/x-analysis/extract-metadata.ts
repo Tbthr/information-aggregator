@@ -109,3 +109,79 @@ export function extractAuthor(item: {
   const authorUrl = author ? `https://x.com/${author}` : undefined;
   return { author, authorUrl };
 }
+
+// ========== 新增提取函数 ==========
+
+/**
+ * 提取推文 ID
+ * 用途：元数据显示、调试
+ */
+export function extractTweetId(metadataJson: string | undefined): string | undefined {
+  const metadata = parseRawItemMetadata(metadataJson);
+  return metadata?.tweetId;
+}
+
+/**
+ * 提取作者 ID
+ * 用途：追踪作者、去重
+ */
+export function extractAuthorId(metadataJson: string | undefined): string | undefined {
+  const metadata = parseRawItemMetadata(metadataJson);
+  return metadata?.authorId;
+}
+
+/**
+ * 提取作者显示名
+ * 用途：显示比用户名更友好的名称
+ */
+export function extractAuthorName(metadataJson: string | undefined): string | undefined {
+  const metadata = parseRawItemMetadata(metadataJson);
+  return metadata?.authorName;
+}
+
+/**
+ * 提取展开的外链 URL
+ * 用途：显示真实的链接地址
+ */
+export function extractExpandedUrl(metadataJson: string | undefined): string | undefined {
+  const metadata = parseRawItemMetadata(metadataJson);
+  return metadata?.expandedUrl ?? metadata?.canonicalHints?.expandedUrl;
+}
+
+/**
+ * 提取并格式化发布时间
+ * 用途：显示友好的时间格式
+ */
+export function extractPublishedAt(publishedAt: string | undefined): string | undefined {
+  if (!publishedAt) return undefined;
+  try {
+    const date = new Date(publishedAt);
+    return date.toLocaleString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * 提取父推文信息
+ * 用途：显示回复上下文
+ */
+export function extractParent(metadataJson: string | undefined): XAnalysisThreadItem | undefined {
+  const metadata = parseRawItemMetadata(metadataJson);
+  return metadata?.parent;
+}
+
+/**
+ * 提取对话 ID
+ * 用途：关联同一对话的推文
+ */
+export function extractConversationId(metadataJson: string | undefined): string | undefined {
+  const metadata = parseRawItemMetadata(metadataJson);
+  return metadata?.conversationId;
+}

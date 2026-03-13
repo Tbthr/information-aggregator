@@ -62,6 +62,14 @@ export interface XAnalysisPost extends ViewModelItem {
   article?: XAnalysisArticle;  // 外链文章
   quote?: XAnalysisQuote;  // 引用帖子
   thread?: XAnalysisThreadItem[];  // thread 数组
+  // 新增字段
+  authorName?: string;       // 作者显示名
+  authorId?: string;         // 作者 ID
+  publishedAt?: string;      // 格式化的发布时间
+  expandedUrl?: string;      // 展开的外链
+  parent?: XAnalysisThreadItem;  // 回复的推文
+  tweetId?: string;          // 推文 ID
+  conversationId?: string;   // 对话 ID
 }
 
 /**
