@@ -2,6 +2,9 @@ import type { QueryResult } from "../query/run-query";
 import type { ViewModel, ViewModelItem } from "./registry";
 import type { AiClient, ArticleEnrichResult, DailyBriefOverviewResult } from "../ai/client";
 import { extractArticleContent, isExtractionSuccess } from "../pipeline/extract-content";
+import { createLogger } from "../utils/logger";
+
+const logger = createLogger("views:daily-brief");
 
 export interface DailyBriefViewOptions {
   aiClient?: AiClient | null;
@@ -55,7 +58,7 @@ async function enrichArticleWithContent(
       content = extractionResult.textContent ?? extractionResult.content ?? "";
     }
   } catch (error) {
-    console.error(`Failed to extract content for ${url}:`, error);
+    logger.warn("Content extraction failed for daily brief", { url, error: String(error) });
   }
 
   // 如果没有提取到内容，使用 snippet
@@ -72,7 +75,7 @@ async function enrichArticleWithContent(
         content,
       );
     } catch (error) {
-      console.error(`Failed to enrich article ${item.id}:`, error);
+      logger.warn("Article enrichment failed", { itemId: item.id, error: String(error) });
     }
   }
 
@@ -141,7 +144,10 @@ export async function buildDailyBriefView(
           highlights = overviewResult.highlights;
         }
       } catch (error) {
-        console.error("Failed to generate daily brief overview:", error);
+        logger.warn("Daily brief overview generation failed", {
+          articleCount: descriptions.length,
+          error: String(error),
+        });
       }
     }
   }

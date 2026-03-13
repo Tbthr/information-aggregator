@@ -1,3 +1,10 @@
+/**
+ * 元数据解析工具
+ *
+ * 注意：通用的类型守卫和字段获取函数已移至 types/validation.ts
+ * 此文件仅保留元数据特有的解析逻辑
+ */
+
 import type { RawItemMetadata } from "../types/index";
 import { createLogger } from "./logger";
 
@@ -15,46 +22,11 @@ export function parseRawItemMetadata(metadataJson: string | undefined): RawItemM
     const parsed = JSON.parse(metadataJson) as RawItemMetadata | null;
     return parsed && typeof parsed === "object" ? parsed : null;
   } catch (error) {
-    logger.debug("Failed to parse metadata JSON", { error: String(error) });
+    // 非空字符串解析失败时使用 warn 级别（改进静默错误处理）
+    logger.warn("Failed to parse metadata JSON", {
+      input: metadataJson.slice(0, 100),
+      error: String(error),
+    });
     return null;
   }
-}
-
-/**
- * 类型守卫：检查值是否为对象
- */
-export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-/**
- * 安全获取字符串字段
- */
-export function getStringField(obj: Record<string, unknown>, field: string): string | undefined {
-  const value = obj[field];
-  return typeof value === "string" ? value : undefined;
-}
-
-/**
- * 安全获取数字字段
- */
-export function getNumberField(obj: Record<string, unknown>, field: string): number | undefined {
-  const value = obj[field];
-  return typeof value === "number" ? value : undefined;
-}
-
-/**
- * 安全获取对象字段
- */
-export function getObjectField(obj: Record<string, unknown>, field: string): Record<string, unknown> | undefined {
-  const value = obj[field];
-  return isRecord(value) ? value : undefined;
-}
-
-/**
- * 安全获取数组字段
- */
-export function getArrayField(obj: Record<string, unknown>, field: string): unknown[] | undefined {
-  const value = obj[field];
-  return Array.isArray(value) ? value : undefined;
 }

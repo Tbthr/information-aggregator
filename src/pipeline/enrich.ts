@@ -1,6 +1,8 @@
 /**
  * Enrich Pipeline
  * 对候选项进行深度 enrichment，包括正文提取和 AI 增强
+ *
+ * 设计原则：不修改输入的 candidates 数组及其元素，所有 enrichment 结果通过创建新对象返回
  */
 
 import type { RankedCandidate, EnrichmentConfig, ExtractedContent, AiEnrichmentResult } from "../types/index";
@@ -43,10 +45,19 @@ const DEFAULT_ENRICHMENT_CONFIG: Required<Omit<EnrichmentConfig, "enableContentE
 };
 
 /**
+ * 内部 enrichment 结果存储（用于不可变性设计）
+ */
+interface EnrichmentState {
+  extractedContent?: ExtractedContent;
+  aiEnrichment?: AiEnrichmentResult;
+  contentQualityAi?: number;
+}
+
+/**
  * 对候选项进行深度 enrichment
- * @param candidates 候选项列表
+ * @param candidates 候选项列表（不会被修改）
  * @param dependencies 依赖项
- * @returns enrichment 后的候选项列表
+ * @returns enrichment 后的候选项列表（新对象）
  */
 export async function enrichCandidates<T extends RankedCandidate>(
   candidates: T[],
@@ -78,98 +89,113 @@ export async function enrichCandidates<T extends RankedCandidate>(
     maxContentLength = config.maxContentLength,
   } = config;
 
-  const enriched = [...candidates];
+  // 使用 Map 存储 enrichment 结果，避免修改原始对象
+  const enrichmentMap = new Map<string, EnrichmentState>();
 
   // ========== 第一阶段：传统 AI 评分（向后兼容） ==========
   if (scoreCandidate && limit > 0) {
-    for (const candidate of enriched.slice(0, limit)) {
+    for (const candidate of candidates.slice(0, limit)) {
       try {
-        candidate.contentQualityAi = await scoreCandidate(candidate);
+        const score = await scoreCandidate(candidate);
+        enrichmentMap.set(candidate.id, { ...(enrichmentMap.get(candidate.id) ?? {}), contentQualityAi: score });
       } catch (error) {
-        logger.error("AI scoring failed", { candidateId: candidate.id, error: error instanceof Error ? error.message : String(error) });
-        candidate.contentQualityAi = 0;
-      }
-    }
-  }
-
-  // 如果未启用深度 enrichment，直接返回
-  if (!enableContentExtraction) {
-    return enriched;
-  }
-
-  // ========== 第二阶段：正文提取 ==========
-  const toExtract = enriched.slice(0, contentExtractionLimit);
-  const extractionPromises = toExtract.map(async (candidate) => {
-    const url = candidate.url ?? candidate.canonicalUrl;
-
-    // 社交帖子：内容已在 normalizedText 中，跳过 URL 提取
-    if (isSocialPost(candidate)) {
-      logger.debug("Social post detected, using existing content", {
-        candidateId: candidate.id,
-        contentType: candidate.contentType,
-        sourceType: candidate.sourceType,
-        contentLength: candidate.normalizedText?.length ?? 0,
-      });
-      return { candidate, result: createSocialPostContent(candidate) };
-    }
-
-    if (!url) {
-      return { candidate, result: null };
-    }
-
-    try {
-      // 检查内存缓存
-      let extractedContent: ExtractedContent | null = null;
-      if (cache && cacheEnabled) {
-        extractedContent = cache.get(url);
-      }
-
-      // 检查数据库缓存
-      if (!extractedContent && db && cacheEnabled) {
-        const { getExtractedContentCache } = await import("../db/client");
-        extractedContent = getExtractedContentCache(db, url);
-      }
-
-      // 执行提取
-      if (!extractedContent) {
-        extractedContent = await extractArticleContent(url, {
-          timeout: contentExtractionTimeout,
-          fetchImpl,
-          maxLength: maxContentLength,
+        logger.warn("AI scoring failed, using fallback score 0", {
+          candidateId: candidate.id,
+          error: error instanceof Error ? error.message : String(error),
         });
+        enrichmentMap.set(candidate.id, { ...(enrichmentMap.get(candidate.id) ?? {}), contentQualityAi: 0 });
+      }
+    }
+  }
 
-        // 保存到缓存
-        if (isExtractionSuccess(extractedContent)) {
-          if (cache && cacheEnabled) {
-            cache.set(url, extractedContent, cacheTtl);
-          }
-          if (db && cacheEnabled) {
-            const { setExtractedContentCache } = await import("../db/client");
-            setExtractedContentCache(db, url, extractedContent, cacheTtl);
+  // 如果未启用深度 enrichment，直接合并返回
+  if (!enableContentExtraction) {
+    return mergeEnrichmentResults(candidates, enrichmentMap);
+  }
+
+  // ========== 第二阶段：正文提取（带并发控制） ==========
+  const toExtract = candidates.slice(0, contentExtractionLimit);
+  const extractionConcurrency = config.extractionConcurrency ?? 3;
+  const extractionBatchSize = config.extractionBatchSize ?? 5;
+
+  const extractionResults = await processWithConcurrency(
+    toExtract,
+    { batchSize: extractionBatchSize, concurrency: extractionConcurrency },
+    async (candidate) => {
+      const url = candidate.url ?? candidate.canonicalUrl;
+
+      // 社交帖子：内容已在 normalizedText 中，跳过 URL 提取
+      if (isSocialPost(candidate)) {
+        logger.debug("Social post detected, using existing content", {
+          candidateId: candidate.id,
+          contentType: candidate.contentType,
+          sourceType: candidate.sourceType,
+          contentLength: candidate.normalizedText?.length ?? 0,
+        });
+        return { candidateId: candidate.id, result: createSocialPostContent(candidate) };
+      }
+
+      if (!url) {
+        return { candidateId: candidate.id, result: null };
+      }
+
+      try {
+        // 检查内存缓存
+        let extractedContent: ExtractedContent | null = null;
+        if (cache && cacheEnabled) {
+          extractedContent = cache.get(url);
+        }
+
+        // 检查数据库缓存
+        if (!extractedContent && db && cacheEnabled) {
+          const { getExtractedContentCache } = await import("../db/client");
+          extractedContent = getExtractedContentCache(db, url);
+        }
+
+        // 执行提取
+        if (!extractedContent) {
+          extractedContent = await extractArticleContent(url, {
+            timeout: contentExtractionTimeout,
+            fetchImpl,
+            maxLength: maxContentLength,
+          });
+
+          // 保存到缓存
+          if (isExtractionSuccess(extractedContent)) {
+            if (cache && cacheEnabled) {
+              cache.set(url, extractedContent, cacheTtl);
+            }
+            if (db && cacheEnabled) {
+              const { setExtractedContentCache } = await import("../db/client");
+              setExtractedContentCache(db, url, extractedContent, cacheTtl);
+            }
           }
         }
-      }
 
-      return { candidate, result: extractedContent };
-    } catch (error) {
-      logger.error("Content extraction failed", { url, candidateId: candidate.id, error: error instanceof Error ? error.message : String(error) });
-      return {
-        candidate,
-        result: {
+        return { candidateId: candidate.id, result: extractedContent };
+      } catch (error) {
+        logger.warn("Content extraction failed", {
           url,
-          extractedAt: new Date().toISOString(),
+          candidateId: candidate.id,
           error: error instanceof Error ? error.message : String(error),
-        },
-      };
-    }
-  });
+        });
+        return {
+          candidateId: candidate.id,
+          result: {
+            url,
+            extractedAt: new Date().toISOString(),
+            error: error instanceof Error ? error.message : String(error),
+          },
+        };
+      }
+    },
+  );
 
-  const extractionResults = await Promise.all(extractionPromises);
-
-  // 将提取结果附加到候选项
-  for (const { candidate, result } of extractionResults) {
+  // 将提取结果存储到 Map（不修改原始对象）
+  for (const { candidateId, result } of extractionResults) {
     if (result) {
-      candidate.extractedContent = result;
+      const existing = enrichmentMap.get(candidateId) ?? {};
+      enrichmentMap.set(candidateId, { ...existing, extractedContent: result });
     }
   }
 
@@ -186,16 +212,18 @@ export async function enrichCandidates<T extends RankedCandidate>(
     const aiResults = await processWithConcurrency(
       validResults,
       { batchSize: aiBatchSize, concurrency: aiConcurrency },
-      async ({ candidate, result }) => {
-        if (!result || !isExtractionSuccess(result)) {
-          return { candidate, aiResult: null };
+      async ({ candidateId, result }) => {
+        // 从原始 candidates 中找到对应的 candidate
+        const candidate = candidates.find(c => c.id === candidateId);
+        if (!candidate || !result || !isExtractionSuccess(result)) {
+          return { candidateId, aiResult: null };
         }
 
         const title = candidate.title ?? candidate.normalizedTitle ?? "";
         const content = result.textContent ?? result.content ?? "";
 
         if (!content) {
-          return { candidate, aiResult: null };
+          return { candidateId, aiResult: null };
         }
 
         try {
@@ -205,10 +233,8 @@ export async function enrichCandidates<T extends RankedCandidate>(
           try {
             const score = await aiClient.scoreWithContent(title, content, candidate.url);
             aiEnrichment.score = score;
-            // 更新 contentQualityAi（覆盖之前的评分）
-            candidate.contentQualityAi = score;
           } catch (error) {
-            logger.debug("AI scoring failed, keeping original score", {
+            logger.debug("AI scoring with content failed, keeping original score", {
               candidateId: candidate.id,
               error: error instanceof Error ? error.message : String(error),
             });
@@ -244,18 +270,27 @@ export async function enrichCandidates<T extends RankedCandidate>(
             }
           }
 
-          return { candidate, aiResult: aiEnrichment };
+          return { candidateId, aiResult: aiEnrichment };
         } catch (error) {
-          logger.error("AI enrichment failed", { candidateId: candidate.id, error: error instanceof Error ? error.message : String(error) });
-          return { candidate, aiResult: null };
+          logger.warn("AI enrichment failed", {
+            candidateId: candidate.id,
+            error: error instanceof Error ? error.message : String(error),
+          });
+          return { candidateId, aiResult: null };
         }
       }
     );
 
-    // 将 AI 增强结果附加到候选项
-    for (const { candidate, aiResult } of aiResults) {
+    // 将 AI 增强结果存储到 Map（不修改原始对象）
+    for (const { candidateId, aiResult } of aiResults) {
       if (aiResult) {
-        candidate.aiEnrichment = aiResult;
+        const existing = enrichmentMap.get(candidateId) ?? {};
+        // 如果 AI 评分成功，更新 contentQualityAi
+        const update: EnrichmentState = { ...existing, aiEnrichment: aiResult };
+        if (aiResult.score !== undefined) {
+          update.contentQualityAi = aiResult.score;
+        }
+        enrichmentMap.set(candidateId, update);
       }
     }
   }
@@ -263,21 +298,48 @@ export async function enrichCandidates<T extends RankedCandidate>(
   // ========== 第四阶段：持久化到数据库 ==========
   if (db) {
     const { upsertEnrichmentResult } = await import("../db/client");
-    for (const candidate of enriched) {
-      if (candidate.extractedContent || candidate.aiEnrichment) {
+    for (const [candidateId, state] of enrichmentMap) {
+      if (state.extractedContent || state.aiEnrichment) {
         try {
           upsertEnrichmentResult(
             db,
-            candidate.id,
-            candidate.extractedContent,
-            candidate.aiEnrichment,
+            candidateId,
+            state.extractedContent,
+            state.aiEnrichment,
           );
         } catch (error) {
-          logger.error("Failed to persist enrichment", { candidateId: candidate.id, error: error instanceof Error ? error.message : String(error) });
+          logger.warn("Failed to persist enrichment", {
+            candidateId,
+            error: error instanceof Error ? error.message : String(error),
+          });
         }
       }
     }
   }
 
-  return enriched;
+  // 合并结果，返回新数组
+  return mergeEnrichmentResults(candidates, enrichmentMap);
+}
+
+/**
+ * 合并 enrichment 结果到原始 candidates，创建新对象
+ */
+function mergeEnrichmentResults<T extends RankedCandidate>(
+  candidates: T[],
+  enrichmentMap: Map<string, EnrichmentState>,
+): T[] {
+  return candidates.map((candidate) => {
+    const state = enrichmentMap.get(candidate.id);
+    if (!state) {
+      return candidate;
+    }
+
+    // 创建新对象，合并 enrichment 结果
+    return {
+      ...candidate,
+      ...(state.contentQualityAi !== undefined && { contentQualityAi: state.contentQualityAi }),
+      ...(state.extractedContent && { extractedContent: state.extractedContent }),
+      ...(state.aiEnrichment && { aiEnrichment: state.aiEnrichment }),
+    };
+  });
 }

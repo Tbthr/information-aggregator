@@ -277,6 +277,8 @@ export interface EnrichmentConfig {
   enableContentExtraction?: boolean;    // 是否启用正文提取，默认 true
   contentExtractionLimit?: number;      // 正文提取数量限制，默认 5
   contentExtractionTimeout?: number;    // 正文提取超时（毫秒），默认 15000
+  extractionConcurrency?: number;       // 正文提取并发数，默认 3
+  extractionBatchSize?: number;         // 正文提取批次大小，默认 5
   enableKeyPoints?: boolean;            // 是否启用关键点提取，默认 true
   enableTagging?: boolean;              // 是否启用标签生成，默认 true
   cacheEnabled?: boolean;               // 是否启用缓存，默认 true
