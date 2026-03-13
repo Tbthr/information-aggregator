@@ -72,6 +72,12 @@ export function renderXAnalysisView(model: XAnalysisViewModel): string {
         }
       }
 
+      // 外链
+      if (post.article && post.article.url) {
+        lines.push("", "## 外链", "");
+        lines.push(`[${post.article.title}](${post.article.url})`);
+      }
+
       // 分隔线 + 完整内容
       if (post.fullText && post.fullText.trim()) {
         lines.push("", "---", "", "## 原文", "");

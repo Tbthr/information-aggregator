@@ -284,4 +284,78 @@ describe("x-analysis render", () => {
 
     expect(markdown).not.toContain("## 图片");
   });
+
+  // US-005: 渲染外链文章引用
+  test("renders article in ## 外链 section when present", () => {
+    const model: XAnalysisViewModel = {
+      viewId: "x-analysis",
+      title: "X 数据分析",
+      posts: [
+        {
+          title: "Post With Article",
+          url: "https://x.com/test/status/555",
+          summary: "Post with external link",
+          tags: ["news"],
+          article: {
+            title: "External Article Title",
+            url: "https://example.com/article",
+          },
+        },
+      ],
+      tagCloud: ["news"],
+      sections: [],
+    };
+
+    const markdown = renderXAnalysisView(model);
+
+    expect(markdown).toContain("## 外链");
+    expect(markdown).toContain("[External Article Title](https://example.com/article)");
+  });
+
+  test("skips 外链 section when article is undefined", () => {
+    const model: XAnalysisViewModel = {
+      viewId: "x-analysis",
+      title: "X 数据分析",
+      posts: [
+        {
+          title: "Post Without Article",
+          url: "https://x.com/test/status/666",
+          summary: "No external link",
+          tags: [],
+          // article 未定义
+        },
+      ],
+      tagCloud: [],
+      sections: [],
+    };
+
+    const markdown = renderXAnalysisView(model);
+
+    expect(markdown).not.toContain("## 外链");
+  });
+
+  test("skips 外链 section when article.url is empty", () => {
+    const model: XAnalysisViewModel = {
+      viewId: "x-analysis",
+      title: "X 数据分析",
+      posts: [
+        {
+          title: "Post With Empty Article URL",
+          url: "https://x.com/test/status/777",
+          summary: "Empty URL",
+          tags: [],
+          article: {
+            title: "Article Without URL",
+            url: "",
+          },
+        },
+      ],
+      tagCloud: [],
+      sections: [],
+    };
+
+    const markdown = renderXAnalysisView(model);
+
+    expect(markdown).not.toContain("## 外链");
+  });
 });
