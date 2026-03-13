@@ -213,4 +213,75 @@ describe("x-analysis render", () => {
     expect(markdown).toContain("300");   // retweets
     expect(markdown).toContain("50");    // replies
   });
+
+  test("renders images in ## 图片 section when media present", () => {
+    const model: XAnalysisViewModel = {
+      viewId: "x-analysis",
+      title: "X 数据分析",
+      posts: [
+        {
+          title: "Post With Images",
+          url: "https://x.com/test/status/222",
+          summary: "Image post",
+          tags: ["photo"],
+          media: [
+            { type: "photo", url: "https://example.com/image1.jpg" },
+            { type: "photo", url: "https://example.com/image2.jpg" },
+          ],
+        },
+      ],
+      tagCloud: ["photo"],
+      sections: [],
+    };
+
+    const markdown = renderXAnalysisView(model);
+
+    expect(markdown).toContain("## 图片");
+    expect(markdown).toContain("![](https://example.com/image1.jpg)");
+    expect(markdown).toContain("![](https://example.com/image2.jpg)");
+  });
+
+  test("skips 图片 section when media is empty", () => {
+    const model: XAnalysisViewModel = {
+      viewId: "x-analysis",
+      title: "X 数据分析",
+      posts: [
+        {
+          title: "Post Without Images",
+          url: "https://x.com/test/status/333",
+          summary: "Text only post",
+          tags: [],
+          media: [],
+        },
+      ],
+      tagCloud: [],
+      sections: [],
+    };
+
+    const markdown = renderXAnalysisView(model);
+
+    expect(markdown).not.toContain("## 图片");
+  });
+
+  test("skips 图片 section when media is undefined", () => {
+    const model: XAnalysisViewModel = {
+      viewId: "x-analysis",
+      title: "X 数据分析",
+      posts: [
+        {
+          title: "Post Without Media Field",
+          url: "https://x.com/test/status/444",
+          summary: "No media",
+          tags: [],
+          // media 未定义
+        },
+      ],
+      tagCloud: [],
+      sections: [],
+    };
+
+    const markdown = renderXAnalysisView(model);
+
+    expect(markdown).not.toContain("## 图片");
+  });
 });
