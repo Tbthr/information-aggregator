@@ -34,6 +34,9 @@ export interface AiSettings {
   /** 默认 provider */
   defaultProvider?: AiProviderType;
 
+  /** X Analysis 视图的 AI 请求并发数（默认 2） */
+  xAnalysisConcurrency?: number;
+
   /** Anthropic 配置 */
   anthropic?: AnthropicSettings;
 

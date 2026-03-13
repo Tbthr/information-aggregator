@@ -3,6 +3,8 @@ import type { ViewModel, ViewModelItem, BuildViewDependencies } from "./registry
 import type { AiClient, PostSummaryResult } from "../ai/client";
 import type { RankedCandidate } from "../types/index";
 import { extractArticleContent, isExtractionSuccess } from "../pipeline/extract-content";
+import { processWithConcurrency } from "../ai/concurrency";
+import { loadAiSettings } from "../ai/config/load";
 import { createLogger } from "../utils/logger";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -256,11 +258,21 @@ export async function buildXAnalysisView(
   let tagCloud: string[] = [];
 
   if (aiClient && rankedItems.length > 0) {
-    // 并发请求：为每篇帖子生成 AI 摘要 + tags
-    const summaryPromises = rankedItems.map((item) =>
-      summarizePostWithContent(item, aiClient)
+    // 从配置加载并发数，默认 2
+    const settings = await loadAiSettings();
+    const concurrency = settings?.xAnalysisConcurrency ?? 2;
+
+    logger.debug("Processing posts with concurrency control", {
+      totalPosts: rankedItems.length,
+      concurrency,
+    });
+
+    // 使用并发控制处理帖子摘要
+    const summaryResults = await processWithConcurrency(
+      rankedItems,
+      { concurrency, batchSize: rankedItems.length }, // 不分批，仅控制并发
+      (item) => summarizePostWithContent(item, aiClient)
     );
-    const summaryResults = await Promise.all(summaryPromises);
 
     // 构建帖子列表
     posts = rankedItems.map((item, index) => {
