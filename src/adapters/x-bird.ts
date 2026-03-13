@@ -1,7 +1,29 @@
 import type { RawItem, Source } from "../types/index";
 import { createLogger, maskSensitiveArgs, truncateWithLength } from "../utils/logger";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 
 const logger = createLogger("adapter:bird");
+
+const DEBUG_BIRD_OUTPUT = process.env.DEBUG_BIRD_OUTPUT === "true";
+const DEBUG_OUTPUT_DIR = "out/bird-raw";
+
+function saveDebugOutput(sourceId: string, rawOutput: string): void {
+  if (!DEBUG_BIRD_OUTPUT) {
+    return;
+  }
+
+  try {
+    mkdirSync(DEBUG_OUTPUT_DIR, { recursive: true });
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const filename = `${sourceId}_${timestamp}.json`;
+    const filepath = join(DEBUG_OUTPUT_DIR, filename);
+    writeFileSync(filepath, rawOutput, "utf-8");
+    logger.info("Saved bird CLI raw output", { filepath, size: rawOutput.length });
+  } catch (err) {
+    logger.warn("Failed to save debug output", { error: String(err) });
+  }
+}
 
 interface BirdSourceConfig {
   birdMode?: string;
@@ -338,5 +360,7 @@ export async function collectXBirdSource(
   },
 ): Promise<RawItem[]> {
   const command = buildBirdCommand(source);
-  return parseBirdItems(await execImpl(command), source);
+  const rawOutput = await execImpl(command);
+  saveDebugOutput(source.id, rawOutput);
+  return parseBirdItems(rawOutput, source);
 }
