@@ -4,126 +4,33 @@
 
 ## 架构概览
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              CLI Layer (src/cli/)                            │
-│   main.ts → parse-cli.ts → runQuery() / renderViewMarkdown()               │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                      │
-                                      ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                            Query Layer (query/)                             │
-│   ParsedRunArgs → resolveSelection() → runQuery() → QueryResult            │
-└─────────────────────────────────────────────────────────────────────────────┘
-          │                    │                      │
-          ▼                    ▼                      ▼
-┌─────────────────┐  ┌─────────────────────┐  ┌────────────────────────────────┐
-│ Config Layer    │  │   Pipeline Layer    │  │   Views/Render Layer           │
-│ (config/)       │  │   (pipeline/)       │  │   (views/, render/)            │
-├─────────────────┤  ├─────────────────────┤  ├────────────────────────────────┤
-│ • load-pack.ts  │  │ • collect.ts        │  │ • registry.ts                  │
-│ • load-auth.ts  │  │ • normalize.ts      │  │ • daily-brief.ts               │
-│                 │  │ • dedupe-exact.ts   │  │ • x-analysis.ts                │
-│                 │  │ • dedupe-near.ts    │  │ • render/ (Markdown 输出)      │
-│                 │  │ • topic-match.ts    │  │                                │
-│                 │  │ • enrich.ts         │  │                                │
-│                 │  │ • rank.ts           │  │                                │
-│                 │  │ • cluster.ts        │  │                                │
-└─────────────────┘  └─────────────────────┘  └────────────────────────────────┘
-          │                    │
-          ▼                    ▼
-┌─────────────────┐  ┌─────────────────────────────────────────────────────────┐
-│ Adapters Layer  │  │   DB Layer (db/)                                        │
-│ (adapters/)     │  │   SQLite: sources, raw_items, normalized_items,        │
-├─────────────────┤  │           clusters, runs, outputs, source_health       │
-│ • rss.ts        │  │           enrichment_results, extracted_content_cache  │
-│ • json-feed.ts  │  └─────────────────────────────────────────────────────────┘
-│ • x-bird.ts     │            ┌─────────────────────────────────────┐
-│ • github-*      │            │   AI Layer (ai/) - Optional         │
-└─────────────────┘            │   • config/ (配置加载)              │
-                                │   • providers/ (策略模式)            │
-                                │   • enrichArticle()                 │
-                                │   • generateDailyBriefOverview()    │
-                                │   • summarizePost()                 │
-                                └─────────────────────────────────────┘
-```
+### 目录结构
+
+- `src/adapters/`：数据源适配器（fetch / parse）
+- `src/config/`：YAML 配置加载与校验
+- `src/db/`：SQLite schema 与 query helpers
+- `src/pipeline/`：核心处理流水线（collect → normalize → dedupe → enrich → rank → cluster）
+- `src/query/`：查询引擎（CLI parser、selection resolver）
+- `src/views/`：视图层（registry、view model 构建）
+- `src/views/render/`：Markdown 渲染
+- `src/render/`：JSON 等其他格式输出
+- `src/ai/`：AI 客户端抽象层
+  - `config/`：配置加载（settings.yaml → 环境变量）
+  - `providers/`：策略模式实现（Anthropic、Gemini、OpenAI）
+  - `prompts*.ts`：各场景 prompt
+- `src/cli/`：CLI 入口点
+- `src/verification/`：验证辅助（smoke、e2e）
+- `config/packs/`：Pack 配置目录
 
 ### 核心数据流
 
-```
-┌──────────────┐    ┌─────────────────┐    ┌──────────────────┐
-│ ParsedRunArgs│───▶│ resolveSelection│───▶│  Selected Sources│
-│ (--pack etc) │    │   (Pack-based)  │    │   + TopicRule    │
-└──────────────┘    └─────────────────┘    └────────┬─────────┘
-                                                     │
-                                                     ▼
-┌───────────────────────────────────────────────────────────────────┐
-│                        Collect Phase                              │
-│  adapters[type](source) → RawItem[] → normalizeCollectedItem()   │
-│  支持 4 种数据源类型: rss/json-feed/                               │
-│  github_trending/x_*                                                │
-└───────────────────────────────────────────────────────────────────┘
-                                                     │
-                                                     ▼
-┌───────────────────────────────────────────────────────────────────┐
-│                      Normalize Phase                              │
-│  RawItem → NormalizedItem                                        │
-│  • resolveCanonicalUrl() - URL 规范化                            │
-│  • normalizeTitle/Snippet() - 文本规范化                          │
-│  • toBoundedEngagementScore() - 互动量归一化 (log scale)          │
-│  • exactDedupKey = canonicalUrl                                  │
-└───────────────────────────────────────────────────────────────────┘
-                                                     │
-                                                     ▼
-┌───────────────────────────────────────────────────────────────────┐
-│                        Dedupe Phase                              │
-│  1. dedupeExact(): 按 canonicalUrl 去重                          │
-│     - 内容类型优先级: article > digest_entry > community_post    │
-│  2. dedupeNear(): 按标题相似度去重 (threshold=0.74)              │
-│     - 同一日内、Jaccard 相似度 >= 74% 视为重复                    │
-│     - 保留时间戳更新的条目                                        │
-└───────────────────────────────────────────────────────────────────┘
-                                                     │
-                                                     ▼
-┌───────────────────────────────────────────────────────────────────┐
-│                       Enrich Phase                               │
-│  toCandidates() → enrichCandidates()                             │
-│  • scoreTopicMatch() - 关键词匹配评分                             │
-│  • extractContent() - 正文提取（可选）                            │
-│  • AI enrichment - 关键点提取、标签生成、质量评分                  │
-│  • 计算 sourceWeightScore / freshnessScore                       │
-└───────────────────────────────────────────────────────────────────┘
-                                                     │
-                                                     ▼
-┌───────────────────────────────────────────────────────────────────┐
-│                        Rank Phase                                │
-│  rankCandidates() → finalScore                                   │
-│  加权公式:                                                        │
-│  finalScore = sourceWeight × 0.30   // 来源权重                   │
-│             + freshness × 0.25      // 新鲜度                     │
-│             + topicMatch × 0.25     // 主题相关性                 │
-│             + engagement × 0.10     // 互动量                     │
-│             + contentQualityAi × 0.1 // AI评分（可选）            │
-│             - community_post ? 0.12 : 0  // 社区内容惩罚          │
-└───────────────────────────────────────────────────────────────────┘
-                                                     │
-                                                     ▼
-┌───────────────────────────────────────────────────────────────────┐
-│                       Cluster Phase                              │
-│  buildClusters() → Cluster[]                                     │
-│  • 按标题相似度聚合相关内容 (threshold=0.74)                      │
-│  • 每个簇选一个 canonicalItem + memberItemIds                     │
-└───────────────────────────────────────────────────────────────────┘
-                                                     │
-                                                     ▼
-┌───────────────────────────────────────────────────────────────────┐
-│                   View/Render Phase                              │
-│  buildViewModel(result, viewId) → ViewModel                      │
-│  renderViewMarkdown(model, viewId) → Markdown/JSON               │
-│                                                                  │
-│  内置视图: daily-brief / x-analysis / json                      │
-└───────────────────────────────────────────────────────────────────┘
-```
+1. **Collect**：从各数据源拉取内容（adapters）
+2. **Normalize**：URL/文本规范化
+3. **Dedupe**：精确 + 近似去重
+4. **Enrich**：正文提取 + AI 增强
+5. **Rank**：加权评分
+6. **Cluster**：相似内容聚合
+7. **Render**：输出 Markdown/JSON
 
 ## 当前能力
 
@@ -205,21 +112,21 @@ config/packs/
 ### Pack 文件结构
 
 ```yaml
-# config/packs/ai-news.yaml
+# config/packs/tech-news.yaml
 pack:
-  id: ai-news
-  name: AI 新闻与动态
-  description: AI 领域的新闻站点、公司博客、研究动态
-  keywords: [GPT, LLM, 机器学习, AI, 人工智能, OpenAI, Claude]
+  id: tech-news
+  name: 科技资讯聚合
+  description: 中文科技资讯、热点聚合与信息流
+  keywords: [技术, 编程, AI, 开源]
 
 sources:
   - type: rss
-    url: https://openai.com/news/rss.xml
-    description: OpenAI 官方新闻和产品发布
+    url: https://www.infoq.cn/feed
+    description: InfoQ 中文，企业级技术资讯
 
-  - type: rss
-    url: https://huggingface.co/blog/feed.xml
-    description: Hugging Face 技术博客
+  - type: json-feed
+    url: https://www.buzzing.cc/feed.json
+    description: Buzzing，中英双语资讯聚合
     enabled: false  # 可选，默认 true
 ```
 
@@ -364,25 +271,25 @@ bun src/cli/main.ts sources list
 
 ```bash
 # 单 Pack 查询
-bun src/cli/main.ts run --pack ai-news --view daily-brief --window 24h
-bun src/cli/main.ts run --pack ai-news --view x-analysis --window 7d
+bun src/cli/main.ts run --pack tech-news --view daily-brief --window 24h
+bun src/cli/main.ts run --pack x_bookmarks --view x-analysis --window 7d
 bun src/cli/main.ts run --pack karpathy-picks --view json --window all
 
 # 多 Pack 合并查询
-bun src/cli/main.ts run --pack ai-news,tech-news --view daily-brief --window 24h
+bun src/cli/main.ts run --pack tech-news,karpathy-picks --view daily-brief --window 24h
 
 # 输出到文件（推荐用于大数据量）
 bun src/cli/main.ts run --pack x-sources --view json --window all --output out/result.json
 
 # 禁用 AI 增强
-bun src/cli/main.ts run --pack ai-news --view daily-brief --window 24h --no-ai
+bun src/cli/main.ts run --pack tech-news --view daily-brief --window 24h --no-ai
 ```
 
 ### 参数说明
 
 | 参数 | 必填 | 说明 | 示例值 |
 |------|------|------|--------|
-| `--pack` | ✅ | Pack ID，支持逗号分隔的多 Pack | `ai-news` 或 `ai-news,tech-news` |
+| `--pack` | ✅ | Pack ID，支持逗号分隔的多 Pack | `tech-news` 或 `tech-news,karpathy-picks` |
 | `--view` | ✅ | 输出格式 | `json`, `daily-brief`, `x-analysis` |
 | `--window` | ✅ | 时间窗口 | `24h`, `7d`, `3d`, `all` |
 | `--output` | ❌ | 输出文件路径，直接写入文件（避免大数据管道编码问题） | `out/result.json` |
@@ -438,7 +345,7 @@ bun run smoke
 
 ```bash
 bun src/cli/main.ts config validate
-bun src/cli/main.ts run --pack ai-news --view daily-brief --window 24h
+bun src/cli/main.ts run --pack tech-news --view daily-brief --window 24h
 bun src/cli/main.ts run --pack karpathy-picks --view daily-brief --window 7d
 ```
 
