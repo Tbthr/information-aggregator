@@ -78,6 +78,15 @@ export function renderXAnalysisView(model: XAnalysisViewModel): string {
         lines.push(`[${post.article.title}](${post.article.url})`);
       }
 
+      // 引用
+      if (post.quote && (post.quote.text || post.quote.author)) {
+        lines.push("", "## 引用", "");
+        const author = post.quote.author ?? "未知作者";
+        const text = post.quote.text ?? "";
+        const link = post.quote.url ? ` [查看原帖](${post.quote.url})` : "";
+        lines.push(`> **@${author}**: ${text}${link}`);
+      }
+
       // 分隔线
       lines.push("", "---");
 

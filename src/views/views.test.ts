@@ -434,4 +434,83 @@ describe("x-analysis render", () => {
 
     expect(markdown).not.toContain("## 长文 Thread");
   });
+
+  // US-007: 渲染 Quote 引用
+  test("renders quote in ## 引用 section when present", () => {
+    const model: XAnalysisViewModel = {
+      viewId: "x-analysis",
+      title: "X 数据分析",
+      posts: [
+        {
+          title: "Post With Quote",
+          url: "https://x.com/test/status/102",
+          summary: "Quoted post",
+          tags: ["quote"],
+          quote: {
+            id: "q1",
+            text: "This is a quoted tweet content",
+            author: "quoteduser",
+            url: "https://x.com/quoteduser/status/999",
+          },
+        },
+      ],
+      tagCloud: ["quote"],
+      sections: [],
+    };
+
+    const markdown = renderXAnalysisView(model);
+
+    expect(markdown).toContain("## 引用");
+    expect(markdown).toContain("> **@quoteduser**: This is a quoted tweet content");
+    expect(markdown).toContain("[查看原帖](https://x.com/quoteduser/status/999)");
+  });
+
+  test("shows **@未知作者** when quote author is missing", () => {
+    const model: XAnalysisViewModel = {
+      viewId: "x-analysis",
+      title: "X 数据分析",
+      posts: [
+        {
+          title: "Post With Anonymous Quote",
+          url: "https://x.com/test/status/103",
+          summary: "Anonymous quote",
+          tags: [],
+          quote: {
+            id: "q2",
+            text: "Quote without author",
+            url: "https://x.com/some/status/888",
+          },
+        },
+      ],
+      tagCloud: [],
+      sections: [],
+    };
+
+    const markdown = renderXAnalysisView(model);
+
+    expect(markdown).toContain("## 引用");
+    expect(markdown).toContain("> **@未知作者**: Quote without author");
+  });
+
+  test("skips 引用 section when quote is undefined", () => {
+    const model: XAnalysisViewModel = {
+      viewId: "x-analysis",
+      title: "X 数据分析",
+      posts: [
+        {
+          title: "Post Without Quote",
+          url: "https://x.com/test/status/104",
+          summary: "No quote",
+          tags: [],
+          // quote 未定义
+        },
+      ],
+      tagCloud: [],
+      sections: [],
+    };
+
+    const markdown = renderXAnalysisView(model);
+
+    expect(markdown).not.toContain("## 引用");
+  });
 });
