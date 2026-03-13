@@ -9,7 +9,11 @@ import { createLogger } from "../../utils/logger";
 import type { BuildViewDependencies, ViewModel } from "../registry";
 import type { QueryResult } from "../../query/run-query";
 import type { XAnalysisPost, XAnalysisViewModel } from "./types";
-import { extractEngagement, extractMedia, extractArticle, extractQuote, extractThread, extractAuthor } from "./extract-metadata";
+import {
+  extractEngagement, extractMedia, extractArticle, extractQuote, extractThread, extractAuthor,
+  extractTweetId, extractAuthorId, extractAuthorName, extractExpandedUrl, extractPublishedAt,
+  extractParent, extractConversationId
+} from "./extract-metadata";
 import { summarizePostWithContent } from "./summarize";
 
 const logger = createLogger("views:x-analysis");
@@ -40,6 +44,14 @@ export async function buildXAnalysisView(
     article: extractArticle(item.metadataJson),
     quote: extractQuote(item.metadataJson),
     thread: extractThread(item.metadataJson),
+    // 新增字段
+    authorName: extractAuthorName(item.metadataJson),
+    authorId: extractAuthorId(item.metadataJson),
+    publishedAt: extractPublishedAt(item.processedAt),
+    expandedUrl: extractExpandedUrl(item.metadataJson),
+    parent: extractParent(item.metadataJson),
+    tweetId: extractTweetId(item.metadataJson),
+    conversationId: extractConversationId(item.metadataJson),
   }));
 
   if (aiClient && rankedItems.length > 0) {
@@ -75,6 +87,14 @@ export async function buildXAnalysisView(
         article: extractArticle(item.metadataJson),
         quote: extractQuote(item.metadataJson),
         thread: extractThread(item.metadataJson),
+        // 新增字段
+        authorName: extractAuthorName(item.metadataJson),
+        authorId: extractAuthorId(item.metadataJson),
+        publishedAt: extractPublishedAt(item.processedAt),
+        expandedUrl: extractExpandedUrl(item.metadataJson),
+        parent: extractParent(item.metadataJson),
+        tweetId: extractTweetId(item.metadataJson),
+        conversationId: extractConversationId(item.metadataJson),
       };
     });
 
