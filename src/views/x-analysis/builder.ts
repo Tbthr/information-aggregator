@@ -6,17 +6,46 @@ import type { AiClient } from "../../ai/client";
 import { processWithConcurrency } from "../../ai/concurrency";
 import { loadAiSettings } from "../../ai/config/load";
 import { createLogger } from "../../utils/logger";
-import type { BuildViewDependencies, ViewModel } from "../registry";
+import type { BuildViewDependencies } from "../registry";
 import type { QueryResult } from "../../query/run-query";
 import type { XAnalysisPost, XAnalysisViewModel } from "./types";
+import type { SourcePack, RankedCandidate } from "../../types/index";
 import {
   extractEngagement, extractMedia, extractArticle, extractQuote, extractThread, extractAuthor,
   extractTweetId, extractAuthorId, extractAuthorName, extractExpandedUrl, extractPublishedAt,
   extractParent, extractConversationId
 } from "./extract-metadata";
 import { summarizePostWithContent } from "./summarize";
+import { loadTemplate, templateExists, render } from "../../templates";
 
 const logger = createLogger("views:x-analysis");
+
+/**
+ * 构建 AI prompt
+ * 如果 pack 定义了 promptTemplate，使用自定义模板
+ */
+export async function buildAIPrompt(
+  items: RankedCandidate[],
+  pack?: SourcePack
+): Promise<string> {
+  const templateName = pack?.promptTemplate;
+
+  if (templateName && await templateExists('prompt', templateName)) {
+    const template = await loadTemplate('prompt', templateName);
+    const data = {
+      items: items.map(i => i.normalizedText || i.normalizedTitle).join('\n\n'),
+      date: new Date().toLocaleDateString('zh-CN'),
+      sourceCount: pack?.sources?.length ?? 1,
+      itemCount: items.length,
+    };
+    return render(template, data);
+  }
+
+  // 默认 prompt
+  return `分析以下内容并生成摘要和标签：
+
+${items.map(i => `- ${i.normalizedText || i.normalizedTitle}`).join('\n')}`;
+}
 
 /**
  * 构建 X Analysis 视图
