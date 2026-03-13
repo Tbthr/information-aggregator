@@ -1,0 +1,14 @@
+pack:
+  id: ai-daily
+  name: AI 领域日报
+  description: 监控 AI 领域影响力人物，每天生成简报
+  auth: x-family
+  promptTemplate: daily-brief
+  viewTemplate: daily-brief
+
+sources:
+  # 使用 X List 监控多个账号
+  - type: x_list
+    url: https://x.com/i/lists/placeholder
+    description: AI Influencers
+    configJson: '{"birdMode":"list","listId":"placeholder","count":50}'

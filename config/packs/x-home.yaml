@@ -17,4 +17,4 @@ sources:
   - type: x_home
     url: https://x.com/home
     description: X 首页时间线
-    configJson: '{"birdMode":"home","count":50}'
+    configJson: '{"birdMode":"home","count":10}'

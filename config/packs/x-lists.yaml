@@ -7,7 +7,7 @@
 #   - maxPages: 配合 fetchAll 使用，限制最大页数
 
 pack:
-  id: x-sources
+  id: x-list
   name: X/Twitter 数据源
   description: X 平台数据采集，需要 bird CLI 和 Chrome 授权
   auth: x-family
