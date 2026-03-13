@@ -1,6 +1,12 @@
 node_modules/
 *.db
-output/
+*.db-journal
+# output 目录中的 JSON 和临时文件
+output/**/*.json
+output/**/*.tmp
+# 但保留 .md 和 .gitkeep（用于 GitHub Actions 提交）
+!output/**/*.md
+!output/**/.gitkeep
 out/
 coverage/
 .worktrees/

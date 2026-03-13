@@ -1,0 +1,74 @@
+name: Manual Run
+
+on:
+  workflow_dispatch:
+    inputs:
+      pack:
+        description: 'Pack ID(s), comma-separated'
+        required: true
+        default: 'tech-news'
+      view:
+        description: 'View type'
+        required: true
+        default: 'daily-brief'
+        type: choice
+        options:
+          - daily-brief
+          - x-analysis
+          - json
+      window:
+        description: 'Time window (e.g., 24h, 7d, all)'
+        required: true
+        default: '24h'
+      output_subdir:
+        description: 'Output subdirectory (e.g., daily, weekly, manual)'
+        required: false
+        default: 'manual'
+
+jobs:
+  aggregate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Create output directory
+        run: mkdir -p output/${{ github.event.inputs.output_subdir }}
+
+      - name: Run aggregation
+        env:
+          ANTHROPIC_AUTH_TOKEN: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          X_AUTH_TOKEN: ${{ secrets.X_AUTH_TOKEN }}
+          X_CT0: ${{ secrets.X_CT0 }}
+        run: |
+          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+          SUBDIR="${{ github.event.inputs.output_subdir }}"
+          EXT="${{ github.event.inputs.view == 'json' && 'json' || 'md' }}"
+          OUTPUT="output/${SUBDIR}/${TIMESTAMP}.${EXT}"
+
+          bun src/cli/main.ts run \
+            --pack "${{ github.event.inputs.pack }}" \
+            --view "${{ github.event.inputs.view }}" \
+            --window "${{ github.event.inputs.window }}" \
+            --output "$OUTPUT"
+
+          echo "output_file=$OUTPUT" >> $GITHUB_OUTPUT
+        id: run
+
+      - name: Commit results
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "docs: manual run - ${{ github.event.inputs.pack }} - $(date +%Y%m%d_%H%M%S)"
+          file_pattern: output/
+          branch: main
