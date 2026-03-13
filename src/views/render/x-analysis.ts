@@ -135,10 +135,23 @@ function renderPost(post: XAnalysisPost): string {
     lines.push("");
   }
 
-  // 11. 元数据区
+  // 11. 原文全文
+  if (post.fullText && post.fullText.trim()) {
+    lines.push("**原文**:");
+    lines.push(post.fullText);
+    lines.push("");
+  }
+
+  // 12. 元数据区
   const metaParts: string[] = [];
+  if (post.tweetId) {
+    metaParts.push(`ID: ${post.tweetId}`);
+  }
   if (post.expandedUrl) {
     metaParts.push(`[外链](${post.expandedUrl})`);
+  }
+  if (post.conversationId) {
+    metaParts.push(`对话: ${post.conversationId}`);
   }
   if (metaParts.length > 0) {
     lines.push(`---\n*${metaParts.join(" · ")}*`);
