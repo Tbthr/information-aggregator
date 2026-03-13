@@ -13,6 +13,10 @@ export const CANONICAL_SOURCE_TYPES = [
   "x_list",
   "x_bookmarks",
   "x_likes",
+  // 新增
+  "x_user_tweets",
+  "x_search",
+  "x_trending",
 ] as const;
 
 export type SourceType = (typeof CANONICAL_SOURCE_TYPES)[number];
@@ -41,6 +45,9 @@ export interface SourcePack {
   keywords?: string[];
   auth?: string;           // auth 引用
   sources: InlineSource[];
+  // 模板引用
+  promptTemplate?: string;   // 引用 config/prompts/{name}.md
+  viewTemplate?: string;     // 引用 config/views/{name}.md
 }
 
 export interface RawItem {
@@ -106,6 +113,13 @@ export interface RawItemMetadata {
   article?: RawItemArticle;
   quote?: RawItemQuote;
   thread?: RawItemThreadItem[];
+  // 新增字段
+  tweetId?: string;           // 推文 ID
+  authorId?: string;          // 作者 ID
+  authorName?: string;        // 作者显示名
+  expandedUrl?: string;       // 展开的外链 URL
+  conversationId?: string;    // 对话 ID
+  parent?: RawItemThreadItem; // 父推文（回复上下文）
 }
 
 export interface NormalizedItem {
