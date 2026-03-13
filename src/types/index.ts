@@ -68,6 +68,31 @@ export interface RawItemCanonicalHints {
   expandedUrl?: string;
 }
 
+export interface RawItemMediaItem {
+  type: "photo" | "video" | "animated_gif";
+  url: string;
+  previewUrl?: string;
+}
+
+export interface RawItemArticle {
+  title: string;
+  url: string;
+  previewText?: string;
+}
+
+export interface RawItemQuote {
+  id?: string;
+  text?: string;
+  author?: string;
+  url?: string;
+}
+
+export interface RawItemThreadItem {
+  id?: string;
+  text?: string;
+  author?: string;
+}
+
 export interface RawItemMetadata {
   provider: string;
   sourceType: SourceType;
@@ -76,6 +101,11 @@ export interface RawItemMetadata {
   canonicalHints?: RawItemCanonicalHints;
   subreddit?: string;
   discoveredFrom?: string;
+  // X Analysis 扩展字段
+  media?: RawItemMediaItem[];
+  article?: RawItemArticle;
+  quote?: RawItemQuote;
+  thread?: RawItemThreadItem[];
 }
 
 export interface NormalizedItem {
@@ -238,6 +268,8 @@ export interface EnrichmentConfig {
   cacheEnabled?: boolean;               // 是否启用缓存，默认 true
   cacheTtl?: number;                    // 缓存 TTL（秒），默认 86400
   maxContentLength?: number;            // 最大内容长度（字符数），默认不限制
+  aiBatchSize?: number;                 // AI 批处理大小，默认 5
+  aiConcurrency?: number;               // AI 并发数，默认 2
 }
 
 // CLI 运行参数

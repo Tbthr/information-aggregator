@@ -12,6 +12,7 @@ import { extractArticleContent, isExtractionSuccess } from "./extract-content";
 import { processWithConcurrency } from "../ai/concurrency";
 import type { EnrichmentResultDb, getEnrichmentResult, setExtractedContentCache, upsertEnrichmentResult } from "../db/client";
 import { createLogger } from "../utils/logger";
+import { isSocialPost, createSocialPostContent } from "../utils/social-post";
 
 const logger = createLogger("pipeline:enrich");
 
@@ -40,34 +41,6 @@ const DEFAULT_ENRICHMENT_CONFIG: Required<Omit<EnrichmentConfig, "enableContentE
   cacheTtl: 86400,
   maxContentLength: 10000,
 };
-
-/**
- * 判断是否为社交帖子类型（内容已在 snippet 中，无需 URL 提取）
- */
-function isSocialPost(candidate: RankedCandidate): boolean {
-  // 通过 contentType 或 sourceType 判断
-  if (candidate.contentType === "social_post") {
-    return true;
-  }
-  if (candidate.sourceType?.startsWith("x_")) {
-    return true;
-  }
-  return false;
-}
-
-/**
- * 为社交帖子构造 ExtractedContent（使用已有内容）
- */
-function createSocialPostContent(candidate: RankedCandidate): ExtractedContent {
-  const content = candidate.normalizedText ?? "";
-  return {
-    url: candidate.url ?? candidate.canonicalUrl ?? "",
-    title: candidate.title ?? candidate.normalizedTitle,
-    textContent: content,
-    length: content.length,
-    extractedAt: new Date().toISOString(),
-  };
-}
 
 /**
  * 对候选项进行深度 enrichment
@@ -208,9 +181,11 @@ export async function enrichCandidates<T extends RankedCandidate>(
     );
 
     // 使用并发控制处理 AI 请求
+    const aiBatchSize = config.aiBatchSize ?? 5;
+    const aiConcurrency = config.aiConcurrency ?? 2;
     const aiResults = await processWithConcurrency(
       validResults,
-      { batchSize: 5, concurrency: 2 },
+      { batchSize: aiBatchSize, concurrency: aiConcurrency },
       async ({ candidate, result }) => {
         if (!result || !isExtractionSuccess(result)) {
           return { candidate, aiResult: null };
@@ -232,8 +207,11 @@ export async function enrichCandidates<T extends RankedCandidate>(
             aiEnrichment.score = score;
             // 更新 contentQualityAi（覆盖之前的评分）
             candidate.contentQualityAi = score;
-          } catch {
-            // 评分失败，保留原有评分
+          } catch (error) {
+            logger.debug("AI scoring failed, keeping original score", {
+              candidateId: candidate.id,
+              error: error instanceof Error ? error.message : String(error),
+            });
           }
 
           // 关键点提取
@@ -243,8 +221,11 @@ export async function enrichCandidates<T extends RankedCandidate>(
               if (keyPoints.length > 0) {
                 aiEnrichment.keyPoints = keyPoints;
               }
-            } catch {
-              // 关键点提取失败，忽略
+            } catch (error) {
+              logger.debug("Key points extraction failed", {
+                candidateId: candidate.id,
+                error: error instanceof Error ? error.message : String(error),
+              });
             }
           }
 
@@ -255,8 +236,11 @@ export async function enrichCandidates<T extends RankedCandidate>(
               if (tags.length > 0) {
                 aiEnrichment.tags = tags;
               }
-            } catch {
-              // 标签生成失败，忽略
+            } catch (error) {
+              logger.debug("Tag generation failed", {
+                candidateId: candidate.id,
+                error: error instanceof Error ? error.message : String(error),
+              });
             }
           }
 

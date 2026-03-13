@@ -3,61 +3,62 @@ import { resolve, join } from "node:path";
 import YAML from "yaml";
 import type { InlineSource, SourcePack, SourceType } from "../types/index";
 import { CANONICAL_SOURCE_TYPES } from "../types/index";
+import { isRecord, isArray, isString, isBoolean } from "../types/validation";
 
 export const VALID_SOURCE_TYPES = new Set<SourceType>(CANONICAL_SOURCE_TYPES);
 
 export function validateInlineSource(input: unknown): InlineSource {
-  if (typeof input !== "object" || input === null) {
+  if (!isRecord(input)) {
     throw new Error("InlineSource must be an object");
   }
-  const record = input as Record<string, unknown>;
 
-  if (!VALID_SOURCE_TYPES.has(record.type as SourceType)) {
-    throw new Error(`Invalid source type: ${record.type}`);
+  const typeValue = input.type;
+  if (!isString(typeValue) || !VALID_SOURCE_TYPES.has(typeValue as SourceType)) {
+    throw new Error(`Invalid source type: ${typeValue}`);
   }
-  if (typeof record.url !== "string" || !record.url) {
+  if (!isString(input.url) || input.url === "") {
     throw new Error("InlineSource.url is required");
   }
 
   return {
-    type: record.type as SourceType,
-    url: record.url,
-    description: typeof record.description === "string" ? record.description : undefined,
-    enabled: typeof record.enabled === "boolean" ? record.enabled : true,
-    configJson: typeof record.configJson === "string" ? record.configJson : undefined,
+    type: typeValue as SourceType,
+    url: input.url,
+    description: isString(input.description) ? input.description : undefined,
+    enabled: isBoolean(input.enabled) ? input.enabled : true,
+    configJson: isString(input.configJson) ? input.configJson : undefined,
   };
 }
 
 export function validateSourcePack(input: unknown): SourcePack {
-  if (typeof input !== "object" || input === null) {
+  if (!isRecord(input)) {
     throw new Error("SourcePack must be an object");
   }
-  const record = input as Record<string, unknown>;
-  const pack = record.pack;
 
-  if (typeof pack !== "object" || pack === null) {
+  const pack = input.pack;
+  if (!isRecord(pack)) {
     throw new Error("SourcePack.pack is required");
   }
-  const packRecord = pack as Record<string, unknown>;
 
-  if (typeof packRecord.id !== "string" || !packRecord.id) {
+  if (!isString(pack.id) || pack.id === "") {
     throw new Error("SourcePack.pack.id is required");
   }
-  if (typeof packRecord.name !== "string" || !packRecord.name) {
+  if (!isString(pack.name) || pack.name === "") {
     throw new Error("SourcePack.pack.name is required");
   }
 
-  const sources = Array.isArray(record.sources) ? record.sources : [];
+  const sources = isArray(input.sources) ? input.sources : [];
   const validatedSources = sources.map((s: unknown) => validateInlineSource(s));
 
+  const keywords = isArray(pack.keywords)
+    ? pack.keywords.filter(isString)
+    : undefined;
+
   return {
-    id: packRecord.id,
-    name: packRecord.name,
-    description: typeof packRecord.description === "string" ? packRecord.description : undefined,
-    keywords: Array.isArray(packRecord.keywords)
-      ? packRecord.keywords.filter((k): k is string => typeof k === "string")
-      : undefined,
-    auth: typeof packRecord.auth === "string" ? packRecord.auth : undefined,
+    id: pack.id,
+    name: pack.name,
+    description: isString(pack.description) ? pack.description : undefined,
+    keywords,
+    auth: isString(pack.auth) ? pack.auth : undefined,
     sources: validatedSources,
   };
 }

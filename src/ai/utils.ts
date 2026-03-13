@@ -1,5 +1,13 @@
+/**
+ * AI 响应解析工具函数
+ */
+
 import type { MultiDimensionalScore, HighlightsResult } from "../types/index";
 import type { GeminiResponse, TopicSuggestion } from "./types";
+import { isRecord, isArray, isString, isNumber } from "../types/validation";
+import { createLogger } from "../utils/logger";
+
+const logger = createLogger("ai:utils");
 
 export function getFetchImpl(fetchFn?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>): (input: RequestInfo | URL, init?: RequestInit) => Promise<Response> {
   return fetchFn ?? fetch;
@@ -10,31 +18,28 @@ export function getBaseUrl(baseUrl?: string): string {
 }
 
 export function getOpenAiResponseText(payload: unknown): string {
-  if (!payload || typeof payload !== "object") {
+  if (!isRecord(payload)) {
     throw new Error("Invalid AI response payload");
   }
 
-  const record = payload as Record<string, unknown>;
-  if (typeof record.output_text === "string" && record.output_text.trim() !== "") {
-    return record.output_text.trim();
+  const outputText = payload.output_text;
+  if (isString(outputText) && outputText.trim() !== "") {
+    return outputText.trim();
   }
 
-  const output = record.output;
-  if (Array.isArray(output)) {
+  const output = payload.output;
+  if (isArray(output)) {
     for (const item of output) {
-      if (!item || typeof item !== "object") {
-        continue;
-      }
-      const content = (item as Record<string, unknown>).content;
-      if (!Array.isArray(content)) {
-        continue;
-      }
+      if (!isRecord(item)) continue;
+
+      const content = item.content;
+      if (!isArray(content)) continue;
+
       for (const part of content) {
-        if (!part || typeof part !== "object") {
-          continue;
-        }
-        const text = (part as Record<string, unknown>).text;
-        if (typeof text === "string" && text.trim() !== "") {
+        if (!isRecord(part)) continue;
+
+        const text = part.text;
+        if (isString(text) && text.trim() !== "") {
           return text.trim();
         }
       }
@@ -45,24 +50,21 @@ export function getOpenAiResponseText(payload: unknown): string {
 }
 
 export function getAnthropicResponseText(payload: unknown): string {
-  if (!payload || typeof payload !== "object") {
+  if (!isRecord(payload)) {
     throw new Error("Invalid Anthropic response payload");
   }
 
-  const record = payload as Record<string, unknown>;
-  const content = record.content;
+  const content = payload.content;
 
-  if (!Array.isArray(content)) {
+  if (!isArray(content)) {
     throw new Error("Anthropic response did not contain content array");
   }
 
   for (const block of content) {
-    if (!block || typeof block !== "object") {
-      continue;
-    }
-    const blockRecord = block as Record<string, unknown>;
-    if (blockRecord.type === "text" && typeof blockRecord.text === "string") {
-      const text = blockRecord.text.trim();
+    if (!isRecord(block)) continue;
+
+    if (block.type === "text" && isString(block.text)) {
+      const text = block.text.trim();
       if (text !== "") {
         return text;
       }
@@ -75,7 +77,7 @@ export function getAnthropicResponseText(payload: unknown): string {
 export function getGeminiResponseText(payload: unknown): string {
   const response = payload as GeminiResponse;
 
-  if (!response || !Array.isArray(response.candidates) || response.candidates.length === 0) {
+  if (!response || !isArray(response.candidates) || response.candidates.length === 0) {
     throw new Error("Gemini response did not contain candidates");
   }
 
@@ -86,7 +88,7 @@ export function getGeminiResponseText(payload: unknown): string {
 
   const firstPart = firstCandidate.content.parts[0];
   const text = firstPart?.text;
-  if (typeof text !== "string" || text.trim() === "") {
+  if (!isString(text) || text.trim() === "") {
     throw new Error("Gemini response did not contain text");
   }
 
@@ -112,19 +114,20 @@ export function parseTopicSuggestions(text: string): TopicSuggestion[] {
 
   try {
     const parsed = JSON.parse(jsonMatch[0]) as { suggestions?: Array<{ title?: string; description?: string; sourceIndices?: number[] }> };
-    if (!Array.isArray(parsed.suggestions)) {
+    if (!isArray(parsed.suggestions)) {
       return [];
     }
 
     return parsed.suggestions
       .filter((s): s is { title: string; description: string; sourceIndices?: number[] } =>
-        typeof s.title === "string" && typeof s.description === "string")
+        isString(s.title) && isString(s.description))
       .map((s) => ({
         title: s.title,
         description: s.description,
-        sourceLinks: Array.isArray(s.sourceIndices) ? s.sourceIndices.map(String) : [],
+        sourceLinks: isArray(s.sourceIndices) ? s.sourceIndices.map(String) : [],
       }));
-  } catch {
+  } catch (error) {
+    logger.debug("Failed to parse topic suggestions", { error: String(error) });
     return [];
   }
 }
@@ -148,7 +151,8 @@ export function parseJsonObject(text: string): Record<string, unknown> | null {
 
   try {
     return JSON.parse(jsonMatch[0]) as Record<string, unknown>;
-  } catch {
+  } catch (error) {
+    logger.debug("Failed to parse JSON object", { error: String(error) });
     return null;
   }
 }
@@ -158,10 +162,10 @@ export function parseJsonObject(text: string): Record<string, unknown> | null {
  */
 export function parseStringArray(obj: Record<string, unknown>, key: string): string[] {
   const value = obj[key];
-  if (!Array.isArray(value)) {
+  if (!isArray(value)) {
     return [];
   }
-  return value.filter((v): v is string => typeof v === "string");
+  return value.filter(isString);
 }
 
 /**
@@ -169,10 +173,10 @@ export function parseStringArray(obj: Record<string, unknown>, key: string): str
  */
 export function parseNumber(obj: Record<string, unknown>, key: string): number | null {
   const value = obj[key];
-  if (typeof value === "number") {
+  if (isNumber(value)) {
     return value;
   }
-  if (typeof value === "string") {
+  if (isString(value)) {
     const parsed = Number(value);
     return isNaN(parsed) ? null : parsed;
   }
@@ -184,10 +188,7 @@ export function parseNumber(obj: Record<string, unknown>, key: string): number |
  */
 export function parseString(obj: Record<string, unknown>, key: string): string | null {
   const value = obj[key];
-  if (typeof value === "string") {
-    return value;
-  }
-  return null;
+  return isString(value) ? value : null;
 }
 
 /**
@@ -197,13 +198,13 @@ export function parseHighlightsResult(obj: Record<string, unknown>): HighlightsR
   const summary = parseString(obj, "summary");
   const trends = obj.trends;
 
-  if (typeof summary !== "string" || !Array.isArray(trends)) {
+  if (!isString(summary) || !isArray(trends)) {
     return null;
   }
 
   return {
     summary,
-    trends: trends.filter((t): t is string => typeof t === "string"),
+    trends: trends.filter(isString),
     generatedAt: new Date().toISOString(),
   };
 }
