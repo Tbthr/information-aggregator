@@ -358,4 +358,80 @@ describe("x-analysis render", () => {
 
     expect(markdown).not.toContain("## 外链");
   });
+
+  // US-006: 渲染 Thread 长文
+  test("renders thread in ## 长文 Thread section when present", () => {
+    const model: XAnalysisViewModel = {
+      viewId: "x-analysis",
+      title: "X 数据分析",
+      posts: [
+        {
+          title: "Post With Thread",
+          url: "https://x.com/test/status/888",
+          summary: "Thread post",
+          tags: ["thread"],
+          thread: [
+            { id: "1", text: "First tweet content", author: "user1" },
+            { id: "2", text: "Second tweet content", author: "user2" },
+          ],
+        },
+      ],
+      tagCloud: ["thread"],
+      sections: [],
+    };
+
+    const markdown = renderXAnalysisView(model);
+
+    expect(markdown).toContain("## 长文 Thread");
+    expect(markdown).toContain("**@user1**: First tweet content");
+    expect(markdown).toContain("**@user2**: Second tweet content");
+    // 验证分隔符在 thread 项之间
+    expect(markdown).toContain("---");
+  });
+
+  test("shows **@未知作者** when thread item author is missing", () => {
+    const model: XAnalysisViewModel = {
+      viewId: "x-analysis",
+      title: "X 数据分析",
+      posts: [
+        {
+          title: "Post With Thread Without Author",
+          url: "https://x.com/test/status/999",
+          summary: "Anonymous thread",
+          tags: [],
+          thread: [
+            { id: "1", text: "Content without author" },
+          ],
+        },
+      ],
+      tagCloud: [],
+      sections: [],
+    };
+
+    const markdown = renderXAnalysisView(model);
+
+    expect(markdown).toContain("**@未知作者**: Content without author");
+  });
+
+  test("skips 长文 Thread section when thread is empty array", () => {
+    const model: XAnalysisViewModel = {
+      viewId: "x-analysis",
+      title: "X 数据分析",
+      posts: [
+        {
+          title: "Post With Empty Thread",
+          url: "https://x.com/test/status/101",
+          summary: "No thread",
+          tags: [],
+          thread: [],
+        },
+      ],
+      tagCloud: [],
+      sections: [],
+    };
+
+    const markdown = renderXAnalysisView(model);
+
+    expect(markdown).not.toContain("## 长文 Thread");
+  });
 });

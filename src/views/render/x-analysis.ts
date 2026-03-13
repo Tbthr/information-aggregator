@@ -78,9 +78,27 @@ export function renderXAnalysisView(model: XAnalysisViewModel): string {
         lines.push(`[${post.article.title}](${post.article.url})`);
       }
 
-      // 分隔线 + 完整内容
+      // 分隔线
+      lines.push("", "---");
+
+      // 长文 Thread
+      if (post.thread && post.thread.length > 0) {
+        lines.push("", "## 长文 Thread", "");
+        for (let i = 0; i < post.thread.length; i++) {
+          const item = post.thread[i];
+          const author = item.author ?? "未知作者";
+          const text = item.text ?? "";
+          lines.push(`**@${author}**: ${text}`);
+          // 在每个 thread 项后添加分隔符（最后一项除外）
+          if (i < post.thread.length - 1) {
+            lines.push("", "---", "");
+          }
+        }
+      }
+
+      // 完整内容
       if (post.fullText && post.fullText.trim()) {
-        lines.push("", "---", "", "## 原文", "");
+        lines.push("", "## 原文", "");
         lines.push(post.fullText);
       }
     }
