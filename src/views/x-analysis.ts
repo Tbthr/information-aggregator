@@ -1,7 +1,11 @@
 import type { QueryResult } from "../query/run-query";
 import type { ViewModel, ViewModelItem, BuildViewDependencies } from "./registry";
 import type { AiClient, PostSummaryResult } from "../ai/client";
+import type { RankedCandidate } from "../types/index";
 import { extractArticleContent, isExtractionSuccess } from "../pipeline/extract-content";
+import { createLogger } from "../utils/logger";
+
+const logger = createLogger("views:x-analysis");
 
 /**
  * X Analysis 帖子视图项
@@ -74,6 +78,21 @@ function extractAuthor(item: QueryResult["rankedItems"][number]): {
 }
 
 /**
+ * 判断是否为社交帖子类型（内容已在 normalizedText 中，无需 URL 提取）
+ * 复用自 enrich.ts 的逻辑
+ */
+function isSocialPost(item: RankedCandidate): boolean {
+  // 通过 contentType 或 sourceType 判断
+  if (item.contentType === "social_post") {
+    return true;
+  }
+  if (item.sourceType?.startsWith("x_")) {
+    return true;
+  }
+  return false;
+}
+
+/**
  * 并发处理单篇帖子的 AI 摘要
  */
 async function summarizePostWithContent(
@@ -81,9 +100,37 @@ async function summarizePostWithContent(
   aiClient: AiClient,
 ): Promise<PostSummaryResult | null> {
   const url = item.url ?? item.canonicalUrl;
+
+  // 社交帖子类型：直接使用 normalizedText，无需 URL 提取
+  if (isSocialPost(item)) {
+    const content = item.normalizedText ?? "";
+    logger.debug("Using normalizedText for social post", {
+      itemId: item.id,
+      source: "normalizedText",
+      contentType: item.contentType,
+      sourceType: item.sourceType,
+      contentLength: content.length,
+    });
+
+    if (!content) return null;
+
+    try {
+      return await aiClient.summarizePost(
+        item.title ?? item.normalizedTitle ?? "",
+        content,
+      );
+    } catch (error) {
+      logger.error("Failed to summarize social post", {
+        itemId: item.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return null;
+    }
+  }
+
+  // 非社交帖子类型：从 URL 提取内容
   if (!url) return null;
 
-  // 提取全文
   let content = "";
   try {
     const extractionResult = await extractArticleContent(url, {
@@ -94,12 +141,27 @@ async function summarizePostWithContent(
       content = extractionResult.textContent ?? extractionResult.content ?? "";
     }
   } catch (error) {
-    console.error(`Failed to extract content for ${url}:`, error);
+    logger.error("Failed to extract content from URL", {
+      url,
+      itemId: item.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 
-  // 如果没有提取到内容，使用 snippet
+  // 如果没有提取到内容，使用 normalizedText 作为 fallback
   if (!content) {
     content = item.normalizedText ?? "";
+    logger.debug("Falling back to normalizedText after URL extraction failed", {
+      itemId: item.id,
+      source: "url_extraction_fallback",
+      contentLength: content.length,
+    });
+  } else {
+    logger.debug("Content extracted from URL", {
+      itemId: item.id,
+      source: "url_extraction",
+      contentLength: content.length,
+    });
   }
 
   if (!content) return null;
@@ -111,7 +173,10 @@ async function summarizePostWithContent(
       content,
     );
   } catch (error) {
-    console.error(`Failed to summarize post ${item.id}:`, error);
+    logger.error("Failed to summarize post", {
+      itemId: item.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
     return null;
   }
 }
