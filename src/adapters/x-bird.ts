@@ -74,6 +74,25 @@ interface BirdThreadItem {
   createdAt?: string;
 }
 
+/**
+ * Bird CLI 返回的推文数据结构
+ *
+ * 字段用途说明：
+ * - id: 推文唯一标识，用于生成 URL 和去重
+ * - text: 推文正文，用于摘要和显示
+ * - author.username: 作者用户名，用于显示和引用
+ * - author.name: 作者显示名，比用户名更友好
+ * - authorId: 作者唯一标识，用于追踪
+ * - createdAt: 发布时间，用于排序和时间窗口过滤
+ * - likeCount/replyCount/retweetCount: 互动数据，用于热度排序
+ * - conversationId: 对话 ID，用于关联同一对话的推文
+ * - media: 媒体附件（图片/视频/GIF）
+ * - article: 外链文章预览（标题和摘要）
+ * - quote: 引用的推文
+ * - parent: 回复的父推文
+ * - thread: 长文线程（连续推文）
+ * - expandedUrl: 展开的外链 URL（t.co 解析后）
+ */
 interface BirdItem {
   id?: string;
   text?: string;
@@ -307,6 +326,11 @@ function parseBirdItems(payload: string, source: Source): RawItem[] {
           quote: buildQuoteMetadata(item.quote),
           thread: buildThreadMetadata(item.thread),
           parent: buildParentMetadata(item.parent),
+          // 新增字段
+          tweetId: item.id,
+          authorId: item.authorId,
+          authorName: typeof item.author === 'object' ? item.author?.name : undefined,
+          expandedUrl: item.expanded_url ?? item.expandedUrl,
         }),
       };
     })
