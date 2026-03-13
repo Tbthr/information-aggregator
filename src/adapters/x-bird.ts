@@ -39,6 +39,9 @@ interface BirdSourceConfig {
   chromeProfileDir?: string;
   cookieSource?: string[];
   cookieTimeoutMs?: number;
+  // 新增字段
+  username?: string;  // user-tweets 用
+  query?: string;     // search 用
 }
 
 interface BirdMedia {
@@ -206,6 +209,27 @@ export function buildBirdCommand(source: Pick<Source, "type" | "configJson">): s
     }
 
     return ["bird", ...authArgs, "list-timeline", config.listId, ...countArgs, "--json"];
+  }
+
+  // 新增: user-tweets 模式
+  if (mode === "user-tweets") {
+    if (!config.username) {
+      throw new Error("x user-tweets source requires username");
+    }
+    return ["bird", ...authArgs, "user-tweets", config.username, ...countArgs, "--json"];
+  }
+
+  // 新增: search 模式
+  if (mode === "search") {
+    if (!config.query) {
+      throw new Error("x search source requires query");
+    }
+    return ["bird", ...authArgs, "search", config.query, ...countArgs, "--json"];
+  }
+
+  // 新增: news/trending 模式
+  if (mode === "news" || mode === "trending") {
+    return ["bird", ...authArgs, "news", ...countArgs, "--json"];
   }
 
   throw new Error(`Unsupported birdMode: ${mode}`);
