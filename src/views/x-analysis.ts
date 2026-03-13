@@ -119,7 +119,6 @@ export interface XAnalysisViewModel extends ViewModel {
   viewId: "x-analysis";
   title: string;
   posts: XAnalysisPost[];
-  tagCloud: string[];  // 汇总所有帖子 tags
 }
 
 /**
@@ -391,8 +390,6 @@ export async function buildXAnalysisView(
     thread: extractThread(item.metadataJson),
   }));
 
-  let tagCloud: string[] = [];
-
   if (aiClient && rankedItems.length > 0) {
     // 从配置加载并发数，默认 2
     const settings = await loadAiSettings();
@@ -429,16 +426,12 @@ export async function buildXAnalysisView(
       };
     });
 
-    // 汇总所有 tags
-    const allTags = posts.flatMap((p) => p.tags);
-    tagCloud = [...new Set(allTags)];
   }
 
   return {
     viewId: "x-analysis",
     title: "X 数据分析",
     posts,
-    tagCloud,
     sections: [
       {
         title: "Posts",

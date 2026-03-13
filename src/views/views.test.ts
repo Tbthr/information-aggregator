@@ -124,7 +124,6 @@ describe("x-analysis render", () => {
           fullText: "This is the full text of the post.\nWith multiple lines.",
         },
       ],
-      tagCloud: ["ai", "test"],
       sections: [],
     };
 
@@ -153,7 +152,6 @@ describe("x-analysis render", () => {
           fullText: "",
         },
       ],
-      tagCloud: [],
       sections: [],
     };
 
@@ -176,7 +174,6 @@ describe("x-analysis render", () => {
           fullText: "   \n  \t  ",
         },
       ],
-      tagCloud: [],
       sections: [],
     };
 
@@ -203,7 +200,6 @@ describe("x-analysis render", () => {
           },
         },
       ],
-      tagCloud: [],
       sections: [],
     };
 
@@ -230,7 +226,6 @@ describe("x-analysis render", () => {
           ],
         },
       ],
-      tagCloud: ["photo"],
       sections: [],
     };
 
@@ -254,7 +249,6 @@ describe("x-analysis render", () => {
           media: [],
         },
       ],
-      tagCloud: [],
       sections: [],
     };
 
@@ -276,7 +270,6 @@ describe("x-analysis render", () => {
           // media 未定义
         },
       ],
-      tagCloud: [],
       sections: [],
     };
 
@@ -302,7 +295,6 @@ describe("x-analysis render", () => {
           },
         },
       ],
-      tagCloud: ["news"],
       sections: [],
     };
 
@@ -325,7 +317,6 @@ describe("x-analysis render", () => {
           // article 未定义
         },
       ],
-      tagCloud: [],
       sections: [],
     };
 
@@ -350,7 +341,6 @@ describe("x-analysis render", () => {
           },
         },
       ],
-      tagCloud: [],
       sections: [],
     };
 
@@ -376,7 +366,6 @@ describe("x-analysis render", () => {
           ],
         },
       ],
-      tagCloud: ["thread"],
       sections: [],
     };
 
@@ -404,7 +393,6 @@ describe("x-analysis render", () => {
           ],
         },
       ],
-      tagCloud: [],
       sections: [],
     };
 
@@ -426,7 +414,6 @@ describe("x-analysis render", () => {
           thread: [],
         },
       ],
-      tagCloud: [],
       sections: [],
     };
 
@@ -454,7 +441,6 @@ describe("x-analysis render", () => {
           },
         },
       ],
-      tagCloud: ["quote"],
       sections: [],
     };
 
@@ -482,7 +468,6 @@ describe("x-analysis render", () => {
           },
         },
       ],
-      tagCloud: [],
       sections: [],
     };
 
@@ -505,7 +490,6 @@ describe("x-analysis render", () => {
           // quote 未定义
         },
       ],
-      tagCloud: [],
       sections: [],
     };
 

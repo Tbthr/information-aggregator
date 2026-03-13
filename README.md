@@ -303,7 +303,7 @@ bun src/cli/main.ts run --pack tech-news --view daily-brief --window 24h --no-ai
 |------|---------|------|
 | `json` | JSON | 原始数据，供程序消费 |
 | `daily-brief` | Markdown | AI 生成：今日看点、主要看点、Top 10 文章（描述+推荐理由+标签）、标签云 |
-| `x-analysis` | Markdown | AI 生成：每篇帖子摘要+标签，互动数据，标签云 |
+| `x-analysis` | Markdown | AI 生成：每篇帖子摘要+标签，互动数据
 
 ### `daily-brief` 输出示例
 

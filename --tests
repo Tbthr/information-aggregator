@@ -1,0 +1,290 @@
+
+src/pipeline/enrich.test.ts:
+
+src/pipeline/enrich.test.ts:
+
+src/pipeline/extract-content.test.ts:
+
+src/pipeline/extract-content.test.ts:
+
+src/adapters/github-trending.test.ts:
+
+src/adapters/github-trending.test.ts:
+
+src/ai/client.test.ts:
+
+src/ai/client.test.ts:
+76 |   });
+77 | 
+78 |   describe("Anthropic provider", () => {
+79 |     test("returns null when no config or env vars exist", async () => {
+80 |       const client = await createAiClient("anthropic", {});
+81 |       expect(client).toBeNull();
+                          ^
+error: expect(received).toBeNull()
+
+Received: AnthropicClient {
+  config: {
+    authToken: "7152d6764d10401fa7e5882ec44d071d.OKXrmnwAgD1ZOcCp",
+    model: "GLM-5",
+    baseUrl: "https://open.bigmodel.cn/api/anthropic",
+    fetch: undefined,
+  },
+  strategy: {
+    providerName: "Anthropic",
+    buildUrl: [Function: buildUrl],
+    buildHeaders: [Function: buildHeaders],
+    buildBody: [Function: buildBody],
+    extractText: [Function: getAnthropicResponseText],
+  },
+  fetchImpl: undefined,
+  logger: Logger {
+    level: "INFO",
+    source: "ai:anthropic",
+    enableTimestamp: true,
+    format: "text",
+    output: [Function: log],
+    shouldLog: [Function: shouldLog],
+    formatEntry: [Function: formatEntry],
+    log: [Function: log],
+    debug: [Function: debug],
+    info: [Function: info],
+    warn: [Function: warn],
+    error: [Function: error],
+    child: [Function: child],
+  },
+  request: [AsyncFunction: request],
+  getText: [Function: getText],
+  scoreCandidate: [AsyncFunction: scoreCandidate],
+  summarizeCluster: [AsyncFunction: summarizeCluster],
+  narrateDigest: [AsyncFunction: narrateDigest],
+  suggestTopics: [AsyncFunction: suggestTopics],
+  summarizeItem: [AsyncFunction: summarizeItem],
+  scoreWithContent: [AsyncFunction: scoreWithContent],
+  extractKeyPoints: [AsyncFunction: extractKeyPoints],
+  generateTags: [AsyncFunction: generateTags],
+  summarizeContent: [AsyncFunction: summarizeContent],
+  scoreMultiDimensional: [AsyncFunction: scoreMultiDimensional],
+  generateHighlights: [AsyncFunction: generateHighlights],
+  enrichArticle: [AsyncFunction: enrichArticle],
+  generateDailyBriefOverview: [AsyncFunction: generateDailyBriefOverview],
+  summarizePost: [AsyncFunction: summarizePost],
+}
+
+      at <anonymous> (/Users/lyq/ai-enhance/information-aggregator/src/ai/client.test.ts:81:22)
+76 |   });
+77 | 
+78 |   describe("Anthropic provider", () => {
+79 |     test("returns null when no config or env vars exist", async () => {
+80 |       const client = await createAiClient("anthropic", {});
+81 |       expect(client).toBeNull();
+                          ^
+error: expect(received).toBeNull()
+
+Received: AnthropicClient {
+  config: {
+    authToken: "7152d6764d10401fa7e5882ec44d071d.OKXrmnwAgD1ZOcCp",
+    model: "GLM-5",
+    baseUrl: "https://open.bigmodel.cn/api/anthropic",
+    fetch: undefined,
+  },
+  strategy: {
+    providerName: "Anthropic",
+    buildUrl: [Function: buildUrl],
+    buildHeaders: [Function: buildHeaders],
+    buildBody: [Function: buildBody],
+    extractText: [Function: getAnthropicResponseText],
+  },
+  fetchImpl: undefined,
+  logger: Logger {
+    level: "INFO",
+    source: "ai:anthropic",
+    enableTimestamp: true,
+    format: "text",
+    output: [Function: log],
+    shouldLog: [Function: shouldLog],
+    formatEntry: [Function: formatEntry],
+    log: [Function: log],
+    debug: [Function: debug],
+    info: [Function: info],
+    warn: [Function: warn],
+    error: [Function: error],
+    child: [Function: child],
+  },
+  request: [AsyncFunction: request],
+  getText: [Function: getText],
+  scoreCandidate: [AsyncFunction: scoreCandidate],
+  summarizeCluster: [AsyncFunction: summarizeCluster],
+  narrateDigest: [AsyncFunction: narrateDigest],
+  suggestTopics: [AsyncFunction: suggestTopics],
+  summarizeItem: [AsyncFunction: summarizeItem],
+  scoreWithContent: [AsyncFunction: scoreWithContent],
+  extractKeyPoints: [AsyncFunction: extractKeyPoints],
+  generateTags: [AsyncFunction: generateTags],
+  summarizeContent: [AsyncFunction: summarizeContent],
+  scoreMultiDimensional: [AsyncFunction: scoreMultiDimensional],
+  generateHighlights: [AsyncFunction: generateHighlights],
+  enrichArticle: [AsyncFunction: enrichArticle],
+  generateDailyBriefOverview: [AsyncFunction: generateDailyBriefOverview],
+  summarizePost: [AsyncFunction: summarizePost],
+}
+
+      at <anonymous> (/Users/lyq/ai-enhance/information-aggregator/src/ai/client.test.ts:81:22)
+(fail) createAiClient > Anthropic provider > returns null when no config or env vars exist [1.16ms]
+(fail) createAiClient > Anthropic provider > returns null when no config or env vars exist [1.16ms]
+87 |       expect(client).toBeInstanceOf(AnthropicClient);
+88 |     });
+89 | 
+90 |     test("returns null when only model is provided", async () => {
+91 |       const client = await createAiClient("anthropic", { model: "GLM-5" });
+92 |       expect(client).toBeNull();
+                          ^
+error: expect(received).toBeNull()
+
+Received: AnthropicClient {
+  config: {
+    authToken: "7152d6764d10401fa7e5882ec44d071d.OKXrmnwAgD1ZOcCp",
+    model: "GLM-5",
+    baseUrl: "https://open.bigmodel.cn/api/anthropic",
+    fetch: undefined,
+  },
+  strategy: {
+    providerName: "Anthropic",
+    buildUrl: [Function: buildUrl],
+    buildHeaders: [Function: buildHeaders],
+    buildBody: [Function: buildBody],
+    extractText: [Function: getAnthropicResponseText],
+  },
+  fetchImpl: undefined,
+  logger: Logger {
+    level: "INFO",
+    source: "ai:anthropic",
+    enableTimestamp: true,
+    format: "text",
+    output: [Function: log],
+    shouldLog: [Function: shouldLog],
+    formatEntry: [Function: formatEntry],
+    log: [Function: log],
+    debug: [Function: debug],
+    info: [Function: info],
+    warn: [Function: warn],
+    error: [Function: error],
+    child: [Function: child],
+  },
+  request: [AsyncFunction: request],
+  getText: [Function: getText],
+  scoreCandidate: [AsyncFunction: scoreCandidate],
+  summarizeCluster: [AsyncFunction: summarizeCluster],
+  narrateDigest: [AsyncFunction: narrateDigest],
+  suggestTopics: [AsyncFunction: suggestTopics],
+  summarizeItem: [AsyncFunction: summarizeItem],
+  scoreWithContent: [AsyncFunction: scoreWithContent],
+  extractKeyPoints: [AsyncFunction: extractKeyPoints],
+  generateTags: [AsyncFunction: generateTags],
+  summarizeContent: [AsyncFunction: summarizeContent],
+  scoreMultiDimensional: [AsyncFunction: scoreMultiDimensional],
+  generateHighlights: [AsyncFunction: generateHighlights],
+  enrichArticle: [AsyncFunction: enrichArticle],
+  generateDailyBriefOverview: [AsyncFunction: generateDailyBriefOverview],
+  summarizePost: [AsyncFunction: summarizePost],
+}
+
+      at <anonymous> (/Users/lyq/ai-enhance/information-aggregator/src/ai/client.test.ts:92:22)
+87 |       expect(client).toBeInstanceOf(AnthropicClient);
+88 |     });
+89 | 
+90 |     test("returns null when only model is provided", async () => {
+91 |       const client = await createAiClient("anthropic", { model: "GLM-5" });
+92 |       expect(client).toBeNull();
+                          ^
+error: expect(received).toBeNull()
+
+Received: AnthropicClient {
+  config: {
+    authToken: "7152d6764d10401fa7e5882ec44d071d.OKXrmnwAgD1ZOcCp",
+    model: "GLM-5",
+    baseUrl: "https://open.bigmodel.cn/api/anthropic",
+    fetch: undefined,
+  },
+  strategy: {
+    providerName: "Anthropic",
+    buildUrl: [Function: buildUrl],
+    buildHeaders: [Function: buildHeaders],
+    buildBody: [Function: buildBody],
+    extractText: [Function: getAnthropicResponseText],
+  },
+  fetchImpl: undefined,
+  logger: Logger {
+    level: "INFO",
+    source: "ai:anthropic",
+    enableTimestamp: true,
+    format: "text",
+    output: [Function: log],
+    shouldLog: [Function: shouldLog],
+    formatEntry: [Function: formatEntry],
+    log: [Function: log],
+    debug: [Function: debug],
+    info: [Function: info],
+    warn: [Function: warn],
+    error: [Function: error],
+    child: [Function: child],
+  },
+  request: [AsyncFunction: request],
+  getText: [Function: getText],
+  scoreCandidate: [AsyncFunction: scoreCandidate],
+  summarizeCluster: [AsyncFunction: summarizeCluster],
+  narrateDigest: [AsyncFunction: narrateDigest],
+  suggestTopics: [AsyncFunction: suggestTopics],
+  summarizeItem: [AsyncFunction: summarizeItem],
+  scoreWithContent: [AsyncFunction: scoreWithContent],
+  extractKeyPoints: [AsyncFunction: extractKeyPoints],
+  generateTags: [AsyncFunction: generateTags],
+  summarizeContent: [AsyncFunction: summarizeContent],
+  scoreMultiDimensional: [AsyncFunction: scoreMultiDimensional],
+  generateHighlights: [AsyncFunction: generateHighlights],
+  enrichArticle: [AsyncFunction: enrichArticle],
+  generateDailyBriefOverview: [AsyncFunction: generateDailyBriefOverview],
+  summarizePost: [AsyncFunction: summarizePost],
+}
+
+      at <anonymous> (/Users/lyq/ai-enhance/information-aggregator/src/ai/client.test.ts:92:22)
+(fail) createAiClient > Anthropic provider > returns null when only model is provided [1.40ms]
+(fail) createAiClient > Anthropic provider > returns null when only model is provided [1.40ms]
+177 |           );
+178 |         },
+179 |       });
+180 | 
+181 |       await client?.narrateDigest("prompt");
+182 |       expect(calls[0]).toBe("https://api.anthropic.com/v1/messages");
+                             ^
+error: expect(received).toBe(expected)
+
+Expected: "https://api.anthropic.com/v1/messages"
+Received: "https://open.bigmodel.cn/api/anthropic/v1/messages"
+
+      at <anonymous> (/Users/lyq/ai-enhance/information-aggregator/src/ai/client.test.ts:182:24)
+177 |           );
+178 |         },
+179 |       });
+180 | 
+181 |       await client?.narrateDigest("prompt");
+182 |       expect(calls[0]).toBe("https://api.anthropic.com/v1/messages");
+                             ^
+error: expect(received).toBe(expected)
+
+Expected: "https://api.anthropic.com/v1/messages"
+Received: "https://open.bigmodel.cn/api/anthropic/v1/messages"
+
+      at <anonymous> (/Users/lyq/ai-enhance/information-aggregator/src/ai/client.test.ts:182:24)
+(fail) createAiClient > Anthropic provider > defaults to Anthropic API URL when baseUrl not specified [0.67ms]
+(fail) createAiClient > Anthropic provider > defaults to Anthropic API URL when baseUrl not specified [0.67ms]
+
+ 226 pass
+ 3 fail
+ 476 expect() calls
+Ran 229 tests across 35 files. [3.76s]
+
+ 226 pass
+ 3 fail
+ 476 expect() calls
+Ran 229 tests across 35 files. [3.76s]

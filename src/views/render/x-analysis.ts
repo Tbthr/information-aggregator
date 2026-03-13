@@ -113,12 +113,6 @@ export function renderXAnalysisView(model: XAnalysisViewModel): string {
     }
   }
 
-  // 标签云
-  if (model.tagCloud && model.tagCloud.length > 0) {
-    lines.push("", "## 标签云", "");
-    lines.push(model.tagCloud.map((t) => `\`${t}\``).join(" "));
-  }
-
   // 页脚
   lines.push("", "---", `*生成时间: ${new Date().toLocaleString("zh-CN")}*`);
 
