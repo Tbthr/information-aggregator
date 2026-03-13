@@ -63,6 +63,12 @@ export function renderXAnalysisView(model: XAnalysisViewModel): string {
       if (post.tags && post.tags.length > 0) {
         lines.push("", `**标签**: ${post.tags.map((t) => `\`${t}\``).join(" ")}`);
       }
+
+      // 分隔线 + 完整内容
+      if (post.fullText && post.fullText.trim()) {
+        lines.push("", "---", "", "## 原文", "");
+        lines.push(post.fullText);
+      }
     }
   }
 
