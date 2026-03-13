@@ -4,8 +4,51 @@ import type { AiClient, PostSummaryResult } from "../ai/client";
 import type { RankedCandidate } from "../types/index";
 import { extractArticleContent, isExtractionSuccess } from "../pipeline/extract-content";
 import { createLogger } from "../utils/logger";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 
 const logger = createLogger("views:x-analysis");
+
+const DEBUG_X_CONTENT = process.env.DEBUG_X_CONTENT === "true";
+const DEBUG_CONTENT_DIR = "out/bird-content";
+
+/**
+ * 保存内容提取调试输出
+ */
+function saveContentDebug(
+  postId: string,
+  url: string,
+  title: string,
+  source: string,
+  content: string,
+): void {
+  if (!DEBUG_X_CONTENT) {
+    return;
+  }
+
+  try {
+    mkdirSync(DEBUG_CONTENT_DIR, { recursive: true });
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const filename = `${postId}_${timestamp}.txt`;
+    const filepath = join(DEBUG_CONTENT_DIR, filename);
+
+    const debugContent = [
+      `=== 帖子内容提取调试 ===`,
+      `URL: ${url}`,
+      `标题: ${title}`,
+      `内容来源: ${source}`,
+      `内容长度: ${content.length}`,
+      ``,
+      `=== 内容 ===`,
+      content,
+    ].join("\n");
+
+    writeFileSync(filepath, debugContent, "utf-8");
+    logger.info("Saved content debug output", { filepath, postId, source, contentLength: content.length });
+  } catch (err) {
+    logger.warn("Failed to save content debug output", { error: String(err), postId });
+  }
+}
 
 /**
  * X Analysis 帖子视图项
@@ -104,6 +147,7 @@ async function summarizePostWithContent(
   // 社交帖子类型：直接使用 normalizedText，无需 URL 提取
   if (isSocialPost(item)) {
     const content = item.normalizedText ?? "";
+    const title = item.title ?? item.normalizedTitle ?? "";
     logger.debug("Using normalizedText for social post", {
       itemId: item.id,
       source: "normalizedText",
@@ -112,13 +156,13 @@ async function summarizePostWithContent(
       contentLength: content.length,
     });
 
+    // 保存调试输出
+    saveContentDebug(item.id, url ?? "", title, "normalizedText", content);
+
     if (!content) return null;
 
     try {
-      return await aiClient.summarizePost(
-        item.title ?? item.normalizedTitle ?? "",
-        content,
-      );
+      return await aiClient.summarizePost(title, content);
     } catch (error) {
       logger.error("Failed to summarize social post", {
         itemId: item.id,
@@ -149,20 +193,26 @@ async function summarizePostWithContent(
   }
 
   // 如果没有提取到内容，使用 normalizedText 作为 fallback
+  let contentSource = "url_extraction";
   if (!content) {
     content = item.normalizedText ?? "";
+    contentSource = "url_extraction_fallback";
     logger.debug("Falling back to normalizedText after URL extraction failed", {
       itemId: item.id,
-      source: "url_extraction_fallback",
+      source: contentSource,
       contentLength: content.length,
     });
   } else {
     logger.debug("Content extracted from URL", {
       itemId: item.id,
-      source: "url_extraction",
+      source: contentSource,
       contentLength: content.length,
     });
   }
+
+  // 保存调试输出
+  const title = item.title ?? item.normalizedTitle ?? "";
+  saveContentDebug(item.id, url, title, contentSource, content);
 
   if (!content) return null;
 
