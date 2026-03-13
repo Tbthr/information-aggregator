@@ -5,6 +5,9 @@
 
 import { Readability } from "@mozilla/readability";
 import { DOMParser as LinkedomDOMParser } from "linkedom";
+import { createLogger, truncateWithLength } from "../utils/logger";
+
+const logger = createLogger("pipeline:extract-content");
 
 // 创建全局 DOMParser polyfill（如果不存在）
 if (typeof globalThis.DOMParser === "undefined") {
@@ -52,6 +55,9 @@ export async function extractArticleContent(
   } = options;
 
   const extractedAt = new Date().toISOString();
+  const startTime = Date.now();
+
+  logger.info("Extracting content", { url, timeout });
 
   try {
     // 使用 AbortController 实现超时控制
@@ -69,7 +75,14 @@ export async function extractArticleContent(
 
     clearTimeout(timeoutId);
 
+    const elapsed = Date.now() - startTime;
+
     if (!response.ok) {
+      logger.error("Content extraction HTTP error", {
+        url,
+        status: response.status,
+        elapsed,
+      });
       return {
         url,
         extractedAt,
@@ -91,6 +104,7 @@ export async function extractArticleContent(
     const article = reader.parse();
 
     if (!article) {
+      logger.warn("Content extraction parse failed", { url, elapsed });
       return {
         url,
         extractedAt,
@@ -104,6 +118,17 @@ export async function extractArticleContent(
       textContent = textContent.slice(0, maxLength) + "...";
     }
 
+    logger.info("Content extraction completed", {
+      url,
+      success: true,
+      contentLength: textContent.length,
+      elapsed,
+    });
+
+    logger.debug("Extracted content preview", {
+      preview: truncateWithLength(textContent, 200),
+    });
+
     return {
       url,
       title: article.title || undefined,
@@ -114,7 +139,15 @@ export async function extractArticleContent(
       extractedAt,
     };
   } catch (error) {
+    const elapsed = Date.now() - startTime;
     const errorMessage = error instanceof Error ? error.message : String(error);
+
+    logger.error("Content extraction failed", {
+      url,
+      error: errorMessage,
+      elapsed,
+    });
+
     return {
       url,
       extractedAt,

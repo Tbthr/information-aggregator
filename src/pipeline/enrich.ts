@@ -11,6 +11,9 @@ import type { ContentCache } from "../cache/content-cache";
 import { extractArticleContent, isExtractionSuccess } from "./extract-content";
 import { processWithConcurrency } from "../ai/concurrency";
 import type { EnrichmentResultDb, getEnrichmentResult, setExtractedContentCache, upsertEnrichmentResult } from "../db/client";
+import { createLogger } from "../utils/logger";
+
+const logger = createLogger("pipeline:enrich");
 
 /**
  * Enrich 依赖项
@@ -37,6 +40,34 @@ const DEFAULT_ENRICHMENT_CONFIG: Required<Omit<EnrichmentConfig, "enableContentE
   cacheTtl: 86400,
   maxContentLength: 10000,
 };
+
+/**
+ * 判断是否为社交帖子类型（内容已在 snippet 中，无需 URL 提取）
+ */
+function isSocialPost(candidate: RankedCandidate): boolean {
+  // 通过 contentType 或 sourceType 判断
+  if (candidate.contentType === "social_post") {
+    return true;
+  }
+  if (candidate.sourceType?.startsWith("x_")) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * 为社交帖子构造 ExtractedContent（使用已有内容）
+ */
+function createSocialPostContent(candidate: RankedCandidate): ExtractedContent {
+  const content = candidate.normalizedText ?? "";
+  return {
+    url: candidate.url ?? candidate.canonicalUrl ?? "",
+    title: candidate.title ?? candidate.normalizedTitle,
+    textContent: content,
+    length: content.length,
+    extractedAt: new Date().toISOString(),
+  };
+}
 
 /**
  * 对候选项进行深度 enrichment
@@ -82,7 +113,7 @@ export async function enrichCandidates<T extends RankedCandidate>(
       try {
         candidate.contentQualityAi = await scoreCandidate(candidate);
       } catch (error) {
-        console.error(`AI scoring failed for ${candidate.id}:`, error);
+        logger.error("AI scoring failed", { candidateId: candidate.id, error: error instanceof Error ? error.message : String(error) });
         candidate.contentQualityAi = 0;
       }
     }
@@ -97,6 +128,18 @@ export async function enrichCandidates<T extends RankedCandidate>(
   const toExtract = enriched.slice(0, contentExtractionLimit);
   const extractionPromises = toExtract.map(async (candidate) => {
     const url = candidate.url ?? candidate.canonicalUrl;
+
+    // 社交帖子：内容已在 normalizedText 中，跳过 URL 提取
+    if (isSocialPost(candidate)) {
+      logger.debug("Social post detected, using existing content", {
+        candidateId: candidate.id,
+        contentType: candidate.contentType,
+        sourceType: candidate.sourceType,
+        contentLength: candidate.normalizedText?.length ?? 0,
+      });
+      return { candidate, result: createSocialPostContent(candidate) };
+    }
+
     if (!url) {
       return { candidate, result: null };
     }
@@ -136,7 +179,7 @@ export async function enrichCandidates<T extends RankedCandidate>(
 
       return { candidate, result: extractedContent };
     } catch (error) {
-      console.error(`Content extraction failed for ${url}:`, error);
+      logger.error("Content extraction failed", { url, candidateId: candidate.id, error: error instanceof Error ? error.message : String(error) });
       return {
         candidate,
         result: {
@@ -219,7 +262,7 @@ export async function enrichCandidates<T extends RankedCandidate>(
 
           return { candidate, aiResult: aiEnrichment };
         } catch (error) {
-          console.error(`AI enrichment failed for ${candidate.id}:`, error);
+          logger.error("AI enrichment failed", { candidateId: candidate.id, error: error instanceof Error ? error.message : String(error) });
           return { candidate, aiResult: null };
         }
       }
@@ -246,7 +289,7 @@ export async function enrichCandidates<T extends RankedCandidate>(
             candidate.aiEnrichment,
           );
         } catch (error) {
-          console.error(`Failed to persist enrichment for ${candidate.id}:`, error);
+          logger.error("Failed to persist enrichment", { candidateId: candidate.id, error: error instanceof Error ? error.message : String(error) });
         }
       }
     }

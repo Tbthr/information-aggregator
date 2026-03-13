@@ -25,6 +25,7 @@ import {
   parseMultiDimensionalScore,
   parseHighlightsResult,
 } from "../utils";
+import { createLogger, truncateWithLength, maskSensitiveUrl, type Logger } from "../../utils/logger";
 
 /**
  * 请求策略接口 - 处理不同 Provider 的请求差异
@@ -46,28 +47,80 @@ export interface RequestStrategy<TConfig> {
  * 抽象基类 - 实现所有公共方法
  */
 export abstract class BaseAiClient<TConfig> implements AiClient {
+  protected readonly logger: Logger;
+
   constructor(
     protected readonly config: TConfig,
     protected readonly strategy: RequestStrategy<TConfig>,
     protected readonly fetchImpl?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
-  ) {}
+  ) {
+    // 在构造函数中初始化 logger，此时 strategy 已经可用
+    const slug = strategy.providerName.toLowerCase().replace(/[^a-z]/g, "");
+    this.logger = createLogger(`ai:${slug}`);
+  }
 
   protected async request(prompt: string): Promise<unknown> {
     const url = this.strategy.buildUrl(this.config);
-    const response = await getFetchImpl(this.fetchImpl)(url, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        ...this.strategy.buildHeaders(this.config),
-      },
-      body: JSON.stringify(this.strategy.buildBody(prompt, this.config)),
+    const maskedUrl = maskSensitiveUrl(url);
+    const body = this.strategy.buildBody(prompt, this.config);
+    const bodyStr = JSON.stringify(body);
+    const startTime = Date.now();
+
+    this.logger.info("Sending request", {
+      url: maskedUrl,
+      promptLength: prompt.length,
     });
 
-    if (!response.ok) {
-      throw new Error(`${this.strategy.providerName} request failed: ${response.status}`);
-    }
+    this.logger.debug("Request details", {
+      url: maskedUrl,
+      prompt: truncateWithLength(prompt, 200),
+      body: truncateWithLength(bodyStr, 500),
+    });
 
-    return response.json();
+    try {
+      const response = await getFetchImpl(this.fetchImpl)(url, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          ...this.strategy.buildHeaders(this.config),
+        },
+        body: bodyStr,
+      });
+
+      const elapsed = Date.now() - startTime;
+
+      if (!response.ok) {
+        this.logger.error("Request failed", {
+          url: maskedUrl,
+          status: response.status,
+          elapsed,
+        });
+        throw new Error(`${this.strategy.providerName} request failed: ${response.status}`);
+      }
+
+      const json = await response.json();
+      const text = this.strategy.extractText(json);
+
+      this.logger.info("Request completed", {
+        status: response.status,
+        responseLength: text.length,
+        elapsed,
+      });
+
+      this.logger.debug("Response details", {
+        response: truncateWithLength(JSON.stringify(json), 1000),
+      });
+
+      return json;
+    } catch (error) {
+      const elapsed = Date.now() - startTime;
+      this.logger.error("Request error", {
+        url: maskedUrl,
+        error: error instanceof Error ? error.message : String(error),
+        elapsed,
+      });
+      throw error;
+    }
   }
 
   protected getText(response: unknown): string {

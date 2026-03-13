@@ -1,4 +1,7 @@
 import type { RawItem, Source } from "../types/index";
+import { createLogger, truncateWithLength } from "../utils/logger";
+
+const logger = createLogger("adapter:rss");
 
 function decodeXml(value: string): string {
   return value
@@ -49,7 +52,43 @@ export async function collectRssSource(
   source: Source,
   fetchImpl: typeof fetch = fetch,
 ): Promise<RawItem[]> {
-  const response = await fetchImpl(source.url ?? "");
-  const xml = await response.text();
-  return parseRssItems(xml, source.id);
+  const url = source.url ?? "";
+  const startTime = Date.now();
+
+  logger.info("Fetching RSS feed", { url, sourceId: source.id });
+
+  try {
+    const response = await fetchImpl(url);
+    const elapsed = Date.now() - startTime;
+    const xml = await response.text();
+
+    if (!response.ok) {
+      logger.error("RSS fetch failed", { url, status: response.status, elapsed });
+      throw new Error(`RSS fetch failed: ${response.status}`);
+    }
+
+    const contentType = response.headers.get("content-type") ?? "unknown";
+
+    logger.info("RSS fetch completed", {
+      url,
+      status: response.status,
+      contentType,
+      size: xml.length,
+      elapsed,
+    });
+
+    logger.debug("RSS response preview", {
+      preview: truncateWithLength(xml, 500),
+    });
+
+    return parseRssItems(xml, source.id);
+  } catch (error) {
+    const elapsed = Date.now() - startTime;
+    logger.error("RSS fetch error", {
+      url,
+      error: error instanceof Error ? error.message : String(error),
+      elapsed,
+    });
+    throw error;
+  }
 }

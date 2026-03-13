@@ -1,4 +1,7 @@
 import type { RawItem, Source } from "../types/index";
+import { createLogger, truncateWithLength } from "../utils/logger";
+
+const logger = createLogger("adapter:json-feed");
 
 interface JsonFeedItem {
   id?: string;
@@ -42,7 +45,44 @@ export async function collectJsonFeedSource(
   source: Source,
   fetchImpl: typeof fetch = fetch,
 ): Promise<RawItem[]> {
-  const response = await fetchImpl(source.url ?? "");
-  const payload = await response.json();
-  return parseJsonFeedItems(payload, source.id);
+  const url = source.url ?? "";
+  const startTime = Date.now();
+
+  logger.info("Fetching JSON Feed", { url, sourceId: source.id });
+
+  try {
+    const response = await fetchImpl(url);
+    const elapsed = Date.now() - startTime;
+
+    if (!response.ok) {
+      logger.error("JSON Feed fetch failed", { url, status: response.status, elapsed });
+      throw new Error(`JSON Feed fetch failed: ${response.status}`);
+    }
+
+    const payload = await response.json();
+    const contentType = response.headers.get("content-type") ?? "unknown";
+    const responseStr = JSON.stringify(payload);
+
+    logger.info("JSON Feed fetch completed", {
+      url,
+      status: response.status,
+      contentType,
+      size: responseStr.length,
+      elapsed,
+    });
+
+    logger.debug("JSON Feed response preview", {
+      preview: truncateWithLength(responseStr, 500),
+    });
+
+    return parseJsonFeedItems(payload, source.id);
+  } catch (error) {
+    const elapsed = Date.now() - startTime;
+    logger.error("JSON Feed fetch error", {
+      url,
+      error: error instanceof Error ? error.message : String(error),
+      elapsed,
+    });
+    throw error;
+  }
 }

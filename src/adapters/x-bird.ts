@@ -1,4 +1,7 @@
 import type { RawItem, Source } from "../types/index";
+import { createLogger, maskSensitiveArgs, truncateWithLength } from "../utils/logger";
+
+const logger = createLogger("adapter:bird");
 
 interface BirdSourceConfig {
   birdMode?: string;
@@ -291,6 +294,16 @@ function parseBirdItems(payload: string, source: Source): RawItem[] {
 export async function collectXBirdSource(
   source: Source,
   execImpl: (command: string[]) => Promise<string> = async (command) => {
+    const maskedCommand = maskSensitiveArgs(command);
+    const startTime = Date.now();
+
+    logger.info("Executing bird CLI", {
+      command: maskedCommand.join(" "),
+      sourceId: source.id,
+    });
+
+    logger.debug("Full command args", { args: maskedCommand });
+
     const proc = Bun.spawn(command, {
       stdout: "pipe",
       stderr: "pipe",
@@ -298,9 +311,29 @@ export async function collectXBirdSource(
     const output = await new Response(proc.stdout).text();
     const error = await new Response(proc.stderr).text();
     const exitCode = await proc.exited;
+    const elapsed = Date.now() - startTime;
+
     if (exitCode !== 0) {
+      logger.error("bird CLI failed", {
+        command: maskedCommand.join(" "),
+        exitCode,
+        stderr: truncateWithLength(error, 500),
+        elapsed,
+      });
       throw new Error(error || `bird CLI exited with status ${exitCode}`);
     }
+
+    logger.info("bird CLI completed", {
+      command: maskedCommand.join(" "),
+      exitCode,
+      outputSize: output.length,
+      elapsed,
+    });
+
+    logger.debug("bird CLI output preview", {
+      preview: truncateWithLength(output, 500),
+    });
+
     return output;
   },
 ): Promise<RawItem[]> {

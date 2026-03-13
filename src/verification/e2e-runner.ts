@@ -5,6 +5,9 @@ import { loadAllPacks } from "../config/load-pack";
 import { buildViewModel, renderViewMarkdown } from "../views/registry";
 import { createAiClient } from "../ai/providers";
 import type { AiClient } from "../ai/types";
+import { createLogger } from "../utils/logger";
+
+const logger = createLogger("e2e");
 
 // 确保 out 目录存在
 const outDir = resolve(process.cwd(), "out");
@@ -17,18 +20,18 @@ async function createAiClientForE2e(): Promise<AiClient | null> {
   // 优先尝试 Anthropic
   const anthropic = await createAiClient("anthropic");
   if (anthropic) {
-    console.log("Using Anthropic AI client");
+    logger.info("Using Anthropic AI client");
     return anthropic;
   }
 
   // 回退到 Gemini
   const gemini = await createAiClient("gemini");
   if (gemini) {
-    console.log("Using Gemini AI client");
+    logger.info("Using Gemini AI client");
     return gemini;
   }
 
-  console.log("No AI client configured (set ANTHROPIC_AUTH_TOKEN or GEMINI_API_KEY)");
+  logger.warn("No AI client configured (set ANTHROPIC_AUTH_TOKEN or GEMINI_API_KEY)");
   return null;
 }
 
@@ -42,7 +45,9 @@ function probeLooksHealthy(markdown: string): boolean {
 }
 
 // 测试 daily-brief view
-console.log("Running daily-brief probe with test_daily pack...");
+logger.info("Running daily-brief probe", { packIds: ["test_daily"], viewId: "daily-brief", window: "24h" });
+const dailyStartTime = Date.now();
+
 const dailyResult = await runQuery({
   packIds: ["test_daily"],
   viewId: "daily-brief",
@@ -58,16 +63,18 @@ const dailyMarkdown = renderViewMarkdown(
 
 // 写入到 out 目录
 writeFileSync(resolve(outDir, "e2e-daily-brief.md"), dailyMarkdown);
-console.log("Written: out/e2e-daily-brief.md");
+logger.info("Written output file", { path: "out/e2e-daily-brief.md", size: dailyMarkdown.length });
 
 if (!probeLooksHealthy(dailyMarkdown)) {
-  console.error("Daily-brief probe failed.");
+  logger.error("Daily-brief probe failed", { reason: "No links found in output" });
   process.exit(1);
 }
-console.log("Daily-brief probe passed.");
+logger.info("Daily-brief probe passed", { elapsed: Date.now() - dailyStartTime });
 
 // 测试 x-analysis view
-console.log("Running x-analysis probe with test_x_analysis pack...");
+logger.info("Running x-analysis probe", { packIds: ["test_x_analysis"], viewId: "x-analysis", window: "all" });
+const xStartTime = Date.now();
+
 const xResult = await runQuery({
   packIds: ["test_x_analysis"],
   viewId: "x-analysis",
@@ -83,12 +90,12 @@ const xMarkdown = renderViewMarkdown(
 
 // 写入到 out 目录
 writeFileSync(resolve(outDir, "e2e-x-analysis.md"), xMarkdown);
-console.log("Written: out/e2e-x-analysis.md");
+logger.info("Written output file", { path: "out/e2e-x-analysis.md", size: xMarkdown.length });
 
 if (!probeLooksHealthy(xMarkdown)) {
-  console.error("X-analysis probe failed.");
+  logger.error("X-analysis probe failed", { reason: "No links found in output" });
   process.exit(1);
 }
-console.log("X-analysis probe passed.");
+logger.info("X-analysis probe passed", { elapsed: Date.now() - xStartTime });
 
-console.log("All e2e probes passed.");
+logger.info("All e2e probes passed");

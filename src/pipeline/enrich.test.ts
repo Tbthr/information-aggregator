@@ -284,4 +284,108 @@ describe("enrichCandidates", () => {
       expect(enriched[1]?.aiEnrichment).toBeDefined();
     });
   });
+
+  describe("社交帖子处理", () => {
+    test("社交帖子跳过 URL 提取，直接使用已有内容", async () => {
+      let fetchCalls = 0;
+      const mockFetch = async () => {
+        fetchCalls++;
+        return new Response("<html><body><p>Error page</p></body></html>", { status: 500 });
+      };
+
+      const candidates: RankedCandidate[] = [
+        {
+          id: "x1",
+          title: "X Post Title",
+          url: "https://x.com/user/status/123",
+          normalizedTitle: "X Post Title",
+          normalizedText: "This is the full content of the X post from bird CLI, it should be long enough to pass validation checks.",
+          contentType: "social_post",
+          sourceType: "x_home",
+          contentQualityAi: 0,
+          sourceWeightScore: 1,
+          freshnessScore: 1,
+          engagementScore: 0,
+          topicMatchScore: 0,
+        },
+      ];
+
+      const enriched = await enrichCandidates(candidates, {
+        enrichmentConfig: {},
+        fetchImpl: mockFetch as unknown as typeof fetch,
+      });
+
+      // 不应该调用 fetch
+      expect(fetchCalls).toBe(0);
+      // 应该使用已有内容
+      expect(enriched[0]?.extractedContent?.textContent).toContain("This is the full content of the X post");
+      expect(enriched[0]?.extractedContent?.error).toBeUndefined();
+    });
+
+    test("sourceType 为 x_ 开头的帖子也跳过 URL 提取", async () => {
+      let fetchCalls = 0;
+      const mockFetch = async () => {
+        fetchCalls++;
+        return new Response("<html><body><p>Error</p></body></html>", { status: 500 });
+      };
+
+      const candidates: RankedCandidate[] = [
+        {
+          id: "x2",
+          title: "X List Post",
+          url: "https://x.com/user/status/456",
+          normalizedTitle: "X List Post",
+          normalizedText: "Content from X list timeline with enough characters to be valid for processing.",
+          sourceType: "x_list",
+          contentQualityAi: 0,
+          sourceWeightScore: 1,
+          freshnessScore: 1,
+          engagementScore: 0,
+          topicMatchScore: 0,
+        },
+      ];
+
+      const enriched = await enrichCandidates(candidates, {
+        enrichmentConfig: {},
+        fetchImpl: mockFetch as unknown as typeof fetch,
+      });
+
+      expect(fetchCalls).toBe(0);
+      expect(enriched[0]?.extractedContent?.textContent).toContain("Content from X list timeline");
+    });
+
+    test("社交帖子可以进行 AI 增强", async () => {
+      const mockAiClient = {
+        scoreWithContent: async () => 8.5,
+        extractKeyPoints: async () => ["Point 1", "Point 2"],
+        generateTags: async () => ["tag1", "tag2"],
+      };
+
+      const candidates: RankedCandidate[] = [
+        {
+          id: "x3",
+          title: "X Post with AI",
+          url: "https://x.com/user/status/789",
+          normalizedTitle: "X Post with AI",
+          normalizedText: "This is a social post that should be processed by AI for enrichment and quality scoring purposes.",
+          contentType: "social_post",
+          contentQualityAi: 0,
+          sourceWeightScore: 1,
+          freshnessScore: 1,
+          engagementScore: 0,
+          topicMatchScore: 0,
+        },
+      ];
+
+      const enriched = await enrichCandidates(candidates, {
+        enrichmentConfig: {},
+        aiClient: mockAiClient as any,
+      });
+
+      expect(enriched[0]?.extractedContent?.textContent).toContain("This is a social post");
+      expect(enriched[0]?.aiEnrichment?.score).toBe(8.5);
+      expect(enriched[0]?.aiEnrichment?.keyPoints).toEqual(["Point 1", "Point 2"]);
+      expect(enriched[0]?.aiEnrichment?.tags).toEqual(["tag1", "tag2"]);
+    });
+  });
 });

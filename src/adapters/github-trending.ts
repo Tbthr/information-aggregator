@@ -1,4 +1,7 @@
 import type { RawItem, Source } from "../types/index";
+import { createLogger, truncateWithLength } from "../utils/logger";
+
+const logger = createLogger("adapter:github-trending");
 
 interface GitHubTrendingMeta {
   stars?: string;
@@ -169,41 +172,83 @@ export async function collectGitHubTrendingSource(
   fetchImpl: typeof fetch = fetch,
 ): Promise<RawItem[]> {
   const url = source.url ?? "https://github.com/trending";
+  const startTime = Date.now();
+
+  logger.info("Fetching GitHub Trending", { url, sourceId: source.id });
 
   try {
     const response = await fetchImpl(url, {
       signal: AbortSignal.timeout(15000), // 15 秒超时
     });
 
+    const elapsed = Date.now() - startTime;
+
     if (!response.ok) {
+      logger.error("GitHub Trending fetch failed", {
+        url,
+        status: response.status,
+        elapsed,
+      });
       throw new Error(`GitHub Trending returned ${response.status}: ${response.statusText}`);
     }
 
     const contentType = response.headers.get("content-type") ?? "";
     if (!contentType.includes("text/html")) {
+      logger.error("GitHub Trending unexpected content type", {
+        url,
+        contentType,
+        elapsed,
+      });
       throw new Error(`GitHub Trending returned unexpected content type: ${contentType}`);
     }
 
     const html = await response.text();
 
     if (html.length === 0) {
+      logger.error("GitHub Trending empty response", { url, elapsed });
       throw new Error("GitHub Trending returned empty response");
     }
 
     // 验证是否包含预期的 article 元素
     if (!html.includes("<article")) {
+      logger.error("GitHub Trending HTML structure changed", { url, elapsed });
       throw new Error("GitHub Trending HTML structure changed: no <article> elements found");
     }
 
+    logger.info("GitHub Trending fetch completed", {
+      url,
+      status: response.status,
+      size: html.length,
+      elapsed,
+    });
+
+    logger.debug("GitHub Trending response preview", {
+      preview: truncateWithLength(html, 500),
+    });
+
     return parseGitHubTrendingHtml(html, source.id);
   } catch (error) {
+    const elapsed = Date.now() - startTime;
+
     // 区分不同类型的错误
     if (error instanceof TypeError && error.message.includes("fetch")) {
+      logger.error("GitHub Trending fetch network error", {
+        url,
+        error: error.message,
+        elapsed,
+      });
       throw new Error(`Failed to fetch GitHub Trending: ${error.message}`);
     }
     if (error instanceof Error && error.name === "AbortError") {
+      logger.error("GitHub Trending request timeout", { url, elapsed });
       throw new Error("GitHub Trending request timed out after 15 seconds");
     }
+
+    logger.error("GitHub Trending fetch error", {
+      url,
+      error: error instanceof Error ? error.message : String(error),
+      elapsed,
+    });
     throw error;
   }
 }
