@@ -74,6 +74,7 @@ export interface XAnalysisArticle {
  * 引用帖子
  */
 export interface XAnalysisQuote {
+  id?: string;
   text?: string;
   author?: string;
   url?: string;
@@ -83,6 +84,7 @@ export interface XAnalysisQuote {
  * Thread 项
  */
 export interface XAnalysisThreadItem {
+  id?: string;
   text?: string;
   author?: string;
 }
@@ -219,6 +221,7 @@ function extractQuote(metadataJson: string | undefined): XAnalysisQuote | undefi
     if (!quote) return undefined;
 
     return {
+      id: typeof quote.id === "string" ? quote.id : undefined,
       text: typeof quote.text === "string" ? quote.text : undefined,
       author: typeof quote.author === "string" ? quote.author : undefined,
       url: typeof quote.url === "string" ? quote.url : undefined,
@@ -240,6 +243,7 @@ function extractThread(metadataJson: string | undefined): XAnalysisThreadItem[] 
     if (!thread || !Array.isArray(thread) || thread.length === 0) return undefined;
 
     return thread.map((t) => ({
+      id: typeof t.id === "string" ? t.id : undefined,
       text: typeof t.text === "string" ? t.text : undefined,
       author: typeof t.author === "string" ? t.author : undefined,
     }));
