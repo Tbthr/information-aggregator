@@ -9,6 +9,8 @@ import { parseRunArgs, validateRunArgs } from "../query/parse-cli";
 import { runQuery } from "../query/run-query";
 import { renderQueryJson } from "../render/json";
 import { buildViewModel, renderViewMarkdown } from "../views/registry";
+import { archiveCollectCommand, archiveStatsCommand } from "./commands/archive";
+import { serveCommand } from "./commands/serve";
 
 async function main(): Promise<void> {
   const parsed = parseCliArgs(process.argv.slice(2));
@@ -78,6 +80,28 @@ async function main(): Promise<void> {
 
   if (parsed.command === "auth status") {
     await showAuthStatus();
+    return;
+  }
+
+  if (parsed.command === "archive collect") {
+    await archiveCollectCommand(parsed.packIds ?? [], {
+      dbPath: parsed.dbPath,
+    });
+    return;
+  }
+
+  if (parsed.command === "archive stats") {
+    await archiveStatsCommand({
+      dbPath: parsed.dbPath,
+    });
+    return;
+  }
+
+  if (parsed.command === "serve") {
+    await serveCommand({
+      port: parsed.port,
+      dbPath: parsed.dbPath,
+    });
     return;
   }
 

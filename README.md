@@ -267,6 +267,59 @@ bun src/cli/main.ts config validate
 bun src/cli/main.ts sources list
 ```
 
+### API 服务
+
+```bash
+# 启动 API 服务器（默认端口 3000）
+bun src/cli/main.ts serve
+
+# 指定端口
+bun src/cli/main.ts serve --port 8080
+
+# 指定数据库路径
+bun src/cli/main.ts serve --db custom/archive.db
+```
+
+**API 端点**：
+
+| 端点 | 说明 |
+|------|------|
+| `GET /api/items` | 查询内容项列表 |
+| `GET /api/items/:id` | 获取单个内容项 |
+| `GET /api/packs` | 获取 Pack 列表 |
+
+**查询参数**（`/api/items`）：
+
+| 参数 | 说明 | 示例 |
+|------|------|------|
+| `packs` | Pack ID 列表（逗号分隔） | `tech-news,ai-daily` |
+| `sources` | 数据源 ID 过滤 | `source1,source2` |
+| `window` | 时间窗口 | `1h`, `6h`, `24h`, `7d`, `30d`, `all` |
+| `sort` | 排序方式 | `score`, `recent`, `engagement` |
+| `search` | 搜索关键词 | `OpenAI` |
+| `page` | 页码 | `1` |
+| `pageSize` | 每页数量 | `20` |
+
+### 前端 Web UI
+
+```bash
+# 启动前端开发服务器
+cd frontend && bun install && bun dev
+
+# 或从项目根目录
+bun --cwd frontend dev
+```
+
+前端访问地址：http://localhost:5173
+
+**功能**：
+- Pack 选择器（多选）
+- 时间窗口过滤器（1h/6h/24h/7d/30d/all）
+- 排序方式（score/recent/engagement）
+- 关键词搜索（300ms 防抖）
+- 数据源过滤器
+- 分页导航
+
 ### 查询命令
 
 ```bash
@@ -349,20 +402,50 @@ bun src/cli/main.ts run --pack tech-news --view daily-brief --window 24h
 bun src/cli/main.ts run --pack karpathy-picks --view daily-brief --window 7d
 ```
 
+### 分数计算
+
+API 返回的每条内容项都包含动态计算的分数。分数公式：
+
+```
+finalScore =
+  sourceWeight × 0.3 +
+  freshness × 0.25 +
+  engagement × 0.1 +
+  topicMatch × 0.25 +
+  contentQuality × 0.1
+```
+
+| 维度 | 权重 | 说明 |
+|------|------|------|
+| sourceWeight | 30% | 数据源权重（当前固定为 1） |
+| freshness | 25% | 新鲜度，越新分数越高 |
+| engagement | 10% | 互动数据（点赞、评论等） |
+| topicMatch | 25% | 主题匹配度（基于 Pack keywords） |
+| contentQuality | 10% | 内容质量（当前默认 0.5） |
+
+**新鲜度衰减规则**：
+
+| 时间范围 | 分数范围 |
+|----------|----------|
+| 1 小时内 | 1.0 |
+| 24 小时内 | 0.8 → 1.0（线性衰减） |
+| 7 天内 | 0.5 → 0.8（线性衰减） |
+| 更早 | 0.1 → 0.5（按周衰减） |
+
 ## 后续计划
 
 以下内容已经进入持续迭代路线图：
 
-- 排序逻辑重构
+- Source 过滤交互（前端 Sidebar）
+- URL 状态同步（支持分享链接）
 - 更稳的 `github_trending` source 治理
 - feedback loop 与自适应排序
-- Web UI
 - 多用户能力
 - embedding / vector search
 
 ## 当前实现状态
 
-截至 2026-03-13，仓库当前状态为：
+截至 2026-03-14，仓库当前状态为：
 
 - 已完成：项目脚手架与 CLI
 - 已完成：本地 YAML 配置加载与校验
@@ -379,4 +462,7 @@ bun src/cli/main.ts run --pack karpathy-picks --view daily-brief --window 7d
 - 已完成：raw items、normalized items、clusters 的 end-to-end 持久化
 - 已完成：深度 enrichment（正文提取、AI 关键点提取、标签生成）
 - 已完成：Enrichment 结果持久化（`enrichment_results`、`extracted_content_cache` 表）
-- 尚未实现：feedback learning、Web UI、多用户能力
+- **已完成：HTTP API 服务（`serve` 命令）**
+- **已完成：前端 Web UI（React + Vite + Tailwind）**
+- **已完成：API 分数计算模块**
+- 尚未实现：Source 过滤交互、URL 状态同步、feedback learning、多用户能力

@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import YAML from "yaml";
 import type { AuthConfig } from "../types/index";
@@ -61,4 +61,38 @@ export function mergeAuthConfig<T extends { configJson?: string }>(
   const sourceConfig = JSON.parse(source.configJson || "{}");
   const merged = { ...sourceConfig, ...authConfig };
   return { ...source, configJson: JSON.stringify(merged) };
+}
+
+/**
+ * 同步加载所有 auth 配置（用于 CLI 命令）
+ * 注意：这是简化的同步版本，假设配置文件已经存在
+ * @param authDir auth 配置目录路径
+ * @returns auth 配置映射（按 authKey 分组）
+ */
+export function loadAllAuthConfigs(authDir: string = "config/auth"): Record<string, Record<string, unknown>> {
+  const result: Record<string, Record<string, unknown>> = {};
+
+  // 尝试同步读取目录
+  try {
+    const files = require("fs").readdirSync(resolve(process.cwd(), authDir));
+    for (const file of files) {
+      if (file.endsWith(".yaml") || file.endsWith(".yml")) {
+        const authKey = file.replace(/\.(yaml|yml)$/, "");
+        const filePath = resolve(authDir, file);
+        try {
+          const content = require("fs").readFileSync(filePath, "utf8");
+          const parsed = YAML.parse(content) as Record<string, unknown> | null;
+          if (parsed?.config) {
+            result[authKey] = parsed.config as Record<string, unknown>;
+          }
+        } catch {
+          // 忽略解析错误
+        }
+      }
+    }
+  } catch {
+    // 目录不存在或无法读取，返回空对象
+  }
+
+  return result;
 }
