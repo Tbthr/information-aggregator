@@ -45,6 +45,28 @@ curl "http://localhost:3000/api/packs?includeStats=true" | jq '.data.packs[0].id
 curl "http://localhost:3000/api/items?window=all&pageSize=5" | jq '.data.items[].score'
 ```
 
+## 归档命令验证
+
+验证数据归档功能：
+
+```bash
+# 归档测试数据
+bun src/cli/main.ts archive collect --pack tech-news
+
+# 查看归档统计
+bun src/cli/main.ts archive stats
+# 期望输出：
+# Archive Statistics:
+#   Total items: N
+#   Oldest item: <timestamp>
+#   Newest item: <timestamp>
+# By Source:
+#   <source_id>: <count>
+
+# 指定自定义数据库路径
+bun src/cli/main.ts archive collect --pack tech-news --db test-archive.db
+```
+
 ## 前端验证
 
 1. 启动 API 服务和前端开发服务器：

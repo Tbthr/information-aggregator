@@ -15,7 +15,9 @@ export function createDb(path: string): Database {
   try {
     db.exec(readFileSync(migration002, "utf8"));
   } catch (error) {
-    if (!error?.toString().includes("already exists")) {
+    // 如果表/字段已存在，忽略错误
+    const msg = error?.toString() || "";
+    if (!msg.includes("already exists") && !msg.includes("duplicate column")) {
       console.warn("Migration 002 warning:", error);
     }
   }
