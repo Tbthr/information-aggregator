@@ -33,6 +33,18 @@ export function createDb(path: string): Database {
     }
   }
 
+  // 应用 editorial migration
+  const migration004 = join(__dirname, "migrations", "004_editorial.sql");
+  try {
+    db.exec(readFileSync(migration004, "utf8"));
+  } catch (error) {
+    // 如果表/字段已存在，忽略错误
+    const msg = error?.toString() || "";
+    if (!msg.includes("already exists") && !msg.includes("duplicate column")) {
+      console.warn("Migration 004 warning:", error);
+    }
+  }
+
   return db;
 }
 
