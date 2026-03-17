@@ -609,7 +609,7 @@ Focus: 代码整理，错误处理，遵循项目模式。
   - _Requirements: Edge Cases > 空内容_
   - _Design: Edge Cases_
 
-- [ ] 2.4 [VERIFY] Quality checkpoint: refactoring
+- [x] 2.4 [VERIFY] Quality checkpoint: refactoring
   - **Do**: Run type check and lint
   - **Verify**: `bun run check && bun run lint`
   - **Done when**: No errors
@@ -621,7 +621,7 @@ Focus: 代码整理，错误处理，遵循项目模式。
 
 Focus: 测试覆盖（单元 + 集成 + E2E）。
 
-- [ ] 3.1 [P] 单元测试: policy types
+- [x] 3.1 [P] 单元测试: policy types
   - **Do**:
     1. 创建 `src/types/policy.test.ts`
     2. 测试 PolicyMode 类型约束
