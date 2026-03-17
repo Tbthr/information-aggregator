@@ -2,6 +2,9 @@
  * API 响应类型定义
  */
 
+import type { PolicyMode } from '../types/policy.js';
+import type { FilterJudgment } from '../types/ai-response.js';
+
 // 分页元数据
 export interface PaginationMeta {
   total: number;
@@ -84,6 +87,13 @@ export interface ItemData {
     keyPoints?: string[];
     tags?: string[];
     summary?: string;
+  };
+  policy?: {
+    mode: PolicyMode;
+  };
+  filterJudgment?: FilterJudgment;
+  saved?: {
+    savedAt: string;
   };
   metadata: Record<string, unknown>;
 }
