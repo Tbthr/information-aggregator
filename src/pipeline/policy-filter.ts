@@ -1,0 +1,220 @@
+/**
+ * Policy Filter 阶段
+ * 根据 Pack/Source 的策略过滤候选条目
+ */
+
+import type { RankedCandidate, SourcePack } from "../types/index";
+import type { SourcePolicy } from "../types/policy";
+import type { AiClient } from "../ai/types";
+import type { FilterJudgment } from "../types/ai-response";
+
+/**
+ * Policy Filter 配置
+ */
+export interface PolicyFilterConfig {
+  /** AI 客户端（可选，用于 filter_then_assist 模式） */
+  aiClient?: AiClient;
+  /** 数据库实例（可选，用于缓存） */
+  db?: unknown;
+  /** 批处理大小（默认 10） */
+  batchSize?: number;
+  /** 并发数（默认 3） */
+  concurrency?: number;
+}
+
+/**
+ * Policy Filter 统计信息
+ */
+export interface PolicyFilterStats {
+  /** 总输入条目数 */
+  totalInput: number;
+  /** assist_only 模式保留数 */
+  assistOnlyKept: number;
+  /** filter_then_assist 模式处理数 */
+  filterThenAssistProcessed: number;
+  /** filter_then_assist 模式过滤掉数 */
+  filterThenAssistFiltered: number;
+  /** 无策略条目数 */
+  noPolicyCount: number;
+  /** AI 调用次数 */
+  aiCallCount: number;
+  /** 处理耗时（毫秒） */
+  elapsedMs: number;
+}
+
+/**
+ * Policy Filter 结果
+ */
+export interface PolicyFilterResult {
+  /** 保留的候选条目 */
+  kept: RankedCandidate[];
+  /** 过滤掉的候选条目 */
+  filtered: RankedCandidate[];
+  /** 统计信息 */
+  stats: PolicyFilterStats;
+}
+
+/**
+ * 带判断结果的候选条目
+ */
+interface CandidateWithJudgment {
+  candidate: RankedCandidate;
+  judgment?: FilterJudgment;
+}
+
+/**
+ * 按策略过滤候选条目
+ *
+ * @param candidates - 候选条目列表
+ * @param pack - 当前 Pack 信息
+ * @param sourcePolicyMap - Source ID 到策略的映射
+ * @param config - 过滤配置
+ * @returns 过滤结果
+ */
+export async function policyFilterCandidates(
+  candidates: RankedCandidate[],
+  pack: SourcePack,
+  sourcePolicyMap: Map<string, SourcePolicy>,
+  config: PolicyFilterConfig = {}
+): Promise<PolicyFilterResult> {
+  const startTime = Date.now();
+  const { aiClient, batchSize = 10 } = config;
+
+  // 初始化统计
+  const stats: PolicyFilterStats = {
+    totalInput: candidates.length,
+    assistOnlyKept: 0,
+    filterThenAssistProcessed: 0,
+    filterThenAssistFiltered: 0,
+    noPolicyCount: 0,
+    aiCallCount: 0,
+    elapsedMs: 0,
+  };
+
+  // 空输入快速返回
+  if (candidates.length === 0) {
+    stats.elapsedMs = Date.now() - startTime;
+    return { kept: [], filtered: [], stats };
+  }
+
+  // 按 sourceId 分组
+  const bySource = groupBySource(candidates);
+
+  // 处理结果
+  const kept: RankedCandidate[] = [];
+  const filtered: RankedCandidate[] = [];
+
+  // 处理每个 source 组
+  for (const [sourceId, groupCandidates] of bySource) {
+    const policy = sourcePolicyMap.get(sourceId);
+
+    if (!policy) {
+      // 无策略：保留所有条目
+      stats.noPolicyCount += groupCandidates.length;
+      kept.push(...groupCandidates);
+      continue;
+    }
+
+    if (policy.mode === "assist_only") {
+      // assist_only 模式：直接保留所有条目
+      stats.assistOnlyKept += groupCandidates.length;
+      kept.push(...groupCandidates);
+    } else if (policy.mode === "filter_then_assist") {
+      // filter_then_assist 模式：调用 AI 过滤
+      stats.filterThenAssistProcessed += groupCandidates.length;
+
+      if (!aiClient) {
+        // 无 AI 客户端：保留所有条目（降级处理）
+        kept.push(...groupCandidates);
+        continue;
+      }
+
+      // 批量处理
+      const batches = chunk(groupCandidates, batchSize);
+      for (const batch of batches) {
+        const result = await processFilterThenAssist(
+          batch,
+          pack,
+          aiClient
+        );
+        stats.aiCallCount++;
+
+        for (const item of result) {
+          if (item.judgment?.keepDecision) {
+            kept.push(item.candidate);
+          } else {
+            filtered.push(item.candidate);
+            stats.filterThenAssistFiltered++;
+          }
+        }
+      }
+    }
+  }
+
+  stats.elapsedMs = Date.now() - startTime;
+
+  return { kept, filtered, stats };
+}
+
+/**
+ * 处理 filter_then_assist 模式的一批候选条目
+ */
+async function processFilterThenAssist(
+  candidates: RankedCandidate[],
+  pack: SourcePack,
+  aiClient: AiClient
+): Promise<CandidateWithJudgment[]> {
+  // 构建 FilterItem 列表
+  const filterItems = candidates.map((c, index) => ({
+    index,
+    title: c.title || c.normalizedTitle || "",
+    snippet: c.normalizedText || "",
+    url: c.url || c.canonicalUrl || "",
+  }));
+
+  // 构建 Pack 上下文
+  const packContext = {
+    name: pack.name,
+    keywords: pack.keywords || [],
+    description: pack.description,
+  };
+
+  // 调用 AI 批量过滤
+  const judgments = await aiClient.batchFilter(filterItems, packContext);
+
+  // 合并结果
+  return candidates.map((candidate, index) => ({
+    candidate,
+    judgment: judgments[index],
+  }));
+}
+
+/**
+ * 按 sourceId 分组
+ */
+function groupBySource(
+  candidates: RankedCandidate[]
+): Map<string, RankedCandidate[]> {
+  const result = new Map<string, RankedCandidate[]>();
+
+  for (const candidate of candidates) {
+    const sourceId = candidate.sourceId || "unknown";
+    if (!result.has(sourceId)) {
+      result.set(sourceId, []);
+    }
+    result.get(sourceId)!.push(candidate);
+  }
+
+  return result;
+}
+
+/**
+ * 数组分块
+ */
+function chunk<T>(array: T[], size: number): T[][] {
+  const result: T[][] = [];
+  for (let i = 0; i < array.length; i += size) {
+    result.push(array.slice(i, i + size));
+  }
+  return result;
+}
