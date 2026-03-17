@@ -68,6 +68,23 @@ export function isGeminiResponse(value: unknown): value is GeminiResponse {
   return Array.isArray(value.candidates);
 }
 
+/**
+ * AI 过滤判断结果
+ * 用于记录 AI 对条目是否保留的判断及其理由
+ */
+export interface FilterJudgment {
+  /** 是否保留该条目 */
+  keepDecision: boolean;
+  /** 保留/丢弃的理由 */
+  keepReason: string;
+  /** 读者收益（可选）：说明该条目对读者的价值 */
+  readerBenefit?: string;
+  /** 阅读提示（可选）：帮助读者快速理解条目内容的提示 */
+  readingHint?: string;
+  /** 判断时间戳（ISO 8601 格式） */
+  judgedAt: string;
+}
+
 // 内部使用的类型守卫
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
