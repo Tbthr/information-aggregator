@@ -120,7 +120,6 @@ export interface PackInfo {
   id: string;
   name: string;
   description: string | null;
-  keywords: string[];
   sourceCount: number;
   itemCount: number;
   latestItem: string | null;

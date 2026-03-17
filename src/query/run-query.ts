@@ -27,9 +27,6 @@ export interface QueryArgs {
   viewId?: string;
   window: string;
 }
-import { parseRawItemMetadata } from "../utils/metadata";
-import { createContentCache, type ContentCache } from "../cache/content-cache";
-import { resolveSelection, type ResolvedSelection, type ResolvedSource } from "./resolve-selection";
 
 export interface RunQueryDependencies {
   aiClient?: AiClient | null;

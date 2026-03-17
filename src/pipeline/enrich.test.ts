@@ -10,9 +10,9 @@ describe("enrichCandidates", () => {
 
       const enriched = await enrichCandidates(
         [
-          { id: "a", title: "A", normalizedTitle: "a", normalizedText: "a", contentQualityAi: 0, sourceWeightScore: 1, freshnessScore: 1, engagementScore: 0, topicMatchScore: 0 },
-          { id: "b", title: "B", normalizedTitle: "b", normalizedText: "b", contentQualityAi: 0, sourceWeightScore: 1, freshnessScore: 1, engagementScore: 0, topicMatchScore: 0 },
-          { id: "c", title: "C", normalizedTitle: "c", normalizedText: "c", contentQualityAi: 0, sourceWeightScore: 1, freshnessScore: 1, engagementScore: 0, topicMatchScore: 0 },
+          { id: "a", title: "A", normalizedTitle: "a", normalizedText: "a", contentQualityAi: 0, sourceWeightScore: 1, freshnessScore: 1, engagementScore: 0 },
+          { id: "b", title: "B", normalizedTitle: "b", normalizedText: "b", contentQualityAi: 0, sourceWeightScore: 1, freshnessScore: 1, engagementScore: 0 },
+          { id: "c", title: "C", normalizedTitle: "c", normalizedText: "c", contentQualityAi: 0, sourceWeightScore: 1, freshnessScore: 1, engagementScore: 0 },
         ],
         {
           limit: 2,
@@ -30,7 +30,7 @@ describe("enrichCandidates", () => {
 
     test("没有 scoreCandidate 时不执行评分", async () => {
       const candidates: RankedCandidate[] = [
-        { id: "a", title: "A", normalizedTitle: "a", normalizedText: "a", contentQualityAi: 0, sourceWeightScore: 1, freshnessScore: 1, engagementScore: 0, topicMatchScore: 0 },
+        { id: "a", title: "A", normalizedTitle: "a", normalizedText: "a", contentQualityAi: 0, sourceWeightScore: 1, freshnessScore: 1, engagementScore: 0 },
       ];
 
       const enriched = await enrichCandidates(candidates, {});
@@ -45,7 +45,7 @@ describe("enrichCandidates", () => {
         new Response("<html><body><p>Content</p></body></html>", { status: 200 });
 
       const candidates: RankedCandidate[] = [
-        { id: "a", title: "A", url: "https://example.com/a", normalizedTitle: "a", normalizedText: "a", contentQualityAi: 0, sourceWeightScore: 1, freshnessScore: 1, engagementScore: 0, topicMatchScore: 0 },
+        { id: "a", title: "A", url: "https://example.com/a", normalizedTitle: "a", normalizedText: "a", contentQualityAi: 0, sourceWeightScore: 1, freshnessScore: 1, engagementScore: 0 },
       ];
 
       const enriched = await enrichCandidates(candidates, {
@@ -66,9 +66,9 @@ describe("enrichCandidates", () => {
       };
 
       const candidates: RankedCandidate[] = [
-        { id: "a", title: "A", url: "https://example.com/a", normalizedTitle: "a", normalizedText: "a", contentQualityAi: 0, sourceWeightScore: 1, freshnessScore: 1, engagementScore: 0, topicMatchScore: 0 },
-        { id: "b", title: "B", url: "https://example.com/b", normalizedTitle: "b", normalizedText: "b", contentQualityAi: 0, sourceWeightScore: 1, freshnessScore: 1, engagementScore: 0, topicMatchScore: 0 },
-        { id: "c", title: "C", url: "https://example.com/c", normalizedTitle: "c", normalizedText: "c", contentQualityAi: 0, sourceWeightScore: 1, freshnessScore: 1, engagementScore: 0, topicMatchScore: 0 },
+        { id: "a", title: "A", url: "https://example.com/a", normalizedTitle: "a", normalizedText: "a", contentQualityAi: 0, sourceWeightScore: 1, freshnessScore: 1, engagementScore: 0 },
+        { id: "b", title: "B", url: "https://example.com/b", normalizedTitle: "b", normalizedText: "b", contentQualityAi: 0, sourceWeightScore: 1, freshnessScore: 1, engagementScore: 0 },
+        { id: "c", title: "C", url: "https://example.com/c", normalizedTitle: "c", normalizedText: "c", contentQualityAi: 0, sourceWeightScore: 1, freshnessScore: 1, engagementScore: 0 },
       ];
 
       const enriched = await enrichCandidates(candidates, {
@@ -114,8 +114,8 @@ describe("enrichCandidates", () => {
       };
 
       const candidates: RankedCandidate[] = [
-        { id: "a", title: "A", url: "https://example.com/a", normalizedTitle: "a", normalizedText: "a", contentQualityAi: 0, sourceWeightScore: 1, freshnessScore: 1, engagementScore: 0, topicMatchScore: 0 },
-        { id: "b", title: "B", url: "https://example.com/b", normalizedTitle: "b", normalizedText: "b", contentQualityAi: 0, sourceWeightScore: 1, freshnessScore: 1, engagementScore: 0, topicMatchScore: 0 },
+        { id: "a", title: "A", url: "https://example.com/a", normalizedTitle: "a", normalizedText: "a", contentQualityAi: 0, sourceWeightScore: 1, freshnessScore: 1, engagementScore: 0 },
+        { id: "b", title: "B", url: "https://example.com/b", normalizedTitle: "b", normalizedText: "b", contentQualityAi: 0, sourceWeightScore: 1, freshnessScore: 1, engagementScore: 0 },
       ];
 
       const enriched = await enrichCandidates(candidates, {
@@ -145,7 +145,7 @@ describe("enrichCandidates", () => {
         new Response("<html><body><p>Content</p></body></html>", { status: 200 });
 
       const candidates: RankedCandidate[] = [
-        { id: "a", title: "A", url: "https://example.com/a", normalizedTitle: "a", normalizedText: "a", contentQualityAi: 0, sourceWeightScore: 1, freshnessScore: 1, engagementScore: 0, topicMatchScore: 0 },
+        { id: "a", title: "A", url: "https://example.com/a", normalizedTitle: "a", normalizedText: "a", contentQualityAi: 0, sourceWeightScore: 1, freshnessScore: 1, engagementScore: 0 },
       ];
 
       const enriched = await enrichCandidates(candidates, {
@@ -176,7 +176,7 @@ describe("enrichCandidates", () => {
         new Response("<html><body><p>Content</p></body></html>", { status: 200 });
 
       const candidates: RankedCandidate[] = [
-        { id: "a", title: "A", url: "https://example.com/a", normalizedTitle: "a", normalizedText: "a", contentQualityAi: 0, sourceWeightScore: 1, freshnessScore: 1, engagementScore: 0, topicMatchScore: 0 },
+        { id: "a", title: "A", url: "https://example.com/a", normalizedTitle: "a", normalizedText: "a", contentQualityAi: 0, sourceWeightScore: 1, freshnessScore: 1, engagementScore: 0 },
       ];
 
       const enriched = await enrichCandidates(candidates, {
@@ -203,7 +203,7 @@ describe("enrichCandidates", () => {
         new Response("<html><body><p>Content</p></body></html>", { status: 200 });
 
       const candidates: RankedCandidate[] = [
-        { id: "a", title: "A", url: "https://example.com/a", normalizedTitle: "a", normalizedText: "a", contentQualityAi: 0, sourceWeightScore: 1, freshnessScore: 1, engagementScore: 0, topicMatchScore: 0 },
+        { id: "a", title: "A", url: "https://example.com/a", normalizedTitle: "a", normalizedText: "a", contentQualityAi: 0, sourceWeightScore: 1, freshnessScore: 1, engagementScore: 0 },
       ];
 
       const enriched = await enrichCandidates(candidates, {
@@ -232,8 +232,8 @@ describe("enrichCandidates", () => {
       };
 
       const candidates: RankedCandidate[] = [
-        { id: "a", title: "A", url: "https://example.com/ok", normalizedTitle: "a", normalizedText: "a", contentQualityAi: 0, sourceWeightScore: 1, freshnessScore: 1, engagementScore: 0, topicMatchScore: 0 },
-        { id: "b", title: "B", url: "https://example.com/fail", normalizedTitle: "b", normalizedText: "b", contentQualityAi: 0, sourceWeightScore: 1, freshnessScore: 1, engagementScore: 0, topicMatchScore: 0 },
+        { id: "a", title: "A", url: "https://example.com/ok", normalizedTitle: "a", normalizedText: "a", contentQualityAi: 0, sourceWeightScore: 1, freshnessScore: 1, engagementScore: 0 },
+        { id: "b", title: "B", url: "https://example.com/fail", normalizedTitle: "b", normalizedText: "b", contentQualityAi: 0, sourceWeightScore: 1, freshnessScore: 1, engagementScore: 0 },
       ];
 
       const enriched = await enrichCandidates(candidates, {
@@ -267,8 +267,8 @@ describe("enrichCandidates", () => {
         new Response("<html><body><p>Content</p></body></html>", { status: 200 });
 
       const candidates: RankedCandidate[] = [
-        { id: "a", title: "A", url: "https://example.com/a", normalizedTitle: "a", normalizedText: "a", contentQualityAi: 0, sourceWeightScore: 1, freshnessScore: 1, engagementScore: 0, topicMatchScore: 0 },
-        { id: "b", title: "B", url: "https://example.com/b", normalizedTitle: "b", normalizedText: "b", contentQualityAi: 0, sourceWeightScore: 1, freshnessScore: 1, engagementScore: 0, topicMatchScore: 0 },
+        { id: "a", title: "A", url: "https://example.com/a", normalizedTitle: "a", normalizedText: "a", contentQualityAi: 0, sourceWeightScore: 1, freshnessScore: 1, engagementScore: 0 },
+        { id: "b", title: "B", url: "https://example.com/b", normalizedTitle: "b", normalizedText: "b", contentQualityAi: 0, sourceWeightScore: 1, freshnessScore: 1, engagementScore: 0 },
       ];
 
       const enriched = await enrichCandidates(candidates, {
@@ -306,7 +306,6 @@ describe("enrichCandidates", () => {
           sourceWeightScore: 1,
           freshnessScore: 1,
           engagementScore: 0,
-          topicMatchScore: 0,
         },
       ];
 
@@ -341,7 +340,6 @@ describe("enrichCandidates", () => {
           sourceWeightScore: 1,
           freshnessScore: 1,
           engagementScore: 0,
-          topicMatchScore: 0,
         },
       ];
 
@@ -373,7 +371,6 @@ describe("enrichCandidates", () => {
           sourceWeightScore: 1,
           freshnessScore: 1,
           engagementScore: 0,
-          topicMatchScore: 0,
         },
       ];
 

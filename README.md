@@ -33,19 +33,6 @@
 6. **Rank**：加权评分
 7. **Cluster**：相似内容聚合
 
-## 当前能力
-
-- TypeScript + Bun CLI
-- SQLite 持久化：sources、runs、outputs、source health、enrichment results
-- Pack 驱动的数据源配置（自包含 YAML 文件）
-- 已接入 `rss`、`json-feed`、`github_trending`
-- 已接入基于 `bird CLI` 的 X family adapter（x_home、x_list、x_bookmarks、x_likes、x_user_tweets、x_search、x_trending）
-- 可选的 AI 抽象层，用于候选评分、cluster summary 与 digest narration 扩展
-- Source Policy：支持 `assist_only` / `filter_then_assist`
-- AI 过滤判断：支持 `keepDecision`、`keepReason`、`readerBenefit`、`readingHint`
-- Web 四视图：日报首页、Pack 视图、来源详情页、周报页
-- Save For Later：支持保存、取消保存与日报聚合展示
-
 ## 前端入口
 
 - `/`：日报首页
@@ -120,8 +107,6 @@ config/packs/
 ├── github.yaml           # GitHub Trending
 ├── karpathy-picks.yaml   # Karpathy 精选技术博客
 ├── tech-news.yaml        # 科技资讯聚合
-├── test_daily.yaml       # 测试 Pack - Daily Brief
-├── test_x_analysis.yaml  # 测试 Pack - X Analysis
 ├── x-bookmarks.yaml      # X 书签
 ├── x-home.yaml           # X 首页时间线
 ├── x-likes.yaml          # X 点赞
@@ -155,32 +140,11 @@ sources:
 |------|------|------|
 | `pack.id` | ✅ | Pack 唯一标识 |
 | `pack.name` | ✅ | 显示名称 |
-| `pack.description` | ❌ | Pack 描述 |
-| `pack.keywords` | ❌ | 主题关键词列表，用于内容排序（见下方说明） |
+| `pack.description` | ❌ | Pack 描述，用于 AI 过滤时的主题判断 |
 | `sources[].type` | ✅ | 数据源类型 |
 | `sources[].url` | ✅ | 数据源 URL |
 | `sources[].description` | ❌ | 数据源描述 |
 | `sources[].enabled` | ❌ | 是否启用，默认 true |
-
-**keywords 工作原理**：
-
-keywords 是一个**软过滤**机制，用于提升相关内容的排名，而非完全排除不匹配的内容：
-
-1. **解析阶段**：当选择多个 pack 运行时，所有 pack 的 keywords 会被合并
-2. **评分阶段**：系统遍历每条内容的标题和正文，根据关键词匹配情况计算 `topicMatchScore`
-3. **排序阶段**：`topicMatchScore` 占最终排序权重的 **25%**
-
-评分规则：
-
-| 匹配条件 | 分数影响 |
-|----------|----------|
-| 标题或正文包含 include 关键词 | **+1** / 每个匹配 |
-| 标题或正文包含 exclude 关键词 | **-2** / 每个匹配 |
-
-**使用建议**：
-- 选择能区分主题的**专有名词**（如 `OpenAI`、`Transformer`）而非通用词（如 `技术`）
-- 关键词列表不宜过长，3-10 个为佳
-- 多 pack 合并时，所有关键词会叠加生效
 
 **数据源类型**：
 
@@ -288,7 +252,6 @@ bun install
 bun test
 bun run check
 bun run smoke          # 纯本地验证（无网络依赖）
-bun run e2e:real       # 完整数据流验证（需要网络和认证）
 bun src/cli/main.ts --help
 bun src/cli/main.ts --version
 bun src/cli/main.ts config validate
@@ -388,19 +351,17 @@ API 返回的每条内容项都包含动态计算的分数。分数公式：
 
 ```
 finalScore =
-  sourceWeight × 0.3 +
-  freshness × 0.25 +
-  engagement × 0.1 +
-  topicMatch × 0.25 +
+  sourceWeight × 0.4 +
+  freshness × 0.35 +
+  engagement × 0.15 +
   contentQuality × 0.1
 ```
 
 | 维度 | 权重 | 说明 |
 |------|------|------|
-| sourceWeight | 30% | 数据源权重（当前固定为 1） |
-| freshness | 25% | 新鲜度，越新分数越高 |
-| engagement | 10% | 互动数据（点赞、评论等） |
-| topicMatch | 25% | 主题匹配度（基于 Pack keywords） |
+| sourceWeight | 40% | 数据源权重（当前固定为 1） |
+| freshness | 35% | 新鲜度，越新分数越高 |
+| engagement | 15% | 互动数据（点赞、评论等） |
 | contentQuality | 10% | 内容质量（当前默认 0.5） |
 
 **新鲜度衰减规则**：
@@ -411,37 +372,3 @@ finalScore =
 | 24 小时内 | 0.8 → 1.0（线性衰减） |
 | 7 天内 | 0.5 → 0.8（线性衰减） |
 | 更早 | 0.1 → 0.5（按周衰减） |
-
-## 后续计划
-
-以下内容已经进入持续迭代路线图：
-
-- Source 过滤交互（前端 Sidebar）
-- URL 状态同步（支持分享链接）
-- 更稳的 `github_trending` source 治理
-- feedback loop 与自适应排序
-- 多用户能力
-- embedding / vector search
-
-## 当前实现状态
-
-截至 2026-03-17，仓库当前状态为：
-
-- 已完成：项目脚手架与 CLI
-- 已完成：本地 YAML 配置加载与校验
-- 已完成：Pack 驱动的数据源配置
-- 已完成：SQLite schema 与核心表
-- 已完成：`rss`、`json-feed` adapter
-- 已完成：`github_trending` adapter
-- 已完成：X family `bird CLI` adapter（x_home、x_list、x_bookmarks、x_likes、x_user_tweets、x_search、x_trending）
-- 已完成：Auth 配置统一管理（`config/auth/` 目录）
-- 已完成：数据归档功能（`archive collect/stats` 命令）
-- 已完成：CLI `auth check/status` 命令
-- 已完成：规范化、去重、topic match、排序、聚类
-- 已完成：raw items、normalized items、clusters 的 end-to-end 持久化
-- 已完成：深度 enrichment（正文提取、AI 关键点提取、标签生成）
-- 已完成：Enrichment 结果持久化（`enrichment_results`、`extracted_content_cache` 表）
-- **已完成：HTTP API 服务（`serve` 命令）**
-- **已完成：前端 Web UI（React + Vite + Tailwind）**
-- **已完成：API 分数计算模块**
-- 尚未实现：Source 过滤交互、URL 状态同步

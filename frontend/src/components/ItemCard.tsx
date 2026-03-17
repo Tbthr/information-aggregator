@@ -46,7 +46,7 @@ export function ItemCard({ item }: ItemCardProps) {
           <div className="flex gap-1">
             <ScoreBar label="时效" value={item.scores.freshness} />
             <ScoreBar label="热度" value={item.scores.engagement} />
-            <ScoreBar label="相关" value={item.scores.topicMatch} />
+            <ScoreBar label="权重" value={item.scores.sourceWeight} />
           </div>
         </div>
       </div>

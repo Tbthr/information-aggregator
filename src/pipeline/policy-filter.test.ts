@@ -19,7 +19,6 @@ function createMockCandidate(overrides: Partial<RankedCandidate> = {}): RankedCa
     sourceWeightScore: 0.5,
     freshnessScore: 0.8,
     engagementScore: 0.3,
-    topicMatchScore: 0.7,
     contentQualityAi: 0.6,
     ...overrides,
   };
@@ -30,7 +29,6 @@ function createMockPack(overrides: Partial<SourcePack> = {}): SourcePack {
     id: "pack-1",
     name: "Test Pack",
     description: "Test pack description",
-    keywords: ["test", "example"],
     sources: [],
     ...overrides,
   };

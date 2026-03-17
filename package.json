@@ -7,7 +7,6 @@
     "test": "bun test",
     "check": "tsc --noEmit",
     "smoke": "bun src/verification/smoke-runner.ts",
-    "e2e:real": "bun src/verification/e2e-runner.ts",
     "lint": "eslint src/",
     "format": "prettier --write src/",
     "format:check": "prettier --check src/"
