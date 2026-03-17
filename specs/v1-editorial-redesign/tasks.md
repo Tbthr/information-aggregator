@@ -3,7 +3,7 @@ spec: v1-editorial-redesign
 phase: tasks
 created: 2026-03-17
 granularity: fine
-totalTasks: 68
+totalTasks: 69
 ---
 
 # Tasks: Editorial Redesign v1
@@ -752,13 +752,27 @@ Focus: 所有检查通过，创建 PR。
   - **Done when**: All critical flows return success
   - **Commit**: None
 
+- [x] VE-BROWSER [VERIFY] E2E browser validation: verify frontend pages with chrome-cdp
+  - **Do**:
+    1. Start frontend dev server: `cd frontend && bun dev &`
+    2. Wait for frontend ready: `for i in $(seq 1 30); do curl -s http://localhost:5173 > /dev/null && break || sleep 1; done`
+    3. Use chrome-cdp skill to open browser and navigate to `http://localhost:5173`
+    4. Verify daily brief page has 5 sections: CoverStory, LeadStories, TopSignals, ScanBrief, SavedForLater
+    5. Take screenshot to confirm layout
+  - **Verify**: Browser automation confirms 5 sections present
+  - **Done when**: Frontend pages verified working in browser
+  - **Commit**: None
+  - _Requirements: AC-3.1 ~ AC-3.7_
+  - _Design: Test Strategy > E2E Tests_
+
 - [x] VE3 [VERIFY] E2E cleanup: stop server and free port
   - **Do**:
-    1. Kill by PID: `kill $(cat /tmp/ve-pids.txt) 2>/dev/null; sleep 2; kill -9 $(cat /tmp/ve-pids.txt) 2>/dev/null || true`
-    2. Kill by port fallback: `lsof -ti :3000 | xargs -r kill 2>/dev/null || true`
-    3. Remove PID file: `rm -f /tmp/ve-pids.txt`
-  - **Verify**: `! lsof -ti :3000 && echo VE3_PASS`
-  - **Done when**: No process on port 3000
+    1. Kill frontend server: `lsof -ti :5173 | xargs -r kill 2>/dev/null || true`
+    2. Kill backend by PID: `kill $(cat /tmp/ve-pids.txt) 2>/dev/null; sleep 2; kill -9 $(cat /tmp/ve-pids.txt) 2>/dev/null || true`
+    3. Kill by port fallback: `lsof -ti :3000 | xargs -r kill 2>/dev/null || true`
+    4. Remove PID file: `rm -f /tmp/ve-pids.txt`
+  - **Verify**: `! lsof -ti :3000 && ! lsof -ti :5173 && echo VE3_PASS`
+  - **Done when**: No process on ports 3000 and 5173
   - **Commit**: None
 
 ---
