@@ -4,7 +4,7 @@ import type { Database } from "bun:sqlite";
 import { createDb } from "../../db/client";
 import { saveItem, unsaveItem, getSavedItems, isItemSaved } from "../../db/queries/saved-items";
 
-// 测试用的精简 items route，使用注入的数据库实例
+// 测试用的精简 items route, 使用注入的数据库实例
 function createTestItemsRoute(db: Database) {
   const app = new Hono();
 
@@ -158,35 +158,33 @@ describe("save API integration tests", () => {
 
   describe("POST /:id/save", () => {
     test("saves an existing item", async () => {
-      const res = app.request(`/${testItemId}/save`, { method: "POST" });
-      const body = await res.then((r) => r.json());
-
-      expect(res.then((r) => r.status)).resolves.toBe(200);
+      const res = await app.request(`/${testItemId}/save`, { method: "POST" });
+      expect(res.status).toBe(200);
+      const body = await res.json();
       expect(body.success).toBe(true);
       expect(body.data.savedAt).toBeDefined();
       expect(body.data.already).toBeUndefined();
     });
 
     test("returns 404 for non-existent item", async () => {
-      const res = app.request("/non-existent/save", { method: "POST" });
-      const body = await res.then((r) => r.json());
-
-      expect(res.then((r) => r.status)).resolves.toBe(404);
+      const res = await app.request("/non-existent/save", { method: "POST" });
+      const body = await res.json();
+      expect(res.status).toBe(404);
       expect(body.success).toBe(false);
       expect(body.error).toBe("Item not found");
     });
 
     test("is idempotent - saving twice returns success", async () => {
       // 第一次保存
-      const res1 = app.request(`/${testItemId}/save`, { method: "POST" });
-      const body1 = await res1.then((r) => r.json());
+      const res1 = await app.request(`/${testItemId}/save`, { method: "POST" });
+      const body1 = await res1.json();
       expect(body1.success).toBe(true);
       expect(body1.data.already).toBeUndefined();
 
       // 第二次保存
-      const res2 = app.request(`/${testItemId}/save`, { method: "POST" });
-      const body2 = await res2.then((r) => r.json());
-      expect(res2.then((r) => r.status)).resolves.toBe(200);
+      const res2 = await app.request(`/${testItemId}/save`, { method: "POST" });
+      const body2 = await res2.json();
+      expect(res2.status).toBe(200);
       expect(body2.success).toBe(true);
       expect(body2.data.already).toBe(true);
     });
@@ -198,19 +196,19 @@ describe("save API integration tests", () => {
       await app.request(`/${testItemId}/save`, { method: "POST" });
 
       // 取消保存
-      const res = app.request(`/${testItemId}/save`, { method: "DELETE" });
-      const body = await res.then((r) => r.json());
+      const res = await app.request(`/${testItemId}/save`, { method: "DELETE" });
+      const body = await res.json();
 
-      expect(res.then((r) => r.status)).resolves.toBe(200);
+      expect(res.status).toBe(200);
       expect(body.success).toBe(true);
       expect(body.data.savedAt).toBeNull();
     });
 
     test("returns 404 for unsaved item", async () => {
-      const res = app.request(`/${testItemId}/save`, { method: "DELETE" });
-      const body = await res.then((r) => r.json());
+      const res = await app.request(`/${testItemId}/save`, { method: "DELETE" });
+      const body = await res.json();
 
-      expect(res.then((r) => r.status)).resolves.toBe(404);
+      expect(res.status).toBe(404);
       expect(body.success).toBe(false);
       expect(body.error).toBe("Item not saved");
     });
@@ -218,10 +216,10 @@ describe("save API integration tests", () => {
 
   describe("GET /saved", () => {
     test("returns empty list when no items saved", async () => {
-      const res = app.request("/saved");
-      const body = await res.then((r) => r.json());
+      const res = await app.request("/saved");
+      const body = await res.json();
 
-      expect(res.then((r) => r.status)).resolves.toBe(200);
+      expect(res.status).toBe(200);
       expect(body.success).toBe(true);
       expect(body.data.items).toEqual([]);
       expect(body.data.meta.total).toBe(0);
@@ -231,10 +229,10 @@ describe("save API integration tests", () => {
       // 保存项目
       await app.request(`/${testItemId}/save`, { method: "POST" });
 
-      const res = app.request("/saved");
-      const body = await res.then((r) => r.json());
+      const res = await app.request("/saved");
+      const body = await res.json();
 
-      expect(res.then((r) => r.status)).resolves.toBe(200);
+      expect(res.status).toBe(200);
       expect(body.success).toBe(true);
       expect(body.data.items).toHaveLength(1);
       expect(body.data.items[0].id).toBe(testItemId);
@@ -247,8 +245,8 @@ describe("save API integration tests", () => {
       await app.request(`/${testItemId}/save`, { method: "POST" });
       await app.request(`/${testItemId}/save`, { method: "DELETE" });
 
-      const res = app.request("/saved");
-      const body = await res.then((r) => r.json());
+      const res = await app.request("/saved");
+      const body = await res.json();
 
       expect(body.data.items).toEqual([]);
       expect(body.data.meta.total).toBe(0);
