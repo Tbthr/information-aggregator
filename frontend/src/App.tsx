@@ -1,3 +1,4 @@
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useItems, usePacks } from "./hooks/useApi";
 import { useFilters } from "./hooks/useFilters";
 import { Layout } from "./components/Layout";
@@ -6,7 +7,24 @@ import { FilterBar } from "./components/FilterBar";
 import { ItemList } from "./components/ItemList";
 import { Pagination } from "./components/Pagination";
 
-function App() {
+// 占位组件 - 后续任务会实现
+function DailyBriefPage() {
+  return (
+    <div className="flex items-center justify-center h-full">
+      <p className="text-gray-500">Daily Brief 页面 - 开发中</p>
+    </div>
+  );
+}
+
+function PackViewPage() {
+  return (
+    <div className="flex items-center justify-center h-full">
+      <p className="text-gray-500">Pack View 页面 - 开发中</p>
+    </div>
+  );
+}
+
+function ItemsPage() {
   const { state, params, togglePack, toggleSource, setPage, setWindow, setSort, setSearch } = useFilters();
 
   const { data: packsData, loading: packsLoading } = usePacks(true);
@@ -83,6 +101,18 @@ function App() {
         </main>
       </div>
     </Layout>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<DailyBriefPage />} />
+        <Route path="/items" element={<ItemsPage />} />
+        <Route path="/pack/:id" element={<PackViewPage />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
