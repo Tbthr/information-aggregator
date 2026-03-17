@@ -1,4 +1,5 @@
 import type { PackPolicy, SourcePolicy } from './policy';
+export type { PackPolicy, SourcePolicy, PolicyMode } from './policy';
 
 export type RunKind = "query";
 export type OutputFormat = "markdown" | "json";

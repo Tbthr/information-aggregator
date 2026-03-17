@@ -1,13 +1,30 @@
 import { readFile, readdir } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import YAML from "yaml";
-import type { InlineSource, SourcePack, SourceType } from "../types/index";
+import type { InlineSource, SourcePack, SourceType, PackPolicy, SourcePolicy, PolicyMode } from "../types/index";
 import { CANONICAL_SOURCE_TYPES } from "../types/index";
 import { isRecord, isArray, isString, isBoolean } from "../types/validation";
 
+const VALID_POLICY_MODES: PolicyMode[] = ['assist_only', 'filter_then_assist'];
+const DEFAULT_POLICY_MODE: PolicyMode = 'filter_then_assist';
+
 export const VALID_SOURCE_TYPES = new Set<SourceType>(CANONICAL_SOURCE_TYPES);
 
-export function validateInlineSource(input: unknown): InlineSource {
+function validatePackPolicy(input: unknown): PackPolicy | undefined {
+  if (!isRecord(input)) {
+    return undefined;
+  }
+  const modeValue = input.mode;
+  if (!isString(modeValue) || !VALID_POLICY_MODES.includes(modeValue as PolicyMode)) {
+    return undefined;
+  }
+  return {
+    mode: modeValue as PolicyMode,
+    filterPrompt: isString(input.filterPrompt) ? input.filterPrompt : undefined,
+  };
+}
+
+export function validateInlineSource(input: unknown, packPolicy?: PackPolicy): InlineSource {
   if (!isRecord(input)) {
     throw new Error("InlineSource must be an object");
   }
@@ -20,12 +37,22 @@ export function validateInlineSource(input: unknown): InlineSource {
     throw new Error("InlineSource.url is required");
   }
 
+  // 解析 source 的 policy，若无则继承 pack 的 policy
+  let sourcePolicy: SourcePolicy | undefined;
+  const parsedPolicy = validatePackPolicy(input.policy);
+  if (parsedPolicy) {
+    sourcePolicy = parsedPolicy;
+  } else if (packPolicy) {
+    sourcePolicy = { ...packPolicy, inheritedFrom: 'pack' };
+  }
+
   return {
     type: typeValue as SourceType,
     url: input.url,
     description: isString(input.description) ? input.description : undefined,
     enabled: isBoolean(input.enabled) ? input.enabled : true,
     configJson: isString(input.configJson) ? input.configJson : undefined,
+    policy: sourcePolicy,
   };
 }
 
@@ -46,8 +73,13 @@ export function validateSourcePack(input: unknown): SourcePack {
     throw new Error("SourcePack.pack.name is required");
   }
 
+  // 解析 pack 的 policy，若无则默认 filter_then_assist
+  let packPolicy: PackPolicy = validatePackPolicy(pack.policy) ?? {
+    mode: DEFAULT_POLICY_MODE,
+  };
+
   const sources = isArray(input.sources) ? input.sources : [];
-  const validatedSources = sources.map((s: unknown) => validateInlineSource(s));
+  const validatedSources = sources.map((s: unknown) => validateInlineSource(s, packPolicy));
 
   const keywords = isArray(pack.keywords)
     ? pack.keywords.filter(isString)
@@ -60,6 +92,7 @@ export function validateSourcePack(input: unknown): SourcePack {
     keywords,
     auth: isString(pack.auth) ? pack.auth : undefined,
     sources: validatedSources,
+    policy: packPolicy,
   };
 }
 
