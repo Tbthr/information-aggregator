@@ -6,23 +6,8 @@ import { Sidebar } from "./components/Sidebar";
 import { FilterBar } from "./components/FilterBar";
 import { ItemList } from "./components/ItemList";
 import { Pagination } from "./components/Pagination";
-
-// 占位组件 - 后续任务会实现
-function DailyBriefPage() {
-  return (
-    <div className="flex items-center justify-center h-full">
-      <p className="text-gray-500">Daily Brief 页面 - 开发中</p>
-    </div>
-  );
-}
-
-function PackViewPage() {
-  return (
-    <div className="flex items-center justify-center h-full">
-      <p className="text-gray-500">Pack View 页面 - 开发中</p>
-    </div>
-  );
-}
+import { DailyBriefPage } from "./pages/DailyBriefPage";
+import { PackViewPage } from "./pages/PackViewPage";
 
 function ItemsPage() {
   const { state, params, togglePack, toggleSource, setPage, setWindow, setSort, setSearch } = useFilters();
