@@ -633,7 +633,7 @@ Focus: 测试覆盖（单元 + 集成 + E2E）。
   - _Requirements: FR-1.1-1.3_
   - _Design: Test Strategy > Unit Tests_
 
-- [ ] 3.2 [P] 单元测试: load-pack policy 解析
+- [x] 3.2 [P] 单元测试: load-pack policy 解析
   - **Do**:
     1. 创建/修改 `src/config/load-pack.test.ts`
     2. 测试 YAML 中 policy 字段解析
@@ -646,7 +646,7 @@ Focus: 测试覆盖（单元 + 集成 + E2E）。
   - _Requirements: AC-1.1-1.3_
   - _Design: Test Strategy > Unit Tests_
 
-- [ ] 3.3 [P] 单元测试: policy-filter
+- [x] 3.3 [P] 单元测试: policy-filter
   - **Do**:
     1. 创建 `src/pipeline/policy-filter.test.ts`
     2. 测试 assist_only 模式全保留
@@ -659,7 +659,7 @@ Focus: 测试覆盖（单元 + 集成 + E2E）。
   - _Requirements: FR-2.1-2.4_
   - _Design: Test Strategy > Unit Tests_
 
-- [ ] 3.4 [P] 单元测试: saved-items queries
+- [x] 3.4 [P] 单元测试: saved-items queries
   - **Do**:
     1. 创建 `src/db/queries/saved-items.test.ts`
     2. 测试 saveItem, unsaveItem, getSavedItems, isItemSaved
