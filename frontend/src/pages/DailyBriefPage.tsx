@@ -1,5 +1,10 @@
 import { useState, useEffect } from "react";
-import type { DailyBriefData } from "../types/api";
+import type { DailyBriefData, ItemData } from "../types/api";
+import { CoverStorySection } from "../components/views/CoverStorySection";
+import { LeadStoriesSection } from "../components/views/LeadStoriesSection";
+import { TopSignalsSection } from "../components/views/TopSignalsSection";
+import { ScanBriefSection } from "../components/views/ScanBriefSection";
+import { SavedForLaterSection } from "../components/views/SavedForLaterSection";
 
 const API_BASE = "/api";
 
@@ -67,105 +72,30 @@ export function DailyBriefPage() {
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-8">
       {/* 1. Cover Story 封面故事 */}
-      <section>
-        <h2 className="text-lg font-semibold text-gray-800 mb-3 pb-2 border-b border-gray-200">
-          封面故事
-        </h2>
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6 min-h-24">
-          {data?.coverStory ? (
-            <div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">
-                {data.coverStory.title}
-              </h3>
-              <p className="text-gray-600 text-sm">
-                {data.coverStory.snippet || "暂无摘要"}
-              </p>
-            </div>
-          ) : (
-            <p className="text-gray-400">暂无封面故事</p>
-          )}
-        </div>
-      </section>
+      <CoverStorySection item={(data?.coverStory ?? null) as ItemData | null} />
 
       {/* 2. Lead Stories 重点报道 */}
       <section>
-        <h2 className="text-lg font-semibold text-gray-800 mb-3 pb-2 border-b border-gray-200">
-          重点报道
-        </h2>
-        <div className="space-y-3 min-h-24">
-          {data?.leadStories?.length ? (
-            data.leadStories.map((item) => (
-              <div key={item.id} className="bg-white border rounded-lg p-4 hover:shadow-sm transition-shadow">
-                <h3 className="font-medium text-gray-900">{item.title}</h3>
-                {item.snippet && (
-                  <p className="text-gray-500 text-sm mt-1 line-clamp-2">{item.snippet}</p>
-                )}
-              </div>
-            ))
-          ) : (
-            <p className="text-gray-400">暂无重点报道</p>
-          )}
-        </div>
+        <h2 className="text-lg font-semibold text-gray-700 mb-4">重点报道</h2>
+        <LeadStoriesSection items={(data?.leadStories ?? []) as ItemData[]} />
       </section>
 
       {/* 3. Top Signals 热门信号 */}
       <section>
-        <h2 className="text-lg font-semibold text-gray-800 mb-3 pb-2 border-b border-gray-200">
-          热门信号
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 min-h-24">
-          {data?.topSignals?.length ? (
-            data.topSignals.map((item) => (
-              <div key={item.id} className="bg-amber-50 border border-amber-100 rounded-lg p-3">
-                <h3 className="font-medium text-gray-900 text-sm">{item.title}</h3>
-              </div>
-            ))
-          ) : (
-            <p className="text-gray-400 col-span-full">暂无热门信号</p>
-          )}
-        </div>
+        <h2 className="text-lg font-semibold text-gray-700 mb-4">热门信号</h2>
+        <TopSignalsSection items={(data?.topSignals ?? []) as ItemData[]} />
       </section>
 
       {/* 4. Scan Brief 快速扫描 */}
       <section>
-        <h2 className="text-lg font-semibold text-gray-800 mb-3 pb-2 border-b border-gray-200">
-          快速扫描
-        </h2>
-        <div className="bg-gray-50 rounded-lg p-4 min-h-24">
-          {data?.scanBrief?.length ? (
-            <ul className="space-y-2">
-              {data.scanBrief.map((item) => (
-                <li key={item.id} className="flex items-center gap-2 text-sm">
-                  <span className="text-gray-400 w-12">{item.score.toFixed(1)}</span>
-                  <a href={item.url} className="text-gray-700 hover:text-blue-600 truncate">
-                    {item.title}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-gray-400">暂无快速扫描内容</p>
-          )}
-        </div>
+        <h2 className="text-lg font-semibold text-gray-700 mb-4">快速扫描</h2>
+        <ScanBriefSection items={(data?.scanBrief ?? []) as ItemData[]} />
       </section>
 
       {/* 5. Saved for Later 稍后阅读 */}
       <section>
-        <h2 className="text-lg font-semibold text-gray-800 mb-3 pb-2 border-b border-gray-200">
-          稍后阅读
-        </h2>
-        <div className="space-y-2 min-h-24">
-          {data?.savedForLater?.length ? (
-            data.savedForLater.map((item) => (
-              <div key={item.id} className="flex items-center gap-3 bg-green-50 border border-green-100 rounded-lg p-3">
-                <span className="text-green-600">★</span>
-                <span className="text-gray-900 text-sm">{item.title}</span>
-              </div>
-            ))
-          ) : (
-            <p className="text-gray-400">暂无保存内容</p>
-          )}
-        </div>
+        <h2 className="text-lg font-semibold text-gray-700 mb-4">稍后阅读</h2>
+        <SavedForLaterSection items={(data?.savedForLater ?? []) as ItemData[]} />
       </section>
 
       {/* Meta 信息 */}
