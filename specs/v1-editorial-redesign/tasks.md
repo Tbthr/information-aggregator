@@ -671,13 +671,13 @@ Focus: 测试覆盖（单元 + 集成 + E2E）。
   - _Requirements: FR-1.4_
   - _Design: Test Strategy > Unit Tests_
 
-- [ ] 3.5 [VERIFY] Quality checkpoint: unit tests
+- [x] 3.5 [VERIFY] Quality checkpoint: unit tests
   - **Do**: Run all tests
   - **Verify**: `bun test`
   - **Done when**: All tests pass
   - **Commit**: None
 
-- [ ] 3.6 集成测试: views API
+- [x] 3.6 集成测试: views API
   - **Do**:
     1. 创建 `src/api/routes/views.test.ts`
     2. 测试 GET /api/views/daily-brief 响应格式
@@ -689,7 +689,7 @@ Focus: 测试覆盖（单元 + 集成 + E2E）。
   - _Requirements: FR-3.1_
   - _Design: Test Strategy > Integration Tests_
 
-- [ ] 3.7 集成测试: save API
+- [x] 3.7 集成测试: save API
   - **Do**:
     1. 创建/修改 `src/api/routes/items.test.ts`
     2. 测试 POST/DELETE /api/items/:id/save
