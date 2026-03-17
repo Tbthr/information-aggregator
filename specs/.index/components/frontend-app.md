@@ -1,54 +1,54 @@
-# Component: frontend/App
+---
+name: Frontend App
+description: 前端应用 - React SPA 路由
+category: frontend
+source_path: frontend/src/App.tsx
+content_hash: u1v2w3x4
+timestamp: 2026-03-18
+---
 
-## 元数据
-
-| 字段 | 值 |
-|------|-----|
-| 路径 | `frontend/src/App.tsx` |
-| 类别 | frontend |
-| 索引时间 | 2026-03-17 |
+# Frontend App
 
 ## 概述
 
-前端主应用组件，React 单页应用的入口点。组织整体布局结构，包含侧边栏、过滤器、内容列表和分页。
+React 单页应用入口，使用 React Router 管理页面路由。
 
-## 组件结构
+## 路由配置
+
+| 路径 | 组件 | 描述 |
+|------|------|------|
+| `/` | `DailyBriefPage` | 首页 - 日报视图 |
+| `/items` | `ItemsPage` | 内容列表页 |
+| `/pack/:id` | `PackViewPage` | Pack 详情页 |
+| `/weekly` | `WeeklyReviewPage` | 周报视图 |
+| `/source/:id` | `SourceViewPage` | 来源详情页 |
+
+## ItemsPage 结构
 
 ```
 Layout
-├── Sidebar (数据源选择)
-│   ├── Packs 列表
-│   └── Sources 列表
-└── Main Content
-    ├── FilterBar (过滤选项)
-    ├── ItemList (数据项列表)
-    └── Pagination (分页控件)
+├── Sidebar (Pack/Source 选择)
+├── Main Content
+│   ├── FilterBar (时间窗口/排序/搜索)
+│   ├── ItemList (内容卡片列表)
+│   ├── Pagination (分页)
+│   └── Stats Footer (统计)
 ```
 
-## 使用的 Hooks
+## 依赖关系
 
-| Hook | 说明 |
-|------|------|
-| `useFilters` | 管理过滤状态 |
-| `useItems` | 获取数据项 |
-| `usePacks` | 获取数据源包 |
-
-## 依赖
-
-- `./components/Layout`
-- `./components/Sidebar`
-- `./components/FilterBar`
-- `./components/ItemList`
-- `./components/Pagination`
-- `./hooks/useFilters`
-- `./hooks/useApi`
+- `react-router-dom` - 路由
+- `./hooks/useApi` - API Hooks
+- `./hooks/useFilters` - 过滤器 Hooks
+- `./components/*` - UI 组件
 
 ## 关键词
 
-`react`, `app`, `frontend`, `layout`, `main`
+react, frontend, router, spa, components, hooks
 
 ## 相关文件
 
-- `frontend/src/components/*.tsx`
-- `frontend/src/hooks/useFilters.ts`
-- `frontend/src/hooks/useApi.ts`
+- [frontend/src/hooks/useApi.ts](frontend/src/hooks/useApi.ts)
+- [frontend/src/hooks/useFilters.ts](frontend/src/hooks/useFilters.ts)
+- [frontend/src/lib/api.ts](frontend/src/lib/api.ts)
+- [frontend/src/components/Layout.tsx](frontend/src/components/Layout.tsx)

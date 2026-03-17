@@ -14,12 +14,9 @@ docs/plans/
 .ralph-tui/
 .ralph/
 .ralphrc
-tasks/
 .agents/
 .claude/
 scripts/
 frontend/dist/
 frontend/playwright-report/
 frontend/test-results/
-specs/.current-spec
-**/.progress.md

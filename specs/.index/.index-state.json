@@ -1,13 +1,19 @@
 {
-  "lastIndexed": "2026-03-17T00:00:00.000Z",
-  "componentCount": 15,
-  "externalCount": 0,
-  "categories": ["adapters", "ai", "api", "cli", "config", "db", "pipeline", "query", "render", "templates", "types", "utils", "verification", "views", "frontend"],
+  "projectName": "information-aggregator",
   "interviewResponses": {
     "externalUrls": [],
-    "externalTools": [],
-    "focusAreas": ["src/", "frontend/src/"],
+    "externalTools": ["skills", "playwright-mcp"],
+    "focusAreas": ["all"],
     "sparseAreas": []
+  },
+  "lastIndexed": "2026-03-18T00:00:00Z",
+  "componentCount": 7,
+  "externalCount": 2,
+  "categories": {
+    "models": 1,
+    "services": 3,
+    "controllers": 1,
+    "frontend": 2
   },
   "hashes": {}
 }
