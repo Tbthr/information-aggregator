@@ -597,7 +597,7 @@ Focus: 代码整理，错误处理，遵循项目模式。
   - _Requirements: AC-7.1-7.5_
   - _Design: Edge Cases > Save 冲突_
 
-- [ ] 2.3 添加空状态处理到前端页面
+- [x] 2.3 添加空状态处理到前端页面
   - **Do**:
     1. 修改 DailyBriefPage, PackViewPage
     2. 无内容时显示友好提示

@@ -34,28 +34,81 @@ export function PackViewPage() {
     fetchData();
   }, [id]);
 
+  // Loading skeleton
+  const LoadingSkeleton = () => (
+    <Layout>
+      <div className="p-6 max-w-4xl mx-auto animate-pulse">
+        {/* Back link skeleton */}
+        <div className="h-4 bg-gray-200 rounded w-20 mb-4"></div>
+        {/* Header skeleton */}
+        <div className="mb-8">
+          <div className="h-8 bg-gray-200 rounded w-1/2 mb-2"></div>
+          <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+        </div>
+        {/* Stats skeleton */}
+        <div className="mb-8">
+          <div className="h-5 bg-gray-200 rounded w-16 mb-4"></div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="bg-white p-4 rounded-lg border border-gray-200">
+                <div className="h-3 bg-gray-200 rounded w-12 mb-2"></div>
+                <div className="h-6 bg-gray-200 rounded w-16"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+        {/* Content skeleton */}
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-white p-4 rounded-lg border border-gray-200">
+              <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+              <div className="h-3 bg-gray-200 rounded w-full mb-1"></div>
+              <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </Layout>
+  );
+
   // 加载状态
   if (loading) {
+    return <LoadingSkeleton />;
+  }
+
+  // 错误状态
+  if (error) {
     return (
       <Layout>
-        <div className="flex items-center justify-center h-full">
-          <div className="text-gray-500">加载中...</div>
+        <div className="flex flex-col items-center justify-center h-full py-20">
+          <div className="text-center max-w-md">
+            <div className="text-6xl mb-4">⚠️</div>
+            <h3 className="text-xl font-semibold text-gray-700 mb-2">加载失败</h3>
+            <p className="text-red-500 mb-4">{error.message}</p>
+            <Link to="/items" className="text-blue-500 hover:underline">
+              返回列表
+            </Link>
+          </div>
         </div>
       </Layout>
     );
   }
 
-  // 错误状态
-  if (error || !data?.data) {
+  // 空状态 - Pack 不存在
+  if (!data?.data) {
     return (
       <Layout>
-        <div className="flex flex-col items-center justify-center h-full gap-4">
-          <div className="text-red-500">
-            加载失败: {error?.message || "数据不存在"}
+        <div className="flex flex-col items-center justify-center h-full py-20">
+          <div className="text-center max-w-md">
+            <div className="text-6xl mb-4">📦</div>
+            <h3 className="text-xl font-semibold text-gray-700 mb-2">Pack 不存在</h3>
+            <p className="text-gray-500 mb-4">
+              未找到该 Pack，可能已被删除或 ID 无效。
+            </p>
+            <Link to="/items" className="text-blue-500 hover:underline">
+              返回列表
+            </Link>
           </div>
-          <Link to="/items" className="text-blue-500 hover:underline">
-            返回列表
-          </Link>
         </div>
       </Layout>
     );

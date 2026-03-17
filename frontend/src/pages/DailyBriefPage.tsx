@@ -38,16 +38,43 @@ export function DailyBriefPage() {
     fetchDailyBrief();
   }, []);
 
-  // Loading 状态
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-500">加载中...</p>
+  // Loading skeleton
+  const LoadingSkeleton = () => (
+    <div className="p-6 max-w-4xl mx-auto space-y-8 animate-pulse">
+      {/* Cover Story skeleton */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="h-6 bg-gray-200 rounded w-1/3 mb-4"></div>
+        <div className="h-4 bg-gray-200 rounded w-full mb-2"></div>
+        <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+      </div>
+      {/* Lead Stories skeleton */}
+      <div>
+        <div className="h-5 bg-gray-200 rounded w-24 mb-4"></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-white rounded-lg border border-gray-200 p-4">
+              <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+              <div className="h-3 bg-gray-200 rounded w-full mb-1"></div>
+              <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+            </div>
+          ))}
         </div>
       </div>
-    );
+      {/* Top Signals skeleton */}
+      <div>
+        <div className="h-5 bg-gray-200 rounded w-24 mb-4"></div>
+        <div className="space-y-2">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-12 bg-gray-200 rounded"></div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  // Loading 状态
+  if (loading) {
+    return <LoadingSkeleton />;
   }
 
   // Error 状态
@@ -62,6 +89,35 @@ export function DailyBriefPage() {
             className="mt-3 px-4 py-2 bg-red-100 hover:bg-red-200 rounded text-red-800 text-sm transition-colors"
           >
             重试
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Empty state - 检查是否有任何内容
+  const hasContent = data && (
+    data.coverStory ||
+    (data.leadStories && data.leadStories.length > 0) ||
+    (data.topSignals && data.topSignals.length > 0) ||
+    (data.scanBrief && data.scanBrief.length > 0) ||
+    (data.savedForLater && data.savedForLater.length > 0)
+  );
+
+  if (!hasContent) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full py-20">
+        <div className="text-center max-w-md">
+          <div className="text-6xl mb-4">📭</div>
+          <h3 className="text-xl font-semibold text-gray-700 mb-2">暂无内容</h3>
+          <p className="text-gray-500 mb-4">
+            今日还没有聚合任何内容，请稍后再来查看，或者检查数据源配置。
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors"
+          >
+            刷新页面
           </button>
         </div>
       </div>
