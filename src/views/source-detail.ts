@@ -226,7 +226,7 @@ async function querySourceMeta(db: Database, sourceId: string): Promise<SourceMe
   // 如果未找到，从 raw_items 表获取元信息
   const metaStmt = db.prepare(`
     SELECT
-      si.source_id as id,
+      ri.source_id as id,
       json_extract(ri.metadata_json, '$.sourceType') as type,
       json_extract(ri.metadata_json, '$.packId') as packId,
       json_extract(ri.metadata_json, '$.sourceUrl') as url
@@ -259,21 +259,41 @@ async function querySourceMeta(db: Database, sourceId: string): Promise<SourceMe
  * 查询来源策略信息
  */
 async function querySourcePolicy(db: Database, sourceId: string): Promise<SourcePolicyInfo> {
-  // 尝试从 sources 表查询
-  const stmt = db.prepare(`
+  const sourceStmt = db.prepare(`
     SELECT policy_json FROM sources WHERE id = ?
   `);
-  const row = stmt.get(sourceId) as { policy_json: string | null } | undefined;
+  const sourceRow = sourceStmt.get(sourceId) as { policy_json: string | null } | undefined;
 
-  if (row?.policy_json) {
+  if (sourceRow?.policy_json) {
     try {
-      const policy = JSON.parse(row.policy_json) as { mode: PolicyMode; filterPrompt?: string };
+      const policy = JSON.parse(sourceRow.policy_json) as { mode: PolicyMode; filterPrompt?: string };
       return {
         mode: policy.mode || "filter_then_assist",
         filterPrompt: policy.filterPrompt,
       };
     } catch {
       // 解析失败，使用默认值
+    }
+  }
+
+  const packStmt = db.prepare(`
+    SELECT sp.id, sp.policy_json
+    FROM source_packs sp, json_each(sp.source_ids_json) source_ids
+    WHERE source_ids.value = ?
+    LIMIT 1
+  `);
+  const packRow = packStmt.get(sourceId) as { id: string; policy_json: string | null } | undefined;
+
+  if (packRow?.policy_json) {
+    try {
+      const policy = JSON.parse(packRow.policy_json) as { mode: PolicyMode; filterPrompt?: string };
+      return {
+        mode: policy.mode || "filter_then_assist",
+        filterPrompt: policy.filterPrompt,
+        inheritedFrom: packRow.id,
+      };
+    } catch {
+      // 解析失败，继续使用默认值
     }
   }
 

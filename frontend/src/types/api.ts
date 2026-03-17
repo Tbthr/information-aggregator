@@ -159,6 +159,16 @@ export interface BriefItem {
   author: string | null;
   score: number;
   scores: ScoreInfo;
+  saved?: {
+    savedAt: string;
+  };
+}
+
+export interface ScanBriefItem {
+  id: string;
+  title: string;
+  url: string;
+  score: number;
 }
 
 /**
@@ -168,7 +178,7 @@ export interface DailyBriefData {
   coverStory: BriefItem | null;
   leadStories: BriefItem[];
   topSignals: BriefItem[];
-  scanBrief: Array<{ id: string; title: string; url: string; score: number }>;
+  scanBrief: ScanBriefItem[];
   savedForLater: BriefItem[];
   meta: {
     generatedAt: string;

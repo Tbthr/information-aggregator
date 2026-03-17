@@ -12,7 +12,7 @@
 - `src/cache/`：内容缓存层
 - `src/config/`：YAML 配置加载与校验
 - `src/db/`：SQLite schema 与 query helpers
-- `src/pipeline/`：核心处理流水线（collect → normalize → dedupe → enrich → rank → cluster）
+- `src/pipeline/`：核心处理流水线（collect → normalize → dedupe → policy_filter → enrich → rank → cluster）
 - `src/query/`：查询引擎（CLI parser、selection resolver）
 - `src/views/`：视图层（registry、view model 构建）
 - `src/views/render/`：Markdown 渲染
@@ -34,10 +34,11 @@
 1. **Collect**：从各数据源拉取内容（adapters）
 2. **Normalize**：URL/文本规范化
 3. **Dedupe**：精确 + 近似去重
-4. **Enrich**：正文提取 + AI 增强
-5. **Rank**：加权评分
-6. **Cluster**：相似内容聚合
-7. **Render**：输出 Markdown/JSON
+4. **Policy Filter**：按 source / pack policy 执行 AI 过滤判断
+5. **Enrich**：正文提取 + AI 增强
+6. **Rank**：加权评分
+7. **Cluster**：相似内容聚合
+8. **Render**：输出 Markdown/JSON
 
 ## 当前能力
 
@@ -47,6 +48,26 @@
 - 已接入 `rss`、`json-feed`、`github_trending`
 - 已接入基于 `bird CLI` 的 X family adapter（x_home、x_list、x_bookmarks、x_likes、x_user_tweets、x_search、x_trending）
 - 可选的 AI 抽象层，用于候选评分、cluster summary 与 digest narration 扩展
+- Source Policy：支持 `assist_only` / `filter_then_assist`
+- AI 过滤判断：支持 `keepDecision`、`keepReason`、`readerBenefit`、`readingHint`
+- Web 四视图：日报首页、Pack 视图、来源详情页、周报页
+- Save For Later：支持保存、取消保存与日报聚合展示
+
+## 前端入口
+
+- `/`：日报首页
+- `/items`：通用列表页
+- `/pack/:id`：Pack 详情页
+- `/source/:id`：来源详情页
+- `/weekly`：周报页
+
+## 前端验证要求
+
+- 前端开发/构建请使用受支持的 Node 版本：`^20.19.0` 或 `^22.12.0`。当前仓库已通过 `frontend/package.json` 将 `esbuild` 固定到 `0.25.12`，用于规避旧版本在本机环境下的挂起问题。
+- `cd frontend && bun run test:e2e` 会自动拉起本地 API（3000）与 Vite 前端（5173），用于页面级回归。
+- 涉及前端页面样式、布局、图表或关键交互时，除了类型检查和构建，还需要使用 `chrome-cdp` skill 进行浏览器验证。
+- 推荐验证路径：`/`、`/weekly`、`/source/:id`
+- 至少检查：布局结构、空态/错误态、图表可见性、Save 按钮交互
 
 ## 配置文件
 
@@ -512,7 +533,7 @@ finalScore =
 
 ## 当前实现状态
 
-截至 2026-03-14，仓库当前状态为：
+截至 2026-03-17，仓库当前状态为：
 
 - 已完成：项目脚手架与 CLI
 - 已完成：本地 YAML 配置加载与校验

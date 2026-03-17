@@ -117,15 +117,15 @@ app.get("/:id", async (c) => {
     const retainedStats = db
       .prepare(
         `SELECT COUNT(DISTINCT ri.id) as count
-         FROM raw_items ri
-         LEFT JOIN normalized_items ni ON ni.raw_item_id = ri.id
-         LEFT JOIN enrichment_results er ON er.normalized_item_id = ni.id
-         WHERE ri.source_id LIKE ?
-           AND (er.filter_judgment_json IS NULL
-                OR JSON_EXTRACT(er.filter_judgment_json, '$.accepted') = 1
-                OR JSON_EXTRACT(er.filter_judgment_json, '$.accepted') = 'true')`,
-      )
-      .get(`${pack.id}::%`) as Record<string, unknown>;
+	         FROM raw_items ri
+	         LEFT JOIN normalized_items ni ON ni.raw_item_id = ri.id
+	         LEFT JOIN enrichment_results er ON er.normalized_item_id = ni.id
+	         WHERE ri.source_id LIKE ?
+	           AND (er.filter_judgment_json IS NULL
+	                OR JSON_EXTRACT(er.filter_judgment_json, '$.keepDecision') = 1
+	                OR JSON_EXTRACT(er.filter_judgment_json, '$.keepDecision') = 'true')`,
+	      )
+	      .get(`${pack.id}::%`) as Record<string, unknown>;
 
     const retainedItems = Number(retainedStats?.count ?? totalItems);
     const retentionRate = totalItems > 0 ? Math.round((retainedItems / totalItems) * 100) / 100 : 1;

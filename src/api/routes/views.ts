@@ -26,6 +26,9 @@ interface BriefItem {
   author: string | null;
   score: number;
   scores: ScoreInfo;
+  saved?: {
+    savedAt: string;
+  };
 }
 
 /**
@@ -48,7 +51,11 @@ interface DailyBriefData {
 /**
  * 将 RawItem 转换为 BriefItem
  */
-function toBriefItem(item: RawItem, scoreInfo: ScoreInfo): BriefItem {
+function toBriefItem(
+  item: RawItem,
+  scoreInfo: ScoreInfo,
+  savedAt?: string,
+): BriefItem {
   const meta = JSON.parse(item.metadataJson || "{}");
   return {
     id: item.id,
@@ -65,6 +72,7 @@ function toBriefItem(item: RawItem, scoreInfo: ScoreInfo): BriefItem {
     author: item.author ?? null,
     score: scoreInfo.finalScore,
     scores: scoreInfo,
+    saved: savedAt ? { savedAt } : undefined,
   };
 }
 
@@ -83,6 +91,9 @@ app.get("/daily-brief", async (c) => {
   const db = createDb("data/archive.db");
 
   try {
+    const savedItemRecords = await getSavedItems(db, 100);
+    const savedAtById = new Map(savedItemRecords.map((item) => [item.itemId, item.savedAt]));
+
     // 查询今日内容（24小时内）
     const rawItems = queryArchiveByWindow(db, "24h", {
       limit: 100, // 获取足够多的内容用于分类
@@ -109,16 +120,17 @@ app.get("/daily-brief", async (c) => {
 
     for (let i = 0; i < itemsWithScores.length; i++) {
       const { item, scoreInfo } = itemsWithScores[i];
+      const savedAt = savedAtById.get(item.id);
 
       if (i === 0) {
         // 封面故事：最高分
-        coverStory = toBriefItem(item, scoreInfo);
+        coverStory = toBriefItem(item, scoreInfo, savedAt);
       } else if (i <= 4) {
         // 领导故事：第2-4名
-        leadStories.push(toBriefItem(item, scoreInfo));
+        leadStories.push(toBriefItem(item, scoreInfo, savedAt));
       } else if (i <= 14) {
         // 热点信号：第5-14名（5-10条）
-        topSignals.push(toBriefItem(item, scoreInfo));
+        topSignals.push(toBriefItem(item, scoreInfo, savedAt));
       } else {
         // 扫描简报：剩余内容仅保留标题
         scanBrief.push({
@@ -131,7 +143,6 @@ app.get("/daily-brief", async (c) => {
     }
 
     // 获取已保存内容
-    const savedItemRecords = await getSavedItems(db, 20);
     const savedForLater: BriefItem[] = [];
 
     if (savedItemRecords.length > 0) {
@@ -166,7 +177,7 @@ app.get("/daily-brief", async (c) => {
           const scoreInfo = calculateItemScores(rawItem, {
             now: new Date().toISOString(),
           });
-          savedForLater.push(toBriefItem(rawItem, scoreInfo));
+          savedForLater.push(toBriefItem(rawItem, scoreInfo, saved.savedAt));
         }
       }
     }

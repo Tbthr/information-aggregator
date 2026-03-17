@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { SourceCompositionChart } from "../components/charts/SourceCompositionChart";
 import { FilterReasonsChart } from "../components/charts/FilterReasonsChart";
-
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3000";
+import { API_BASE } from "../lib/api";
 
 /**
  * 来源详情数据结构
@@ -20,6 +18,7 @@ interface SourceDetailData {
   policy: {
     mode: "assist_only" | "filter_then_assist";
     filterPrompt?: string;
+    inheritedFrom?: string;
   };
   stats: {
     totalItems: number;
@@ -58,7 +57,7 @@ export function SourceViewPage() {
     async function fetchSourceDetail() {
       try {
         setLoading(true);
-        const response = await fetch(`${API_BASE}/api/sources/${id}`);
+        const response = await fetch(`${API_BASE}/sources/${id}`);
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
@@ -164,6 +163,11 @@ export function SourceViewPage() {
             <div className="text-sm text-gray-600">
               <span className="font-medium">过滤提示：</span>
               {data.policy.filterPrompt}
+            </div>
+          )}
+          {data.policy.inheritedFrom && (
+            <div className="mt-2 text-sm text-gray-500">
+              继承自 Pack：{data.policy.inheritedFrom}
             </div>
           )}
         </section>

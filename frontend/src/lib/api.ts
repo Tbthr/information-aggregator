@@ -1,6 +1,6 @@
 import type { ApiResponse, ItemsData, PacksData, HealthData, ItemData, PackDetailData } from "../types/api";
 
-const API_BASE = "/api";
+export const API_BASE = "/api";
 
 /**
  * API 客户端

@@ -1,5 +1,6 @@
 import type { InlineSource, SourcePack, SourceType } from "../types/index";
 import type { ParsedRunArgs } from "../types/index";
+import { generateSourceId } from "../config/source-id";
 
 export interface ResolvedSource {
   id: string;
@@ -16,16 +17,6 @@ export interface ResolvedSelection {
   window: string;
   sources: ResolvedSource[];
   keywords: string[];
-}
-
-function generateSourceId(url: string): string {
-  try {
-    const parsed = new URL(url);
-    const path = parsed.pathname.replace(/[^a-z0-9]/gi, "-").slice(0, 30);
-    return `${parsed.hostname.replace(/\./g, "-")}${path}`;
-  } catch {
-    return url.replace(/[^a-z0-9]/gi, "-").slice(0, 50);
-  }
 }
 
 export function resolveSelection(

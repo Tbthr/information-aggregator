@@ -354,8 +354,8 @@ async function queryEditorPicks(
 
   const rows = stmt.all(windowStart, windowEnd) as SavedItemRow[];
 
-  return rows
-    .map((row) => {
+  const picks = rows
+    .map((row): EditorPick | null => {
       const item = itemMap.get(row.item_id);
       if (!item) {
         return null;
@@ -368,6 +368,7 @@ async function queryEditorPicks(
         url: item.canonical_url,
         packId: row.pack_id || undefined,
       };
-    })
-    .filter((p): p is EditorPick => p !== null);
+    });
+
+  return picks.filter((pick): pick is EditorPick => pick !== null);
 }

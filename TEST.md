@@ -6,6 +6,8 @@
 |------|------|----------|
 | `bun test` | 单元测试 | 无 |
 | `bun run check` | TypeScript 类型检查 | 无 |
+| `cd frontend && bun run build` | 前端类型检查 + 构建 | 无 |
+| `cd frontend && bun run test:e2e` | Playwright 前端 E2E | 自动拉起本地 API + Vite 服务 |
 | `bun run smoke` | 本地验证（组合命令） | 无 |
 | `bun run e2e:real` | 真实数据流验证 | 需要网络 |
 
@@ -21,6 +23,14 @@ bun src/cli/main.ts config validate   # 配置校验
 ```
 
 任何一步失败都会中断。
+
+## 前端验证分层
+
+- 前端命令建议在受支持的 Node 版本下执行：`^20.19.0` 或 `^22.12.0`
+- `bun test`：后端与共享逻辑测试，不包含 Playwright 用例
+- `cd frontend && bun run build`：前端编译与类型检查
+- `cd frontend && bun run test:e2e`：Playwright 页面级回归，会自动拉起本地 API（3000）和前端（5173）
+- `chrome-cdp`：页面样式、图表与关键交互的人工可复核浏览器验证
 
 ## API 验证
 
@@ -89,6 +99,11 @@ cd frontend && bun dev
    - [ ] 分页：翻页功能正常
    - [ ] 分数显示：显示动态计算值（非固定 5）
 
+4. 使用 `chrome-cdp` 额外验证：
+   - [ ] 日报首页 `/`：5 个模块结构、Save 按钮、空态/错误态
+   - [ ] 周报页 `/weekly`：概览、主题聚合、编辑精选
+   - [ ] 来源页 `/source/:id`：策略模式、继承来源、过滤理由图表
+
 ## e2e:real 验证
 
 `bun run e2e:real` 使用 `test_daily` 和 `test_x_analysis` pack 进行真实数据流验证：
@@ -103,7 +118,9 @@ cd frontend && bun dev
 
 1. 开发中：频繁运行 `bun run smoke`
 2. 提交前：确保 `bun run smoke` 通过
-3. 发布前：运行 `bun run e2e:real` 确认真实数据流
+3. 前端改动提交前：运行 `cd frontend && bun run build`
+4. 样式/交互改动提交前：使用 `chrome-cdp` 验证关键页面
+5. 发布前：运行 `bun run e2e:real` 确认真实数据流
 
 ## 新增 source type 时
 

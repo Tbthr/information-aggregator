@@ -1,6 +1,9 @@
 import { createDb } from "../../db/client";
 import { recordSourceSuccessWithMetrics, recordSourceFailure } from "../../db/queries/source-health";
+import { syncPacksToDb } from "../../db/queries/source-packs";
+import { upsertSource } from "../../db/queries/sources";
 import { loadAllPacks } from "../../config/load-pack";
+import { generateSourceId } from "../../config/source-id";
 import { resolveSelection } from "../../query/resolve-selection";
 import { collectSources, type CollectDependencies } from "../../pipeline/collect";
 import { archiveRawItems } from "../../archive/upsert";
@@ -53,6 +56,19 @@ export async function archiveCollectCommand(
 
   console.log(`Loading packs from: ${packDir}`);
   const packs = await loadAllPacks(packDir);
+  syncPacksToDb(db, packs);
+  for (const pack of packs) {
+    for (const source of pack.sources) {
+      upsertSource(db, {
+        id: generateSourceId(source.url),
+        type: source.type,
+        enabled: source.enabled !== false,
+        url: source.url,
+        configJson: source.configJson ?? "{}",
+        policy: source.policy,
+      });
+    }
+  }
 
   // 解析选择
   const selection = resolveSelection(

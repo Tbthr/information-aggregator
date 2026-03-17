@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
-import type { DailyBriefData, ItemData } from "../types/api";
+import type { DailyBriefData, ItemData, ScanBriefItem } from "../types/api";
 import { CoverStorySection } from "../components/views/CoverStorySection";
 import { LeadStoriesSection } from "../components/views/LeadStoriesSection";
 import { TopSignalsSection } from "../components/views/TopSignalsSection";
 import { ScanBriefSection } from "../components/views/ScanBriefSection";
 import { SavedForLaterSection } from "../components/views/SavedForLaterSection";
-
-const API_BASE = "/api";
+import { API_BASE } from "../lib/api";
 
 /**
  * Daily Brief 页面 - 展示每日精选内容
@@ -145,7 +144,7 @@ export function DailyBriefPage() {
       {/* 4. Scan Brief 快速扫描 */}
       <section>
         <h2 className="text-lg font-semibold text-gray-700 mb-4">快速扫描</h2>
-        <ScanBriefSection items={(data?.scanBrief ?? []) as ItemData[]} />
+        <ScanBriefSection items={(data?.scanBrief ?? []) as ScanBriefItem[]} />
       </section>
 
       {/* 5. Saved for Later 稍后阅读 */}

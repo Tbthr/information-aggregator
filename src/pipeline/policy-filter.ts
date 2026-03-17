@@ -190,7 +190,7 @@ async function processFilterThenAssist(
   // 构建缓存查询参数
   const cacheQueries = candidates.map((c) => ({
     itemId: c.id,
-    fingerprint: generateFingerprint(c.url || c.canonicalUrl || "", c.publishedAt || null),
+    fingerprint: generateFingerprint(c.url || c.canonicalUrl || "", c.processedAt || null),
   }));
 
   // 批量查询缓存

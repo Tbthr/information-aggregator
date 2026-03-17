@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
-import { WeeklyReviewData } from "../types/api";
-
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3000";
+import type { WeeklyReviewData } from "../types/api";
+import { API_BASE } from "../lib/api";
 
 /**
  * WeeklyReviewPage - 周报回顾页面
@@ -18,7 +17,7 @@ export function WeeklyReviewPage() {
       try {
         setLoading(true);
         const response = await fetch(
-          `${API_BASE}/api/views/weekly-review?window=${windowDays}`
+          `${API_BASE}/views/weekly-review?window=${windowDays}`
         );
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -69,7 +68,7 @@ export function WeeklyReviewPage() {
         {/* Header */}
         <header className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Weekly Review ({windowDays} Days)
+            周报回顾（最近 {windowDays} 天）
           </h1>
           <p className="text-gray-600">
             {formatDate(data.overview.windowStart)} - {formatDate(data.overview.windowEnd)}

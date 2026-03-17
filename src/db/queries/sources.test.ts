@@ -22,4 +22,25 @@ describe("source queries", () => {
     upsertSource(db, { id: "s1", type: "rss", enabled: true, configJson: "{}", url: "" });
     expect(listEnabledSources(db)).toHaveLength(1);
   });
+
+  test("persists policy json when provided", () => {
+    const db = createDb(":memory:");
+    upsertSource(db, {
+      id: "s1",
+      type: "rss",
+      enabled: true,
+      configJson: "{}",
+      url: "https://example.com/feed.xml",
+      policy: {
+        mode: "assist_only",
+        filterPrompt: "只做辅助",
+      },
+    });
+
+    const row = db
+      .prepare("SELECT policy_json FROM sources WHERE id = ?")
+      .get("s1") as { policy_json: string | null };
+
+    expect(row.policy_json).toBe('{"mode":"assist_only","filterPrompt":"只做辅助"}');
+  });
 });

@@ -1,5 +1,9 @@
 import { Hono } from "hono";
 import { createDb } from "../../db/client";
+import { loadAllPacks } from "../../config/load-pack";
+import { generateSourceId } from "../../config/source-id";
+import { syncPacksToDb } from "../../db/queries/source-packs";
+import { upsertSource } from "../../db/queries/sources";
 import { buildSourceDetail } from "../../views/source-detail";
 
 const app = new Hono();
@@ -15,6 +19,21 @@ app.get("/:id", async (c) => {
   const db = createDb("data/archive.db");
 
   try {
+    const packs = await loadAllPacks("config/packs");
+    syncPacksToDb(db, packs);
+    for (const pack of packs) {
+      for (const source of pack.sources) {
+        upsertSource(db, {
+          id: generateSourceId(source.url),
+          type: source.type,
+          enabled: source.enabled !== false,
+          url: source.url,
+          configJson: source.configJson ?? "{}",
+          policy: source.policy,
+        });
+      }
+    }
+
     // 构建来源详情视图
     const viewModel = await buildSourceDetail({ db, sourceId });
 

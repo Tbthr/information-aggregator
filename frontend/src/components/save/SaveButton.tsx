@@ -27,7 +27,8 @@ export function SaveButton({ itemId, saved: initialSaved = false, onToggle }: Sa
     setLoading(true);
     try {
       const method = saved ? "DELETE" : "POST";
-      const response = await fetch(`/api/items/${itemId}/save`, {
+      const encodedItemId = encodeURIComponent(itemId);
+      const response = await fetch(`/api/items/${encodedItemId}/save`, {
         method,
         headers: {
           "Content-Type": "application/json",

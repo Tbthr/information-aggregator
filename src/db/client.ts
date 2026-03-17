@@ -45,6 +45,17 @@ export function createDb(path: string): Database {
     }
   }
 
+  // 应用 policy cache migration
+  const migration005 = join(__dirname, "migrations", "005_policy_cache.sql");
+  try {
+    db.exec(readFileSync(migration005, "utf8"));
+  } catch (error) {
+    const msg = error?.toString() || "";
+    if (!msg.includes("already exists") && !msg.includes("duplicate column")) {
+      console.warn("Migration 005 warning:", error);
+    }
+  }
+
   return db;
 }
 

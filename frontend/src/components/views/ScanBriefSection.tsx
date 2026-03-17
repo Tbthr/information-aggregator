@@ -1,8 +1,7 @@
-import { ItemData } from "../../types/api";
-import { formatTimeAgo } from "../../lib/api";
+import { ScanBriefItem } from "../../types/api";
 
 interface ScanBriefSectionProps {
-  items: ItemData[];
+  items: ScanBriefItem[];
 }
 
 export function ScanBriefSection({ items }: ScanBriefSectionProps) {
@@ -22,8 +21,7 @@ export function ScanBriefSection({ items }: ScanBriefSectionProps) {
           >
             {item.title}
           </a>
-          <span className="text-xs text-gray-400 shrink-0">{item.source.packId}</span>
-          <span className="text-xs text-gray-400 shrink-0">{formatTimeAgo(item.publishedAt || item.fetchedAt)}</span>
+          <span className="text-xs text-gray-400 shrink-0">#{item.score.toFixed(1)}</span>
         </div>
       ))}
     </section>
