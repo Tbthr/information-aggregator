@@ -3,6 +3,7 @@ import { readdir, writeFile, mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { validateInlineSource, validateSourcePack, loadAllPacks, dedupePacksBySourceUrl } from "./load-pack";
 import type { InlineSource, SourcePack } from "../types/index";
+import type { PackPolicy, SourcePolicy } from "../types/policy";
 
 describe("validateInlineSource", () => {
   test("validates required fields", () => {
@@ -196,5 +197,219 @@ describe("dedupePacksBySourceUrl", () => {
 
     const result = dedupePacksBySourceUrl(packs);
     expect(result[0]?.sources[0]?.description).toBe("First");
+  });
+});
+
+// ==================== Policy 解析测试 ====================
+
+describe("pack policy parsing", () => {
+  test("parses pack policy with mode", () => {
+    const input = {
+      pack: {
+        id: "test-pack",
+        name: "Test Pack",
+        policy: {
+          mode: "assist_only",
+        },
+      },
+      sources: [],
+    };
+    const result = validateSourcePack(input);
+    expect(result.policy).toBeDefined();
+    expect(result.policy?.mode).toBe("assist_only");
+    expect(result.policy?.filterPrompt).toBeUndefined();
+  });
+
+  test("parses pack policy with filterPrompt", () => {
+    const input = {
+      pack: {
+        id: "test-pack",
+        name: "Test Pack",
+        policy: {
+          mode: "filter_then_assist",
+          filterPrompt: "Only show AI-related content",
+        },
+      },
+      sources: [],
+    };
+    const result = validateSourcePack(input);
+    expect(result.policy?.mode).toBe("filter_then_assist");
+    expect(result.policy?.filterPrompt).toBe("Only show AI-related content");
+  });
+
+  test("defaults to filter_then_assist when policy not specified", () => {
+    const input = {
+      pack: {
+        id: "test-pack",
+        name: "Test Pack",
+      },
+      sources: [],
+    };
+    const result = validateSourcePack(input);
+    expect(result.policy).toBeDefined();
+    expect(result.policy?.mode).toBe("filter_then_assist");
+  });
+
+  test("defaults to filter_then_assist when policy is invalid", () => {
+    const input = {
+      pack: {
+        id: "test-pack",
+        name: "Test Pack",
+        policy: {
+          mode: "invalid_mode",
+        },
+      },
+      sources: [],
+    };
+    const result = validateSourcePack(input);
+    expect(result.policy?.mode).toBe("filter_then_assist");
+  });
+
+  test("ignores non-object policy", () => {
+    const input = {
+      pack: {
+        id: "test-pack",
+        name: "Test Pack",
+        policy: "invalid",
+      },
+      sources: [],
+    };
+    const result = validateSourcePack(input);
+    expect(result.policy?.mode).toBe("filter_then_assist");
+  });
+});
+
+describe("source policy inheritance", () => {
+  test("source inherits pack policy when no source policy specified", () => {
+    const input = {
+      pack: {
+        id: "test-pack",
+        name: "Test Pack",
+        policy: {
+          mode: "assist_only",
+          filterPrompt: "Pack-level prompt",
+        },
+      },
+      sources: [
+        { type: "rss", url: "https://example.com/feed.xml" },
+      ],
+    };
+    const result = validateSourcePack(input);
+    expect(result.sources[0]?.policy).toBeDefined();
+    expect(result.sources[0]?.policy?.mode).toBe("assist_only");
+    expect(result.sources[0]?.policy?.filterPrompt).toBe("Pack-level prompt");
+    expect(result.sources[0]?.policy?.inheritedFrom).toBe("pack");
+  });
+
+  test("source overrides pack policy with own policy", () => {
+    const input = {
+      pack: {
+        id: "test-pack",
+        name: "Test Pack",
+        policy: {
+          mode: "assist_only",
+        },
+      },
+      sources: [
+        {
+          type: "rss",
+          url: "https://example.com/feed.xml",
+          policy: {
+            mode: "filter_then_assist",
+            filterPrompt: "Source-level prompt",
+          },
+        },
+      ],
+    };
+    const result = validateSourcePack(input);
+    expect(result.sources[0]?.policy?.mode).toBe("filter_then_assist");
+    expect(result.sources[0]?.policy?.filterPrompt).toBe("Source-level prompt");
+    expect(result.sources[0]?.policy?.inheritedFrom).toBeUndefined();
+  });
+
+  test("source without pack policy has no policy", () => {
+    const input = {
+      pack: {
+        id: "test-pack",
+        name: "Test Pack",
+        // no policy
+      },
+      sources: [
+        { type: "rss", url: "https://example.com/feed.xml" },
+      ],
+    };
+    const result = validateSourcePack(input);
+    // pack 默认有 policy，source 会继承
+    expect(result.sources[0]?.policy?.mode).toBe("filter_then_assist");
+    expect(result.sources[0]?.policy?.inheritedFrom).toBe("pack");
+  });
+
+  test("source with invalid policy falls back to pack policy", () => {
+    const input = {
+      pack: {
+        id: "test-pack",
+        name: "Test Pack",
+        policy: {
+          mode: "assist_only",
+        },
+      },
+      sources: [
+        {
+          type: "rss",
+          url: "https://example.com/feed.xml",
+          policy: {
+            mode: "invalid_mode",
+          },
+        },
+      ],
+    };
+    const result = validateSourcePack(input);
+    expect(result.sources[0]?.policy?.mode).toBe("assist_only");
+    expect(result.sources[0]?.policy?.inheritedFrom).toBe("pack");
+  });
+});
+
+describe("policy default values", () => {
+  test("both pack and source without policy uses filter_then_assist", () => {
+    const input = {
+      pack: {
+        id: "test-pack",
+        name: "Test Pack",
+      },
+      sources: [
+        { type: "rss", url: "https://example.com/feed.xml" },
+      ],
+    };
+    const result = validateSourcePack(input);
+    expect(result.policy?.mode).toBe("filter_then_assist");
+    expect(result.sources[0]?.policy?.mode).toBe("filter_then_assist");
+  });
+
+  test("empty policy object defaults to filter_then_assist", () => {
+    const input = {
+      pack: {
+        id: "test-pack",
+        name: "Test Pack",
+        policy: {},
+      },
+      sources: [],
+    };
+    const result = validateSourcePack(input);
+    expect(result.policy?.mode).toBe("filter_then_assist");
+  });
+
+  test("filterPrompt defaults to undefined when not specified", () => {
+    const input = {
+      pack: {
+        id: "test-pack",
+        name: "Test Pack",
+        policy: {
+          mode: "filter_then_assist",
+        },
+      },
+      sources: [],
+    };
+    const result = validateSourcePack(input);
+    expect(result.policy?.filterPrompt).toBeUndefined();
   });
 });
