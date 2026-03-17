@@ -1,6 +1,6 @@
 # Information Aggregator
 
-`information-aggregator` 是一个本地优先的 Bun + TypeScript 信息聚合工具，用于收集已配置的数据源、去除重复内容，并通过统一的 CLI 输出 Markdown 或 JSON 结果。
+`information-aggregator` 是一个本地优先的 Bun + TypeScript 信息聚合工具，用于收集已配置的数据源、去除重复内容，并通过 Web 界面呈现聚合结果。
 
 ## 架构概览
 
@@ -15,9 +15,6 @@
 - `src/pipeline/`：核心处理流水线（collect → normalize → dedupe → policy_filter → enrich → rank → cluster）
 - `src/query/`：查询引擎（CLI parser、selection resolver）
 - `src/views/`：视图层（registry、view model 构建）
-- `src/views/render/`：Markdown 渲染
-- `src/render/`：JSON 等其他格式输出
-- `src/templates/`：模板加载器（prompt、view 模板）
 - `src/ai/`：AI 客户端抽象层
   - `config/`：配置加载（settings.yaml → 环境变量）
   - `providers/`：策略模式实现（Anthropic、Gemini、OpenAI）
@@ -25,9 +22,6 @@
 - `src/cli/`：CLI 入口点
 - `src/verification/`：验证辅助（smoke、e2e）
 - `config/packs/`：Pack 配置目录
-- `config/prompts/`：AI prompt 模板
-- `config/views/`：视图模板
-- `.github/workflows/`：GitHub Actions 自动化
 
 ### 核心数据流
 
@@ -38,7 +32,6 @@
 5. **Enrich**：正文提取 + AI 增强
 6. **Rank**：加权评分
 7. **Cluster**：相似内容聚合
-8. **Render**：输出 Markdown/JSON
 
 ## 当前能力
 
@@ -381,74 +374,6 @@ bun --cwd frontend dev
 - 数据源过滤器
 - 分页导航
 
-### 查询命令
-
-```bash
-# 单 Pack 查询
-bun src/cli/main.ts run --pack tech-news --view daily-brief --window 24h
-bun src/cli/main.ts run --pack x_bookmarks --view x-analysis --window 7d
-bun src/cli/main.ts run --pack karpathy-picks --view json --window all
-
-# 多 Pack 合并查询
-bun src/cli/main.ts run --pack tech-news,karpathy-picks --view daily-brief --window 24h
-
-# 输出到文件（推荐用于大数据量）
-bun src/cli/main.ts run --pack x-sources --view json --window all --output out/result.json
-
-# 禁用 AI 增强
-bun src/cli/main.ts run --pack tech-news --view daily-brief --window 24h --no-ai
-```
-
-### 参数说明
-
-| 参数 | 必填 | 说明 | 示例值 |
-|------|------|------|--------|
-| `--pack` | ✅ | Pack ID，支持逗号分隔的多 Pack | `tech-news` 或 `tech-news,karpathy-picks` |
-| `--view` | ✅ | 输出格式 | `json`, `daily-brief`, `x-analysis` |
-| `--window` | ✅ | 时间窗口 | `24h`, `7d`, `3d`, `all` |
-| `--output` | ❌ | 输出文件路径，直接写入文件（避免大数据管道编码问题） | `out/result.json` |
-| `--no-ai` | ❌ | 禁用 AI 增强功能 | （无值） |
-
-**注意**：输出大量数据时（如 X 数据源），建议使用 `--output` 参数直接写入文件，避免通过 stdout 管道可能出现的编码问题。
-
-## 输出模式
-
-| 视图 | 输出格式 | 说明 |
-|------|---------|------|
-| `json` | JSON | 原始数据，供程序消费 |
-| `daily-brief` | Markdown | AI 生成：今日看点、主要看点、Top 10 文章（描述+推荐理由+标签）、标签云 |
-| `x-analysis` | Markdown | AI 生成：每篇帖子摘要+标签，互动数据
-
-### `daily-brief` 输出示例
-
-```md
-# Daily Digest
-
-## 今日看点
-
-今日技术社区动态呈现出...
-
-### 主要看点
-
-- 看点1
-- 看点2
-- 看点3
-
-## 精选文章
-
-### [文章标题](https://example.com/post)
-
-> 一句话描述
-
-**为什么值得关注**: 推荐理由
-
-**标签**: `tag1` `tag2` `tag3`
-
-## 标签云
-
-`标签1` `标签2` `标签3`
-```
-
 ## 示例工作流
 
 ```bash
@@ -456,39 +381,6 @@ bun run smoke
 ```
 
 更完整的验证说明请见 [`TEST.md`](./TEST.md)。
-
-```bash
-bun src/cli/main.ts config validate
-bun src/cli/main.ts run --pack tech-news --view daily-brief --window 24h
-bun src/cli/main.ts run --pack karpathy-picks --view daily-brief --window 7d
-```
-
-## GitHub Actions 自动化
-
-项目提供 GitHub Actions workflow 实现自动化聚合：
-
-### 每日自动聚合
-
-`.github/workflows/daily-brief.yml` 会在每天 UTC 1:00（北京时间 9:00）自动运行：
-
-```yaml
-# 手动触发
-# GitHub 仓库 → Actions → Daily Brief → Run workflow
-```
-
-**配置 Secrets**：
-
-| Secret | 说明 |
-|--------|------|
-| `ANTHROPIC_AUTH_TOKEN` | Anthropic API Token（可选） |
-| `GEMINI_API_KEY` | Gemini API Key（可选） |
-| `OPENAI_API_KEY` | OpenAI API Key（可选） |
-| `X_AUTH_TOKEN` | Twitter auth_token（X 数据源用） |
-| `X_CT0` | Twitter ct0 token（X 数据源用） |
-
-### 手动触发
-
-`.github/workflows/manual-run.yml` 支持手动触发任意 Pack 和参数组合。
 
 ### 分数计算
 
@@ -546,8 +438,6 @@ finalScore =
 - 已完成：数据归档功能（`archive collect/stats` 命令）
 - 已完成：CLI `auth check/status` 命令
 - 已完成：规范化、去重、topic match、排序、聚类
-- 已完成：`run --pack --view --window` 查询入口、Markdown / JSON 输出
-- 已完成：AI 增强视图（daily-brief、x-analysis）
 - 已完成：raw items、normalized items、clusters 的 end-to-end 持久化
 - 已完成：深度 enrichment（正文提取、AI 关键点提取、标签生成）
 - 已完成：Enrichment 结果持久化（`enrichment_results`、`extracted_content_cache` 表）

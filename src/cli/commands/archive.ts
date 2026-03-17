@@ -76,7 +76,6 @@ export async function archiveCollectCommand(
       packIds: packIds.length > 0 ? packIds : packs.map((p) => p.id),
       viewId: "json",
       window: "all",
-      outputFile: undefined,
     },
     packs,
   );

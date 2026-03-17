@@ -1,6 +1,5 @@
 export interface ParsedCliArgs {
   command:
-    | "run"
     | "sources list"
     | "config validate"
     | "auth check"
@@ -25,7 +24,6 @@ export function getHelpText(): string {
     "information-aggregator",
     "",
     "Commands:",
-    "  run --view <view>          Run a query view",
     "  sources list               List sources matching selectors",
     "  config validate            Validate local config files",
     "  auth check                 Check auth configuration for a type",
@@ -47,10 +45,6 @@ export function getHelpText(): string {
 export function parseCliArgs(args: string[]): ParsedCliArgs {
   if (args.includes("--version")) {
     return { command: "version" };
-  }
-
-  if (args[0] === "run") {
-    return { command: "run" };
   }
 
   if (args[0] === "sources" && args[1] === "list") {

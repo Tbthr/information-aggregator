@@ -15,7 +15,16 @@ import { enrichCandidates } from "../pipeline/enrich";
 import { normalizeItems } from "../pipeline/normalize";
 import { rankCandidates } from "../pipeline/rank";
 import { scoreTopicMatch } from "../pipeline/topic-match";
-import { type Cluster, type NormalizedItem, type ParsedRunArgs, type RankedCandidate, type RawItem, type SourcePack, type TopicRule, type EnrichmentConfig } from "../types/index";
+import { type Cluster, type NormalizedItem, type RankedCandidate, type RawItem, type SourcePack, type TopicRule, type EnrichmentConfig } from "../types/index";
+
+/**
+ * 查询参数
+ */
+export interface QueryArgs {
+  packIds: string[];
+  viewId?: string;
+  window: string;
+}
 import { parseRawItemMetadata } from "../utils/metadata";
 import { createContentCache, type ContentCache } from "../cache/content-cache";
 import { resolveSelection, type ResolvedSelection, type ResolvedSource } from "./resolve-selection";
@@ -33,7 +42,7 @@ export interface RunQueryDependencies {
 }
 
 export interface QueryResult {
-  args: ParsedRunArgs;
+  args: QueryArgs;
   selection: ResolvedSelection;
   items: RawItem[];
   normalizedItems: NormalizedItem[];
@@ -148,7 +157,7 @@ function toCandidates(items: NormalizedItem[], topicRule: TopicRule): RankedCand
   });
 }
 
-export async function runQuery(args: ParsedRunArgs, dependencies: RunQueryDependencies = {}): Promise<QueryResult> {
+export async function runQuery(args: QueryArgs, dependencies: RunQueryDependencies = {}): Promise<QueryResult> {
   const now = dependencies.now ?? (() => new Date().toISOString());
   const collectImpl = dependencies.collectSources ?? collectSources;
   const buildClustersImpl = dependencies.buildClusters ?? buildClusters;

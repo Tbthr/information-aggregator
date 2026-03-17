@@ -1,5 +1,5 @@
 import type { InlineSource, SourcePack, SourceType } from "../types/index";
-import type { ParsedRunArgs } from "../types/index";
+import type { QueryArgs } from "./run-query";
 import { generateSourceId } from "../config/source-id";
 
 export interface ResolvedSource {
@@ -13,14 +13,14 @@ export interface ResolvedSource {
 
 export interface ResolvedSelection {
   packIds: string[];
-  viewId: string;
+  viewId?: string;
   window: string;
   sources: ResolvedSource[];
   keywords: string[];
 }
 
 export function resolveSelection(
-  args: ParsedRunArgs,
+  args: QueryArgs,
   packs: SourcePack[]
 ): ResolvedSelection {
   const selectedPackIds = new Set(args.packIds);
@@ -73,7 +73,7 @@ export function resolveSelection(
 
   return {
     packIds: args.packIds,
-    viewId: args.viewId,
+    viewId: args.viewId ?? "json",
     window: args.window,
     sources: sources.sort((a, b) => a.id.localeCompare(b.id)),
     keywords: [...keywords],

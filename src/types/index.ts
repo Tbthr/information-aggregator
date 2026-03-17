@@ -2,7 +2,6 @@ import type { PackPolicy, SourcePolicy } from './policy';
 export type { PackPolicy, SourcePolicy, PolicyMode } from './policy';
 
 export type RunKind = "query";
-export type OutputFormat = "markdown" | "json";
 export type QuerySort = "ranked" | "recent" | "engagement";
 export type CanonicalRelationship = "original" | "discussion" | "share";
 export const CANONICAL_SOURCE_TYPES = [
@@ -293,24 +292,8 @@ export interface EnrichmentConfig {
   aiConcurrency?: number;               // AI 并发数，默认 2
 }
 
-// CLI 运行参数
-export interface ParsedRunArgs {
-  packIds: string[];
-  viewId: string;
-  window: string;
-  outputFile?: string;
-  noAi?: boolean;
-}
-
 // 授权配置
 export interface AuthConfig {
   adapter: string;
   config: Record<string, unknown>;
 }
-
-// 内置视图列表
-export const BUILTIN_VIEWS = new Set([
-  "json",
-  "daily-brief",
-  "x-analysis",
-]);
