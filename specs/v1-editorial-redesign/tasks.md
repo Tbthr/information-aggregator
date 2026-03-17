@@ -1092,7 +1092,7 @@ Focus: 自主 PR 管理循环直到所有条件满足。
   - **Verify**: `grep -E "playwright|basic.spec" frontend/playwright.config.ts`
   - **Commit**: `test(e2e): add Playwright framework setup`
 
-- [ ] 6.6.2 [P] 创建 E2E 测试用例
+- [x] 6.6.2 [P] 创建 E2E 测试用例
   - **Do**:
     1. 创建 `frontend/e2e/daily-brief.spec.ts`
     2. 测试导航到日报首页
