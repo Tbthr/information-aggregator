@@ -1,7 +1,7 @@
 import type { Database } from "bun:sqlite";
 
 export interface SavedItem {
-  id: number;
+  id: string;
   itemId: string;
   packId: string | null;
   savedAt: string;
@@ -15,10 +15,12 @@ export async function saveItem(
   itemId: string,
   packId?: string,
 ): Promise<void> {
+  const id = crypto.randomUUID();
+  const savedAt = new Date().toISOString();
   const statement = db.prepare(
-    `INSERT INTO saved_items (item_id, pack_id) VALUES (?, ?)`,
+    `INSERT INTO saved_items (id, item_id, pack_id, saved_at) VALUES (?, ?, ?, ?)`,
   );
-  statement.run(itemId, packId ?? null);
+  statement.run(id, itemId, packId ?? null, savedAt);
 }
 
 /**
