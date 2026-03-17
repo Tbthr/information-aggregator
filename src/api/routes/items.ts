@@ -7,7 +7,7 @@ import { ItemsQuerySchema } from "../schemas/query";
 import type { ApiResponse, ItemsData, ItemData, SourceInfo } from "../types";
 import { calculateItemScores } from "../scoring";
 import type { RawItem } from "../../types/index";
-import { saveItem, unsaveItem, getSavedItems } from "../../db/queries/saved-items";
+import { saveItem, unsaveItem, getSavedItems, isItemSaved } from "../../db/queries/saved-items";
 
 const app = new Hono();
 
@@ -339,14 +339,14 @@ app.post("/:id/save", async (c) => {
       data: { savedAt: savedRow?.saved_at ?? new Date().toISOString() },
     });
   } catch (error) {
-    // 处理重复保存的情况
+    // 处理重复保存的情况 - 返回幂等成功（already saved）
     if (String(error).includes("UNIQUE constraint")) {
       const savedRow = db
         .prepare("SELECT saved_at FROM saved_items WHERE item_id = ?")
         .get(id) as Record<string, unknown> | undefined;
       return c.json({
         success: true,
-        data: { savedAt: savedRow?.saved_at ?? new Date().toISOString() },
+        data: { savedAt: savedRow?.saved_at ?? new Date().toISOString(), already: true },
       });
     }
     throw error;
@@ -363,6 +363,12 @@ app.delete("/:id/save", async (c) => {
   const db = createDb("data/archive.db");
 
   try {
+    // 检查是否已保存
+    const isSaved = await isItemSaved(db, id);
+    if (!isSaved) {
+      return c.json({ success: false, error: "Item not saved" }, 404);
+    }
+
     await unsaveItem(db, id);
     return c.json({ success: true, data: { savedAt: null } });
   } finally {
