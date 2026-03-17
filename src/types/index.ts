@@ -1,3 +1,5 @@
+import type { PackPolicy, SourcePolicy } from './policy';
+
 export type RunKind = "query";
 export type OutputFormat = "markdown" | "json";
 export type QuerySort = "ranked" | "recent" | "engagement";
@@ -29,6 +31,7 @@ export interface InlineSource {
   description?: string;
   enabled?: boolean;
   configJson?: string;
+  policy?: SourcePolicy;
 }
 
 // Source 类型别名，用于 adapter 函数签名
@@ -45,6 +48,7 @@ export interface SourcePack {
   keywords?: string[];
   auth?: string;           // auth 引用
   sources: InlineSource[];
+  policy?: PackPolicy;
   // 模板引用
   promptTemplate?: string;   // 引用 config/prompts/{name}.md
   viewTemplate?: string;     // 引用 config/views/{name}.md
