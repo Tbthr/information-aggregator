@@ -15,6 +15,10 @@ export type {
 
 export type { AiSettings, AiProviderType } from "./config/schema";
 
+export type { FilterItem, PackContext } from "./prompts-filter";
+
+export type { FilterJudgment } from "../types/ai-response";
+
 export {
   createAiClient,
   loadSettings,

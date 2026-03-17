@@ -1,5 +1,7 @@
 import type { MultiDimensionalScore, HighlightsResult } from "../../types/index";
 import type { AiClient, TopicSuggestion, ArticleEnrichResult, PostSummaryResult, DailyBriefOverviewResult } from "../types";
+import type { FilterJudgment } from "../../types/ai-response";
+import type { FilterItem, PackContext } from "../prompts-filter";
 import {
   buildDeepQualityPrompt,
   buildKeyPointsPrompt,
@@ -8,6 +10,7 @@ import {
   buildMultiDimensionalScorePrompt,
 } from "../prompts-enrichment";
 import { buildHighlightsPrompt } from "../prompts-highlights";
+import { buildFilterPrompt } from "../prompts-filter";
 import {
   buildArticleEnrichPrompt,
   buildDailyBriefOverviewPrompt,
@@ -26,6 +29,7 @@ import {
   parseHighlightsResult,
 } from "../utils";
 import { createLogger, truncateWithLength, maskSensitiveUrl, type Logger } from "../../utils/logger";
+import { isRecord, isArray } from "../../types/validation";
 
 /**
  * 请求策略接口 - 处理不同 Provider 的请求差异
@@ -217,5 +221,43 @@ export abstract class BaseAiClient<TConfig> implements AiClient {
     const prompt = buildPostSummaryPrompt(title, content);
     const response = this.getText(await this.request(prompt));
     return parsePostSummaryResult(response);
+  }
+
+  // 批量过滤判断方法
+
+  async batchFilter(items: FilterItem[], packContext: PackContext): Promise<FilterJudgment[]> {
+    if (items.length === 0) {
+      return [];
+    }
+
+    const prompt = buildFilterPrompt(items, packContext);
+    const response = this.getText(await this.request(prompt));
+    const parsed = parseJsonObject(response);
+
+    if (!parsed || !isArray(parsed.judgments)) {
+      this.logger.warn("Invalid batchFilter response", { response: response.slice(0, 200) });
+      return [];
+    }
+
+    const judgedAt = new Date().toISOString();
+    const judgments: FilterJudgment[] = [];
+
+    for (const j of parsed.judgments as unknown[]) {
+      if (!isRecord(j)) continue;
+
+      const keep = j.keep;
+      const reason = j.reason;
+      if (typeof keep !== "boolean" || typeof reason !== "string") continue;
+
+      judgments.push({
+        keepDecision: keep,
+        keepReason: reason,
+        readerBenefit: typeof j.benefit === "string" ? j.benefit : undefined,
+        readingHint: typeof j.hint === "string" ? j.hint : undefined,
+        judgedAt,
+      });
+    }
+
+    return judgments;
   }
 }

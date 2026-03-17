@@ -1,4 +1,6 @@
 import type { MultiDimensionalScore, HighlightsResult } from "../types/index";
+import type { FilterJudgment } from "../types/ai-response";
+import type { FilterItem, PackContext } from "./prompts-filter";
 
 export interface AiProviderConfig {
   provider?: string;
@@ -84,4 +86,6 @@ export interface AiClient {
   generateDailyBriefOverview(descriptions: string[]): Promise<DailyBriefOverviewResult | null>;
   // X Analysis 视图方法
   summarizePost(title: string, content: string): Promise<PostSummaryResult | null>;
+  // 批量过滤判断方法
+  batchFilter(items: FilterItem[], packContext: PackContext): Promise<FilterJudgment[]>;
 }
