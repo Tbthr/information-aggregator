@@ -7,6 +7,9 @@ import type { RankedCandidate, SourcePack } from "../types/index";
 import type { SourcePolicy } from "../types/policy";
 import type { AiClient } from "../ai/types";
 import type { FilterJudgment } from "../types/ai-response";
+import { createLogger } from "../utils/logger";
+
+const logger = createLogger("pipeline:policy-filter");
 
 /**
  * Policy Filter 配置
@@ -125,6 +128,10 @@ export async function policyFilterCandidates(
 
       if (!aiClient) {
         // 无 AI 客户端：保留所有条目（降级处理）
+        logger.warn("filter_then_assist 模式无 AI 客户端，fallback 到 assist_only", {
+          sourceId,
+          count: groupCandidates.length,
+        });
         kept.push(...groupCandidates);
         continue;
       }
@@ -132,20 +139,31 @@ export async function policyFilterCandidates(
       // 批量处理
       const batches = chunk(groupCandidates, batchSize);
       for (const batch of batches) {
-        const result = await processFilterThenAssist(
-          batch,
-          pack,
-          aiClient
-        );
-        stats.aiCallCount++;
+        try {
+          const result = await processFilterThenAssist(
+            batch,
+            pack,
+            aiClient
+          );
+          stats.aiCallCount++;
 
-        for (const item of result) {
-          if (item.judgment?.keepDecision) {
-            kept.push(item.candidate);
-          } else {
-            filtered.push(item.candidate);
-            stats.filterThenAssistFiltered++;
+          for (const item of result) {
+            if (item.judgment?.keepDecision) {
+              kept.push(item.candidate);
+            } else {
+              filtered.push(item.candidate);
+              stats.filterThenAssistFiltered++;
+            }
           }
+        } catch (error) {
+          // AI 调用失败：fallback 到 assist_only
+          logger.error("AI 过滤调用失败，fallback 到 assist_only", {
+            sourceId,
+            batchSize: batch.length,
+            error: error instanceof Error ? error.message : String(error),
+          });
+          // 保留所有条目作为降级处理
+          kept.push(...batch);
         }
       }
     }
