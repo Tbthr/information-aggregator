@@ -702,7 +702,7 @@ Focus: 测试覆盖（单元 + 集成 + E2E）。
   - _Requirements: FR-3.5-3.7_
   - _Design: Test Strategy > Integration Tests_
 
-- [ ] 3.8 [VERIFY] Quality checkpoint: integration tests
+- [x] 3.8 [VERIFY] Quality checkpoint: integration tests
   - **Do**: Run all tests
   - **Verify**: `bun test`
   - **Done when**: All tests pass
@@ -714,19 +714,19 @@ Focus: 测试覆盖（单元 + 集成 + E2E）。
 
 Focus: 所有检查通过，创建 PR。
 
-- [ ] 4.1 V4 [VERIFY] Full local CI
+- [x] 4.1 V4 [VERIFY] Full local CI
   - **Do**: Run complete local CI suite
   - **Verify**: `bun run check && bun run lint && bun test`
   - **Done when**: All commands pass
   - **Commit**: `chore(editorial): pass local CI` (if fixes needed)
 
-- [ ] 4.2 V5 [VERIFY] CI pipeline passes
+- [x] 4.2 V5 [VERIFY] CI pipeline passes
   - **Do**: Create PR, verify GitHub Actions passes
   - **Verify**: `gh pr checks --watch` (after PR created)
   - **Done when**: CI green
   - **Commit**: None
 
-- [ ] 4.3 V6 [VERIFY] AC checklist
+- [x] 4.3 V6 [VERIFY] AC checklist
   - **Do**: Verify all acceptance criteria programmatically
   - **Verify**: Grep codebase for AC implementation
   - **Done when**: All P0 ACs confirmed
