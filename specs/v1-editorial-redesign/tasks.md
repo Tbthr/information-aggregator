@@ -3,7 +3,7 @@ spec: v1-editorial-redesign
 phase: tasks
 created: 2026-03-17
 granularity: fine
-totalTasks: 69
+totalTasks: 96
 ---
 
 # Tasks: Editorial Redesign v1
@@ -829,12 +829,301 @@ Focus: 自主 PR 管理循环直到所有条件满足。
 - 来源视图推迟到 Phase 2
 
 ### Production TODOs
-- [ ] Policy filter 缓存机制（从 DB 查询已判断内容）
-- [ ] 批量判断优化（单次请求处理多个 item）
-- [ ] 周报视图完整实现
-- [ ] 来源视图完整实现
-- [ ] Recharts 图表完整实现
-- [ ] 前端 E2E 测试
+
+#### 6.1 Policy Filter 缓存机制
+
+- [x] 6.1.1 [P] 创建 filter judgment 缓存查询模块
+  - **Do**:
+    1. 创建 `src/policy/filter-cache.ts`
+    2. 实现 `getCachedJudgment(db, itemId, itemFingerprint)` 函数
+    3. 实现 `saveJudgment(db, itemId, judgment, itemFingerprint)` 函数
+    4. 查询 `enrichment_results.filter_judgment_json` 字段
+    5. 使用 item URL + publishedAt 作为 fingerprint
+  - **Files**: src/policy/filter-cache.ts
+  - **Done when**: 缓存模块存在，可查询和保存 judgment
+  - **Verify**: `grep "getCachedJudgment\|saveJudgment" src/policy/filter-cache.ts && bun run check`
+  - **Commit**: `feat(policy): add filter judgment cache module`
+
+- [x] 6.1.2 [P] 扩展数据库 schema 添加 fingerprint 字段
+  - **Do**:
+    1. 创建 `src/db/migrations/005_policy_cache.sql`
+    2. 添加 `enrichment_results.item_fingerprint TEXT` 字段
+    3. 添加索引 `idx_enrichment_fingerprint (item_fingerprint)`
+    4. 更新现有 enrichment_results 添加 fingerprint
+  - **Files**: src/db/migrations/005_policy_cache.sql
+  - **Done when**: 迁移文件存在，fingerprint 字段和索引已添加
+  - **Verify**: `cat src/db/migrations/005_policy_cache.sql | grep -E "item_fingerprint|idx_enrichment_fingerprint"`
+  - **Commit**: `feat(db): add fingerprint field for cache lookup`
+
+- [x] 6.1.3 [VERIFY] Quality checkpoint: policy cache
+  - **Do**: Run type check
+  - **Verify**: `bun run check`
+  - **Done when**: No type errors
+  - **Commit**: None
+
+#### 6.2 批量判断优化
+
+- [x] 6.2.1 [P] 扩展 batchFilter 支持批量处理
+  - **Do**:
+    1. 修改 `src/ai/client.ts` 中的 `batchFilter` 方法
+    2. 实现分组逻辑：将 items 按 10 个一组批量调用 AI
+    3. 添加并发控制：最多 3 个并发请求
+    4. 合并所有结果返回 FilterJudgment[]
+  - **Files**: src/ai/client.ts
+  - **Done when**: batchFilter 支持批量处理，分组为 10 个
+  - **Verify**: `grep -E "batch.*10|concurrency|group" src/ai/client.ts && bun run check`
+  - **Commit**: `feat(ai): add batch processing to batchFilter`
+
+- [x] 6.2.2 更新 policy-filter 使用批量接口
+  - **Do**:
+    1. 修改 `src/pipeline/policy-filter.ts`
+    2. 调用 `batchFilter` 替代单个过滤调用
+    3. 配置 batchSize=10, concurrency=3
+    4. 合并结果到 Map 供后续使用
+  - **Files**: src/pipeline/policy-filter.ts
+  - **Done when**: policy-filter 使用批量接口
+  - **Verify**: `grep -E "batchSize|concurrency" src/pipeline/policy-filter.ts && bun run check`
+  - **Commit**: `feat(pipeline): use batch AI calls in policy-filter`
+
+- [x] 6.2.3 [VERIFY] Quality checkpoint: batch optimization
+  - **Do**: Run type check and lint
+  - **Verify**: `bun run check && bun run lint`
+  - **Done when**: No errors
+  - **Commit**: None
+
+#### 6.3 周报视图完整实现
+
+- [x] 6.3.1 [P] 创建 weekly-review 视图模块
+  - **Do**:
+    1. 创建 `src/views/weekly-review.ts`
+    2. 实现 `buildWeeklyReview(db, windowDays?)` 函数
+    3. 查询 7 天窗口的所有 items（today - 7 到 today）
+    4. 聚合主题：按 tags 和 keywords 分组
+    5. 返回 WeeklyReviewData 结构
+  - **Files**: src/views/weekly-review.ts
+  - **Done when**: weekly-review 视图模块存在
+  - **Verify**: `grep "buildWeeklyReview" src/views/weekly-review.ts && bun run check`
+  - **Commit**: `feat(views): add weekly-review view builder`
+
+- [x] 6.3.2 [P] 创建 WeeklyReviewPage 前端页面
+  - **Do**:
+    1. 创建 `frontend/src/pages/WeeklyReviewPage.tsx`
+    2. 从 `useParams` 获取 window 参数（默认 7 天）
+    3. 调用 `/api/views/weekly-review?window=7`
+    4. 显示本周概览、主题聚合、代表内容
+    5. 显示空状态：本周暂无数据
+  - **Files**: frontend/src/pages/WeeklyReviewPage.tsx
+  - **Done when**: 页面存在，显示周报内容
+  - **Verify**: `grep "WeeklyReviewPage" frontend/src/pages/WeeklyReviewPage.tsx && cd frontend && bun run build`
+  - **Commit**: `feat(frontend): add WeeklyReviewPage`
+
+- [x] 6.3.3 添加 weekly-review API 端点
+  - **Do**:
+    1. 修改 `src/api/routes/views.ts`
+    2. 添加 `GET /api/views/weekly-review` 端点
+    3. 支持 window 查询参数（默认 7）
+    4. 调用 weekly-review 视图模块
+    5. 返回 WeeklyReviewData
+  - **Files**: src/api/routes/views.ts
+  - **Done when**: weekly-review 端点存在
+  - **Verify**: `curl -s http://localhost:3000/api/views/weekly-review | jq '.success'`
+  - **Commit**: `feat(api): add weekly-review endpoint`
+
+- [x] 6.3.4 添加 weekly 路由到 App.tsx
+  - **Do**:
+    1. 修改 `frontend/src/App.tsx`
+    2. 添加 `<Route path="/weekly" element={<WeeklyReviewPage />} />`
+  - **Files**: frontend/src/App.tsx
+  - **Done when**: /weekly 路由已添加
+  - **Verify**: `grep "/weekly" frontend/src/App.tsx && cd frontend && bun run build`
+  - **Commit**: `feat(frontend): add weekly route`
+
+- [x] 6.3.5 [VERIFY] Quality checkpoint: weekly review
+  - **Do**: Run type check and build
+  - **Verify**: `bun run check && cd frontend && bun run build`
+  - **Done when**: No errors
+  - **Commit**: None
+
+- [x] 6.3.6 VE-WEEKLY [VERIFY] E2E browser validation: verify weekly review page
+  - **Do**:
+    1. Start frontend dev server (if not running): `cd frontend && bun dev &`
+    2. Wait for frontend ready: `for i in $(seq 1 30); do curl -s http://localhost:5173 > /dev/null && break || sleep 1; done`
+    3. Use chrome-cdp skill to navigate to `http://localhost:5173/weekly`
+    4. Verify weekly review page has: Overview stats, Theme groups, Editor's picks sections
+    5. Take screenshot to confirm layout
+  - **Verify**: Browser automation confirms page structure
+  - **Done when**: Weekly page verified working in browser
+  - **Commit**: None
+  - _Requirements: AC-6.1 ~ AC-6.6_
+  - _Design: Test Strategy > E2E Tests_
+
+#### 6.4 来源视图完整实现
+
+- [x] 6.4.1 [P] 创建 source-detail 视图模块
+  - **Do**:
+    1. 创建 `src/views/source-detail.ts`
+    2. 实现 `buildSourceDetail(db, sourceId)` 函数
+    3. 查询 source 元信息、策略模式
+    4. 计算保留率（近 7 天）
+    5. 统计过滤理由分布
+    6. 返回最近 10 条内容
+  - **Files**: src/views/source-detail.ts
+  - **Done when**: source-detail 视图模块存在
+  - **Verify**: `grep "buildSourceDetail" src/views/source-detail.ts && bun run check`
+  - **Commit**: `feat(views): add source-detail view builder`
+
+- [x] 6.4.2 [P] 创建 SourceViewPage 前端页面
+  - **Do**:
+    1. 创建 `frontend/src/pages/SourceViewPage.tsx`
+    2. 从 `useParams` 获取 sourceId
+    3. 调用 `/api/sources/:id`
+    4. 显示来源元信息、策略模式、保留率
+    5. 显示过滤理由分布图表
+    6. 显示最近内容列表
+  - **Files**: frontend/src/pages/SourceViewPage.tsx
+  - **Done when**: 页面存在，显示来源详情
+  - **Verify**: `grep "SourceViewPage" frontend/src/pages/SourceViewPage.tsx && cd frontend && bun run build`
+  - **Commit**: `feat(frontend): add SourceViewPage`
+
+- [x] 6.4.3 添加 source 详情 API 端点
+  - **Do**:
+    1. 创建 `src/api/routes/sources.ts`
+    2. 添加 `GET /api/sources/:id` 端点
+    3. 调用 source-detail 视图模块
+    4. 返回 SourceDetailData
+  - **Files**: src/api/routes/sources.ts
+  - **Done when**: source 详情端点存在
+  - **Verify**: `grep -E "GET.*sources.*:id|buildSourceDetail" src/api/routes/sources.ts`
+  - **Commit**: `feat(api): add source detail endpoint`
+
+- [x] 6.4.4 添加 source 路由到 App.tsx
+  - **Do**:
+    1. 修改 `frontend/src/App.tsx`
+    2. 添加 `<Route path="/source/:id" element={<SourceViewPage />} />`
+  - **Files**: frontend/src/App.tsx
+  - **Done when**: /source/:id 路由已添加
+  - **Verify**: `grep "/source/:id" frontend/src/App.tsx && cd frontend && bun run build`
+  - **Commit**: `feat(frontend): add source route`
+
+- [x] 6.4.5 [VERIFY] Quality checkpoint: source view
+  - **Do**: Run type check and build
+  - **Verify**: `bun run check && cd frontend && bun run build`
+  - **Done when**: No errors
+  - **Commit**: None
+
+- [x] 6.4.6 VE-SOURCE [VERIFY] E2E browser validation: verify source view page
+  - **Do**:
+    1. Start frontend dev server (if not running): `cd frontend && bun dev &`
+    2. Wait for frontend ready: `for i in $(seq 1 30); do curl -s http://localhost:5173 > /dev/null && break || sleep 1; done`
+    3. Use chrome-cdp skill to navigate to `http://localhost:5173/source/:id`
+    4. Verify source view page has: Source meta info, Policy mode display, Retention rate, Recent content list
+    5. Take screenshot to confirm layout
+  - **Verify**: Browser automation confirms page structure
+  - **Done when**: Source page verified working in browser
+  - **Commit**: None
+  - _Requirements: AC-5.1 ~ AC-5.6_
+  - _Design: Test Strategy > E2E Tests_
+
+#### 6.5 Recharts 图表完整实现
+
+- [x] 6.5.1 [P] 创建 SourceCompositionChart 组件
+  - **Do**:
+    1. 创建 `frontend/src/components/charts/SourceCompositionChart.tsx`
+    2. 使用 Recharts PieChart 显示来源类型分布
+    3. Props: `data: {name, value}[]`
+    4. 添加标签和图例
+    5. 使用 tree-shaking 仅导入必要组件
+  - **Files**: frontend/src/components/charts/SourceCompositionChart.tsx
+  - **Done when**: PieChart 组件存在
+  - **Verify**: `grep -E "PieChart|ResponsiveContainer" frontend/src/components/charts/SourceCompositionChart.tsx && cd frontend && bun run build`
+  - **Commit**: `feat(frontend): add SourceCompositionChart with Recharts`
+
+- [x] 6.5.2 [P] 创建 FilterReasonsChart 组件
+  - **Do**:
+    1. 创建 `frontend/src/components/charts/FilterReasonsChart.tsx`
+    2. 使用 Recharts BarChart 显示过滤理由分布
+    3. Props: `data: {reason, count}[]`
+    4. 添加坐标轴和标签
+  - **Files**: frontend/src/components/charts/FilterReasonsChart.tsx
+  - **Done when**: BarChart 组件存在
+  - **Verify**: `grep -E "BarChart|CartesianGrid" frontend/src/components/charts/FilterReasonsChart.tsx && cd frontend && bun run build`
+  - **Commit**: `feat(frontend): add FilterReasonsChart with Recharts`
+
+- [x] 6.5.3 集成图表到 SourceViewPage
+  - **Do**:
+    1. 修改 `frontend/src/pages/SourceViewPage.tsx`
+    2. 导入并使用 SourceCompositionChart
+    3. 导入并使用 FilterReasonsChart
+    4. 传递 API 数据到图表组件
+  - **Files**: frontend/src/pages/SourceViewPage.tsx
+  - **Done when**: 图表已集成到页面
+  - **Verify**: `grep -E "SourceCompositionChart|FilterReasonsChart" frontend/src/pages/SourceViewPage.tsx && cd frontend && bun run build`
+  - **Commit**: `feat(frontend): integrate charts into SourceViewPage`
+
+- [x] 6.5.4 [VERIFY] Quality checkpoint: Recharts integration
+  - **Do**: Run type check and build
+  - **Verify**: `bun run check && cd frontend && bun run build`
+  - **Done when**: No errors
+  - **Commit**: None
+
+- [x] 6.5.5 VE-CHARTS [VERIFY] E2E browser validation: verify Recharts charts render
+  - **Do**:
+    1. Start frontend dev server (if not running): `cd frontend && bun dev &`
+    2. Use chrome-cdp skill to navigate to `http://localhost:5173/source/:id`
+    3. Verify SourceCompositionChart (PieChart) renders correctly
+    4. Verify FilterReasonsChart (BarChart) renders correctly
+    5. Take screenshot to confirm charts visible
+  - **Verify**: Browser automation confirms charts render
+  - **Done when**: Charts verified working in browser
+  - **Commit**: None
+  - _Requirements: AC-5.5_
+  - _Design: Test Strategy > E2E Tests_
+
+#### 6.6 前端 E2E 测试
+
+- [x] 6.6.1 [P] 设置 Playwright E2E 测试框架
+  - **Do**:
+    1. 安装 Playwright: `bun add -D playwright @playwright/test`
+    2. 创建 `frontend/e2e/` 目录
+    3. 创建 `frontend/e2e/basic.spec.ts` 测试日报首页
+    4. 配置 `playwright.config.ts`
+  - **Files**: frontend/e2e/basic.spec.ts, frontend/playwright.config.ts
+  - **Done when**: Playwright 配置完成，基础测试存在
+  - **Verify**: `grep -E "playwright|basic.spec" frontend/playwright.config.ts`
+  - **Commit**: `test(e2e): add Playwright framework setup`
+
+- [ ] 6.6.2 [P] 创建 E2E 测试用例
+  - **Do**:
+    1. 创建 `frontend/e2e/daily-brief.spec.ts`
+    2. 测试导航到日报首页
+    3. 验证 5 个模块存在（使用 selectors）
+    4. 测试 Save 按钮功能
+    5. 创建 `frontend/e2e/pack-view.spec.ts` 测试 Pack 视图
+  - **Files**: frontend/e2e/daily-brief.spec.ts, frontend/e2e/pack-view.spec.ts
+  - **Done when**: E2E 测试用例存在
+  - **Verify**: `grep -E "test\|describe" frontend/e2e/*.spec.ts`
+  - **Commit**: `test(e2e): add E2E test cases`
+
+- [ ] 6.6.3 [VERIFY] Quality checkpoint: E2E tests
+  - **Do**: Run E2E tests (optional in dev environment)
+  - **Verify**: `cd frontend && bunx playwright test`
+  - **Done when**: Tests can run (may skip without UI)
+  - **Commit**: None
+
+- [x] 6.6.4 VE-SAVE [VERIFY] E2E browser validation: verify Save button functionality
+  - **Do**:
+    1. Start frontend dev server (if not running): `cd frontend && bun dev &`
+    2. Use chrome-cdp skill to navigate to `http://localhost:5173/`
+    3. Find Save button on any card
+    4. Click Save button and verify state changes
+    5. Navigate to Save For Later section to verify item appears
+    6. Test unsave by clicking again
+    7. Refresh page and verify save state persists
+  - **Verify**: Browser automation confirms save/unsave works
+  - **Done when**: Save functionality verified working in browser
+  - **Commit**: None
+  - _Requirements: AC-7.1, AC-7.3 ~ AC-7.5_
+  - _Design: Test Strategy > E2E Tests_
 
 ### Unresolved Questions
 - None
@@ -843,13 +1132,22 @@ Focus: 自主 PR 管理循环直到所有条件满足。
 
 ## Task Count Summary
 
-| Phase | Tasks | Percentage |
-|-------|-------|------------|
-| Phase 1 (POC) | 46 | 88% |
-| Phase 2 (Refactor) | 4 | 8% |
-| Phase 3 (Testing) | 8 | 15% |
-| Phase 4 (Quality) | 6 | 12% |
-| Phase 5 (PR) | 4 | 8% |
-| **Total** | **52** | - |
+| Phase | Tasks | Description |
+|-------|-------|-------------|
+| Phase 1 (POC) | 46 | 核心功能实现 |
+| Phase 2 (Refactor) | 4 | 代码整理 |
+| Phase 3 (Testing) | 8 | 单元+集成测试 |
+| Phase 4 (Quality) | 7 | 质量门禁 + E2E 验证 |
+| Phase 5 (PR) | 4 | PR 生命周期 |
+| Production TODOs | 27 | 后续优化功能 |
+| **Total** | **96** | - |
 
-Note: Percentages exceed 100% due to [VERIFY] tasks being part of multiple phase workflows.
+### Browser 验证任务 (chrome-cdp)
+- VE1: E2E startup
+- VE2: E2E check
+- VE-BROWSER: Daily Brief 页面验证
+- VE3: E2E cleanup
+- VE-WEEKLY (6.3.6): 周报页面验证
+- VE-SOURCE (6.4.6): 来源视图验证
+- VE-CHARTS (6.5.5): 图表渲染验证
+- VE-SAVE (6.6.4): Save 功能验证
