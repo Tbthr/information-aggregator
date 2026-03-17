@@ -7,6 +7,7 @@ import { ItemsQuerySchema } from "../schemas/query";
 import type { ApiResponse, ItemsData, ItemData, SourceInfo } from "../types";
 import { calculateItemScores } from "../scoring";
 import type { RawItem } from "../../types/index";
+import { saveItem, unsaveItem, getSavedItems } from "../../db/queries/saved-items";
 
 const app = new Hono();
 
@@ -195,6 +196,70 @@ app.get("/", zValidator("query", ItemsQuerySchema), async (c) => {
 });
 
 /**
+ * GET /api/items/saved - 获取已保存的内容项列表
+ */
+app.get("/saved", async (c) => {
+  const db = createDb("data/archive.db");
+
+  try {
+    // 获取已保存的 item ids
+    const savedItems = await getSavedItems(db);
+
+    if (savedItems.length === 0) {
+      return c.json({
+        success: true,
+        data: { items: [], meta: { total: 0 } },
+      });
+    }
+
+    // 关联 raw_items 获取完整内容
+    const itemIds = savedItems.map((si) => si.itemId);
+    const placeholders = itemIds.map(() => "?").join(",");
+    const rows = db
+      .prepare(`SELECT * FROM raw_items WHERE id IN (${placeholders})`)
+      .all(...itemIds) as Record<string, unknown>[];
+
+    // 构建返回数据
+    const items: ItemData[] = rows.map((row) => {
+      const meta = JSON.parse(String(row.metadata_json || "{}"));
+      return {
+        id: String(row.id),
+        title: String(row.title),
+        url: String(row.url),
+        canonicalUrl: String(row.url),
+        source: {
+          id: String(row.source_id),
+          type: meta.sourceType || "unknown",
+          packId: meta.packId || "unknown",
+        },
+        publishedAt: row.published_at ? String(row.published_at) : null,
+        fetchedAt: String(row.fetched_at),
+        firstSeenAt: row.first_seen_at ? String(row.first_seen_at) : String(row.fetched_at),
+        lastSeenAt: row.last_seen_at ? String(row.last_seen_at) : String(row.fetched_at),
+        snippet: row.snippet ? String(row.snippet) : null,
+        author: row.author ? String(row.author) : null,
+        score: 5,
+        scores: {
+          sourceWeight: 1,
+          freshness: 0.5,
+          engagement: 0.5,
+          topicMatch: 0.5,
+          contentQuality: 0.5,
+        },
+        metadata: meta,
+      };
+    });
+
+    return c.json({
+      success: true,
+      data: { items, meta: { total: items.length } },
+    });
+  } finally {
+    db.close();
+  }
+});
+
+/**
  * GET /api/items/:id - 获取单个内容项
  */
 app.get("/:id", async (c) => {
@@ -239,6 +304,67 @@ app.get("/:id", async (c) => {
     };
 
     return c.json({ success: true, data: item });
+  } finally {
+    db.close();
+  }
+});
+
+/**
+ * POST /api/items/:id/save - 保存内容项
+ */
+app.post("/:id/save", async (c) => {
+  const id = c.req.param("id");
+  const db = createDb("data/archive.db");
+
+  try {
+    // 检查 item 是否存在
+    const row = db
+      .prepare("SELECT id FROM raw_items WHERE id = ?")
+      .get(id) as Record<string, unknown> | undefined;
+
+    if (!row) {
+      return c.json({ success: false, error: "Item not found" }, 404);
+    }
+
+    // 保存 item
+    await saveItem(db, id);
+
+    // 获取保存时间
+    const savedRow = db
+      .prepare("SELECT saved_at FROM saved_items WHERE item_id = ?")
+      .get(id) as Record<string, unknown> | undefined;
+
+    return c.json({
+      success: true,
+      data: { savedAt: savedRow?.saved_at ?? new Date().toISOString() },
+    });
+  } catch (error) {
+    // 处理重复保存的情况
+    if (String(error).includes("UNIQUE constraint")) {
+      const savedRow = db
+        .prepare("SELECT saved_at FROM saved_items WHERE item_id = ?")
+        .get(id) as Record<string, unknown> | undefined;
+      return c.json({
+        success: true,
+        data: { savedAt: savedRow?.saved_at ?? new Date().toISOString() },
+      });
+    }
+    throw error;
+  } finally {
+    db.close();
+  }
+});
+
+/**
+ * DELETE /api/items/:id/save - 取消保存内容项
+ */
+app.delete("/:id/save", async (c) => {
+  const id = c.req.param("id");
+  const db = createDb("data/archive.db");
+
+  try {
+    await unsaveItem(db, id);
+    return c.json({ success: true, data: { savedAt: null } });
   } finally {
     db.close();
   }
