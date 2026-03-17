@@ -3,7 +3,7 @@
 Auto-generated summary of all specs across configured directories.
 See [index-state.json](./index-state.json) for machine-readable data.
 
-**Last updated:** 2026-03-17T10:42:00Z
+**Last updated:** 2026-03-17T13:44:58Z
 
 ## Directories (1)
 
@@ -15,7 +15,7 @@ See [index-state.json](./index-state.json) for machine-readable data.
 
 | Spec | Directory | Phase | Status |
 |------|-----------|-------|--------|
-| v1-editorial-redesign | ./specs | tasks | awaiting approval |
+| v1-editorial-redesign | ./specs | execution | 87/92 tasks |
 
 ---
 

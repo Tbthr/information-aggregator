@@ -1104,7 +1104,7 @@ Focus: 自主 PR 管理循环直到所有条件满足。
   - **Verify**: `grep -E "test\|describe" frontend/e2e/*.spec.ts`
   - **Commit**: `test(e2e): add E2E test cases`
 
-- [ ] 6.6.3 [VERIFY] Quality checkpoint: E2E tests
+- [x] 6.6.3 [VERIFY] Quality checkpoint: E2E tests
   - **Do**: Run E2E tests (optional in dev environment)
   - **Verify**: `cd frontend && bunx playwright test`
   - **Done when**: Tests can run (may skip without UI)

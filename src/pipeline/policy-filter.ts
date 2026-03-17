@@ -3,11 +3,13 @@
  * 根据 Pack/Source 的策略过滤候选条目
  */
 
+import type { Database } from "bun:sqlite";
 import type { RankedCandidate, SourcePack } from "../types/index";
 import type { SourcePolicy } from "../types/policy";
 import type { AiClient } from "../ai/types";
 import type { FilterJudgment } from "../types/ai-response";
 import { createLogger } from "../utils/logger";
+import { generateFingerprint, getCachedJudgment, saveJudgment, batchGetCachedJudgments, batchSaveJudgments } from "../policy/filter-cache";
 
 const logger = createLogger("pipeline:policy-filter");
 
@@ -18,10 +20,10 @@ export interface PolicyFilterConfig {
   /** AI 客户端（可选，用于 filter_then_assist 模式） */
   aiClient?: AiClient;
   /** 数据库实例（可选，用于缓存） */
-  db?: unknown;
+  db?: Database;
   /** 批处理大小（默认 10） */
   batchSize?: number;
-  /** 并发数（默认 3） */
+  /** 并发数（默认 3，由 AI client 内部处理） */
   concurrency?: number;
 }
 
@@ -143,7 +145,8 @@ export async function policyFilterCandidates(
           const result = await processFilterThenAssist(
             batch,
             pack,
-            aiClient
+            aiClient,
+            config.db
           );
           stats.aiCallCount++;
 
@@ -176,35 +179,83 @@ export async function policyFilterCandidates(
 
 /**
  * 处理 filter_then_assist 模式的一批候选条目
+ * 支持缓存查询和保存
  */
 async function processFilterThenAssist(
   candidates: RankedCandidate[],
   pack: SourcePack,
-  aiClient: AiClient
+  aiClient: AiClient,
+  db?: Database
 ): Promise<CandidateWithJudgment[]> {
-  // 构建 FilterItem 列表
-  const filterItems = candidates.map((c, index) => ({
-    index,
-    title: c.title || c.normalizedTitle || "",
-    snippet: c.normalizedText || "",
-    url: c.url || c.canonicalUrl || "",
+  // 构建缓存查询参数
+  const cacheQueries = candidates.map((c) => ({
+    itemId: c.id,
+    fingerprint: generateFingerprint(c.url || c.canonicalUrl || "", c.publishedAt || null),
   }));
 
-  // 构建 Pack 上下文
-  const packContext = {
-    name: pack.name,
-    keywords: pack.keywords || [],
-    description: pack.description,
-  };
+  // 批量查询缓存
+  const cachedJudgments = db
+    ? await batchGetCachedJudgments(db, cacheQueries)
+    : new Map<string, FilterJudgment>();
 
-  // 调用 AI 批量过滤
-  const judgments = await aiClient.batchFilter(filterItems, packContext);
+  // 分离需要 AI 判断的条目
+  const needsAiJudgment: Array<{ candidate: RankedCandidate; index: number }> = [];
+  const results: Array<{ candidate: RankedCandidate; judgment?: FilterJudgment }> = [];
 
-  // 合并结果
-  return candidates.map((candidate, index) => ({
-    candidate,
-    judgment: judgments[index],
-  }));
+  candidates.forEach((candidate, index) => {
+    const cached = cachedJudgments.get(candidate.id);
+    if (cached) {
+      // 使用缓存结果
+      results.push({ candidate, judgment: cached });
+    } else {
+      // 需要 AI 判断
+      needsAiJudgment.push({ candidate, index });
+      results.push({ candidate, judgment: undefined });
+    }
+  });
+
+  // 如果有需要 AI 判断的条目，批量调用 AI
+  if (needsAiJudgment.length > 0) {
+    const filterItems = needsAiJudgment.map((item) => ({
+      index: item.index,
+      title: item.candidate.title || item.candidate.normalizedTitle || "",
+      snippet: item.candidate.normalizedText || "",
+      url: item.candidate.url || item.candidate.canonicalUrl || "",
+    }));
+
+    const packContext = {
+      name: pack.name,
+      keywords: pack.keywords || [],
+      description: pack.description,
+    };
+
+    const aiJudgments = await aiClient.batchFilter(filterItems, packContext);
+
+    // 将 AI 结果填充到结果数组，并准备保存缓存
+    const judgmentsToSave = new Map<string, { judgment: FilterJudgment; fingerprint: string }>();
+
+    needsAiJudgment.forEach((item, i) => {
+      const judgment = aiJudgments[i];
+      // 找到原始结果的位置并更新
+      const originalIndex = candidates.indexOf(item.candidate);
+      if (originalIndex >= 0 && results[originalIndex]) {
+        results[originalIndex].judgment = judgment;
+      }
+
+      // 准备保存缓存
+      if (db && judgment) {
+        const fingerprint = cacheQueries[originalIndex]?.fingerprint || "";
+        judgmentsToSave.set(item.candidate.id, { judgment, fingerprint });
+      }
+    });
+
+    // 批量保存缓存
+    if (db && judgmentsToSave.size > 0) {
+      await batchSaveJudgments(db, judgmentsToSave);
+    }
+  }
+
+  return results;
 }
 
 /**

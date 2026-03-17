@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "updated": "2026-03-17T10:42:00Z",
+  "updated": "2026-03-17T13:44:58Z",
   "directories": [
     {
       "path": "./specs",
@@ -12,10 +12,9 @@
     {
       "name": "v1-editorial-redesign",
       "path": "./specs/v1-editorial-redesign",
-      "phase": "tasks",
-      "taskIndex": 0,
-      "totalTasks": 52,
-      "awaitingApproval": true
+      "phase": "execution",
+      "taskIndex": 87,
+      "totalTasks": 92
     }
   ]
 }

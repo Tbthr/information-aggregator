@@ -8,6 +8,8 @@ import { ItemList } from "./components/ItemList";
 import { Pagination } from "./components/Pagination";
 import { DailyBriefPage } from "./pages/DailyBriefPage";
 import { PackViewPage } from "./pages/PackViewPage";
+import { WeeklyReviewPage } from "./pages/WeeklyReviewPage";
+import { SourceViewPage } from "./pages/SourceViewPage";
 
 function ItemsPage() {
   const { state, params, togglePack, toggleSource, setPage, setWindow, setSort, setSearch } = useFilters();
@@ -96,6 +98,8 @@ function App() {
         <Route path="/" element={<DailyBriefPage />} />
         <Route path="/items" element={<ItemsPage />} />
         <Route path="/pack/:id" element={<PackViewPage />} />
+        <Route path="/weekly" element={<WeeklyReviewPage />} />
+        <Route path="/source/:id" element={<SourceViewPage />} />
       </Routes>
     </BrowserRouter>
   );

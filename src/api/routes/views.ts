@@ -4,6 +4,7 @@ import { queryArchiveByWindow } from "../../archive/upsert";
 import { getSavedItems } from "../../db/queries/saved-items";
 import { calculateItemScores, type ScoreInfo } from "../scoring";
 import type { RawItem } from "../../types/index";
+import { buildWeeklyReview } from "../../views/weekly-review";
 
 const app = new Hono();
 
@@ -186,6 +187,55 @@ app.get("/daily-brief", async (c) => {
         keptItems,
         retentionRate,
       },
+    };
+
+    return c.json({
+      success: true,
+      data: response,
+      meta: {
+        timing: {
+          generatedAt: new Date().toISOString(),
+          latencyMs: Date.now() - startTime,
+        },
+      },
+    });
+  } finally {
+    db.close();
+  }
+});
+
+/**
+ * GET /api/views/weekly-review - 获取周报视图
+ *
+ * 返回 7 天窗口的内容汇总：
+ * - overview: 总内容数、保留数、保留率
+ * - topics: 主题聚合（3-5 个主题）
+ * - editorPicks: 用户保存的内容
+ * - itemsByDate: 按日期分组的内容
+ */
+app.get("/weekly-review", async (c) => {
+  const startTime = Date.now();
+  const db = createDb("data/archive.db");
+
+  try {
+    // 获取 window 参数（默认 7 天）
+    const windowParam = c.req.query("window");
+    const windowDays = windowParam ? parseInt(windowParam, 10) : 7;
+
+    // 构建周报视图
+    const viewModel = await buildWeeklyReview({ db, windowDays });
+
+    // 格式化 itemsByDate 为普通对象
+    const itemsByDate: Record<string, Array<{ id: string; title: string; url: string; publishedAt?: string }>> = {};
+    for (const [date, items] of viewModel.itemsByDate) {
+      itemsByDate[date] = items;
+    }
+
+    const response = {
+      overview: viewModel.overview,
+      topics: viewModel.topics,
+      editorPicks: viewModel.editorPicks,
+      itemsByDate,
     };
 
     return c.json({

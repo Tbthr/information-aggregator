@@ -6,6 +6,7 @@ import { serveStatic } from "hono/bun";
 import { itemsRoute } from "./routes/items";
 import { packsRoute } from "./routes/packs";
 import { viewsRoute } from "./routes/views";
+import { sourcesRoute } from "./routes/sources";
 import { createDb } from "../db/client";
 import { getCliVersion } from "../cli/index";
 
@@ -24,6 +25,7 @@ export function createServer(options?: { dbPath?: string }) {
   app.route("/api/items", itemsRoute);
   app.route("/api/packs", packsRoute);
   app.route("/api/views", viewsRoute);
+  app.route("/api/sources", sourcesRoute);
 
   // 健康检查
   app.get("/api/health", (c) => {

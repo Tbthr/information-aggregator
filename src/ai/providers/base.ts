@@ -224,19 +224,40 @@ export abstract class BaseAiClient<TConfig> implements AiClient {
   }
 
   // 批量过滤判断方法
+  // 支持分组和并发控制以提高吞吐量
+
+  /**
+   * 配置常量
+   */
+  private static readonly BATCH_SIZE = 10;
+  private static readonly MAX_CONCURRENCY = 3;
 
   async batchFilter(items: FilterItem[], packContext: PackContext): Promise<FilterJudgment[]> {
     if (items.length === 0) {
       return [];
     }
 
+    // 小批量：直接处理
+    if (items.length <= BaseAiClient.BATCH_SIZE) {
+      return this.processBatch(items, packContext);
+    }
+
+    // 大批量：分组处理
+    return this.processBatched(items, packContext);
+  }
+
+  /**
+   * 处理单个批次
+   */
+  private async processBatch(items: FilterItem[], packContext: PackContext): Promise<FilterJudgment[]> {
     const prompt = buildFilterPrompt(items, packContext);
     const response = this.getText(await this.request(prompt));
     const parsed = parseJsonObject(response);
 
     if (!parsed || !isArray(parsed.judgments)) {
       this.logger.warn("Invalid batchFilter response", { response: response.slice(0, 200) });
-      return [];
+      // 返回空结果，表示所有 items 被拒绝
+      return items.map((item) => this.createFallbackJudgment(item));
     }
 
     const judgedAt = new Date().toISOString();
@@ -258,6 +279,63 @@ export abstract class BaseAiClient<TConfig> implements AiClient {
       });
     }
 
+    // 确保返回的 judgments 数量与输入 items 数量匹配
+    if (judgments.length < items.length) {
+      this.logger.warn("Partial batchFilter response", {
+        expected: items.length,
+        received: judgments.length,
+      });
+      // 为缺失的 items 添加 fallback judgment
+      while (judgments.length < items.length) {
+        judgments.push(this.createFallbackJudgment(items[judgments.length]));
+      }
+    }
+
     return judgments;
+  }
+
+  /**
+   * 创建降级判断结果（当 AI 响应失败时）
+   */
+  private createFallbackJudgment(item: FilterItem): FilterJudgment {
+    return {
+      keepDecision: false,
+      keepReason: "AI 判断失败",
+      judgedAt: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * 处理大批量：分组并发处理
+   */
+  private async processBatched(items: FilterItem[], packContext: PackContext): Promise<FilterJudgment[]> {
+    const batchSize = BaseAiClient.BATCH_SIZE;
+    const maxConcurrency = BaseAiClient.MAX_CONCURRENCY;
+
+    // 分组
+    const batches: FilterItem[][] = [];
+    for (let i = 0; i < items.length; i += batchSize) {
+      batches.push(items.slice(i, i + batchSize));
+    }
+
+    this.logger.info("Processing batched filter", {
+      totalItems: items.length,
+      batches: batches.length,
+      batchSize,
+      maxConcurrency,
+    });
+
+    // 并发处理批次
+    const results: FilterJudgment[][] = [];
+    for (let i = 0; i < batches.length; i += maxConcurrency) {
+      const concurrentBatches = batches.slice(i, i + maxConcurrency);
+      const batchResults = await Promise.all(
+        concurrentBatches.map((batch) => this.processBatch(batch, packContext))
+      );
+      results.push(...batchResults);
+    }
+
+    // 展平结果
+    return results.flat();
   }
 }

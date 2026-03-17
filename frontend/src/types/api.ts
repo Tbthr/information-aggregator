@@ -215,3 +215,44 @@ export interface PackDetailData {
     enabled: boolean;
   }>;
 }
+
+/**
+ * Weekly Review 响应结构
+ */
+export interface WeeklyReviewData {
+  overview: {
+    totalCount: number;
+    retainedCount: number;
+    retentionRate: number;
+    windowStart: string;
+    windowEnd: string;
+  };
+  topics: Array<{
+    name: string;
+    tags: string[];
+    keywords: string[];
+    items: Array<{
+      id: string;
+      title: string;
+      url: string;
+      snippet?: string;
+      publishedAt?: string;
+      tags?: string[];
+    }>;
+    count: number;
+  }>;
+  editorPicks: Array<{
+    id: string;
+    itemId: string;
+    savedAt: string;
+    title: string;
+    url: string;
+    packId?: string;
+  }>;
+  itemsByDate: Record<string, Array<{
+    id: string;
+    title: string;
+    url: string;
+    publishedAt?: string;
+  }>>;
+}
