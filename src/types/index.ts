@@ -45,7 +45,6 @@ export interface SourcePack {
   id: string;
   name: string;
   description?: string;
-  keywords?: string[];
   auth?: string;           // auth 引用
   sources: InlineSource[];
   policy?: PackPolicy;
@@ -191,13 +190,6 @@ export interface SourceHealth {
   consecutiveZeroItemRuns: number;
 }
 
-export interface TopicRule {
-  includeKeywords?: string[];
-  excludeKeywords?: string[];
-  preferredSources?: string[];
-  blockedSources?: string[];
-}
-
 export interface RankedCandidate {
   id: string;
   title?: string;
@@ -211,7 +203,6 @@ export interface RankedCandidate {
   sourceWeightScore: number;
   freshnessScore: number;
   engagementScore: number;
-  topicMatchScore: number;
   contentQualityAi: number;
   linkedCanonicalUrl?: string;
   relationshipToCanonical?: CanonicalRelationship;

@@ -23,9 +23,11 @@ export interface FilterItem {
 export interface PackContext {
   /** Pack 名称 */
   name: string;
-  /** Pack 关键词/主题 */
-  keywords: string[];
-  /** Pack 描述（可选） */
+  /**
+   * Pack 主题概述
+   * 用于指导 AI 理解 Pack 的关注范围和筛选标准
+   * 示例："关注 AI 前沿技术和产品动态，优先深度分析文章"
+   */
   description?: string;
 }
 
@@ -52,38 +54,41 @@ export function buildFilterPrompt(items: FilterItem[], packContext: PackContext)
     .map((item, i) => `[${i}] 标题: ${item.title}\n    摘要: ${item.snippet}\n    链接: ${item.url}`)
     .join("\n\n");
 
-  const keywordsText = packContext.keywords.join("、");
-  const descText = packContext.description ? `\n描述: ${packContext.description}` : "";
+  // 主题说明部分
+  const topicOverviewSection = packContext.description
+    ? `- 主题说明: ${packContext.description}`
+    : "";
 
   return `你是信息筛选专家，需要判断以下条目是否值得保留在 "${packContext.name}" Pack 中。
 
-Pack 信息:
+## Pack 主题概述
 - 名称: ${packContext.name}
-- 关注关键词: ${keywordsText}${descText}
+${topicOverviewSection}
 
-待判断条目列表:
+## 判断标准
+
+**应该保留**:
+- 与 Pack 主题说明高度相关
+- 提供有价值的见解、新闻或技术信息
+- 内容原创且有深度
+
+**应该过滤**:
+- 与 Pack 主题明显无关
+- 内容空洞、标题党或低质量
+- 重复或信息过时
+
+## 待判断条目列表
 ${itemsText}
 
-请对每个条目进行判断:
-1. keep: 是否保留该条目（true/false）
-2. reason: 保留/丢弃的简短理由（20字以内）
-3. benefit: 如果保留，说明对读者的价值（30字以内，可选）
-4. hint: 如果保留，提供阅读提示帮助理解（20字以内，可选）
-
-判断标准:
-- 与 Pack 主题高度相关的条目应保留
-- 信息价值高、有独特见解的条目应保留
-- 重复、低质量、过时或主题无关的条目应丢弃
-
-请严格按以下 JSON 格式返回（不要添加其他文字）:
+请严格按以下 JSON 格式返回判断结果（不要添加其他文字）:
 {
   "judgments": [
     {
       "index": 0,
       "keep": true,
-      "reason": "<保留/丢弃理由>",
-      "benefit": "<读者价值，可选>",
-      "hint": "<阅读提示，可选>"
+      "reason": "<保留/丢弃理由，20字以内>",
+      "benefit": "<读者价值，30字以内，可选>",
+      "hint": "<阅读提示，20字以内，可选>"
     },
     {
       "index": 1,

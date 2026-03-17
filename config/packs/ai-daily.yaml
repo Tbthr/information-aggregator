@@ -1,7 +1,10 @@
 pack:
   id: ai-daily
   name: AI 领域日报
-  description: 监控 AI 领域影响力人物，每天生成简报
+  description: |
+    监控 AI 领域影响力人物，关注技术突破和产品动态。
+    优先保留：模型发布、技术论文、行业分析、重要观点
+    可以过滤：日常闲聊、无信息量转发、纯营销内容
   auth: x-family
   promptTemplate: daily-brief
   viewTemplate: daily-brief

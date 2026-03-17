@@ -16,7 +16,6 @@ export interface ResolvedSelection {
   viewId?: string;
   window: string;
   sources: ResolvedSource[];
-  keywords: string[];
 }
 
 export function resolveSelection(
@@ -38,14 +37,9 @@ export function resolveSelection(
   }
 
   const sources: ResolvedSource[] = [];
-  const keywords = new Set<string>();
   const seenUrls = new Set<string>();
 
   for (const pack of selectedPacks) {
-    for (const keyword of pack.keywords ?? []) {
-      keywords.add(keyword);
-    }
-
     for (const source of pack.sources) {
       if (source.enabled === false) {
         continue;
@@ -76,6 +70,5 @@ export function resolveSelection(
     viewId: args.viewId ?? "json",
     window: args.window,
     sources: sources.sort((a, b) => a.id.localeCompare(b.id)),
-    keywords: [...keywords],
   };
 }

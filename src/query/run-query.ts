@@ -14,8 +14,10 @@ import { dedupeNear } from "../pipeline/dedupe-near";
 import { enrichCandidates } from "../pipeline/enrich";
 import { normalizeItems } from "../pipeline/normalize";
 import { rankCandidates } from "../pipeline/rank";
-import { scoreTopicMatch } from "../pipeline/topic-match";
-import { type Cluster, type NormalizedItem, type RankedCandidate, type RawItem, type SourcePack, type TopicRule, type EnrichmentConfig } from "../types/index";
+import { type Cluster, type NormalizedItem, type RankedCandidate, type RawItem, type SourcePack, type EnrichmentConfig } from "../types/index";
+import { parseRawItemMetadata } from "../utils/metadata";
+import { createContentCache, type ContentCache } from "../cache/content-cache";
+import { resolveSelection, type ResolvedSelection, type ResolvedSource } from "./resolve-selection";
 
 /**
  * 查询参数
@@ -49,12 +51,6 @@ export interface QueryResult {
   rankedItems: RankedCandidate[];
   clusters: Cluster[];
   warnings: string[];
-}
-
-function buildTopicRule(keywords: string[]): TopicRule {
-  return {
-    includeKeywords: keywords.map((keyword) => keyword.toLowerCase()),
-  };
 }
 
 // 定义适配器家族
@@ -130,7 +126,7 @@ function filterItemsToRange(items: RawItem[], window: string, nowIso: string): R
   });
 }
 
-function toCandidates(items: NormalizedItem[], topicRule: TopicRule): RankedCandidate[] {
+function toCandidates(items: NormalizedItem[]): RankedCandidate[] {
   return items.map((item) => {
     const metadata = parseRawItemMetadata(item.metadataJson);
     return {
@@ -151,7 +147,6 @@ function toCandidates(items: NormalizedItem[], topicRule: TopicRule): RankedCand
       sourceWeightScore: 1,
       freshnessScore: 1,
       engagementScore: item.engagementScore ?? 0,
-      topicMatchScore: scoreTopicMatch(item, topicRule),
       contentQualityAi: 0,
     };
   });
@@ -182,13 +177,12 @@ export async function runQuery(args: QueryArgs, dependencies: RunQueryDependenci
   }
 
   const selection = resolveSelection(args, packs);
-  const topicRule = buildTopicRule(selection.keywords);
   const collectedItems = await collectImpl(selection.sources, buildDefaultCollectDependencies(authConfigs));
   const items = filterItemsToRange(collectedItems, selection.window, now());
   const normalizedItems = normalizeItems(items);
   const exact = dedupeExact(normalizedItems.filter((item) => item.exactDedupKey) as Array<NormalizedItem & { exactDedupKey: string }>);
   const near = dedupeNear(exact.filter((item) => item.processedAt) as Array<NormalizedItem & { processedAt: string }>);
-  const rankedItems = rankCandidates(await enrichCandidates(toCandidates(near, topicRule), {
+  const rankedItems = rankCandidates(await enrichCandidates(toCandidates(near), {
     // 传统 AI 评分（向后兼容）
     limit: 5,
     scoreCandidate: dependencies.aiClient

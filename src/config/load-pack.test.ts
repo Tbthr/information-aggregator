@@ -65,13 +65,11 @@ describe("validateSourcePack", () => {
         id: "test-pack",
         name: "Test Pack",
         description: "A test pack",
-        keywords: ["test", "example"],
       },
       sources: [],
     };
     const result = validateSourcePack(input);
     expect(result.description).toBe("A test pack");
-    expect(result.keywords).toEqual(["test", "example"]);
   });
 
   test("throws on missing pack.id", () => {

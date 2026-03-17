@@ -60,7 +60,6 @@ export interface ScoreInfo {
   sourceWeight: number;
   freshness: number;
   engagement: number;
-  topicMatch: number;
   contentQuality: number;
 }
 
@@ -109,7 +108,6 @@ export interface PackInfo {
   id: string;
   name: string;
   description: string | null;
-  keywords: string[];
   sourceCount: number;
   itemCount: number;
   latestItem: string | null;

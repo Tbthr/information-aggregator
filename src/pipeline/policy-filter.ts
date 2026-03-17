@@ -225,7 +225,6 @@ async function processFilterThenAssist(
 
     const packContext = {
       name: pack.name,
-      keywords: pack.keywords || [],
       description: pack.description,
     };
 

@@ -5,8 +5,6 @@
 
 import type { RawItem } from "../types/index";
 import { parseRawItemMetadata } from "../utils/metadata";
-import type { TopicRule } from "../types/index";
-import { scoreTopicMatch, type TopicMatchItem } from "../pipeline/topic-match";
 
 /**
  * 分数详情接口
@@ -20,8 +18,6 @@ export interface ScoreInfo {
   freshness: number;
   /** 互动分数 (0-1) */
   engagement: number;
-  /** 主题匹配分数 */
-  topicMatch: number;
   /** 内容质量分数 (0-1) */
   contentQuality: number;
 }
@@ -30,8 +26,6 @@ export interface ScoreInfo {
  * 计算选项
  */
 export interface CalculateScoresOptions {
-  /** 主题关键词 */
-  keywords?: string[];
   /** 当前时间，默认为 new Date() */
   now?: string;
 }
@@ -97,35 +91,21 @@ export function calculateItemScores(
   // 1. engagementScore
   const engagement = toBoundedEngagementScore(item.metadataJson);
 
-  // 2. topicMatchScore
-  let topicMatch = 0;
-  if (options.keywords?.length) {
-    const topicRule: TopicRule = {
-      includeKeywords: options.keywords.map((k) => k.toLowerCase()),
-    };
-    const matchItem: TopicMatchItem = {
-      normalizedTitle: item.title.toLowerCase(),
-      normalizedText: item.snippet?.toLowerCase(),
-      sourceId: item.sourceId,
-    };
-    topicMatch = scoreTopicMatch(matchItem, topicRule);
-  }
-
-  // 3. freshnessScore
+  // 2. freshnessScore
   const freshness = calculateFreshnessScore(item.publishedAt, item.fetchedAt, now);
 
-  // 4. sourceWeightScore (固定为 1，后续可扩展)
+  // 3. sourceWeightScore (固定为 1，后续可扩展)
   const sourceWeight = 1;
 
-  // 5. contentQualityScore (默认 0.5，AI 可选)
+  // 4. contentQualityScore (默认 0.5，AI 可选)
   const contentQuality = 0.5;
 
-  // 6. 计算最终分数（复用 rank.ts 公式）
+  // 5. 计算最终分数（复用 rank.ts 公式）
+  // 公式：sourceWeight 40% + freshness 35% + engagement 15% + contentQuality 10%
   const finalScore =
-    sourceWeight * 0.3 +
-    freshness * 0.25 +
-    Math.min(1, engagement) * 0.1 +
-    Math.max(0, Math.min(1, topicMatch / 5)) * 0.25 + // 归一化 topicMatch
+    sourceWeight * 0.4 +
+    freshness * 0.35 +
+    Math.min(1, engagement) * 0.15 +
     contentQuality * 0.1;
 
   return {
@@ -133,7 +113,6 @@ export function calculateItemScores(
     sourceWeight,
     freshness: Math.round(freshness * 100) / 100,
     engagement: Math.round(engagement * 100) / 100,
-    topicMatch: Math.round(topicMatch * 100) / 100,
     contentQuality,
   };
 }

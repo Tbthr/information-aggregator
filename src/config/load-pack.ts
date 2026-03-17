@@ -81,15 +81,10 @@ export function validateSourcePack(input: unknown): SourcePack {
   const sources = isArray(input.sources) ? input.sources : [];
   const validatedSources = sources.map((s: unknown) => validateInlineSource(s, packPolicy));
 
-  const keywords = isArray(pack.keywords)
-    ? pack.keywords.filter(isString)
-    : undefined;
-
   return {
     id: pack.id,
     name: pack.name,
     description: isString(pack.description) ? pack.description : undefined,
-    keywords,
     auth: isString(pack.auth) ? pack.auth : undefined,
     sources: validatedSources,
     policy: packPolicy,

@@ -97,11 +97,6 @@ app.get("/", zValidator("query", ItemsQuerySchema), async (c) => {
       sourceStats.set(item.sourceId, existing);
     }
 
-    // 获取 pack 的 keywords 用于主题匹配
-    const packKeywords = packIds.length > 0
-      ? packIds.flatMap((packId) => packMap.get(packId)?.keywords ?? [])
-      : [];
-
     // 格式化响应
     const items: ItemData[] = pagedItems.map((item) => {
       const meta = JSON.parse(item.metadataJson || "{}");
@@ -119,7 +114,6 @@ app.get("/", zValidator("query", ItemsQuerySchema), async (c) => {
 
       // 计算分数
       const scoreInfo = calculateItemScores(rawItem, {
-        keywords: packKeywords,
         now: new Date().toISOString(),
       });
 
@@ -144,7 +138,6 @@ app.get("/", zValidator("query", ItemsQuerySchema), async (c) => {
           sourceWeight: scoreInfo.sourceWeight,
           freshness: scoreInfo.freshness,
           engagement: scoreInfo.engagement,
-          topicMatch: scoreInfo.topicMatch,
           contentQuality: scoreInfo.contentQuality,
         },
         metadata: meta,
@@ -243,7 +236,6 @@ app.get("/saved", async (c) => {
           sourceWeight: 1,
           freshness: 0.5,
           engagement: 0.5,
-          topicMatch: 0.5,
           contentQuality: 0.5,
         },
         metadata: meta,
@@ -297,7 +289,6 @@ app.get("/:id", async (c) => {
         sourceWeight: 1,
         freshness: 0.5,
         engagement: 0.5,
-        topicMatch: 0.5,
         contentQuality: 0.5,
       },
       metadata: meta,

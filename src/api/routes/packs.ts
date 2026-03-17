@@ -39,7 +39,6 @@ app.get("/", zValidator("query", PacksQuerySchema), async (c) => {
           id: pack.id,
           name: pack.name,
           description: pack.description || null,
-          keywords: pack.keywords || [],
           sourceCount: pack.sources.filter((s) => s.enabled !== false).length,
           itemCount: Number(stats?.count ?? 0),
           latestItem: stats?.latest ? String(stats.latest) : null,
@@ -53,7 +52,6 @@ app.get("/", zValidator("query", PacksQuerySchema), async (c) => {
       id: pack.id,
       name: pack.name,
       description: pack.description || null,
-      keywords: pack.keywords || [],
       sourceCount: pack.sources.filter((s) => s.enabled !== false).length,
       itemCount: 0,
       latestItem: null,
@@ -172,10 +170,7 @@ app.get("/:id", async (c) => {
         author: row.author ? String(row.author) : undefined,
       };
 
-      const scoreInfo = calculateItemScores(rawItem, {
-        keywords: pack.keywords,
-        now,
-      });
+      const scoreInfo = calculateItemScores(rawItem, { now });
 
       return {
         id: rawItem.id,
@@ -197,7 +192,6 @@ app.get("/:id", async (c) => {
       id: pack.id,
       name: pack.name,
       description: pack.description || null,
-      keywords: pack.keywords || [],
       sourceCount: pack.sources.filter((s) => s.enabled !== false).length,
       itemCount: Number(basicStats?.count ?? 0),
       latestItem: basicStats?.latest ? String(basicStats.latest) : null,

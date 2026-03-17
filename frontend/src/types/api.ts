@@ -75,7 +75,6 @@ export interface ScoreInfo {
   sourceWeight: number;
   freshness: number;
   engagement: number;
-  topicMatch: number;
   contentQuality: number;
 }
 
