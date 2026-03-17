@@ -15,3 +15,8 @@ docs/plans/
 .ralph/
 .ralphrc
 tasks/
+.agents/
+.claude/
+scripts/
+specs/.current-spec
+**/.progress.md

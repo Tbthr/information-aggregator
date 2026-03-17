@@ -132,7 +132,7 @@ app.get("/", zValidator("query", ItemsQuerySchema), async (c) => {
           type: meta.sourceType || "unknown",
           packId: meta.packId || "unknown",
         },
-        publishedAt: item.publishedAt,
+        publishedAt: item.publishedAt ?? null,
         fetchedAt: item.fetchedAt,
         firstSeenAt: item.fetchedAt, // TODO: 从 archive 字段获取
         lastSeenAt: item.fetchedAt,

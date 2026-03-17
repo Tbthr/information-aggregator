@@ -5,7 +5,8 @@
 
 import type { RawItem } from "../types/index";
 import { parseRawItemMetadata } from "../utils/metadata";
-import { scoreTopicMatch, type TopicRule, type TopicMatchItem } from "../pipeline/topic-match";
+import type { TopicRule } from "../types/index";
+import { scoreTopicMatch, type TopicMatchItem } from "../pipeline/topic-match";
 
 /**
  * 分数详情接口

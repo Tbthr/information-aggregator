@@ -42,6 +42,10 @@ const DEFAULT_ENRICHMENT_CONFIG: Required<Omit<EnrichmentConfig, "enableContentE
   contentExtractionTimeout: 15000,
   cacheTtl: 86400,
   maxContentLength: 10000,
+  extractionConcurrency: 3,
+  extractionBatchSize: 5,
+  aiBatchSize: 5,
+  aiConcurrency: 2,
 };
 
 /**

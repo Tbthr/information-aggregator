@@ -1,0 +1,13 @@
+{
+  "lastIndexed": "2026-03-17T00:00:00.000Z",
+  "componentCount": 15,
+  "externalCount": 0,
+  "categories": ["adapters", "ai", "api", "cli", "config", "db", "pipeline", "query", "render", "templates", "types", "utils", "verification", "views", "frontend"],
+  "interviewResponses": {
+    "externalUrls": [],
+    "externalTools": [],
+    "focusAreas": ["src/", "frontend/src/"],
+    "sparseAreas": []
+  },
+  "hashes": {}
+}

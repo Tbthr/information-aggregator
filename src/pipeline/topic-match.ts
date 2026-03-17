@@ -1,6 +1,6 @@
 import type { TopicRule } from "../types/index";
 
-interface TopicMatchItem {
+export interface TopicMatchItem {
   normalizedTitle?: string;
   normalizedText?: string;
   sourceId?: string;

@@ -1,0 +1,639 @@
+{
+  "project": "information-aggregator",
+  "branchName": "ralph/v1-attention-management",
+  "description": "将信息聚合器从'聚合工具'升级为'个人注意力管理系统'。v1 核心目标：Web 首页默认进入'日报'、AI 优先的个性化方式、按来源类型采取不同处理策略。",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "定义 SourcePolicy 类型与配置结构",
+      "description": "作为开发者，我需要定义统一的策略类型，让不同来源的处理行为可配置。",
+      "acceptanceCriteria": [
+        "在 src/types/index.ts 新增 SourcePolicy 类型定义",
+        "包含 sourceMode: 'assist_only' | 'filter_then_assist' | 'filter_only'",
+        "包含 sourceIntent: 'trusted_curated' | 'semi_curated' | 'open_stream' | 'reference_archive'",
+        "包含 aiTasks: string[] (relevance, value, actionability, one_line_summary, reading_hint)",
+        "包含 uiSurface: ('daily' | 'weekly' | 'pack' | 'source')[]",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "定义 ContentDecision 类型（AI 判断结果）",
+      "description": "作为开发者，我需要定义 AI 判断结果的统一输出结构，供 API、Web、日报、周报复用。",
+      "acceptanceCriteria": [
+        "在 src/types/index.ts 新增 ContentDecision 类型",
+        "包含 relevanceLabel: 'high' | 'medium' | 'low'",
+        "包含 valueLabel: 'high' | 'medium' | 'low'",
+        "包含 actionabilityLabel: 'high' | 'medium' | 'low'",
+        "包含 keepDecision: 'keep' | 'maybe' | 'drop'",
+        "包含 keepReason: string (一句话说明为什么保留/过滤)",
+        "包含 readerBenefit: string (读它的收益)",
+        "包含 readingHint: string (建议怎么读)",
+        "包含 confidence: 'low' | 'medium' | 'high'",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "扩展 Pack/Source 配置支持策略定义",
+      "description": "作为用户，我希望在 Pack 或 source 级别定义策略，而不是散落到 view 和 prompt 中。",
+      "acceptanceCriteria": [
+        "扩展 config/load-pack.ts 支持 policy 字段解析",
+        "Pack 配置文件支持 defaultPolicy 字段",
+        "Source 配置支持 policy 字段覆盖 Pack 默认值",
+        "来源级 promptOverride 支持（不影响默认策略）",
+        "配置加载单元测试通过",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "建立来源类型到策略模式的默认映射",
+      "description": "作为开发者，我需要为每种来源类型建立默认策略映射，确保开箱即用。",
+      "acceptanceCriteria": [
+        "在 src/config/ 新建 default-policy-mapping.ts",
+        "x_bookmarks → assist_only (不过滤，只做阅读辅助)",
+        "x_home → filter_then_assist (先过滤，再做阅读辅助)",
+        "x_list → filter_then_assist",
+        "x_likes → assist_only (视作弱书签)",
+        "x_user_tweets / x_search → filter_then_assist",
+        "高质量 RSS / JSON Feed → 默认 filter_then_assist",
+        "提供查询接口 getDefaultPolicy(sourceType: SourceType): SourcePolicy",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "实现 AI 内容判断服务",
+      "description": "作为开发者，我需要实现 AI 内容判断服务，根据策略模式生成 ContentDecision。",
+      "acceptanceCriteria": [
+        "在 src/ai/ 新建 content-judge.ts",
+        "实现 judgeContent(item, policy): Promise<ContentDecision>",
+        "assist_only 模式：永不因 AI 被丢弃（keepDecision 永不为 drop）",
+        "filter_then_assist 模式：正常生成 keep/maybe/drop",
+        "支持 prompt 模板注入（允许来源级覆盖）",
+        "支持并发控制（复用 ai/concurrency.ts）",
+        "单元测试通过",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "将 ContentDecision 集成到 Enrichment 流程",
+      "description": "作为开发者，我需要将 AI 判断结果集成到现有 enrichment 流程中。",
+      "acceptanceCriteria": [
+        "修改 src/pipeline/enrich.ts，调用 judgeContent",
+        "将 ContentDecision 结果存储到 AiEnrichmentResult",
+        "保持向后兼容：无 AI 配置时系统仍能运行",
+        "现有 enrichment 测试不破坏",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "扩展 API 返回策略判断字段",
+      "description": "作为前端开发者，我需要 API 返回内容的策略判断字段和解释字段。",
+      "acceptanceCriteria": [
+        "修改 src/api/routes/items.ts，响应增加策略字段",
+        "条目级新增字段：keepDecision, keepReason, readerBenefit, readingHint, relevanceLabel, valueLabel, actionabilityLabel, sourcePolicyMode",
+        "来源级新增字段：sourcePolicyMode, sourceIntent, keepRate, dailyRecommendedCount",
+        "API 类型定义同步更新（frontend/src/types/api.ts）",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "新增日报 API 端点",
+      "description": "作为前端开发者，我需要独立的日报 API，而不是用 items API 拼首页。",
+      "acceptanceCriteria": [
+        "在 src/api/routes/ 新建 daily.ts",
+        "端点 GET /api/daily 返回日报数据",
+        "响应包含 dailySummary: 今日总体判断文案",
+        "响应包含 leadStory: 最值得读的 1 条内容",
+        "响应包含 topSignals: 必须看的内容列表（4-6 条）",
+        "响应包含 scanBrief: 可略读的内容列表（6-10 条）",
+        "响应包含 saveForLater: 收藏型内容列表",
+        "响应包含 stats: 已保留条目数、已过滤噪音数、高价值来源数",
+        "仅返回 keepDecision 为 keep 或 maybe 的内容",
+        "使用 keepDecision + relevance + value 排序",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "新增周报 API 端点",
+      "description": "作为前端开发者，我需要周报 API 支持主题聚合，而不是简单时间窗口拼接。",
+      "acceptanceCriteria": [
+        "在 src/api/routes/ 新建 weekly.ts",
+        "端点 GET /api/weekly 返回周报数据",
+        "响应包含 weeklySummary: 本周总述",
+        "响应包含 repeatedSignals: 反复出现的话题（含出现次数、相关条目）",
+        "响应包含 worthUnderstanding: 值得系统理解的内容",
+        "响应包含 sourceWatch: 本周最有产出的来源",
+        "响应包含 unresolvedQuestions: 本周值得继续跟踪的问题",
+        "使用'重复出现主题 + 持续价值'聚合算法",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "新增来源视图 API 端点",
+      "description": "作为前端开发者，我需要来源视图 API 展示来源的策略和统计信息。",
+      "acceptanceCriteria": [
+        "在 src/api/routes/ 新建 sources.ts",
+        "端点 GET /api/sources/:sourceId 返回来源详情",
+        "响应包含来源基础信息（名称、类型、所属 Pack、最近更新）",
+        "响应包含当前策略模式文案",
+        "响应包含来源定位说明（如'书签型高信号流，不参与过滤'）",
+        "响应包含关键统计（今日抓取数、保留率、高价值率、7 天稳定性）",
+        "响应包含该来源下的内容列表",
+        "支持查询参数 includeFiltered=true 显示被过滤内容及原因",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-011",
+      "title": "新增 Pack 视图 API 扩展",
+      "description": "作为前端开发者，我需要 Pack API 返回策略摘要和来源分布信息。",
+      "acceptanceCriteria": [
+        "修改 src/api/routes/packs.ts",
+        "Pack 列表响应增加 policySummary 字段（策略摘要文案）",
+        "Pack 列表响应增加 sourceDistribution 字段（来源类型分布）",
+        "Pack 详情端点 GET /api/packs/:packId 增加策略说明",
+        "Pack 详情响应包含今日重点、本周持续话题、来源分布",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-012",
+      "title": "X Bookmarks 专用处理逻辑",
+      "description": "作为用户，我希望 x_bookmarks 内容不会被过滤，但会生成阅读建议。",
+      "acceptanceCriteria": [
+        "x_bookmarks 默认使用 assist_only 模式",
+        "每条内容生成一句话总结",
+        "每条内容生成'对我的启发'",
+        "每条内容生成建议阅读动作",
+        "keepDecision 永不为 drop",
+        "来源页展示'今日书签导读'标题",
+        "不出现'过滤掉了多少'作为主叙事",
+        "Typecheck passes"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-013",
+      "title": "X Home 过滤与解释链路",
+      "description": "作为用户，我希望 x_home 内容经过智能过滤，并能看到过滤理由。",
+      "acceptanceCriteria": [
+        "x_home 默认使用 filter_then_assist 模式",
+        "AI 判断'是否和我有关'和'是否值得现在读'",
+        "卡片层显示'为什么被保留'理由",
+        "被过滤内容可查看'为什么被过滤'",
+        "来源页展示'今日时间线筛选'标题",
+        "必须展示保留比例与过滤理由统计",
+        "Typecheck passes"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-014",
+      "title": "X List 主题化处理",
+      "description": "作为用户，我希望 x_list 作为半结构化高质量流，支持独立的主题偏好。",
+      "acceptanceCriteria": [
+        "x_list 默认使用 filter_then_assist 模式",
+        "支持按 list 定义独立 prompt 或主题偏好",
+        "来源页展示'专题信号流'标题",
+        "强调主题密度和可跟踪价值",
+        "Typecheck passes"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-015",
+      "title": "X Likes 弱书签处理",
+      "description": "作为用户，我希望 x_likes 视作弱书签，默认不过滤但排序较低。",
+      "acceptanceCriteria": [
+        "x_likes 默认使用 assist_only 模式",
+        "默认不过滤任何内容",
+        "在日报中的排序低于 bookmarks",
+        "来源页展示弱书签定位说明",
+        "Typecheck passes"
+      ],
+      "priority": 15,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-016",
+      "title": "X Search/User Tweets 任务型来源处理",
+      "description": "作为用户，我希望 x_search 和 x_user_tweets 作为任务型来源，优先进入来源页和 Pack 页。",
+      "acceptanceCriteria": [
+        "x_search / x_user_tweets 默认使用 filter_then_assist 模式",
+        "不默认进入日报头部",
+        "优先在来源页和 Pack 页展示",
+        "Typecheck passes"
+      ],
+      "priority": 16,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-017",
+      "title": "来源级 Prompt 覆盖机制",
+      "description": "作为用户，我希望能够为特定来源自定义 prompt，而不影响默认策略。",
+      "acceptanceCriteria": [
+        "Source 配置支持 promptOverride 字段",
+        "Prompt 覆盖仅影响该来源的 AI 判断",
+        "不影响其他来源",
+        "配置加载时校验 prompt 格式",
+        "无 promptOverride 时使用默认 prompt",
+        "Typecheck passes"
+      ],
+      "priority": 17,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-018",
+      "title": "引入前端路由系统",
+      "description": "作为开发者，我需要引入路由库支持多页面导航。",
+      "acceptanceCriteria": [
+        "安装 react-router-dom 依赖",
+        "配置 4 个一级路由：/daily, /packs, /sources, /weekly",
+        "根路径 / 重定向到 /daily",
+        "支持路由参数（packId, sourceId）",
+        "Typecheck passes"
+      ],
+      "priority": 18,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-019",
+      "title": "实现编辑部风格视觉系统",
+      "description": "作为用户，我希望 Web UI 采用'现代杂志 + 研究简报'的视觉语言。",
+      "acceptanceCriteria": [
+        "配置 Tailwind 字体组合（标题用衬线/窄体，正文用人文无衬线）",
+        "定义色彩变量：暖白底色、深墨黑主色、锈红/深蓝绿强调色",
+        "定义保留/存疑/过滤的编辑标记色",
+        "桌面端使用'不对称报刊网格'布局",
+        "背景加入轻微纸张纹理/噪点",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 19,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-020",
+      "title": "实现顶部导航组件",
+      "description": "作为用户，我希望通过顶部导航在 4 个一级视图间切换。",
+      "acceptanceCriteria": [
+        "新建 TopNav.tsx 组件",
+        "包含 4 个一级导航项：日报、Pack、来源、周报",
+        "当前激活项高亮显示",
+        "右侧保留全局搜索入口",
+        "桌面端导航放顶部，移动端用可滑动 tab",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 20,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-021",
+      "title": "实现日报首页 Hero 封面区",
+      "description": "作为用户，我希望日报首页首屏展示今日总体判断。",
+      "acceptanceCriteria": [
+        "新建 DailyHero.tsx 组件",
+        "左侧：今日标题，如'今天最值得读的 5 条信号'",
+        "中部：编辑导语，说明今日总体判断（使用 dailySummary API）",
+        "右侧：三枚摘要指标（已保留条目数、已过滤噪音数、高价值来源数）",
+        "组件使用编辑部视觉风格",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 21,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-022",
+      "title": "实现 Lead Story 主卡组件",
+      "description": "作为用户，我希望日报首页有一个突出的主卡展示最值得读的内容。",
+      "acceptanceCriteria": [
+        "新建 LeadStoryCard.tsx 组件",
+        "只展示 1 条最值得读内容（使用 leadStory API）",
+        "显示：标题、来源、时间、一句话总结、为什么值得看、建议怎么读",
+        "视觉上突出于其他卡片",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 22,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-023",
+      "title": "实现 Top Signals 栏目",
+      "description": "作为用户，我希望在日报中看到'必须看'的内容列表。",
+      "acceptanceCriteria": [
+        "新建 SignalCard.tsx 组件",
+        "展示 4-6 条'必须看'内容（使用 topSignals API）",
+        "竖向紧凑样式",
+        "突出保留理由和价值标签（keepReason, valueLabel）",
+        "显示 relevanceLabel, actionabilityLabel",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 23,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-024",
+      "title": "实现 Scan Brief 栏目",
+      "description": "作为用户，我希望在日报中看到'可略读'的内容列表。",
+      "acceptanceCriteria": [
+        "新建 ScanBriefItem.tsx 组件",
+        "展示 6-10 条'可略读'内容（使用 scanBrief API）",
+        "更轻量的条目样式，减少卡片重量",
+        "显示一句话总结和来源",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 24,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-025",
+      "title": "实现 Save For Later 栏目",
+      "description": "作为用户，我希望在日报中看到收藏型内容（如 x_bookmarks）。",
+      "acceptanceCriteria": [
+        "新建 SaveForLaterSection.tsx 组件",
+        "展示收藏型或辅助型内容（使用 saveForLater API）",
+        "承接 x_bookmarks 类型内容",
+        "显示阅读建议和启发",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 25,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-026",
+      "title": "实现日报侧边栏",
+      "description": "作为用户，我希望在日报侧边栏看到来源分布和主题簇。",
+      "acceptanceCriteria": [
+        "新建 DailySidebar.tsx 组件",
+        "展示今日来源分布",
+        "展示今日主题簇",
+        "周报预告入口",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 26,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-027",
+      "title": "实现 Reason Badge 组件",
+      "description": "作为用户，我希望在卡片层直接看到推荐/过滤原因。",
+      "acceptanceCriteria": [
+        "新建 ReasonBadge.tsx 组件",
+        "显示 keepReason (一句话说明)",
+        "显示 readerBenefit (读它的收益)",
+        "显示 readingHint (建议怎么读)",
+        "支持展开/收起",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 27,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-028",
+      "title": "实现 Decision Ribbon 组件",
+      "description": "作为用户，我希望通过视觉标记快速识别内容的保留状态。",
+      "acceptanceCriteria": [
+        "新建 DecisionRibbon.tsx 组件",
+        "keep 状态：绿色/稳定编辑标记色",
+        "maybe 状态：黄色/存疑编辑标记色",
+        "drop 状态：灰色/过滤编辑标记色（仅在查看已过滤内容时显示）",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 28,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-029",
+      "title": "实现 Pack 视图页面",
+      "description": "作为用户，我希望按主题消费内容，了解 Pack 的策略和来源构成。",
+      "acceptanceCriteria": [
+        "新建 PackView.tsx 页面组件",
+        "Pack 顶部封面：名称、简介、关键词、来源数",
+        "策略说明文案（如'该 Pack 对开放流采用强过滤'）",
+        "三栏目：今日重点、本周持续话题、来源分布",
+        "支持'仅看保留内容 / 查看全部 / 查看已过滤原因'切换",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 29,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-030",
+      "title": "实现来源视图页面",
+      "description": "作为用户，我希望按来源查看内容，了解该来源被如何对待。",
+      "acceptanceCriteria": [
+        "新建 SourceView.tsx 页面组件",
+        "来源头部：名称、类型、所属 Pack、最近更新、当前策略模式",
+        "来源定位文案（如'书签型高信号流，不参与过滤'）",
+        "关键统计：今日抓取数、保留率、高价值率、7 天稳定性",
+        "assist_only 模式：默认展示全部，突出阅读建议",
+        "filter_then_assist 模式：默认只展示保留条目，可展开查看被过滤内容",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 30,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-031",
+      "title": "实现次级筛选条",
+      "description": "作为用户，我希望通过次级筛选条快速过滤内容。",
+      "acceptanceCriteria": [
+        "新建 FilterBar.tsx 重构版",
+        "支持时间窗口切换",
+        "支持 Pack/来源选择",
+        "支持搜索",
+        "支持'是否显示已过滤内容'切换",
+        "桌面端吸顶，移动端收进 drawer",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 31,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-032",
+      "title": "废弃旧版侧边栏和首页",
+      "description": "作为开发者，我需要清理旧的 UI 结构。",
+      "acceptanceCriteria": [
+        "移除常驻左侧大筛选栏",
+        "移除单一流水式列表首页",
+        "保留 Sidebar 组件但重构为移动端 drawer",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 32,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-033",
+      "title": "实现周报封面区",
+      "description": "作为用户，我希望周报首页展示本周总体回顾。",
+      "acceptanceCriteria": [
+        "新建 WeeklyHero.tsx 组件",
+        "本周标题",
+        "一段总述（使用 weeklySummary API）",
+        "三个主题主张",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 33,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-034",
+      "title": "实现 Repeated Signals 栏目",
+      "description": "作为用户，我希望看到本周反复出现的话题。",
+      "acceptanceCriteria": [
+        "新建 RepeatedSignals.tsx 组件",
+        "展示反复出现的话题（使用 repeatedSignals API）",
+        "显示出现次数",
+        "显示相关条目列表",
+        "点击可跳转到相关内容",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 34,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-035",
+      "title": "实现 Worth Understanding 栏目",
+      "description": "作为用户，我希望看到值得系统理解而不是只扫过的内容。",
+      "acceptanceCriteria": [
+        "新建 WorthUnderstanding.tsx 组件",
+        "展示深度内容（使用 worthUnderstanding API）",
+        "强调内容价值和阅读收益",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 35,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-036",
+      "title": "实现 Source Watch 栏目",
+      "description": "作为用户，我希望看到本周最有产出的来源。",
+      "acceptanceCriteria": [
+        "新建 SourceWatch.tsx 组件",
+        "展示本周最有产出的来源（使用 sourceWatch API）",
+        "显示来源产出统计",
+        "可跳转到来源详情",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 36,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-037",
+      "title": "实现 Unresolved Questions 栏目",
+      "description": "作为用户，我希望看到本周值得继续跟踪的问题。",
+      "acceptanceCriteria": [
+        "新建 UnresolvedQuestions.tsx 组件",
+        "展示未解决问题（使用 unresolvedQuestions API）",
+        "显示问题来源和相关内容",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 37,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-038",
+      "title": "实现周报主题卡片",
+      "description": "作为用户，我希望周报以主题聚合形式展示，而不是单条内容罗列。",
+      "acceptanceCriteria": [
+        "新建 WeeklyThemeCard.tsx 组件",
+        "以主题为聚合单元",
+        "单条内容作为主题下的证据链存在",
+        "显示主题摘要和相关条目数量",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 38,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}
