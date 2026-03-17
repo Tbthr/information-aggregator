@@ -1,4 +1,4 @@
-import type { ApiResponse, ItemsData, PacksData, HealthData, ItemData } from "../types/api";
+import type { ApiResponse, ItemsData, PacksData, HealthData, ItemData, PackDetailData } from "../types/api";
 
 const API_BASE = "/api";
 
@@ -52,6 +52,14 @@ export const api = {
     if (params.includeStats) query.set("includeStats", "true");
 
     const response = await fetch(`${API_BASE}/packs?${query}`);
+    return response.json();
+  },
+
+  /**
+   * 获取单个 Pack 详情
+   */
+  async getPack(id: string): Promise<ApiResponse<PackDetailData>> {
+    const response = await fetch(`${API_BASE}/packs/${id}`);
     return response.json();
   },
 
