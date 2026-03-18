@@ -74,10 +74,10 @@ function SourceIcon({ type }: { type: string }) {
     "json-feed": "📡",
     hn: "🅷",
     reddit: "💬",
-    github_trending: "⭐",
-    x_home: "🐦",
-    x_list: "📋",
-    x_bookmarks: "🔖",
+    "github-trending": "⭐",
+    "x-home": "🐦",
+    "x-list": "📋",
+    "x-bookmarks": "🔖",
   };
 
   return <span>{iconMap[type] || "📄"}</span>;

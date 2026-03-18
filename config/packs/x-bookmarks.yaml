@@ -3,12 +3,11 @@
 
 pack:
   id: x-bookmarks
-  name: X/Twitter 数据源
-  description: X 书签，需要 bird CLI 和 Chrome 授权
+  name: X/Twitter 书签
   auth: x-family
 
 sources:
-  - type: x_bookmarks
+  - type: x-bookmarks
     url: https://x.com/i/bookmarks
     description: X 书签
     configJson: '{"birdMode":"bookmarks","count":50}'

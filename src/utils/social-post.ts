@@ -10,13 +10,13 @@ import type { RankedCandidate, ExtractedContent } from "../types/index";
  *
  * 判断规则：
  * 1. contentType 为 "social_post"
- * 2. sourceType 以 "x_" 开头（X/Twitter 系列）
+ * 2. sourceType 以 "x-" 开头（X/Twitter 系列）
  */
 export function isSocialPost(item: RankedCandidate): boolean {
   if (item.contentType === "social_post") {
     return true;
   }
-  if (item.sourceType?.startsWith("x_")) {
+  if (item.sourceType?.startsWith("x-")) {
     return true;
   }
   return false;

@@ -17,7 +17,7 @@ import { loadAllAuthConfigs } from "../../config/load-auth";
 // 定义适配器家族
 const ADAPTER_FAMILIES: AdapterFamily[] = [
   {
-    names: ["x_bookmarks", "x_home", "x_likes", "x_list", "x_user_tweets", "x_search", "x_trending"],
+    names: ["x-bookmarks", "x-home", "x-likes", "x-list"],
     collect: collectXBirdSource,
     authKey: "x-family",
   },
@@ -28,7 +28,7 @@ function buildAdapters(): CollectDependencies["adapters"] {
   const familyAdapters = registerAdapterFamilies(ADAPTER_FAMILIES, authConfigs);
 
   return {
-    github_trending: (source) => collectGitHubTrendingSource(source),
+    "github-trending": (source) => collectGitHubTrendingSource(source),
     "json-feed": (source) => collectJsonFeedSource(source),
     rss: (source) => collectRssSource(source),
     ...familyAdapters,

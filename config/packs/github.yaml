@@ -7,6 +7,6 @@ pack:
     可以过滤：重复项目、低质量项目、纯营销项目
 
 sources:
-  - type: github_trending
+  - type: github-trending
     url: https://github.com/trending
     description: GitHub Trending 页面

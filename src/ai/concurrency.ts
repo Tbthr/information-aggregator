@@ -3,13 +3,46 @@
  * 用于限制 AI 请求的并发数量
  */
 
+import { loadAiSettings } from "./config/load";
+
 export interface ConcurrencyOptions {
   batchSize?: number;      // 批次大小，默认 5
   concurrency?: number;    // 最大并发，默认 2
 }
 
-const DEFAULT_BATCH_SIZE = 5;
-const DEFAULT_CONCURRENCY = 2;
+/** 硬编码的默认值（配置不可用时的 fallback） */
+const FALLBACK_BATCH_SIZE = 5;
+const FALLBACK_CONCURRENCY = 2;
+
+/** 缓存已加载的默认配置 */
+let cachedDefaults: { batchSize: number; concurrency: number } | null = null;
+
+/**
+ * 获取默认的并发配置
+ * 优先从 settings.yaml 读取，否则使用 fallback 值
+ */
+export async function getDefaultConcurrencyOptions(): Promise<{ batchSize: number; concurrency: number }> {
+  if (cachedDefaults) return cachedDefaults;
+
+  try {
+    const settings = await loadAiSettings();
+    cachedDefaults = {
+      batchSize: settings?.defaultBatchSize ?? FALLBACK_BATCH_SIZE,
+      concurrency: settings?.defaultConcurrency ?? FALLBACK_CONCURRENCY,
+    };
+    return cachedDefaults;
+  } catch {
+    cachedDefaults = { batchSize: FALLBACK_BATCH_SIZE, concurrency: FALLBACK_CONCURRENCY };
+    return cachedDefaults;
+  }
+}
+
+/**
+ * 清除配置缓存（用于测试）
+ */
+export function clearConcurrencyCache(): void {
+  cachedDefaults = null;
+}
 
 /**
  * 使用并发控制处理一批项目
@@ -23,7 +56,9 @@ export async function processWithConcurrency<T, R>(
   options: ConcurrencyOptions,
   handler: (item: T) => Promise<R>
 ): Promise<R[]> {
-  const { batchSize = DEFAULT_BATCH_SIZE, concurrency = DEFAULT_CONCURRENCY } = options;
+  // 获取默认配置
+  const defaults = await getDefaultConcurrencyOptions();
+  const { batchSize = defaults.batchSize, concurrency = defaults.concurrency } = options;
 
   if (items.length === 0) {
     return [];

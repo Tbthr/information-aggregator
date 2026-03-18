@@ -152,14 +152,11 @@ sources:
 |------|----------|----------|
 | `rss` | RSS/Atom XML | - |
 | `json-feed` | JSON Feed 1.1 | - |
-| `github_trending` | GitHub Trending HTML | - |
-| `x_home` | bird CLI | 首页时间线 |
-| `x_list` | bird CLI | 列表时间线 |
-| `x_bookmarks` | bird CLI | 书签 |
-| `x_likes` | bird CLI | 点赞 |
-| `x_user_tweets` | bird CLI | 用户推文（需 username） |
-| `x_search` | bird CLI | 搜索（需 query） |
-| `x_trending` | bird CLI | 热门趋势 |
+| `github-trending` | GitHub Trending HTML | - |
+| `x-home` | bird CLI | 首页时间线 |
+| `x-list` | bird CLI | 列表时间线 |
+| `x-bookmarks` | bird CLI | 书签 |
+| `x-likes` | bird CLI | 点赞 |
 
 ### X/Twitter 数据源配置
 
@@ -167,12 +164,12 @@ X/Twitter 数据源需要 [bird CLI](https://github.com/nicoulaj/bird) 和浏览
 
 ```yaml
 sources:
-  - type: x_home
+  - type: x-home
     url: https://x.com/home
     description: X 首页时间线
     configJson: '{"birdMode":"home","count":50}'
 
-  - type: x_list
+  - type: x-list
     url: https://x.com/i/lists/123456789
     description: X 列表
     configJson: '{"birdMode":"list","listId":"123456789","count":100}'
@@ -182,13 +179,10 @@ sources:
 
 | birdMode | 说明 | 数据源类型 |
 |----------|------|-----------|
-| `home` | 首页时间线 | `x_home` |
-| `list` | 列表时间线 | `x_list` |
-| `bookmarks` | 书签 | `x_bookmarks` |
-| `likes` | 点赞 | `x_likes` |
-| `user-tweets` | 用户推文 | `x_user_tweets` |
-| `search` | 搜索 | `x_search` |
-| `trending` / `news` | 热门趋势 | `x_trending` |
+| `home` | 首页时间线 | `x-home` |
+| `list` | 列表时间线 | `x-list` |
+| `bookmarks` | 书签 | `x-bookmarks` |
+| `likes` | 点赞 | `x-likes` |
 
 **configJson 参数**：
 
@@ -215,7 +209,7 @@ sources:
 
 ```
 config/auth/
-└── x-family.yaml    # X/Twitter 系列（x_home, x_list, x_bookmarks, x_likes）
+└── x-family.yaml    # X/Twitter 系列（x-home, x-list, x-bookmarks, x-likes）
 ```
 
 配置文件示例（`config/auth/x-family.yaml`）：

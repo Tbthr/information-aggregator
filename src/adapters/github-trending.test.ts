@@ -187,7 +187,7 @@ describe("collectGitHubTrendingSource", () => {
 
       const source = {
         id: "github-trending",
-        type: "github_trending" as const,
+        type: "github-trending" as const,
         enabled: true,
         url: "https://github.com/trending",
       };
@@ -213,7 +213,7 @@ describe("collectGitHubTrendingSource", () => {
 
       const source = {
         id: "github-trending",
-        type: "github_trending" as const,
+        type: "github-trending" as const,
         enabled: true,
         url: "https://github.com/trending",
       };
@@ -232,7 +232,7 @@ describe("collectGitHubTrendingSource", () => {
 
       const source = {
         id: "github-trending",
-        type: "github_trending" as const,
+        type: "github-trending" as const,
         enabled: true,
         url: "https://github.com/trending",
       };
@@ -248,7 +248,7 @@ describe("collectGitHubTrendingSource", () => {
 
       const source = {
         id: "github-trending",
-        type: "github_trending" as const,
+        type: "github-trending" as const,
         enabled: true,
         url: "https://github.com/trending",
       };
@@ -267,7 +267,7 @@ describe("collectGitHubTrendingSource", () => {
 
       const source = {
         id: "github-trending",
-        type: "github_trending" as const,
+        type: "github-trending" as const,
         enabled: true,
         url: "https://github.com/trending",
       };
@@ -298,7 +298,7 @@ describe("collectGitHubTrendingSource", () => {
 
       const source = {
         id: "github-trending",
-        type: "github_trending" as const,
+        type: "github-trending" as const,
         enabled: true,
         url: "https://github.com/trending",
       };
@@ -322,7 +322,7 @@ describe("collectGitHubTrendingSource", () => {
 
       const source = {
         id: "github-trending",
-        type: "github_trending" as const,
+        type: "github-trending" as const,
         enabled: true,
         url: "https://github.com/trending/python",
       };

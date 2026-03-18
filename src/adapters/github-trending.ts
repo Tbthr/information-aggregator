@@ -148,8 +148,8 @@ export function parseGitHubTrendingHtml(html: string, sourceId: string): RawItem
           snippet: snippet || undefined,
           fetchedAt: new Date().toISOString(),
           metadataJson: JSON.stringify({
-            provider: "github_trending",
-            sourceType: "github_trending",
+            provider: "github-trending",
+            sourceType: "github-trending",
             contentType: "repository",
             ...meta,
           }),

@@ -27,7 +27,7 @@ describe("normalizeItems", () => {
         fetchedAt: "2026-03-09T00:00:00Z",
         metadataJson: JSON.stringify({
           provider: "bird",
-          sourceType: "x_home",
+          sourceType: "x-home",
           contentType: "social_post",
           canonicalHints: {
             expandedUrl: "https://example.com/article",

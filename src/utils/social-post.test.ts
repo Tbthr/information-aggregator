@@ -17,8 +17,8 @@ describe("isSocialPost", () => {
     expect(isSocialPost(item)).toBe(true);
   });
 
-  test("should return true for sourceType starting with 'x_'", () => {
-    const sources = ["x_home", "x_list", "x_bookmarks", "x_likes"];
+  test("should return true for sourceType starting with 'x-'", () => {
+    const sources = ["x-home", "x-list", "x-bookmarks", "x-likes"];
 
     sources.forEach((sourceType) => {
       const item = {

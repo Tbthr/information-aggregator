@@ -34,8 +34,11 @@ export interface AiSettings {
   /** 默认 provider */
   defaultProvider?: AiProviderType;
 
-  /** X Analysis 视图的 AI 请求并发数（默认 2） */
-  xAnalysisConcurrency?: number;
+  /** 并发控制：批次大小（默认 5） */
+  defaultBatchSize?: number;
+
+  /** 并发控制：最大并发数（默认 2） */
+  defaultConcurrency?: number;
 
   /** Anthropic 配置 */
   anthropic?: AnthropicSettings;

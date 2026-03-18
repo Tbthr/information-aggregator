@@ -9,12 +9,11 @@
 pack:
   id: x-list
   name: X/Twitter 数据源
-  description: X 平台数据采集，需要 bird CLI 和 Chrome 授权
   auth: x-family
 
 sources:
   # === X/Twitter 系列 ===
-  - type: x_list
+  - type: x-list
     url: https://x.com/i/lists/2021198996157710621
     description: X 列表
     configJson: '{"birdMode":"list","listId":"2021198996157710621","count":100}'
