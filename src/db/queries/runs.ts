@@ -8,8 +8,8 @@ export function createRun(db: Database, run: Required<Pick<RunRecord, "id" | "ki
   createdAt: string;
 }): void {
   db.prepare(
-    "INSERT INTO runs (id, mode, source_selection_json, params_json, status, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-  ).run(run.id, run.kind, run.sourceSelectionJson, run.paramsJson, run.status, run.createdAt);
+    "INSERT INTO runs (id, kind, mode, source_selection_json, params_json, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+  ).run(run.id, run.kind, run.kind, run.sourceSelectionJson, run.paramsJson, run.status, run.createdAt);
 }
 
 export function finishRun(db: Database, runId: string, status: RunStatus, finishedAt: string): void {

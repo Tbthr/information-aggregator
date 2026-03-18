@@ -6,56 +6,13 @@ import { Database } from "bun:sqlite";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+/**
+ * 创建数据库连接并应用 schema
+ * 项目未上线，使用单一 schema 文件
+ */
 export function createDb(path: string): Database {
   const db = new Database(path);
   db.exec(readFileSync(join(__dirname, "migrations", "001_init.sql"), "utf8"));
-
-  // 应用 enrichment migration
-  const migration002 = join(__dirname, "migrations", "002_add_enrichment.sql");
-  try {
-    db.exec(readFileSync(migration002, "utf8"));
-  } catch (error) {
-    // 如果表/字段已存在，忽略错误
-    const msg = error?.toString() || "";
-    if (!msg.includes("already exists") && !msg.includes("duplicate column")) {
-      console.warn("Migration 002 warning:", error);
-    }
-  }
-
-  // 应用 archive migration
-  const migration003 = join(__dirname, "migrations", "003_add_archive.sql");
-  try {
-    db.exec(readFileSync(migration003, "utf8"));
-  } catch (error) {
-    // 如果字段已存在，忽略错误
-    if (!error?.toString().includes("duplicate column")) {
-      console.warn("Migration 003 warning:", error);
-    }
-  }
-
-  // 应用 editorial migration
-  const migration004 = join(__dirname, "migrations", "004_editorial.sql");
-  try {
-    db.exec(readFileSync(migration004, "utf8"));
-  } catch (error) {
-    // 如果表/字段已存在，忽略错误
-    const msg = error?.toString() || "";
-    if (!msg.includes("already exists") && !msg.includes("duplicate column")) {
-      console.warn("Migration 004 warning:", error);
-    }
-  }
-
-  // 应用 policy cache migration
-  const migration005 = join(__dirname, "migrations", "005_policy_cache.sql");
-  try {
-    db.exec(readFileSync(migration005, "utf8"));
-  } catch (error) {
-    const msg = error?.toString() || "";
-    if (!msg.includes("already exists") && !msg.includes("duplicate column")) {
-      console.warn("Migration 005 warning:", error);
-    }
-  }
-
   return db;
 }
 

@@ -75,17 +75,25 @@ export function archiveRawItems(
 }
 
 /**
+ * 查询选项
+ */
+export interface QueryArchiveOptions {
+  packIds?: string[];
+  sourceIds?: string[];
+  sourceTypes?: string[];
+  search?: string;
+  limit?: number;
+  offset?: number;
+}
+
+/**
  * 按时间窗口查询归档数据
+ * 支持 sourceType 和 search 参数下推到 SQL
  */
 export function queryArchiveByWindow(
   db: Database,
   window: string,
-  options?: {
-    packIds?: string[];
-    sourceIds?: string[];
-    limit?: number;
-    offset?: number;
-  },
+  options?: QueryArchiveOptions,
 ): RawItem[] {
   const windowClause = buildWindowClause(window);
   const params: (string | number)[] = [];
@@ -95,6 +103,19 @@ export function queryArchiveByWindow(
   if (options?.sourceIds?.length) {
     sql += ` AND source_id IN (${options.sourceIds.map(() => "?").join(",")})`;
     params.push(...options.sourceIds);
+  }
+
+  // sourceType 过滤下推到 SQL
+  if (options?.sourceTypes?.length) {
+    sql += ` AND json_extract(metadata_json, '$.sourceType') IN (${options.sourceTypes.map(() => "?").join(",")})`;
+    params.push(...options.sourceTypes);
+  }
+
+  // 搜索下推到 SQL
+  if (options?.search) {
+    sql += ` AND (title LIKE ? OR snippet LIKE ?)`;
+    const searchTerm = `%${options.search}%`;
+    params.push(searchTerm, searchTerm);
   }
 
   // TODO: packIds 需要关联 source_packs 表
@@ -114,6 +135,42 @@ export function queryArchiveByWindow(
   const rows = db.prepare(sql).all(...params) as Record<string, unknown>[];
 
   return rows.map(rowToRawItem);
+}
+
+/**
+ * 按时间窗口统计归档数据数量
+ * 用于分页计算
+ */
+export function countArchiveByWindow(
+  db: Database,
+  window: string,
+  options?: Omit<QueryArchiveOptions, "limit" | "offset">,
+): number {
+  const windowClause = buildWindowClause(window);
+  const params: (string | number)[] = [];
+
+  let sql = `SELECT COUNT(*) as count FROM raw_items WHERE ${windowClause}`;
+
+  if (options?.sourceIds?.length) {
+    sql += ` AND source_id IN (${options.sourceIds.map(() => "?").join(",")})`;
+    params.push(...options.sourceIds);
+  }
+
+  // sourceType 过滤下推到 SQL
+  if (options?.sourceTypes?.length) {
+    sql += ` AND json_extract(metadata_json, '$.sourceType') IN (${options.sourceTypes.map(() => "?").join(",")})`;
+    params.push(...options.sourceTypes);
+  }
+
+  // 搜索下推到 SQL
+  if (options?.search) {
+    sql += ` AND (title LIKE ? OR snippet LIKE ?)`;
+    const searchTerm = `%${options.search}%`;
+    params.push(searchTerm, searchTerm);
+  }
+
+  const row = db.prepare(sql).get(...params) as { count: number };
+  return row?.count ?? 0;
 }
 
 /**

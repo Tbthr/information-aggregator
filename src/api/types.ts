@@ -18,6 +18,7 @@ export interface QueryMeta {
   packIds: string[];
   window: string;
   sourceIds?: string[];
+  sourceTypes?: string[];
   page: number;
   pageSize: number;
   sort: string;
