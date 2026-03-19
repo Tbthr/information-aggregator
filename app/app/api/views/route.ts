@@ -7,43 +7,51 @@ export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
 export async function GET() {
-  const startTime = Date.now()
-  const views = await prisma.customView.findMany({
-    include: {
-      _count: {
-        select: {
-          items: true,
+  try {
+    const startTime = Date.now()
+    const views = await prisma.customView.findMany({
+      include: {
+        _count: {
+          select: {
+            items: true,
+          },
         },
       },
-    },
-    orderBy: { name: "asc" },
-  })
+      orderBy: { name: "asc" },
+    })
 
-  const data =
-    views.length > 0
-      ? views.map((view) => ({
-          id: view.id,
-          name: view.name,
-          icon: view.icon,
-          description: view.description,
-          itemCount: view._count.items,
-        }))
-      : CUSTOM_VIEWS.map((view) => ({
-          id: view.id,
-          name: view.name,
-          icon: view.icon,
-          description: view.description,
-          itemCount: view.articles.length,
-        }))
+    const data =
+      views.length > 0
+        ? views.map((view) => ({
+            id: view.id,
+            name: view.name,
+            icon: view.icon,
+            description: view.description,
+            itemCount: view._count.items,
+          }))
+        : CUSTOM_VIEWS.map((view) => ({
+            id: view.id,
+            name: view.name,
+            icon: view.icon,
+            description: view.description,
+            itemCount: view.articles.length,
+          }))
 
-  return NextResponse.json({
-    success: true,
-    data: { views: data },
-    meta: {
-      timing: {
-        generatedAt: new Date().toISOString(),
-        latencyMs: Date.now() - startTime,
+    return NextResponse.json({
+      success: true,
+      data: { views: data },
+      meta: {
+        timing: {
+          generatedAt: new Date().toISOString(),
+          latencyMs: Date.now() - startTime,
+        },
       },
-    },
-  })
+    })
+  } catch (error) {
+    console.error("Error in /api/views:", error)
+    return NextResponse.json(
+      { success: false, error: "Failed to load views" },
+      { status: 500 }
+    )
+  }
 }
