@@ -1,45 +1,98 @@
 import { NextResponse } from "next/server"
 
 import { prisma } from "@/lib/prisma"
-import { DEEP_DIVES, TIMELINE_EVENTS, WEEKLY_HERO } from "@/lib/mock-data"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
+function toArticle(item: {
+  id: string
+  title: string
+  sourceName: string
+  url: string
+  publishedAt: Date | null
+  summary: string | null
+  bullets: string[]
+  content: string | null
+  imageUrl: string | null
+  categories: string[]
+  score: number
+}) {
+  return {
+    id: item.id,
+    title: item.title,
+    source: item.sourceName,
+    sourceUrl: item.url,
+    publishedAt: item.publishedAt?.toISOString() ?? "",
+    summary: item.summary ?? "",
+    bullets: item.bullets,
+    content: item.content ?? "",
+    imageUrl: item.imageUrl ?? undefined,
+    category: item.categories[0] ?? undefined,
+    aiScore: item.score,
+  }
+}
+
 export async function GET() {
   try {
     const startTime = Date.now()
+
     const report = await prisma.weeklyReport.findFirst({
+      orderBy: { createdAt: "desc" },
       include: {
         timelineEvents: {
-          orderBy: [{ order: "asc" }],
+          orderBy: { order: "asc" },
         },
       },
-      orderBy: { createdAt: "desc" },
     })
+
+    if (!report) {
+      // 无周报数据时返回空
+      return NextResponse.json({
+        success: true,
+        data: {
+          hero: null,
+          timelineEvents: [],
+          deepDives: [],
+        },
+        meta: {
+          timing: {
+            generatedAt: new Date().toISOString(),
+            latencyMs: Date.now() - startTime,
+          },
+        },
+      })
+    }
+
+    // 收集所有 timeline events 的 itemIds
+    const allItemIds = report.timelineEvents.flatMap((e) => e.itemIds)
+    const items = await prisma.item.findMany({
+      where: { id: { in: allItemIds } },
+    })
+    const itemMap = new Map(items.map((i) => [i.id, i]))
+
+    // 按评分排序获取 deep dives
+    const sortedItems = items.sort((a, b) => b.score - a.score).slice(0, 5)
+    const deepDives = sortedItems.map(toArticle)
 
     return NextResponse.json({
       success: true,
       data: {
-        hero: report
-          ? {
-              weekNumber: report.weekNumber,
-              headline: report.headline,
-              subheadline: report.subheadline ?? "",
-              editorial: report.editorial ?? "",
-            }
-          : WEEKLY_HERO,
-        timelineEvents:
-          report?.timelineEvents.length
-            ? report.timelineEvents.map((event) => ({
-                id: event.id,
-                date: event.date,
-                dayLabel: event.dayLabel,
-                title: event.title,
-                summary: event.summary,
-              }))
-            : TIMELINE_EVENTS,
-        deepDives: DEEP_DIVES,
+        hero: {
+          weekNumber: report.weekNumber,
+          headline: report.headline,
+          subheadline: report.subheadline ?? "",
+          editorial: report.editorial ?? "",
+        },
+        timelineEvents: report.timelineEvents.map((e) => ({
+          id: e.id,
+          date: e.date,
+          dayLabel: e.dayLabel,
+          title: e.title,
+          summary: e.summary,
+          itemIds: e.itemIds,
+        })),
+        deepDives,
       },
       meta: {
         timing: {
