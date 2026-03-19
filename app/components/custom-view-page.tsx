@@ -2,7 +2,7 @@
 
 import { Coffee, Zap } from "lucide-react"
 import { ArticleCard } from "@/components/article-card"
-import type { Article, CustomView } from "@/lib/mock-data"
+import type { Article, CustomView } from "@/lib/types"
 import { CUSTOM_VIEWS } from "@/lib/mock-data"
 
 interface CustomViewPageProps {

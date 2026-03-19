@@ -10,6 +10,12 @@
       "bun"
     ],
     "allowSyntheticDefaultImports": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "./app/*"
+      ]
+    },
     "lib": [
       "dom",
       "dom.iterable",
@@ -30,6 +36,8 @@
   "include": [
     "scripts/**/*.ts",
     "src/**/*.ts",
+    "app/**/*.ts",
+    "app/**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],

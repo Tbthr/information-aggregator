@@ -2,7 +2,7 @@
 
 import { Bookmark, ExternalLink } from "lucide-react"
 import { SaveButton } from "@/components/save-button"
-import type { Article } from "@/lib/mock-data"
+import type { Article } from "@/lib/types"
 import { SPOTLIGHT_ARTICLES, RECOMMENDED_ARTICLES, DEEP_DIVES, CUSTOM_VIEWS } from "@/lib/mock-data"
 
 const ALL_ARTICLES: Article[] = [

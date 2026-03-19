@@ -1,7 +1,7 @@
 "use client"
 
 import { SaveButton } from "@/components/save-button"
-import type { Article } from "@/lib/mock-data"
+import type { Article } from "@/lib/types"
 import { WEEKLY_HERO, TIMELINE_EVENTS, DEEP_DIVES } from "@/lib/mock-data"
 
 interface WeeklyPageProps {

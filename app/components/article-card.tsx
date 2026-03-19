@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils"
 import { SaveButton } from "@/components/save-button"
-import type { Article } from "@/lib/mock-data"
+import type { Article } from "@/lib/types"
 
 interface ArticleCardProps {
   article: Article

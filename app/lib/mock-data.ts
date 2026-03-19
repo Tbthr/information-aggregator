@@ -2,42 +2,7 @@
 // Mock Data — Lens RSS/JSON Aggregator
 // ============================================================
 
-export type Article = {
-  id: string
-  title: string
-  source: string
-  sourceUrl: string
-  publishedAt: string
-  summary: string
-  bullets: string[]
-  content: string
-  imageUrl?: string
-  category?: string
-  aiScore?: number
-  saved?: boolean
-}
-
-export type NewsFlash = {
-  id: string
-  time: string
-  text: string
-}
-
-export type TimelineEvent = {
-  id: string
-  date: string
-  dayLabel: string
-  title: string
-  summary: string
-}
-
-export type CustomView = {
-  id: string
-  name: string
-  icon: string
-  description: string
-  articles: Article[]
-}
+import type { Article, CustomView, NewsFlash, TimelineEvent } from "@/lib/types"
 
 // ─── Daily Articles ────────────────────────────────────────
 export const DAILY_OVERVIEW = {

@@ -3,7 +3,7 @@
 import { useEffect } from "react"
 import { X, ExternalLink, Bookmark } from "lucide-react"
 import { cn } from "@/lib/utils"
-import type { Article } from "@/lib/mock-data"
+import type { Article } from "@/lib/types"
 import { SaveButton } from "@/components/save-button"
 
 interface ReadingPanelProps {
