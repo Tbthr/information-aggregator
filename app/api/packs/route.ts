@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 
 import { prisma } from "@/lib/prisma"
-import { loadAllPacks } from "../../../../src/config/load-pack"
+import { loadAllPacks } from "../../../src/config/load-pack"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"

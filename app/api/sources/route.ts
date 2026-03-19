@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server"
 
 import { prisma } from "@/lib/prisma"
-import { loadAllPacks } from "../../../../src/config/load-pack"
-import { generateSourceId } from "../../../../src/config/source-id"
+import { loadAllPacks } from "../../../src/config/load-pack"
+import { generateSourceId } from "../../../src/config/source-id"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
