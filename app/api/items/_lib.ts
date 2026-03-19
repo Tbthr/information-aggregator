@@ -29,21 +29,21 @@ const itemInclude = {
       pack: true,
     },
   },
-  savedItems: {
+  bookmarks: {
     select: {
-      savedAt: true,
+      bookmarkedAt: true,
     },
   },
 } as const
 
-const savedItemInclude = {
+const bookmarkInclude = {
   item: {
     include: itemInclude,
   },
 } as const
 
 type ItemRecord = Prisma.ItemGetPayload<{ include: typeof itemInclude }>
-type SavedItemRecord = Prisma.SavedItemGetPayload<{ include: typeof savedItemInclude }>
+type BookmarkRecord = Prisma.BookmarkGetPayload<{ include: typeof bookmarkInclude }>
 
 export function parseItemsQuery(searchParams: URLSearchParams): ParsedItemsQuery {
   const parsed = itemsQuerySchema.safeParse({
@@ -127,15 +127,15 @@ export async function getItemById(id: string): Promise<ItemData | null> {
 }
 
 export async function getSavedItems(): Promise<SavedItemsData> {
-  const rows = await prisma.savedItem.findMany({
-    include: savedItemInclude,
+  const rows = await prisma.bookmark.findMany({
+    include: bookmarkInclude,
     orderBy: {
-      savedAt: "desc",
+      bookmarkedAt: "desc",
     },
   })
 
   return {
-    items: rows.map((row) => serializeSavedItem(row)),
+    items: rows.map((row) => serializeBookmark(row)),
     total: rows.length,
   }
 }
@@ -150,27 +150,25 @@ export async function saveItemById(id: string): Promise<{ savedAt: string; alrea
     return null
   }
 
-  const existingSaved = await prisma.savedItem.findUnique({
+  const existingBookmark = await prisma.bookmark.findUnique({
     where: { itemId: id },
-    select: { savedAt: true },
+    select: { bookmarkedAt: true },
   })
 
-  if (existingSaved) {
-    return { savedAt: existingSaved.savedAt.toISOString(), already: true }
+  if (existingBookmark) {
+    return { savedAt: existingBookmark.bookmarkedAt.toISOString(), already: true }
   }
 
-  const created = await prisma.savedItem.upsert({
-    where: { itemId: id },
-    create: { itemId: id },
-    update: {},
-    select: { savedAt: true },
+  const created = await prisma.bookmark.create({
+    data: { itemId: id },
+    select: { bookmarkedAt: true },
   })
 
-  return { savedAt: created.savedAt.toISOString() }
+  return { savedAt: created.bookmarkedAt.toISOString() }
 }
 
 export async function deleteSavedItemById(id: string): Promise<boolean> {
-  const result = await prisma.savedItem.deleteMany({
+  const result = await prisma.bookmark.deleteMany({
     where: { itemId: id },
   })
 
@@ -218,7 +216,7 @@ function buildItemsWhere(query: ItemsQuery): Prisma.ItemWhereInput {
 }
 
 function serializeItem(item: ItemRecord): ItemData {
-  const savedAt = item.savedItems[0]?.savedAt?.toISOString()
+  const bookmarkedAt = item.bookmarks[0]?.bookmarkedAt?.toISOString()
   const metadata = parseJson<Record<string, unknown>>(item.metadataJson, {})
   const scores = parseJson<Partial<ItemData["scores"]>>(item.scoresJson, {
     sourceWeight: 1,
@@ -237,6 +235,7 @@ function serializeItem(item: ItemRecord): ItemData {
       type: item.sourceType || item.source.type || "unknown",
       packId: item.packId ?? item.source.packId ?? "unknown",
     },
+    sourceName: item.sourceName || item.source.name || item.sourceType,
     publishedAt: item.publishedAt ? item.publishedAt.toISOString() : null,
     fetchedAt: item.fetchedAt.toISOString(),
     firstSeenAt: item.fetchedAt.toISOString(),
@@ -250,17 +249,25 @@ function serializeItem(item: ItemRecord): ItemData {
       engagement: toNumber(scores.engagement, 0),
       contentQuality: toNumber(scores.contentQuality, 0),
     },
-    saved: savedAt ? { savedAt } : undefined,
+    isBookmarked: !!bookmarkedAt,
+    saved: bookmarkedAt ? { savedAt: bookmarkedAt } : undefined,
     metadata,
+    // 新增字段
+    summary: item.summary ?? null,
+    bullets: item.bullets ?? [],
+    content: item.content ?? null,
+    imageUrl: item.imageUrl ?? null,
+    categories: item.categories ?? [],
   }
 }
 
-function serializeSavedItem(savedItem: SavedItemRecord): ItemData {
-  const item = serializeItem(savedItem.item)
+function serializeBookmark(bookmark: BookmarkRecord): ItemData {
+  const item = serializeItem(bookmark.item)
   return {
     ...item,
+    isBookmarked: true,
     saved: {
-      savedAt: savedItem.savedAt.toISOString(),
+      savedAt: bookmark.bookmarkedAt.toISOString(),
     },
   }
 }
