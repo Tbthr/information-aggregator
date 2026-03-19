@@ -5,8 +5,8 @@ import { collectSources, type CollectDependencies } from "../../pipeline/collect
 import {
   archiveRawItems,
   syncPacksToPrisma,
-  upsertSourceToPrisma,
-  recordSourceSuccess,
+  upsertSourcesBatch,
+  recordSourcesSuccessBatch,
   getArchiveStats,
 } from "../../archive/upsert-prisma";
 import { registerAdapterFamilies, type AdapterFamily } from "../../adapters/registry";
@@ -65,10 +65,20 @@ export async function archiveCollectCommand(
   await syncPacksToPrisma(packRecords);
   console.log(`Synced ${packs.length} packs`);
 
-  // 同步数据源
+  // 同步数据源（批量）
+  const allSources: Array<{
+    id: string;
+    type: string;
+    name?: string;
+    enabled: boolean;
+    url?: string;
+    configJson?: string;
+    packId?: string;
+  }> = [];
+
   for (const pack of packs) {
     for (const source of pack.sources) {
-      await upsertSourceToPrisma({
+      allSources.push({
         id: generateSourceId(source.url),
         type: source.type,
         name: source.description,
@@ -79,7 +89,8 @@ export async function archiveCollectCommand(
       });
     }
   }
-  console.log(`Synced sources`);
+  await upsertSourcesBatch(allSources);
+  console.log(`Synced ${allSources.length} sources`);
 
   // 解析选择
   const selection = resolveSelection(
@@ -121,16 +132,19 @@ export async function archiveCollectCommand(
 
   console.log(`Archived: ${result.newCount} new, ${result.updateCount} updated`);
 
-  // 更新数据源健康状态
-  for (const source of selection.sources) {
-    const sourceItems = items.filter((i) => i.sourceId === source.id);
-    if (sourceItems.length > 0) {
-      await recordSourceSuccess(source.id, {
+  // 更新数据源健康状态（批量）
+  const healthRecords = selection.sources
+    .map((source) => {
+      const sourceItems = items.filter((i) => i.sourceId === source.id);
+      return {
+        sourceId: source.id,
         fetchedAt: now,
         itemCount: sourceItems.length,
-      });
-    }
-  }
+      };
+    })
+    .filter((r) => r.itemCount > 0);
+
+  await recordSourcesSuccessBatch(healthRecords);
 
   console.log(`Done!`);
 }
