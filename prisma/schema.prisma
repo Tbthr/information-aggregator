@@ -120,7 +120,7 @@ model DailyOverview {
 
 model WeeklyReport {
   id            String   @id @default(cuid())
-  weekNumber    String
+  weekNumber    String   @unique
   headline      String
   subheadline   String?  @db.Text
   editorial     String?  @db.Text

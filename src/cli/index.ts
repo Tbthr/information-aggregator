@@ -6,6 +6,8 @@ export interface ParsedCliArgs {
     | "auth status"
     | "archive collect"
     | "archive stats"
+    | "daily generate"
+    | "weekly generate"
     | "serve"
     | "help"
     | "version";
@@ -13,10 +15,12 @@ export interface ParsedCliArgs {
   packIds?: string[];
   port?: number;
   dbPath?: string;
+  date?: string;
+  enrichMode?: "new" | "backfill" | "force";
 }
 
 export function getCliVersion(): string {
-  return "0.2.0";
+  return "0.3.0";
 }
 
 export function getHelpText(): string {
@@ -29,13 +33,16 @@ export function getHelpText(): string {
     "  auth check                 Check auth configuration for a type",
     "  auth status                Show all auth configurations",
     "",
-    "  archive collect [packs...] Collect and archive items",
-    "    --db <path>              Database path (default: data/archive.db)",
+    "  archive collect [packs...] Collect and archive items with AI enrichment",
+    "    --backfill               Backfill historical items with null fields",
+    "    --force                  Force re-enrich all items",
     "  archive stats              Show archive statistics",
+    "",
+    "  daily generate [--date]    Generate daily report (default: today)",
+    "  weekly generate [--date]   Generate weekly report (default: this week)",
     "",
     "  serve                      Start API server",
     "    --port <port>            Port number (default: 3000)",
-    "    --db <path>              Database path (default: data/archive.db)",
     "",
     "  --help                     Show this help",
     "  --version                  Show version",
@@ -63,31 +70,44 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
     return { command: "auth status" };
   }
 
-  // archive collect [packs...] [--db path]
+  // archive collect [packs...] [--backfill] [--force]
   if (args[0] === "archive" && args[1] === "collect") {
     const rest = args.slice(2);
-    const dbIndex = rest.indexOf("--db");
-    const dbPath = dbIndex !== -1 ? rest[dbIndex + 1] : undefined;
-    const packIds = rest.filter((a, i) => a !== "--db" && (dbIndex === -1 || i !== dbIndex + 1));
-    return { command: "archive collect", packIds, dbPath };
+    const backfill = rest.includes("--backfill");
+    const force = rest.includes("--force");
+    const enrichMode: "new" | "backfill" | "force" = force ? "force" : backfill ? "backfill" : "new";
+
+    const packIds = rest.filter((a) => a !== "--backfill" && a !== "--force");
+    return { command: "archive collect", packIds, enrichMode };
   }
 
-  // archive stats [--db path]
+  // archive stats
   if (args[0] === "archive" && args[1] === "stats") {
-    const rest = args.slice(2);
-    const dbIndex = rest.indexOf("--db");
-    const dbPath = dbIndex !== -1 ? rest[dbIndex + 1] : undefined;
-    return { command: "archive stats", dbPath };
+    return { command: "archive stats" };
   }
 
-  // serve [--port port] [--db path]
+  // daily generate [--date YYYY-MM-DD]
+  if (args[0] === "daily" && args[1] === "generate") {
+    const rest = args.slice(2);
+    const dateIndex = rest.indexOf("--date");
+    const date = dateIndex !== -1 ? rest[dateIndex + 1] : undefined;
+    return { command: "daily generate", date };
+  }
+
+  // weekly generate [--date YYYY-MM-DD]
+  if (args[0] === "weekly" && args[1] === "generate") {
+    const rest = args.slice(2);
+    const dateIndex = rest.indexOf("--date");
+    const date = dateIndex !== -1 ? rest[dateIndex + 1] : undefined;
+    return { command: "weekly generate", date };
+  }
+
+  // serve [--port port]
   if (args[0] === "serve") {
     const rest = args.slice(1);
     const portIndex = rest.indexOf("--port");
-    const dbIndex = rest.indexOf("--db");
     const port = portIndex !== -1 ? parseInt(rest[portIndex + 1], 10) : undefined;
-    const dbPath = dbIndex !== -1 ? rest[dbIndex + 1] : undefined;
-    return { command: "serve", port, dbPath };
+    return { command: "serve", port };
   }
 
   return { command: "help" };

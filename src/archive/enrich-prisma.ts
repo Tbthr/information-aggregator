@@ -196,8 +196,8 @@ export async function enrichItems(
       if (!item) return { itemId, data: null };
 
       const extractedContent = content;
-      const textContent = extractedContent && isExtractionSuccess(extractedContent)
-        ? extractedContent.textContent
+      const textContent: string | null = extractedContent && isExtractionSuccess(extractedContent)
+        ? (extractedContent.textContent ?? null)
         : null;
 
       const aiResult = await aiEnrichItem(item, textContent, aiClient);

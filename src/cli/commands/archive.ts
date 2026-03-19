@@ -9,6 +9,8 @@ import {
   recordSourcesSuccessBatch,
   getArchiveStats,
 } from "../../archive/upsert-prisma";
+import { getItemsToEnrich, enrichItems } from "../../archive/enrich-prisma";
+import { createAiClient, loadSettings } from "../../ai/providers";
 import { registerAdapterFamilies, type AdapterFamily } from "../../adapters/registry";
 import { collectGitHubTrendingSource } from "../../adapters/github-trending";
 import { collectJsonFeedSource } from "../../adapters/json-feed";
@@ -40,6 +42,7 @@ function buildAdapters(): CollectDependencies["adapters"] {
 export interface ArchiveOptions {
   concurrency?: number;
   packDir?: string;
+  enrichMode?: "new" | "backfill" | "force";
 }
 
 /**
@@ -50,6 +53,7 @@ export async function archiveCollectCommand(
   options: ArchiveOptions = {},
 ): Promise<void> {
   const packDir = options.packDir || "config/packs";
+  const enrichMode = options.enrichMode ?? "new";
 
   console.log(`Connecting to Supabase database...`);
   console.log(`Loading packs from: ${packDir}`);
@@ -126,11 +130,38 @@ export async function archiveCollectCommand(
   const items = await collectSources(selection.sources, dependencies);
   console.log(`\nCollected ${items.length} items in ${Date.now() - startTime}ms`);
 
-  // 归档到 Supabase
+  // 归档到 Supabase（基础字段）
   const now = new Date().toISOString();
   const result = await archiveRawItems(items, now);
 
   console.log(`Archived: ${result.newCount} new, ${result.updateCount} updated`);
+
+  // AI 增强
+  if (enrichMode !== "new" || result.newCount > 0) {
+    console.log(`\nStarting AI enrichment (mode: ${enrichMode})...`);
+
+    const settings = await loadSettings();
+    if (!settings) {
+      console.log("AI settings not configured, skipping enrichment");
+    } else {
+      const aiClient = await createAiClient();
+      if (!aiClient) {
+        console.log("Failed to create AI client, skipping enrichment");
+      } else {
+        // 确定需要增强的 Item
+        const newItemIds = items.slice(0, result.newCount).map((i) => i.id);
+        const enrichItemIds = await getItemsToEnrich(enrichMode, newItemIds);
+
+        if (enrichItemIds.length > 0) {
+          console.log(`Enriching ${enrichItemIds.length} items...`);
+          const enrichResult = await enrichItems(enrichItemIds, aiClient);
+          console.log(`Enriched: ${enrichResult.successCount} success, ${enrichResult.failCount} failed`);
+        } else {
+          console.log("No items to enrich");
+        }
+      }
+    }
+  }
 
   // 更新数据源健康状态（批量）
   const healthRecords = selection.sources

@@ -5,6 +5,8 @@ import { loadAllPacks } from "../config/load-pack";
 import { checkAuthConfig, showAuthStatus } from "./auth-commands";
 import { getCliVersion, getHelpText, parseCliArgs } from "./index";
 import { archiveCollectCommand, archiveStatsCommand } from "./commands/archive";
+import { dailyGenerateCommand } from "./commands/daily";
+import { weeklyGenerateCommand } from "./commands/weekly";
 import { serveCommand } from "./commands/serve";
 
 async function main(): Promise<void> {
@@ -51,7 +53,9 @@ async function main(): Promise<void> {
   }
 
   if (parsed.command === "archive collect") {
-    await archiveCollectCommand(parsed.packIds ?? []);
+    await archiveCollectCommand(parsed.packIds ?? [], {
+      enrichMode: parsed.enrichMode ?? "new",
+    });
     return;
   }
 
@@ -60,10 +64,19 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (parsed.command === "daily generate") {
+    await dailyGenerateCommand(parsed.date);
+    return;
+  }
+
+  if (parsed.command === "weekly generate") {
+    await weeklyGenerateCommand(parsed.date);
+    return;
+  }
+
   if (parsed.command === "serve") {
     await serveCommand({
       port: parsed.port,
-      dbPath: parsed.dbPath,
     });
     return;
   }

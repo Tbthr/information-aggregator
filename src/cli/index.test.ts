@@ -3,7 +3,7 @@ import { getCliVersion, getHelpText, parseCliArgs } from "./index";
 
 describe("cli bootstrap", () => {
   test("returns a version string", () => {
-    expect(getCliVersion()).toBe("0.2.0");
+    expect(getCliVersion()).toBe("0.3.0");
   });
 
   test("only advertises supported commands", () => {

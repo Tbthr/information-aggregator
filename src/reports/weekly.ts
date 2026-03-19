@@ -131,8 +131,10 @@ export async function generateWeeklyReport(
       itemsByDate.get(dateStr)!.push(item);
     }
 
-    // 创建临时的 DailyOverview 数据
+    // 创建临时的 DailyOverview 数据（用于后续处理，不写入数据库）
     dailyOverviews = Array.from(itemsByDate.entries()).map(([d, items]) => ({
+      id: `temp-${d}`,
+      createdAt: new Date(),
       date: d,
       dayLabel: formatDayLabel(new Date(d)),
       summary: "",
