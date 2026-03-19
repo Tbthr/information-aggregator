@@ -12,12 +12,12 @@
     "allowSyntheticDefaultImports": true,
     "baseUrl": ".",
     "paths": {
-      "@/components/*": ["./app/components/*"],
-      "@/components": ["./app/components"],
-      "@/hooks/*": ["./app/hooks/*"],
-      "@/hooks": ["./app/hooks"],
-      "@/lib/*": ["./app/lib/*"],
-      "@/lib": ["./app/lib"],
+      "@/components/*": ["./components/*"],
+      "@/components": ["./components"],
+      "@/hooks/*": ["./hooks/*"],
+      "@/hooks": ["./hooks"],
+      "@/lib/*": ["./lib/*"],
+      "@/lib": ["./lib"],
       "@/*": ["./*"]
     },
     "lib": [
@@ -42,6 +42,10 @@
     "src/**/*.ts",
     "app/**/*.ts",
     "app/**/*.tsx",
+    "components/**/*.ts",
+    "components/**/*.tsx",
+    "hooks/**/*.ts",
+    "lib/**/*.ts",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],
