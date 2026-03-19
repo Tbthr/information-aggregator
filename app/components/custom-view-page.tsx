@@ -1,9 +1,10 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Coffee, Zap } from "lucide-react"
 import { ArticleCard } from "@/components/article-card"
 import type { Article, CustomView } from "@/lib/types"
-import { CUSTOM_VIEWS } from "@/lib/mock-data"
+import { fetchCustomViews, fetchCustomViewItems } from "@/lib/api-client"
 
 interface CustomViewPageProps {
   viewId: string
@@ -18,7 +19,95 @@ const ICON_MAP: Record<string, React.FC<{ className?: string }>> = {
 }
 
 export function CustomViewPage({ viewId, isSaved, onToggleSave, onOpenArticle }: CustomViewPageProps) {
-  const view = CUSTOM_VIEWS.find((v) => v.id === viewId) ?? CUSTOM_VIEWS[0]
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [view, setView] = useState<CustomView | null>(null)
+  const [articles, setArticles] = useState<Article[]>([])
+
+  useEffect(() => {
+    let mounted = true
+
+    async function loadData() {
+      setLoading(true)
+      setError(null)
+
+      try {
+        // Fetch custom views list first
+        const views = await fetchCustomViews()
+        const foundView = views.find((v) => v.id === viewId)
+
+        if (!mounted) return
+
+        if (!foundView) {
+          setError("View not found")
+          setLoading(false)
+          return
+        }
+
+        // Convert view metadata to CustomView format
+        const customView: CustomView = {
+          id: foundView.id,
+          name: foundView.name,
+          icon: foundView.icon,
+          description: foundView.description,
+          articles: [],
+        }
+        setView(customView)
+
+        // Fetch items for this view
+        const result = await fetchCustomViewItems(viewId)
+
+        if (!mounted) return
+
+        setArticles(result.items)
+      } catch (err) {
+        if (mounted) {
+          setError(err instanceof Error ? err.message : "Failed to load data")
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false)
+        }
+      }
+    }
+
+    loadData()
+
+    return () => {
+      mounted = false
+    }
+  }, [viewId])
+
+  if (loading) {
+    return (
+      <div className="max-w-3xl mx-auto px-6 py-8">
+        <div className="flex items-center justify-center py-24">
+          <div className="text-muted-foreground font-sans text-sm">加载中...</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-3xl mx-auto px-6 py-8">
+        <div className="flex items-center justify-center py-24">
+          <div className="text-destructive font-sans text-sm">{error}</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!view) {
+    return (
+      <div className="max-w-3xl mx-auto px-6 py-8">
+        <div className="flex items-center justify-center py-24">
+          <div className="text-muted-foreground font-sans text-sm">视图未找到</div>
+        </div>
+      </div>
+    )
+  }
+
   const Icon = ICON_MAP[view.icon] ?? ICON_MAP["zap"]
 
   return (
@@ -41,7 +130,7 @@ export function CustomViewPage({ viewId, isSaved, onToggleSave, onOpenArticle }:
 
       {/* 文章流 */}
       <div className="space-y-4">
-        {view.articles.map((article) => (
+        {articles.map((article) => (
           <ArticleCard
             key={article.id}
             article={article}
@@ -54,7 +143,7 @@ export function CustomViewPage({ viewId, isSaved, onToggleSave, onOpenArticle }:
       </div>
 
       {/* 空状态提示 */}
-      {view.articles.length === 0 && (
+      {articles.length === 0 && (
         <div className="text-center py-20">
           <p className="text-muted-foreground font-sans text-sm">暂无文章，请在引擎配置中添加数据源</p>
         </div>

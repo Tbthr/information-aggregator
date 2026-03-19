@@ -1,16 +1,10 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Bookmark, ExternalLink } from "lucide-react"
 import { SaveButton } from "@/components/save-button"
 import type { Article } from "@/lib/types"
-import { SPOTLIGHT_ARTICLES, RECOMMENDED_ARTICLES, DEEP_DIVES, CUSTOM_VIEWS } from "@/lib/mock-data"
-
-const ALL_ARTICLES: Article[] = [
-  ...SPOTLIGHT_ARTICLES,
-  ...RECOMMENDED_ARTICLES,
-  ...DEEP_DIVES,
-  ...CUSTOM_VIEWS.flatMap((v) => v.articles),
-]
+import { fetchSavedItems } from "@/lib/api-client"
 
 interface SavedPageProps {
   savedIds: Set<string>
@@ -20,7 +14,60 @@ interface SavedPageProps {
 }
 
 export function SavedPage({ savedIds, isSaved, onToggleSave, onOpenArticle }: SavedPageProps) {
-  const savedArticles = ALL_ARTICLES.filter((a) => savedIds.has(a.id))
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [savedArticles, setSavedArticles] = useState<Article[]>([])
+
+  useEffect(() => {
+    let mounted = true
+
+    async function loadSavedArticles() {
+      setLoading(true)
+      setError(null)
+
+      try {
+        const items = await fetchSavedItems()
+
+        if (mounted) {
+          setSavedArticles(items)
+        }
+      } catch (err) {
+        if (mounted) {
+          setError(err instanceof Error ? err.message : "Failed to load saved items")
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false)
+        }
+      }
+    }
+
+    loadSavedArticles()
+
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="max-w-3xl mx-auto px-6 py-8">
+        <div className="flex items-center justify-center py-24">
+          <div className="text-muted-foreground font-sans text-sm">加载中...</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-3xl mx-auto px-6 py-8">
+        <div className="flex items-center justify-center py-24">
+          <div className="text-destructive font-sans text-sm">{error}</div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-8">

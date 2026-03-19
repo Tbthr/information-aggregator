@@ -1,8 +1,9 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { SaveButton } from "@/components/save-button"
-import type { Article } from "@/lib/types"
-import { WEEKLY_HERO, TIMELINE_EVENTS, DEEP_DIVES } from "@/lib/mock-data"
+import type { Article, TimelineEvent, WeeklyReport } from "@/lib/types"
+import { fetchWeeklyReport } from "@/lib/api-client"
 
 interface WeeklyPageProps {
   isSaved: (id: string) => boolean
@@ -11,6 +12,77 @@ interface WeeklyPageProps {
 }
 
 export function WeeklyPage({ isSaved, onToggleSave, onOpenArticle }: WeeklyPageProps) {
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [hero, setHero] = useState<WeeklyReport | null>(null)
+  const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([])
+  const [deepDives, setDeepDives] = useState<Article[]>([])
+
+  useEffect(() => {
+    let mounted = true
+
+    async function loadData() {
+      setLoading(true)
+      setError(null)
+
+      try {
+        const data = await fetchWeeklyReport()
+
+        if (!mounted) return
+
+        if (data) {
+          setHero(data.hero)
+          setTimelineEvents(data.timelineEvents)
+          setDeepDives(data.deepDives)
+        }
+      } catch (err) {
+        if (mounted) {
+          setError(err instanceof Error ? err.message : "Failed to load data")
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false)
+        }
+      }
+    }
+
+    loadData()
+
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto px-6 py-8">
+        <div className="flex items-center justify-center py-24">
+          <div className="text-muted-foreground font-sans text-sm">加载中...</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-4xl mx-auto px-6 py-8">
+        <div className="flex items-center justify-center py-24">
+          <div className="text-destructive font-sans text-sm">{error}</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!hero) {
+    return (
+      <div className="max-w-4xl mx-auto px-6 py-8">
+        <div className="flex items-center justify-center py-24">
+          <div className="text-muted-foreground font-sans text-sm">暂无数据</div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-4xl mx-auto px-6 py-8 space-y-14">
 
@@ -18,18 +90,18 @@ export function WeeklyPage({ isSaved, onToggleSave, onOpenArticle }: WeeklyPageP
       <section className="border-b border-border pb-12">
         <div className="mb-2">
           <span className="text-xs font-sans font-semibold tracking-widest uppercase text-primary">
-            The Weekly · {WEEKLY_HERO.subheadline}
+            The Weekly · {hero.subheadline}
           </span>
         </div>
         <h1 className="font-serif text-5xl md:text-6xl font-bold leading-none tracking-tight text-foreground text-balance my-5">
-          {WEEKLY_HERO.weekNumber}
+          {hero.weekNumber}
           <br />
-          <span className="text-primary">{WEEKLY_HERO.headline}</span>
+          <span className="text-primary">{hero.headline}</span>
         </h1>
 
         {/* 分栏首字下沉卷首语 */}
         <div className="mt-8 md:columns-2 gap-8">
-          {WEEKLY_HERO.editorial.split("\n\n").map((para, i) => (
+          {hero.editorial.split("\n\n").map((para, i) => (
             <p
               key={i}
               className={`font-serif text-base leading-[1.85] text-foreground/85 mb-5 break-inside-avoid ${i === 0 ? "drop-cap" : ""}`}
@@ -55,13 +127,13 @@ export function WeeklyPage({ isSaved, onToggleSave, onOpenArticle }: WeeklyPageP
           />
 
           <div className="space-y-6">
-            {TIMELINE_EVENTS.map((event, i) => (
+            {timelineEvents.map((event, i) => (
               <div key={event.id} className="flex gap-6">
                 {/* 日期标签 */}
                 <div className="shrink-0 w-[72px] text-right pr-4 relative">
                   <div
                     className="absolute right-0 top-[22px] w-2.5 h-2.5 rounded-full border-2 translate-x-[calc(50%+1px)] -translate-y-1/2 bg-background"
-                    style={{ borderColor: i === TIMELINE_EVENTS.length - 1 ? "var(--primary)" : "var(--border)" }}
+                    style={{ borderColor: i === timelineEvents.length - 1 ? "var(--primary)" : "var(--border)" }}
                   />
                   <p className="text-[10px] font-mono font-bold text-muted-foreground">{event.date}</p>
                   <p className="text-[10px] font-sans text-muted-foreground">{event.dayLabel}</p>
@@ -89,7 +161,7 @@ export function WeeklyPage({ isSaved, onToggleSave, onOpenArticle }: WeeklyPageP
         </div>
 
         <div className="space-y-6">
-          {DEEP_DIVES.map((article) => (
+          {deepDives.map((article) => (
             <div
               key={article.id}
               role="button"

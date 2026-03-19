@@ -1,14 +1,10 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { SaveButton } from "@/components/save-button"
-import type { Article } from "@/lib/types"
-import {
-  DAILY_OVERVIEW,
-  SPOTLIGHT_ARTICLES,
-  RECOMMENDED_ARTICLES,
-  NEWS_FLASHES,
-} from "@/lib/mock-data"
+import type { Article, NewsFlash, DailyOverview } from "@/lib/types"
+import { fetchDailyOverview, fetchNewsFlashes } from "@/lib/api-client"
 
 interface DailyPageProps {
   isSaved: (id: string) => boolean
@@ -125,8 +121,71 @@ function FeedCard({
 }
 
 export function DailyPage({ isSaved, onToggleSave, onOpenArticle }: DailyPageProps) {
-  // 合并 Spotlight + Recommended，Spotlight 排在前面
-  const allArticles = [...SPOTLIGHT_ARTICLES, ...RECOMMENDED_ARTICLES]
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [overview, setOverview] = useState<DailyOverview | null>(null)
+  const [articles, setArticles] = useState<Article[]>([])
+  const [newsFlashes, setNewsFlashes] = useState<NewsFlash[]>([])
+
+  useEffect(() => {
+    let mounted = true
+
+    async function loadData() {
+      setLoading(true)
+      setError(null)
+
+      try {
+        const [dailyData, flashesData] = await Promise.all([
+          fetchDailyOverview(),
+          fetchNewsFlashes(),
+        ])
+
+        if (!mounted) return
+
+        if (dailyData) {
+          setOverview(dailyData.overview)
+          // Merge spotlight + recommended articles
+          setArticles([...dailyData.spotlightArticles, ...dailyData.recommendedArticles])
+        }
+
+        setNewsFlashes(flashesData)
+      } catch (err) {
+        if (mounted) {
+          setError(err instanceof Error ? err.message : "Failed to load data")
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false)
+        }
+      }
+    }
+
+    loadData()
+
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="max-w-2xl mx-auto px-6 py-8">
+        <div className="flex items-center justify-center py-24">
+          <div className="text-muted-foreground font-sans text-sm">加载中...</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-2xl mx-auto px-6 py-8">
+        <div className="flex items-center justify-center py-24">
+          <div className="text-destructive font-sans text-sm">{error}</div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-8 space-y-12">
@@ -144,13 +203,13 @@ export function DailyPage({ isSaved, onToggleSave, onOpenArticle }: DailyPagePro
             The Daily Overview
           </p>
           <p className="text-[11px] font-mono mb-4" style={{ color: "oklch(0.7 0.01 260)" }}>
-            {DAILY_OVERVIEW.date}
+            {overview?.date ?? ""}
           </p>
           <p
             className="font-serif text-base leading-[1.8] text-balance"
             style={{ color: "var(--overview-foreground)" }}
           >
-            {DAILY_OVERVIEW.summary}
+            {overview?.summary ?? ""}
           </p>
         </div>
       </section>
@@ -164,11 +223,11 @@ export function DailyPage({ isSaved, onToggleSave, onOpenArticle }: DailyPagePro
             </h2>
             <p className="text-xl font-serif font-bold mt-0.5 text-foreground">今日精选</p>
           </div>
-          <span className="text-xs font-mono text-muted-foreground">{allArticles.length} 篇</span>
+          <span className="text-xs font-mono text-muted-foreground">{articles.length} 篇</span>
         </div>
 
         <div className="space-y-4">
-          {allArticles.map((article, i) => (
+          {articles.map((article, i) => (
             <FeedCard
               key={article.id}
               article={article}
@@ -193,7 +252,7 @@ export function DailyPage({ isSaved, onToggleSave, onOpenArticle }: DailyPagePro
         </div>
 
         <div className="rounded-xl border border-border overflow-hidden">
-          {NEWS_FLASHES.map((flash, i) => (
+          {newsFlashes.map((flash, i) => (
             <div
               key={flash.id}
               className={cn(
