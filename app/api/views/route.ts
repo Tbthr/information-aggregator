@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 
 import { prisma } from "@/lib/prisma"
-import { CUSTOM_VIEWS } from "@/lib/mock-data"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -20,22 +19,13 @@ export async function GET() {
       orderBy: { name: "asc" },
     })
 
-    const data =
-      views.length > 0
-        ? views.map((view) => ({
-            id: view.id,
-            name: view.name,
-            icon: view.icon,
-            description: view.description,
-            itemCount: view._count.items,
-          }))
-        : CUSTOM_VIEWS.map((view) => ({
-            id: view.id,
-            name: view.name,
-            icon: view.icon,
-            description: view.description,
-            itemCount: view.articles.length,
-          }))
+    const data = views.map((view) => ({
+      id: view.id,
+      name: view.name,
+      icon: view.icon,
+      description: view.description,
+      itemCount: view._count.items,
+    }))
 
     return NextResponse.json({
       success: true,
