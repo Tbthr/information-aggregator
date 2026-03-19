@@ -1,0 +1,131 @@
+/**
+ * 日报生成模块
+ */
+
+import { PrismaClient } from "@prisma/client";
+import type { AiClient } from "../ai/types";
+import {
+  buildDailyOverviewPrompt,
+  parseDailyOverviewResult,
+} from "../ai/prompts-reports";
+import { createLogger } from "../utils/logger";
+
+const logger = createLogger("reports:daily");
+
+const prisma = new PrismaClient();
+
+export interface DailyGenerateConfig {
+  maxItems: number;
+  maxSpotlight: number;
+}
+
+const DEFAULT_CONFIG: DailyGenerateConfig = {
+  maxItems: 20,
+  maxSpotlight: 3,
+};
+
+export interface DailyGenerateResult {
+  date: string;
+  itemCount: number;
+  spotlightCount: number;
+}
+
+/**
+ * 生成日报
+ */
+export async function generateDailyReport(
+  date: string, // YYYY-MM-DD
+  aiClient: AiClient,
+  config: Partial<DailyGenerateConfig> = {},
+): Promise<DailyGenerateResult> {
+  const mergedConfig = { ...DEFAULT_CONFIG, ...config };
+  const { maxItems, maxSpotlight } = mergedConfig;
+
+  logger.info("Generating daily report", { date, maxItems, maxSpotlight });
+
+  // 1. 查询当日 Item（按 publishedAt 过滤）
+  const startOfDay = new Date(`${date}T00:00:00.000Z`);
+  const endOfDay = new Date(`${date}T23:59:59.999Z`);
+
+  const items = await prisma.item.findMany({
+    where: {
+      publishedAt: {
+        gte: startOfDay,
+        lte: endOfDay,
+      },
+    },
+    orderBy: { score: "desc" },
+    take: maxItems,
+    select: {
+      id: true,
+      title: true,
+      summary: true,
+      score: true,
+    },
+  });
+
+  if (items.length === 0) {
+    logger.warn("No items found for date", { date });
+    return { date, itemCount: 0, spotlightCount: 0 };
+  }
+
+  // 2. 选择 spotlight
+  const spotlightItems = items.slice(0, maxSpotlight);
+  const spotlightIds = spotlightItems.map((i) => i.id);
+  const itemIds = items.map((i) => i.id);
+
+  // 3. AI 生成日报概览
+  const prompt = buildDailyOverviewPrompt(items);
+
+  let summary = `${date} 技术日报：共 ${items.length} 篇文章`;
+
+  try {
+    // 尝试调用 AI（如果客户端支持）
+    const aiResponse = await (aiClient as unknown as { request?: (p: string) => Promise<unknown> }).request?.(prompt);
+    if (aiResponse) {
+      const text = typeof aiResponse === "string" ? aiResponse : JSON.stringify(aiResponse);
+      const result = parseDailyOverviewResult(text);
+      if (result) {
+        summary = result.summary;
+      }
+    }
+  } catch (error) {
+    logger.warn("AI summary generation failed, using default", { date });
+  }
+
+  // 4. 生成 dayLabel
+  const dateObj = new Date(date);
+  const dayLabel = `${dateObj.getMonth() + 1}月${dateObj.getDate()}日`;
+
+  // 5. 写入 DailyOverview（upsert）
+  await prisma.dailyOverview.upsert({
+    where: { date },
+    create: {
+      date,
+      dayLabel,
+      summary,
+      itemIds,
+      spotlightIds,
+    },
+    update: {
+      dayLabel,
+      summary,
+      itemIds,
+      spotlightIds,
+    },
+  });
+
+  logger.info("Daily report generated", {
+    date,
+    itemCount: items.length,
+    spotlightCount: spotlightItems.length,
+  });
+
+  return {
+    date,
+    itemCount: items.length,
+    spotlightCount: spotlightItems.length,
+  };
+}
+
+export { prisma };
