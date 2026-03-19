@@ -1,10 +1,76 @@
-# 数据层改造设计文档
+# 全栈重构设计文档
 
 ## 概述
 
-前端改造后，数据表结构发生重大变更，需要同步改造数据爬取、解析、AI 增强逻辑，以及后端 API 接口，确保满足前端展示需求。
+本次重构包含三个核心任务，按顺序执行：
 
-## 一、数据流架构
+1. **目录结构重构** — 修复 `app/app/` 嵌套导致的 URL 问题
+2. **数据层改造** — 改造数据爬取、解析、AI 增强逻辑及后端 API
+3. **文档更新** — 重写过时文档，反映当前 Next.js 架构
+
+---
+
+## Phase 1: 目录结构重构
+
+### 当前结构（问题）
+
+```
+app/
+├── app/           # Next.js App Router (嵌套!)
+│   ├── api/       # → /app/api/* (错误)
+│   ├── page.tsx   # → /app (错误)
+│   └── ...
+├── components/
+├── hooks/
+└── lib/
+```
+
+### 目标结构
+
+```
+information-aggregator/
+├── app/              # Next.js App Router (根目录)
+│   ├── api/          # → /api/*
+│   ├── daily/        # → /daily
+│   ├── weekly/       # → /weekly
+│   ├── layout.tsx
+│   └── page.tsx      # → /
+├── components/       # React 组件
+├── hooks/            # React hooks
+├── lib/              # 前端工具库
+├── src/              # 后端代码（保持不变）
+├── prisma/           # 数据库 schema
+└── config/           # 配置文件
+```
+
+### 改动清单
+
+| 操作 | 文件/目录 |
+|------|-----------|
+| 移动 | `app/app/*` → `app/*` |
+| 移动 | `app/components/` → `components/` |
+| 移动 | `app/hooks/` → `hooks/` |
+| 移动 | `app/lib/` → `lib/` |
+| 删除 | 空的 `app/app/` 目录 |
+| 更新 | 所有 import 路径 |
+
+### tsconfig.json 更新
+
+```json
+{
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./*"]
+    }
+  }
+}
+```
+
+---
+
+## Phase 2: 数据层改造
+
+### 数据流架构
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -52,93 +118,66 @@
 2. **周报定时检查** — 每次运行时检查是否需要生成新周报（如每周一）
 3. **日报与 Item 关联** — DailyOverview 记录 itemIds，周报基于此聚合
 
-## 二、配置文件设计
+### 配置文件设计
 
-### 2.1 定时任务配置 `config/scheduler.yaml`
+#### 定时任务 `config/scheduler.yaml`
 
 ```yaml
 scheduler:
   jobs:
-    # 数据获取与处理（高频）
     fetch-and-process:
       cron: "0 */30 * * * *"
       description: "获取所有 enabled sources 数据，处理并持久化"
       enabled: true
 
-    # 日报生成（每天）
     daily-report:
       cron: "0 30 6 * * *"
       description: "根据 daily.yaml 配置生成日报"
       enabled: true
 
-    # 周报生成（周一）
     weekly-report:
       cron: "0 0 7 * * 1"
       description: "根据 weekly.yaml 配置生成周报"
       enabled: true
 ```
 
-### 2.2 日报配置 `config/reports/daily.yaml`
+#### 日报配置 `config/reports/daily.yaml`
 
 ```yaml
 daily:
-  # 数据源选择
-  packs: all  # 或 ["tech-news", "github", "karpathy-picks"]
-
-  # 条目控制
+  packs: all
   maxItems: 20
   maxSpotlight: 3
-
-  # 排序策略
-  sort: ranked  # ranked | recent
-
-  # AI 功能
+  sort: ranked
   enableOverview: true
-
-  # 快讯配置
   newsFlashes:
     enabled: true
     maxCount: 12
 ```
 
-### 2.3 周报配置 `config/reports/weekly.yaml`
+#### 周报配置 `config/reports/weekly.yaml`
 
 ```yaml
 weekly:
-  # 时间范围
   days: 7
-
-  # 聚合输出
   maxTimelineEvents: 10
   maxDeepDives: 5
-
-  # AI 功能
   enableEditorial: true
 ```
 
-## 三、AI 增强流程重新设计
+### AI 增强流程
 
-### 3.1 AI 输出结构
+#### 输出结构
 
 ```typescript
 interface AiEnrichmentOutput {
-  // 100-150字概述，用于卡片展示
-  summary: string
-
-  // 3-5个核心要点，用于要点列表
-  bullets: string[]
-
-  // 1-3个分类标签，AI 自行判断
-  categories: string[]
-
-  // 评分（可选，基于完整内容）
-  score?: number
+  summary: string      // 100-150字概述
+  bullets: string[]    // 3-5个核心要点
+  categories: string[] // 1-3个分类标签
 }
 ```
 
-### 3.2 统一 Prompt 模板
-
-**内容增强** `config/prompts/enrich.md`：
+#### 统一 Prompt
 
 ```markdown
 请分析以下文章，生成结构化的增强数据。
@@ -155,33 +194,30 @@ interface AiEnrichmentOutput {
 3. **categories** (string[]): 1-3个最合适的分类标签，自行判断
 
 ## 输出格式
-​```json
+```json
 {
   "summary": "...",
   "bullets": ["...", "...", "..."],
   "categories": ["...", "..."]
 }
-​```
+```
 
 只输出 JSON，不要其他内容。
 ```
 
-## 四、API 接口改造
+### API 接口改造
 
-### 4.1 接口字段对照表
+#### 接口字段对照表
 
-| 接口 | 前端需求字段 | 需要修改 |
-|------|-------------|---------|
-| `/api/items` | id, title, source, sourceUrl, publishedAt, summary, bullets, content, imageUrl, categories, aiScore, isBookmarked | ✅ 扩展字段 |
-| `/api/bookmarks` | 同上（收藏列表） | ✅ 重命名 + 扩展字段 |
-| `/api/daily` | overview, spotlightArticles, recommendedArticles, newsFlashes | ✅ 移除 mock，从 DB 读取 |
-| `/api/weekly` | hero, timelineEvents, deepDives | ✅ 移除 mock，从 DB 读取 |
-| `/api/news-flashes` | id, time, text, itemId | ⚠️ 小调整 |
-| `/api/views` | id, name, icon, description, itemCount | ⚠️ 检查 |
-| `/api/packs` | id, name, description, sourceCount | ⚠️ 检查 |
-| `/api/sources` | id, type, name, url, enabled, packId, health | ⚠️ 检查 |
+| 接口 | 前端需求字段 | 状态 |
+|------|-------------|------|
+| `/api/items` | id, title, source, sourceUrl, publishedAt, summary, bullets, content, imageUrl, categories, aiScore, isBookmarked | 扩展字段 |
+| `/api/bookmarks` | 同上（收藏列表） | 重命名 + 扩展 |
+| `/api/daily` | overview, spotlightArticles, recommendedArticles, newsFlashes | 移除 mock |
+| `/api/weekly` | hero, timelineEvents, deepDives | 移除 mock |
+| `/api/news-flashes` | id, time, text, itemId | 小调整 |
 
-### 4.2 收藏接口重命名
+#### 收藏接口重命名
 
 | 当前 | 改为 |
 |------|------|
@@ -197,70 +233,17 @@ interface AiEnrichmentOutput {
 | `savedAt` | `bookmarkedAt` |
 | `saved` | `isBookmarked` |
 
-### 4.3 日报/周报接口简化
+### 数据库 Schema 变更
 
-**`/api/daily`**：
-```typescript
-// 只查询，不生成
-export async function GET() {
-  const overview = await prisma.dailyOverview.findFirst({
-    orderBy: { date: 'desc' }
-  })
+#### 主要变更
 
-  if (!overview) {
-    return NextResponse.json({ success: false, error: 'No daily data' }, { status: 404 })
-  }
+1. **Item 表** — 新增 `sourceName`，`category` 改为 `categories` (String[])
+2. **SavedItem → Bookmark** — 表名和字段重命名
+3. **DailyOverview** — 新增 `itemIds`, `spotlightIds` (String[])
+4. **TimelineEvent** — 新增 `itemIds` (String[])
+5. **NewsFlash** — 新增 `dailyDate` (String?)
 
-  // 根据 itemIds 查询关联的 items
-  const items = await prisma.item.findMany({
-    where: { id: { in: overview.itemIds } }
-  })
-
-  return NextResponse.json({ success: true, data: { ...overview, items } })
-}
-```
-
-**`/api/weekly`**：
-```typescript
-// 只查询，不生成
-export async function GET() {
-  const report = await prisma.weeklyReport.findFirst({
-    orderBy: { createdAt: 'desc' },
-    include: { timelineEvents: true }
-  })
-
-  if (!report) {
-    return NextResponse.json({ success: false, error: 'No weekly data' }, { status: 404 })
-  }
-
-  return NextResponse.json({ success: true, data: report })
-}
-```
-
-## 五、数据库 Schema 调整
-
-### 5.1 主要变更
-
-1. **Item 表**
-   - 新增 `sourceName` 字段
-   - `category` 改为 `categories` (String[])
-   - 确保 `summary`, `bullets`, `content`, `imageUrl` 字段存在
-
-2. **SavedItem → Bookmark** 重命名
-   - 表名: `SavedItem` → `Bookmark`
-   - 字段: `savedAt` → `bookmarkedAt`
-
-3. **DailyOverview 新增关联字段**
-   - `itemIds`: String[] — 当天日报包含的 item IDs
-   - `spotlightIds`: String[] — 精选 item IDs
-
-4. **TimelineEvent 新增关联字段**
-   - `itemIds`: String[] — 事件关联的 item IDs
-
-5. **NewsFlash 新增字段**
-   - `dailyDate`: String? — 关联的日报日期
-
-### 5.2 完整 Schema
+#### 完整 Schema
 
 ```prisma
 /// 内容条目表 - 存储所有抓取的内容
@@ -291,6 +274,7 @@ model Item {
   // === 关联关系 ===
   source       Source      @relation(fields: [sourceId], references: [id])
   bookmarks    Bookmark[]                        // 被收藏记录
+  newsFlashes  NewsFlash[]                       // 关联的快讯
 
   createdAt    DateTime @default(now())       // 记录创建时间
   updatedAt    DateTime @updatedAt            // 记录更新时间
@@ -438,24 +422,44 @@ model CustomViewItem {
 }
 ```
 
-## 六、改造任务拆分
+---
 
-| # | 任务 | 优先级 | 依赖 |
-|---|------|--------|------|
-| 1 | 创建配置文件目录和 schema 定义 | P0 | - |
-| 2 | 调整 Prisma Schema（字段新增/重命名） | P0 | - |
-| 3 | 实现 AI 增强统一 Prompt 和解析逻辑 | P0 | 2 |
-| 4 | 改造 `/api/items` 返回完整字段 | P0 | 2 |
-| 5 | 重命名收藏接口 `/api/bookmarks` | P1 | 2 |
-| 6 | 简化 `/api/daily` 为纯查询 | P1 | 2 |
-| 7 | 简化 `/api/weekly` 为纯查询 | P1 | 2 |
-| 8 | 实现定时任务调度器 | P1 | 1,3 |
-| 9 | 实现日报生成任务 | P1 | 8 |
-| 10 | 实现周报生成任务 | P1 | 8,9 |
-| 11 | 前端适配新 API 字段 | P2 | 4,5,6,7 |
+## Phase 3: 文档更新
 
-## 七、注意事项
+### 文件变更清单
 
-1. **数据迁移** — Schema 变更需要生成迁移脚本，现有数据需兼容处理
-2. **向后兼容** — API 改造期间保持旧接口可用，逐步切换
-3. **前端样式不变** — 本次改造只调整数据层，前端 UI 保持现状
+| 文件 | 操作 |
+|------|------|
+| `AGENTS.md` | 重写 |
+| `README.md` | 重写 |
+| `TEST.md` | 删除（内容融合到 AGENTS.md）|
+| `docs/api-data-formats.md` | 新建 |
+
+### AGENTS.md 结构
+
+1. 项目架构概述 — Next.js App Router + Prisma + Supabase
+2. 目录结构说明
+3. 开发规范 — 代码风格、Git 工作流、测试要求
+4. 测试流程 — `pnpm build` / `pnpm lint` / 前端验证
+5. AI 协作指南 — 任务拆分原则、代码审查要求
+
+### README.md 结构
+
+1. 项目简介
+2. 快速开始 — 环境要求、安装依赖、配置环境变量
+3. 功能特性
+4. 前端入口 — `/`, `/daily`, `/weekly`, `/saved`
+5. 配置说明
+6. 部署指南
+
+---
+
+## 风险评估
+
+| 风险 | 缓解措施 |
+|------|----------|
+| import 路径遗漏 | 构建验证 + TypeScript 检查 |
+| 数据库迁移失败 | 备份数据，测试迁移脚本 |
+| Vercel 部署失败 | 更新 vercel.json 配置 |
+| 空态 UI 不完善 | 确认空态组件已实现 |
+| Mock 数据移除导致前端报错 | 确保空数组返回，前端处理空态 |
