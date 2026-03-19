@@ -51,16 +51,12 @@ async function main(): Promise<void> {
   }
 
   if (parsed.command === "archive collect") {
-    await archiveCollectCommand(parsed.packIds ?? [], {
-      dbPath: parsed.dbPath,
-    });
+    await archiveCollectCommand(parsed.packIds ?? []);
     return;
   }
 
   if (parsed.command === "archive stats") {
-    await archiveStatsCommand({
-      dbPath: parsed.dbPath,
-    });
+    await archiveStatsCommand();
     return;
   }
 

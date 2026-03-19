@@ -64,6 +64,7 @@ sources:
   - type: rss
     url: https://utcc.utoronto.ca/~cks/space/blog/?atom
     description: Chris Siebenmann - Unix 系统管理员
+    enabled: false  # 429 限流
 
   - type: rss
     url: https://xeiaso.net/blog.rss
@@ -92,6 +93,7 @@ sources:
   - type: rss
     url: https://rachelbythebay.com/w/atom.xml
     description: Rachel Kroll - 系统编程与调试
+    enabled: false  # SSL 证书验证失败
 
   - type: rss
     url: https://overreacted.io/rss.xml
@@ -248,6 +250,7 @@ sources:
   - type: rss
     url: https://gwern.substack.com/feed
     description: Gwern - 深度研究与长文
+    enabled: false  # SSL 证书验证失败
 
   - type: rss
     url: https://berthub.eu/articles/index.xml
@@ -372,3 +375,4 @@ sources:
   - type: rss
     url: https://www.tedunangst.com/flak/rss
     description: Ted Unangst - OpenBSD 开发者
+    enabled: false  # SSL 证书验证失败
