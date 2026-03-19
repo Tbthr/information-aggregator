@@ -4,6 +4,14 @@ import { fileURLToPath } from 'node:url'
 const appRoot = fileURLToPath(new URL('.', import.meta.url))
 
 const nextConfig = {
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: '/app/api/:path*',
+      },
+    ]
+  },
   turbopack: {
     root: appRoot,
   },

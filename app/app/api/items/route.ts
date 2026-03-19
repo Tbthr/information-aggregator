@@ -8,7 +8,18 @@ export const dynamic = "force-dynamic"
 export async function GET(request: Request) {
   const startTime = Date.now()
   const query = parseItemsQuery(new URL(request.url).searchParams)
-  const response = await listItems(query)
+
+  if (!query.success) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: query.error,
+      },
+      { status: 400 }
+    )
+  }
+
+  const response = await listItems(query.data)
 
   return NextResponse.json({
     ...response,

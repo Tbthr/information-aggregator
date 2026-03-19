@@ -2,7 +2,15 @@ import { Prisma } from "@prisma/client"
 import { z } from "zod"
 
 import { prisma } from "@/lib/prisma"
-import type { ApiResponse, ItemData, ItemsData, SourceInfo } from "../../../../src/api/types"
+import type {
+  ApiResponse,
+  ItemData,
+  ItemsData,
+  ItemsQuery,
+  ParsedItemsQuery,
+  SavedItemsData,
+  SourceInfo,
+} from "./types"
 
 const itemsQuerySchema = z.object({
   packs: z.string().optional(),
@@ -14,8 +22,6 @@ const itemsQuerySchema = z.object({
   sort: z.enum(["ranked", "recent"]).default("ranked"),
   search: z.string().trim().min(1).optional(),
 })
-
-export type ParsedItemsQuery = z.infer<typeof itemsQuerySchema>
 
 const itemInclude = {
   source: {
@@ -40,7 +46,7 @@ type ItemRecord = Prisma.ItemGetPayload<{ include: typeof itemInclude }>
 type SavedItemRecord = Prisma.SavedItemGetPayload<{ include: typeof savedItemInclude }>
 
 export function parseItemsQuery(searchParams: URLSearchParams): ParsedItemsQuery {
-  return itemsQuerySchema.parse({
+  const parsed = itemsQuerySchema.safeParse({
     packs: searchParams.get("packs") ?? undefined,
     sources: searchParams.get("sources") ?? undefined,
     sourceTypes: searchParams.get("sourceTypes") ?? undefined,
@@ -50,9 +56,21 @@ export function parseItemsQuery(searchParams: URLSearchParams): ParsedItemsQuery
     sort: searchParams.get("sort") ?? undefined,
     search: normalizeOptional(searchParams.get("search")),
   })
+
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: "Invalid query parameters",
+    }
+  }
+
+  return {
+    success: true,
+    data: parsed.data,
+  }
 }
 
-export async function listItems(query: ParsedItemsQuery): Promise<ApiResponse<ItemsData>> {
+export async function listItems(query: ItemsQuery): Promise<ApiResponse<ItemsData>> {
   const where = buildItemsWhere(query)
   const [total, rows] = await Promise.all([
     prisma.item.count({ where }),
@@ -108,10 +126,7 @@ export async function getItemById(id: string): Promise<ItemData | null> {
   return item ? serializeItem(item) : null
 }
 
-export async function getSavedItems(): Promise<{
-  items: ItemData[]
-  total: number
-}> {
+export async function getSavedItems(): Promise<SavedItemsData> {
   const rows = await prisma.savedItem.findMany({
     include: savedItemInclude,
     orderBy: {
@@ -162,7 +177,7 @@ export async function deleteSavedItemById(id: string): Promise<boolean> {
   return result.count > 0
 }
 
-function buildItemsWhere(query: ParsedItemsQuery): Prisma.ItemWhereInput {
+function buildItemsWhere(query: ItemsQuery): Prisma.ItemWhereInput {
   const and: Prisma.ItemWhereInput[] = []
   const packIds = splitCsv(query.packs)
   const sourceIds = splitCsv(query.sources)
@@ -171,10 +186,7 @@ function buildItemsWhere(query: ParsedItemsQuery): Prisma.ItemWhereInput {
 
   if (packIds.length > 0) {
     and.push({
-      OR: [
-        { packId: { in: packIds } },
-        { source: { packId: { in: packIds } } },
-      ],
+      OR: [{ packId: { in: packIds } }, { source: { packId: { in: packIds } } }],
     })
   }
 
@@ -289,7 +301,7 @@ function summarizeSources(rows: ItemRecord[]): SourceInfo[] {
   }))
 }
 
-function resolveWindowStart(window: ParsedItemsQuery["window"]): Date | null {
+function resolveWindowStart(window: ItemsQuery["window"]): Date | null {
   const now = new Date()
 
   switch (window) {
