@@ -25,13 +25,13 @@ model Item {
   bullets      String[]
   content      String?  @db.Text
   imageUrl     String?
-  category     String?
+  categories   String[]
   score        Float    @default(5.0)
   scoresJson   String?  @db.Text
   metadataJson String?  @db.Text
 
   source       Source        @relation(fields: [sourceId], references: [id])
-  savedItems   SavedItem[]
+  bookmarks    Bookmark[]
   newsFlashes  NewsFlash[]
 
   createdAt    DateTime @default(now())
@@ -84,12 +84,12 @@ model Pack {
   updatedAt   DateTime @updatedAt
 }
 
-model SavedItem {
-  id      String   @id @default(cuid())
-  itemId  String
-  savedAt DateTime @default(now())
+model Bookmark {
+  id           String   @id @default(cuid())
+  itemId       String
+  bookmarkedAt DateTime @default(now())
 
-  item    Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  item         Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
   @@unique([itemId])
 }
@@ -99,6 +99,7 @@ model NewsFlash {
   time      String
   text      String   @db.Text
   itemId    String?
+  dailyDate String?
 
   item      Item?    @relation(fields: [itemId], references: [id])
 
@@ -106,12 +107,15 @@ model NewsFlash {
 }
 
 model DailyOverview {
-  id        String   @id @default(cuid())
-  date      String   @unique
-  dayLabel  String
-  summary   String   @db.Text
+  id           String   @id @default(cuid())
+  date         String   @unique
+  dayLabel     String
+  summary      String   @db.Text
 
-  createdAt DateTime @default(now())
+  itemIds      String[]
+  spotlightIds String[]
+
+  createdAt    DateTime @default(now())
 }
 
 model WeeklyReport {
@@ -134,6 +138,8 @@ model TimelineEvent {
   title          String
   summary        String   @db.Text
   order          Int      @default(0)
+
+  itemIds        String[]
 
   weeklyReport   WeeklyReport @relation(fields: [weeklyReportId], references: [id], onDelete: Cascade)
 
