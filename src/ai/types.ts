@@ -66,6 +66,13 @@ export interface DailyBriefOverviewResult {
   highlights: string[];
 }
 
+// 统一 AI 增强结果
+export interface UnifiedEnrichmentResult {
+  summary: string;      // 100-150字概述
+  bullets: string[];    // 3-5个核心要点
+  categories: string[]; // 1-3个分类标签
+}
+
 export interface AiClient {
   scoreCandidate(prompt: string): Promise<number>;
   summarizeCluster(prompt: string): Promise<string>;

@@ -166,42 +166,38 @@ ${truncatedContent}
 }
 
 /**
- * 综合 enrichment prompt
- * 一次性获取评分、关键点、标签和摘要
+ * 统一 AI 增强 prompt
+ * 生成摘要、核心要点和分类标签
  */
 export function buildComprehensiveEnrichmentPrompt(
   title: string,
   content: string,
-  options: {
-    maxKeyPoints?: number;
-    maxTags?: number;
-    includeSummary?: boolean;
-  } = {},
 ): string {
-  const { maxKeyPoints = 5, maxTags = 5, includeSummary = true } = options;
   const truncatedContent = content.length > 4000
     ? content.slice(0, 4000) + "..."
     : content;
 
-  return `你是内容分析专家。请分析以下文章并提供结构化信息。
+  return `请分析以下文章，生成结构化的增强数据。
 
-标题: ${title}
+## 输入
+标题：${title}
+正文：${truncatedContent}
 
-正文内容:
-${truncatedContent}
+## 输出要求
+请以 JSON 格式输出，包含以下字段：
 
-请提供以下信息：
-1. 质量评分（1-10 分，保留一位小数）和一句话评价
-2. ${maxKeyPoints} 个关键要点（每点 30 字以内）
-3. ${maxTags} 个标签（2-6 字，中文或技术术语）${includeSummary ? `
-4. 150 字以内的摘要` : ""}
+1. **summary** (string): 100-150字概述，提炼核心观点
+2. **bullets** (string[]): 3-5个核心要点，每个不超过50字
+3. **categories** (string[]): 1-3个最合适的分类标签，自行判断
 
-请严格按以下 JSON 格式返回（不要添加其他文字）：
+## 输出格式
+\`\`\`json
 {
-  "score": <评分>,
-  "reason": "<评价>",
-  "keyPoints": ["<要点1>", "<要点2>", ...],
-  "tags": ["<标签1>", "<标签2>", ...]${includeSummary ? `,
-  "summary": "<摘要>"` : ""}
-}`;
+  "summary": "...",
+  "bullets": ["...", "...", "..."],
+  "categories": ["...", "..."]
+}
+\`\`\`
+
+只输出 JSON，不要其他内容。`;
 }
