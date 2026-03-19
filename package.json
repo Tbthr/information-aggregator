@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
     "test": "bun test",
     "check": "tsc --noEmit",
     "smoke": "bun src/verification/smoke-runner.ts",
@@ -12,18 +15,25 @@
     "format:check": "prettier --check src/"
   },
   "devDependencies": {
-    "@types/bun": "^1.2.17",
-    "typescript": "^5.8.2",
-    "eslint": "^9.22.0",
-    "prettier": "^3.5.0",
-    "typescript-eslint": "^8.26.0",
-    "yaml": "^2.8.1",
     "@mozilla/readability": "^0.6.0",
-    "linkedom": "^0.18.12"
+    "@tailwindcss/postcss": "^4.2.2",
+    "@types/bun": "^1.2.17",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "eslint": "^9.22.0",
+    "linkedom": "^0.18.12",
+    "prettier": "^3.5.0",
+    "tailwindcss": "^4.2.2",
+    "typescript": "^5.8.2",
+    "typescript-eslint": "^8.26.0",
+    "yaml": "^2.8.1"
   },
   "dependencies": {
     "@hono/zod-validator": "^0.7.6",
     "hono": "^4.12.7",
+    "next": "^16.2.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
     "zod": "^4.3.6"
   }
 }
