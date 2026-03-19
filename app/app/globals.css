@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+:root {
+  --background: oklch(0.99 0.005 260);
+  --foreground: oklch(0.2 0.02 260);
+  --card: oklch(0.99 0.005 260);
+  --card-foreground: oklch(0.2 0.02 260);
+  --primary: oklch(0.55 0.25 260);
+  --primary-foreground: oklch(0.99 0.005 260);
+  --muted: oklch(0.96 0.01 260);
+  --muted-foreground: oklch(0.5 0.02 260);
+  --border: oklch(0.9 0.01 260);
+  --sidebar: oklch(0.98 0.005 260);
+  --sidebar-foreground: oklch(0.2 0.02 260);
+  --sidebar-accent: oklch(0.95 0.01 260);
+  --sidebar-border: oklch(0.9 0.01 260);
+  --overview-bg: oklch(0.55 0.25 260);
+  --overview-foreground: oklch(0.99 0.005 260);
+  --spotlight-accent: oklch(0.75 0.2 80);
+  --bullet-bg: oklch(0.96 0.01 260);
+  --accent-foreground: oklch(0.35 0.02 260);
+  --save-active: oklch(0.65 0.2 30);
+}
+
+* {
+  border-color: var(--border);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: system-ui, -apple-system, sans-serif;
+}
