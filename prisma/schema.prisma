@@ -3,6 +3,161 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+model Item {
+  id           String   @id @default(cuid())
+  title        String
+  url          String
+  canonicalUrl String
+  snippet      String?  @db.Text
+  sourceId     String
+  sourceName   String
+  sourceType   String
+  packId       String?
+  publishedAt  DateTime?
+  fetchedAt    DateTime @default(now())
+  author       String?
+  summary      String?  @db.Text
+  bullets      String[]
+  content      String?  @db.Text
+  imageUrl     String?
+  category     String?
+  score        Float    @default(5.0)
+  scoresJson   String?  @db.Text
+  metadataJson String?  @db.Text
+
+  source       Source        @relation(fields: [sourceId], references: [id])
+  savedItems   SavedItem[]
+  newsFlashes  NewsFlash[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([sourceId])
+  @@index([fetchedAt])
+  @@index([score])
+}
+
+model Source {
+  id          String   @id
+  type        String
+  name        String
+  url         String?
+  description String?
+  enabled     Boolean  @default(true)
+  configJson  String?  @db.Text
+  packId      String?
+
+  pack        Pack?    @relation(fields: [packId], references: [id])
+  items       Item[]
+  health      SourceHealth?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SourceHealth {
+  id                  String   @id @default(cuid())
+  sourceId            String   @unique
+  lastSuccessAt       DateTime?
+  lastFailureAt       DateTime?
+  lastError           String?  @db.Text
+  consecutiveFailures Int      @default(0)
+
+  source              Source   @relation(fields: [sourceId], references: [id])
+  updatedAt           DateTime @updatedAt
+}
+
+model Pack {
+  id          String   @id
+  name        String
+  description String?
+  policyJson  String?  @db.Text
+
+  sources     Source[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SavedItem {
+  id      String   @id @default(cuid())
+  itemId  String
+  savedAt DateTime @default(now())
+
+  item    Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId])
+}
+
+model NewsFlash {
+  id        String   @id @default(cuid())
+  time      String
+  text      String   @db.Text
+  itemId    String?
+
+  item      Item?    @relation(fields: [itemId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+model DailyOverview {
+  id        String   @id @default(cuid())
+  date      String   @unique
+  dayLabel  String
+  summary   String   @db.Text
+
+  createdAt DateTime @default(now())
+}
+
+model WeeklyReport {
+  id            String   @id @default(cuid())
+  weekNumber    String
+  headline      String
+  subheadline   String?  @db.Text
+  editorial     String?  @db.Text
+
+  timelineEvents TimelineEvent[]
+
+  createdAt     DateTime @default(now())
+}
+
+model TimelineEvent {
+  id             String   @id @default(cuid())
+  weeklyReportId String
+  date           String
+  dayLabel       String
+  title          String
+  summary        String   @db.Text
+  order          Int      @default(0)
+
+  weeklyReport   WeeklyReport @relation(fields: [weeklyReportId], references: [id], onDelete: Cascade)
+
+  @@index([weeklyReportId])
+}
+
+model CustomView {
+  id          String   @id
+  name        String
+  icon        String
+  description String?
+
+  items       CustomViewItem[]
+
+  createdAt   DateTime @default(now())
+}
+
+model CustomViewItem {
+  id      String   @id @default(cuid())
+  viewId  String
+  itemId  String
+  order   Int      @default(0)
+
+  view    CustomView @relation(fields: [viewId], references: [id], onDelete: Cascade)
+
+  @@unique([viewId, itemId])
+  @@index([viewId])
 }
