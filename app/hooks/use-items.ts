@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import type { Article } from "@/lib/types"
 import { fetchItems, saveItem, unsaveItem, type FetchItemsParams } from "@/lib/api-client"
 import { useSaved } from "./use-saved"
@@ -34,6 +34,9 @@ export function useItems(params: UseItemsParams = {}): UseItemsResult {
 
   const { savedIds, addSaved, removeSaved, isSaved } = useSaved()
 
+  // Use ref to track mounted state and prevent race conditions
+  const isMountedRef = useRef(true)
+
   const fetchItemsData = useCallback(async () => {
     setLoading(true)
     setError(null)
@@ -59,26 +62,43 @@ export function useItems(params: UseItemsParams = {}): UseItemsResult {
 
       const result = await fetchItems(apiParams)
 
-      // Mark items as saved based on savedIds
-      const itemsWithSavedState = result.items.map((item) => ({
-        ...item,
-        saved: savedIds.has(item.id),
-      }))
-
-      setItems(itemsWithSavedState)
-      setTotal(result.pagination.total)
+      // Only update state if still mounted
+      if (isMountedRef.current) {
+        // Store items without saved state - derive it at render time
+        setItems(result.items as Article[])
+        setTotal(result.pagination.total)
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch items")
-      setItems([])
-      setTotal(0)
+      // Only update state if still mounted
+      if (isMountedRef.current) {
+        setError(err instanceof Error ? err.message : "Failed to fetch items")
+        setItems([])
+        setTotal(0)
+      }
     } finally {
-      setLoading(false)
+      if (isMountedRef.current) {
+        setLoading(false)
+      }
     }
-  }, [params.page, params.pageSize, params.packId, params.sourceId, params.sourceType, params.window, params.searchQuery, params.sort, savedIds])
+    // Note: savedIds intentionally NOT in deps - it's only used for client-side mapping, not API calls
+  }, [params.page, params.pageSize, params.packId, params.sourceId, params.sourceType, params.window, params.searchQuery, params.sort])
 
   useEffect(() => {
+    isMountedRef.current = true
     fetchItemsData()
+
+    return () => {
+      isMountedRef.current = false
+    }
   }, [fetchItemsData])
+
+  // Derive items with saved state at render time
+  const itemsWithSavedState = useMemo(() => {
+    return items.map((item) => ({
+      ...item,
+      saved: savedIds.has(item.id),
+    }))
+  }, [items, savedIds])
 
   const toggleSave = useCallback(
     async (id: string) => {
@@ -89,13 +109,11 @@ export function useItems(params: UseItemsParams = {}): UseItemsResult {
           const result = await unsaveItem(id)
           if (result.success) {
             removeSaved(id)
-            setItems((prev) => prev.map((item) => (item.id === id ? { ...item, saved: false } : item)))
           }
         } else {
           const result = await saveItem(id)
           if (result.success) {
             addSaved(id)
-            setItems((prev) => prev.map((item) => (item.id === id ? { ...item, saved: true } : item)))
           }
         }
       } catch (err) {
@@ -110,7 +128,7 @@ export function useItems(params: UseItemsParams = {}): UseItemsResult {
   }, [fetchItemsData])
 
   return {
-    items,
+    items: itemsWithSavedState,
     total,
     loading,
     error,
