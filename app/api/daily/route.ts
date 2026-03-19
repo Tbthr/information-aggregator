@@ -1,12 +1,6 @@
 import { NextResponse } from "next/server"
 
 import { prisma } from "@/lib/prisma"
-import {
-  DAILY_OVERVIEW,
-  NEWS_FLASHES,
-  RECOMMENDED_ARTICLES,
-  SPOTLIGHT_ARTICLES,
-} from "@/lib/mock-data"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -21,7 +15,7 @@ function toArticle(item: {
   bullets: string[]
   content: string | null
   imageUrl: string | null
-  category: string | null
+  categories: string[]
   score: number
 }) {
   return {
@@ -34,7 +28,7 @@ function toArticle(item: {
     bullets: item.bullets,
     content: item.content ?? "",
     imageUrl: item.imageUrl ?? undefined,
-    category: item.category ?? undefined,
+    category: item.categories[0] ?? undefined,
     aiScore: item.score,
   }
 }
@@ -42,43 +36,73 @@ function toArticle(item: {
 export async function GET() {
   try {
     const startTime = Date.now()
-    const [overview, items, flashes] = await Promise.all([
-      prisma.dailyOverview.findFirst({ orderBy: { createdAt: "desc" } }),
-      prisma.item.findMany({
+
+    const overview = await prisma.dailyOverview.findFirst({
+      orderBy: { date: "desc" },
+    })
+
+    if (!overview) {
+      // 无日报数据时，返回空数据（不是 mock）
+      const items = await prisma.item.findMany({
         orderBy: [{ score: "desc" }, { fetchedAt: "desc" }],
         take: 6,
-      }),
-      prisma.newsFlash.findMany({
-        orderBy: [{ createdAt: "desc" }, { time: "desc" }],
-        take: 12,
-      }),
-    ])
+      })
 
-    // If we have fewer than 6 items, use all mock data to avoid inconsistent fallback
-    const hasEnoughItems = items.length >= 6
-    const hasEnoughFlashes = flashes.length > 0
+      return NextResponse.json({
+        success: true,
+        data: {
+          overview: null,
+          spotlightArticles: items.slice(0, 2).map(toArticle),
+          recommendedArticles: items.slice(2).map(toArticle),
+          newsFlashes: [],
+        },
+        meta: {
+          timing: {
+            generatedAt: new Date().toISOString(),
+            latencyMs: Date.now() - startTime,
+          },
+        },
+      })
+    }
 
-    const spotlight = hasEnoughItems ? items.slice(0, 2).map(toArticle) : []
-    const recommended = hasEnoughItems ? items.slice(2).map(toArticle) : []
+    // 查询关联的 items
+    const allItemIds = [...overview.spotlightIds, ...overview.itemIds]
+    const items = await prisma.item.findMany({
+      where: { id: { in: allItemIds } },
+    })
+
+    const itemMap = new Map(items.map((i) => [i.id, i]))
+    const spotlightArticles = overview.spotlightIds
+      .map((id) => itemMap.get(id))
+      .filter((item): item is NonNullable<typeof item> => item !== undefined)
+      .map(toArticle)
+    const recommendedArticles = overview.itemIds
+      .filter((id) => !overview.spotlightIds.includes(id))
+      .map((id) => itemMap.get(id))
+      .filter((item): item is NonNullable<typeof item> => item !== undefined)
+      .map(toArticle)
+
+    // 查询快讯
+    const newsFlashes = await prisma.newsFlash.findMany({
+      where: { dailyDate: overview.date },
+      orderBy: [{ createdAt: "desc" }, { time: "desc" }],
+      take: 12,
+    })
 
     return NextResponse.json({
       success: true,
       data: {
-        overview: overview
-          ? {
-              date: overview.date,
-              summary: overview.summary,
-            }
-          : DAILY_OVERVIEW,
-        spotlightArticles: spotlight.length > 0 ? spotlight : SPOTLIGHT_ARTICLES,
-        recommendedArticles: recommended.length > 0 ? recommended : RECOMMENDED_ARTICLES,
-        newsFlashes: hasEnoughFlashes
-          ? flashes.map((flash: { id: string; time: string; text: string }) => ({
-              id: flash.id,
-              time: flash.time,
-              text: flash.text,
-            }))
-          : NEWS_FLASHES,
+        overview: {
+          date: overview.date,
+          summary: overview.summary,
+        },
+        spotlightArticles,
+        recommendedArticles,
+        newsFlashes: newsFlashes.map((f) => ({
+          id: f.id,
+          time: f.time,
+          text: f.text,
+        })),
       },
       meta: {
         timing: {
