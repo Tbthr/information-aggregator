@@ -2,10 +2,10 @@
 
 import { useRouter } from "next/navigation"
 import { AppLayout } from "@/components/app-layout"
-import { DailyPage } from "@/components/daily-page"
+import { WeeklyPage } from "@/components/weekly-page"
 import type { NavId } from "@/components/sidebar"
 
-export default function HomePage() {
+export default function WeeklyRoute() {
   const router = useRouter()
 
   const handleNav = (navId: NavId) => {
@@ -28,9 +28,9 @@ export default function HomePage() {
   }
 
   return (
-    <AppLayout activeNav="daily" onNav={handleNav}>
+    <AppLayout activeNav="weekly" onNav={handleNav}>
       {({ isSaved, onToggleSave, onOpenArticle }) => (
-        <DailyPage
+        <WeeklyPage
           isSaved={isSaved}
           onToggleSave={onToggleSave}
           onOpenArticle={onOpenArticle}

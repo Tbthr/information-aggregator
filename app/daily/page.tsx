@@ -5,7 +5,7 @@ import { AppLayout } from "@/components/app-layout"
 import { DailyPage } from "@/components/daily-page"
 import type { NavId } from "@/components/sidebar"
 
-export default function HomePage() {
+export default function DailyRoute() {
   const router = useRouter()
 
   const handleNav = (navId: NavId) => {

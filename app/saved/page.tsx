@@ -2,11 +2,13 @@
 
 import { useRouter } from "next/navigation"
 import { AppLayout } from "@/components/app-layout"
-import { DailyPage } from "@/components/daily-page"
+import { SavedPage } from "@/components/saved-page"
+import { useSaved } from "@/hooks/use-saved"
 import type { NavId } from "@/components/sidebar"
 
-export default function HomePage() {
+export default function SavedRoute() {
   const router = useRouter()
+  const { savedIds, isSaved, toggleSave } = useSaved()
 
   const handleNav = (navId: NavId) => {
     switch (navId) {
@@ -28,11 +30,12 @@ export default function HomePage() {
   }
 
   return (
-    <AppLayout activeNav="daily" onNav={handleNav}>
-      {({ isSaved, onToggleSave, onOpenArticle }) => (
-        <DailyPage
+    <AppLayout activeNav="saved" onNav={handleNav}>
+      {({ onOpenArticle }) => (
+        <SavedPage
+          savedIds={savedIds}
           isSaved={isSaved}
-          onToggleSave={onToggleSave}
+          onToggleSave={toggleSave}
           onOpenArticle={onOpenArticle}
         />
       )}

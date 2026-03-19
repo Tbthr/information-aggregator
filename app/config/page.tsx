@@ -2,10 +2,10 @@
 
 import { useRouter } from "next/navigation"
 import { AppLayout } from "@/components/app-layout"
-import { DailyPage } from "@/components/daily-page"
+import { ConfigPage } from "@/components/config-page"
 import type { NavId } from "@/components/sidebar"
 
-export default function HomePage() {
+export default function ConfigRoute() {
   const router = useRouter()
 
   const handleNav = (navId: NavId) => {
@@ -28,14 +28,8 @@ export default function HomePage() {
   }
 
   return (
-    <AppLayout activeNav="daily" onNav={handleNav}>
-      {({ isSaved, onToggleSave, onOpenArticle }) => (
-        <DailyPage
-          isSaved={isSaved}
-          onToggleSave={onToggleSave}
-          onOpenArticle={onOpenArticle}
-        />
-      )}
+    <AppLayout activeNav="config" onNav={handleNav}>
+      <ConfigPage />
     </AppLayout>
   )
 }
