@@ -3,7 +3,7 @@ node_modules/
 *.db-journal
 coverage/
 .worktrees/
-docs/plans/
+# docs/plans/ - 计划文档需要版本跟踪
 .agents/
 .claude/
 frontend/dist/
