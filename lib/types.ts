@@ -10,7 +10,7 @@ export type Article = {
   imageUrl?: string
   category?: string
   aiScore?: number
-  saved?: boolean
+  isBookmarked?: boolean
 }
 
 export type NewsFlash = {

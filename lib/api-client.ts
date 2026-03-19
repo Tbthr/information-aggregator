@@ -51,10 +51,16 @@ interface ItemData {
     engagement: number
     contentQuality: number
   }
-  saved?: {
-    savedAt: string
-  }
   metadata: Record<string, unknown>
+
+  // New enrichment fields
+  summary: string | null
+  bullets: string[]
+  content: string | null
+  imageUrl: string | null
+  categories: string[]
+  sourceName: string
+  isBookmarked: boolean
 }
 
 // Query params for fetching items
@@ -117,12 +123,10 @@ interface CustomViewsData {
   }>
 }
 
-// Saved items API response type
-interface SavedItemsData {
+// Bookmarks API response type
+interface BookmarksData {
   items: ItemData[]
-  meta: {
-    total: number
-  }
+  total: number
 }
 
 /**
@@ -163,16 +167,16 @@ export function mapItemToArticle(item: ItemData): Article {
   return {
     id: item.id,
     title: item.title,
-    source: item.source.type,
+    source: item.sourceName || item.source.type,
     sourceUrl: item.canonicalUrl || item.url,
     publishedAt: item.publishedAt || item.fetchedAt,
-    summary: item.snippet || "",
-    bullets: [],
-    content: "",
-    imageUrl: undefined,
-    category: undefined,
+    summary: item.summary || item.snippet || "",
+    bullets: item.bullets || [],
+    content: item.content || "",
+    imageUrl: item.imageUrl ?? undefined,
+    category: item.categories?.[0] ?? undefined,
     aiScore: item.score,
-    saved: !!item.saved,
+    isBookmarked: item.isBookmarked,
   }
 }
 
@@ -220,10 +224,10 @@ export async function fetchItems(params: FetchItemsParams = {}): Promise<FetchIt
 }
 
 /**
- * Fetch saved items
+ * Fetch bookmarks
  */
-export async function fetchSavedItems(): Promise<Article[]> {
-  const response = await fetchApi<SavedItemsData>("/api/items/saved")
+export async function fetchBookmarks(): Promise<Article[]> {
+  const response = await fetchApi<BookmarksData>("/api/bookmarks")
 
   if (!response.success || !response.data) {
     return []
@@ -233,24 +237,24 @@ export async function fetchSavedItems(): Promise<Article[]> {
 }
 
 /**
- * Save an item
+ * Add a bookmark
  */
-export async function saveItem(id: string): Promise<{ success: boolean; savedAt?: string }> {
-  const response = await fetchApi<{ savedAt: string }>(`/api/items/${id}/save`, {
+export async function addBookmark(id: string): Promise<{ success: boolean; bookmarkedAt?: string }> {
+  const response = await fetchApi<{ bookmarkedAt: string }>(`/api/bookmarks/${id}`, {
     method: "POST",
   })
 
   return {
     success: response.success,
-    savedAt: response.data?.savedAt,
+    bookmarkedAt: response.data?.bookmarkedAt,
   }
 }
 
 /**
- * Unsave an item
+ * Remove a bookmark
  */
-export async function unsaveItem(id: string): Promise<{ success: boolean }> {
-  const response = await fetchApi<unknown>(`/api/items/${id}/save`, {
+export async function removeBookmark(id: string): Promise<{ success: boolean }> {
+  const response = await fetchApi<unknown>(`/api/bookmarks/${id}`, {
     method: "DELETE",
   })
 

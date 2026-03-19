@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Bookmark, ExternalLink } from "lucide-react"
 import { SaveButton } from "@/components/save-button"
 import type { Article } from "@/lib/types"
-import { fetchSavedItems } from "@/lib/api-client"
+import { fetchBookmarks } from "@/lib/api-client"
 
 interface SavedPageProps {
   savedIds: Set<string>
@@ -26,7 +26,7 @@ export function SavedPage({ savedIds, isSaved, onToggleSave, onOpenArticle }: Sa
       setError(null)
 
       try {
-        const items = await fetchSavedItems()
+        const items = await fetchBookmarks()
 
         if (mounted) {
           setSavedArticles(items)

@@ -1,24 +1,24 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { fetchSavedItems } from "@/lib/api-client"
+import { fetchBookmarks } from "@/lib/api-client"
 
 export function useSaved() {
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
 
-  // Load saved items on mount
+  // Load bookmarks on mount
   useEffect(() => {
     let mounted = true
 
-    async function loadSavedItems() {
+    async function loadBookmarks() {
       try {
-        const items = await fetchSavedItems()
+        const items = await fetchBookmarks()
         if (mounted) {
           setSavedIds(new Set(items.map((item) => item.id)))
         }
       } catch (error) {
-        console.error("Failed to load saved items:", error)
+        console.error("Failed to load bookmarks:", error)
       } finally {
         if (mounted) {
           setLoading(false)
@@ -26,7 +26,7 @@ export function useSaved() {
       }
     }
 
-    loadSavedItems()
+    loadBookmarks()
 
     return () => {
       mounted = false

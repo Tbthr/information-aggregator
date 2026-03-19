@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import type { Article } from "@/lib/types"
-import { fetchItems, saveItem, unsaveItem, type FetchItemsParams } from "@/lib/api-client"
+import { fetchItems, addBookmark, removeBookmark, type FetchItemsParams } from "@/lib/api-client"
 import { useSaved } from "./use-saved"
 
 export interface UseItemsParams {
@@ -92,11 +92,11 @@ export function useItems(params: UseItemsParams = {}): UseItemsResult {
     }
   }, [fetchItemsData])
 
-  // Derive items with saved state at render time
-  const itemsWithSavedState = useMemo(() => {
+  // Derive items with bookmarked state at render time
+  const itemsWithBookmarkedState = useMemo(() => {
     return items.map((item) => ({
       ...item,
-      saved: savedIds.has(item.id),
+      isBookmarked: savedIds.has(item.id),
     }))
   }, [items, savedIds])
 
@@ -106,18 +106,18 @@ export function useItems(params: UseItemsParams = {}): UseItemsResult {
 
       try {
         if (currentlySaved) {
-          const result = await unsaveItem(id)
+          const result = await removeBookmark(id)
           if (result.success) {
             removeSaved(id)
           }
         } else {
-          const result = await saveItem(id)
+          const result = await addBookmark(id)
           if (result.success) {
             addSaved(id)
           }
         }
       } catch (err) {
-        console.error("Failed to toggle save:", err)
+        console.error("Failed to toggle bookmark:", err)
       }
     },
     [savedIds, addSaved, removeSaved]
@@ -128,7 +128,7 @@ export function useItems(params: UseItemsParams = {}): UseItemsResult {
   }, [fetchItemsData])
 
   return {
-    items: itemsWithSavedState,
+    items: itemsWithBookmarkedState,
     total,
     loading,
     error,
