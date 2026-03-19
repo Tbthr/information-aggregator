@@ -73,7 +73,7 @@ export async function GET() {
         spotlightArticles: spotlight.length > 0 ? spotlight : SPOTLIGHT_ARTICLES,
         recommendedArticles: recommended.length > 0 ? recommended : RECOMMENDED_ARTICLES,
         newsFlashes: hasEnoughFlashes
-          ? flashes.map((flash) => ({
+          ? flashes.map((flash: { id: string; time: string; text: string }) => ({
               id: flash.id,
               time: flash.time,
               text: flash.text,
