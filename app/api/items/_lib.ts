@@ -4,11 +4,11 @@ import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import type {
   ApiResponse,
+  BookmarksData,
   ItemData,
   ItemsData,
   ItemsQuery,
   ParsedItemsQuery,
-  SavedItemsData,
   SourceInfo,
 } from "./types"
 
@@ -126,7 +126,7 @@ export async function getItemById(id: string): Promise<ItemData | null> {
   return item ? serializeItem(item) : null
 }
 
-export async function getSavedItems(): Promise<SavedItemsData> {
+export async function getBookmarks(): Promise<BookmarksData> {
   const rows = await prisma.bookmark.findMany({
     include: bookmarkInclude,
     orderBy: {
@@ -140,7 +140,7 @@ export async function getSavedItems(): Promise<SavedItemsData> {
   }
 }
 
-export async function saveItemById(id: string): Promise<{ savedAt: string; already?: true } | null> {
+export async function addBookmark(id: string): Promise<{ bookmarkedAt: string; already?: true } | null> {
   const existingItem = await prisma.item.findUnique({
     where: { id },
     select: { id: true },
@@ -156,7 +156,7 @@ export async function saveItemById(id: string): Promise<{ savedAt: string; alrea
   })
 
   if (existingBookmark) {
-    return { savedAt: existingBookmark.bookmarkedAt.toISOString(), already: true }
+    return { bookmarkedAt: existingBookmark.bookmarkedAt.toISOString(), already: true }
   }
 
   const created = await prisma.bookmark.create({
@@ -164,10 +164,10 @@ export async function saveItemById(id: string): Promise<{ savedAt: string; alrea
     select: { bookmarkedAt: true },
   })
 
-  return { savedAt: created.bookmarkedAt.toISOString() }
+  return { bookmarkedAt: created.bookmarkedAt.toISOString() }
 }
 
-export async function deleteSavedItemById(id: string): Promise<boolean> {
+export async function removeBookmark(id: string): Promise<boolean> {
   const result = await prisma.bookmark.deleteMany({
     where: { itemId: id },
   })

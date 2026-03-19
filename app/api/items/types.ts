@@ -89,7 +89,7 @@ export interface ItemsData {
   sources: SourceInfo[]
 }
 
-export interface SavedItemsData {
+export interface BookmarksData {
   items: ItemData[]
   total: number
 }
