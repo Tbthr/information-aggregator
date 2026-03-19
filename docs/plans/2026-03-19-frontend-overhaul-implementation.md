@@ -687,15 +687,15 @@ git commit -m "feat: complete frontend overhaul"
 
 ## 执行清单
 
-- [ ] Task 1.1: 初始化 Next.js 项目
-- [ ] Task 1.2: 创建 App Router 目录结构
-- [ ] Task 2.1: 初始化 Prisma
-- [ ] Task 2.2: 创建 Prisma Schema
-- [ ] Task 2.3: 配置 Supabase 并运行迁移
-- [ ] Task 3.1: 复制 v0 前端代码
-- [ ] Task 3.2: 更新配置和导入路径
-- [ ] Task 4.1: 创建 Items API
-- [ ] Task 4.2: 创建其他 API Routes
+- [x] Task 1.1: 初始化 Next.js 项目
+- [x] Task 1.2: 创建 App Router 目录结构
+- [x] Task 2.1: 初始化 Prisma
+- [x] Task 2.2: 创建 Prisma Schema
+- [x] Task 2.3: 配置 Supabase 并运行迁移
+- [x] Task 3.1: 复制 v0 前端代码
+- [x] Task 3.2: 更新配置和导入路径
+- [x] Task 4.1: 创建 Items API
+- [ ] Task 4.2: 创建其他 API Routes（“进行中：路由文件已创建，尚未验证/提交”）
 - [ ] Task 5.1: 创建 API 客户端
 - [ ] Task 5.2: 创建 Hooks
 - [ ] Task 5.3: 更新组件使用真实 API
