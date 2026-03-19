@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 
 import { prisma } from "@/lib/prisma"
-import { NEWS_FLASHES } from "@/lib/mock-data"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -17,15 +16,12 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       data: {
-        newsFlashes:
-          flashes.length > 0
-            ? flashes.map((flash) => ({
-                id: flash.id,
-                time: flash.time,
-                text: flash.text,
-                itemId: flash.itemId,
-              }))
-            : NEWS_FLASHES,
+        newsFlashes: flashes.map((flash) => ({
+          id: flash.id,
+          time: flash.time,
+          text: flash.text,
+          itemId: flash.itemId,
+        })),
       },
       meta: {
         timing: {
