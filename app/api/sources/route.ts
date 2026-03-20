@@ -8,9 +8,10 @@ import { loadAllPacksFromDb } from "../../../src/config/load-pack-prisma"
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-// Zod schema for Source creation (id is optional - Prisma will generate CUID)
+// Zod schema for Source creation (id and slug are optional - Prisma will generate CUID for id)
 const sourceCreateSchema = z.object({
   id: z.string().min(1).optional(),
+  slug: z.string().min(1).optional(), // Optional legacy ID
   type: z.string().min(1),
   name: z.string().min(1),
   url: z.string().min(1),
@@ -128,6 +129,7 @@ export async function POST(request: Request) {
     const source = await prisma.source.create({
       data: {
         ...(parsed.data.id && { id: parsed.data.id }),
+        ...(parsed.data.slug && { slug: parsed.data.slug }),
         type: parsed.data.type,
         name: parsed.data.name,
         url: parsed.data.url,

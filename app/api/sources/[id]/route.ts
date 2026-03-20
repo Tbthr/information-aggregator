@@ -9,6 +9,18 @@ type SourceUpdateInput = Prisma.SourceUpdateInput
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
+// Helper to find source by id or slug
+async function findSourceByIdOrSlug(idOrSlug: string) {
+  return prisma.source.findFirst({
+    where: {
+      OR: [
+        { id: idOrSlug },
+        { slug: idOrSlug },
+      ],
+    },
+  })
+}
+
 // Zod schema for Source update
 const sourceUpdateSchema = z.object({
   type: z.string().min(1).optional(),
@@ -43,6 +55,15 @@ export async function PATCH(
   }
 
   try {
+    // First find the source by id or slug
+    const existingSource = await findSourceByIdOrSlug(id)
+    if (!existingSource) {
+      return NextResponse.json(
+        { success: false, error: "Source not found" },
+        { status: 404 }
+      )
+    }
+
     // Validate packId exists if provided
     if (parsed.data.packId !== undefined && parsed.data.packId !== null) {
       const pack = await prisma.pack.findUnique({
@@ -74,7 +95,7 @@ export async function PATCH(
     }
 
     const source = await prisma.source.update({
-      where: { id },
+      where: { id: existingSource.id }, // Always use the actual id for update
       data: updateData,
     })
 
@@ -84,14 +105,6 @@ export async function PATCH(
     })
   } catch (error) {
     console.error("Error updating source:", error)
-
-    // Handle record not found (P2025)
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
-      return NextResponse.json(
-        { success: false, error: "Source not found" },
-        { status: 404 }
-      )
-    }
 
     // Handle foreign key constraint (P2003 - packId not found)
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
@@ -114,8 +127,17 @@ export async function DELETE(
 ) {
   const { id } = await params
   try {
+    // First find the source by id or slug
+    const existingSource = await findSourceByIdOrSlug(id)
+    if (!existingSource) {
+      return NextResponse.json(
+        { success: false, error: "Source not found" },
+        { status: 404 }
+      )
+    }
+
     await prisma.source.delete({
-      where: { id },
+      where: { id: existingSource.id }, // Always use the actual id for delete
     })
 
     return NextResponse.json({
@@ -123,14 +145,6 @@ export async function DELETE(
     })
   } catch (error) {
     console.error("Error deleting source:", error)
-
-    // Handle record not found (P2025)
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
-      return NextResponse.json(
-        { success: false, error: "Source not found" },
-        { status: 404 }
-      )
-    }
 
     return NextResponse.json(
       { success: false, error: "Failed to delete source" },

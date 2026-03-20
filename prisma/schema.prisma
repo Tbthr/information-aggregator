@@ -45,6 +45,7 @@ model Item {
 
 model Source {
   id          String   @id @default(cuid())
+  slug        String?  @unique  // Legacy ID preserved for backward compatibility
   type        String
   name        String
   url         String
@@ -62,6 +63,7 @@ model Source {
 
   @@unique([packId, url])
   @@index([packId])
+  @@index([slug])
 }
 
 model SourceHealth {
