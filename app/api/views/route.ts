@@ -12,7 +12,7 @@ export async function GET() {
       include: {
         _count: {
           select: {
-            items: true,
+            packs: true,
           },
         },
       },
@@ -24,7 +24,7 @@ export async function GET() {
       name: view.name,
       icon: view.icon,
       description: view.description,
-      itemCount: view._count.items,
+      packCount: view._count.packs,
     }))
 
     return NextResponse.json({

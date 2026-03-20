@@ -318,6 +318,7 @@ export async function fetchCustomViews(): Promise<CustomViewsData["views"]> {
 /**
  * Fetch items for a specific custom view
  * This uses the items API with appropriate filters
+ * Custom views are now associated with packs instead of individual items
  */
 export async function fetchCustomViewItems(
   viewId: string,

@@ -79,6 +79,7 @@ model Pack {
   policyJson  String?  @db.Text
 
   sources     Source[]
+  customViews CustomViewPack[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -151,20 +152,93 @@ model CustomView {
   name        String
   icon        String
   description String?
+  filterJson  String?  @db.Text
 
-  items       CustomViewItem[]
+  packs       CustomViewPack[]
 
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
-model CustomViewItem {
-  id      String   @id @default(cuid())
-  viewId  String
-  itemId  String
-  order   Int      @default(0)
+model CustomViewPack {
+  id        String     @id @default(cuid())
+  viewId    String
+  packId    String
 
-  view    CustomView @relation(fields: [viewId], references: [id], onDelete: Cascade)
+  view      CustomView @relation(fields: [viewId], references: [id], onDelete: Cascade)
+  pack      Pack       @relation(fields: [packId], references: [id], onDelete: Cascade)
 
-  @@unique([viewId, itemId])
+  @@unique([viewId, packId])
   @@index([viewId])
+}
+
+// ============================================================
+// Configuration Tables
+// ============================================================
+
+model Settings {
+  id                String   @id @default("default")
+
+  defaultProvider   String   @default("anthropic")
+  defaultBatchSize  Int      @default(3)
+  defaultConcurrency Int     @default(1)
+
+  maxRetries        Int      @default(3)
+  initialDelay      Int      @default(1000)
+  maxDelay          Int      @default(30000)
+  backoffFactor     Float    @default(2.0)
+
+  anthropicConfig   String?  @db.Text
+  geminiConfig      String?  @db.Text
+  openaiConfig      String?  @db.Text
+
+  updatedAt DateTime @updatedAt
+}
+
+model SchedulerJob {
+  id          String    @id
+  name        String
+  cron        String
+  description String?
+  enabled     Boolean   @default(true)
+  lastRunAt   DateTime?
+  nextRunAt   DateTime?
+
+  updatedAt DateTime @updatedAt
+}
+
+model DailyReportConfig {
+  id                  String   @id @default("default")
+
+  packs               String   @default("all")
+  maxItems            Int      @default(20)
+  maxSpotlight        Int      @default(3)
+  sort                String   @default("ranked")
+
+  enableOverview      Boolean  @default(true)
+
+  newsFlashesEnabled  Boolean  @default(true)
+  newsFlashesMaxCount Int      @default(12)
+
+  updatedAt DateTime @updatedAt
+}
+
+model WeeklyReportConfig {
+  id                String   @id @default("default")
+
+  days              Int      @default(7)
+  maxTimelineEvents Int      @default(10)
+  maxDeepDives      Int      @default(5)
+
+  enableEditorial   Boolean  @default(true)
+
+  updatedAt DateTime @updatedAt
+}
+
+model AuthConfig {
+  id         String   @id @default("default")
+  adapter    String
+  configJson String   @db.Text
+
+  updatedAt DateTime @updatedAt
 }
