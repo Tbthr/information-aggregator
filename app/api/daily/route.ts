@@ -64,23 +64,23 @@ export async function GET() {
       })
     }
 
-    // 查询关联的 items
-    const items = await prisma.item.findMany({
-      where: { id: { in: overview.itemIds } },
-    })
+    // 优化后：并行查询 items 和 newsFlashes
+    const [items, newsFlashes] = await Promise.all([
+      prisma.item.findMany({
+        where: { id: { in: overview.itemIds } },
+      }),
+      prisma.newsFlash.findMany({
+        where: { dailyDate: overview.date },
+        orderBy: [{ createdAt: "desc" }, { time: "desc" }],
+        take: 12,
+      }),
+    ])
 
     const itemMap = new Map(items.map((i) => [i.id, i]))
     const articles = overview.itemIds
       .map((id) => itemMap.get(id))
       .filter((item): item is NonNullable<typeof item> => item !== undefined)
       .map(toArticle)
-
-    // 查询快讯
-    const newsFlashes = await prisma.newsFlash.findMany({
-      where: { dailyDate: overview.date },
-      orderBy: [{ createdAt: "desc" }, { time: "desc" }],
-      take: 12,
-    })
 
     return NextResponse.json({
       success: true,
