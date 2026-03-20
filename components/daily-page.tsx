@@ -1,10 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { SaveButton } from "@/components/save-button"
-import type { Article, NewsFlash, DailyOverview } from "@/lib/types"
-import { fetchDailyOverview, fetchNewsFlashes } from "@/lib/api-client"
+import type { Article } from "@/lib/types"
+import { useDaily } from "@/hooks/use-api"
 
 interface DailyPageProps {
   isSaved: (id: string) => boolean
@@ -121,52 +120,12 @@ function FeedCard({
 }
 
 export function DailyPage({ isSaved, onToggleSave, onOpenArticle }: DailyPageProps) {
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [overview, setOverview] = useState<DailyOverview | null>(null)
-  const [articles, setArticles] = useState<Article[]>([])
-  const [newsFlashes, setNewsFlashes] = useState<NewsFlash[]>([])
+  const { data, isLoading, error } = useDaily()
+  const overview = data?.overview ?? null
+  const articles = data?.articles ?? []
+  const newsFlashes = data?.newsFlashes ?? []
 
-  useEffect(() => {
-    let mounted = true
-
-    async function loadData() {
-      setLoading(true)
-      setError(null)
-
-      try {
-        const [dailyData, flashesData] = await Promise.all([
-          fetchDailyOverview(),
-          fetchNewsFlashes(),
-        ])
-
-        if (!mounted) return
-
-        if (dailyData) {
-          setOverview(dailyData.overview)
-          setArticles(dailyData.articles)
-        }
-
-        setNewsFlashes(flashesData)
-      } catch (err) {
-        if (mounted) {
-          setError(err instanceof Error ? err.message : "Failed to load data")
-        }
-      } finally {
-        if (mounted) {
-          setLoading(false)
-        }
-      }
-    }
-
-    loadData()
-
-    return () => {
-      mounted = false
-    }
-  }, [])
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="max-w-2xl mx-auto px-6 py-8">
         <div className="flex items-center justify-center py-24">
@@ -180,7 +139,7 @@ export function DailyPage({ isSaved, onToggleSave, onOpenArticle }: DailyPagePro
     return (
       <div className="max-w-2xl mx-auto px-6 py-8">
         <div className="flex items-center justify-center py-24">
-          <div className="text-destructive font-sans text-sm">{error}</div>
+          <div className="text-destructive font-sans text-sm">{error?.message}</div>
         </div>
       </div>
     )
