@@ -6,8 +6,9 @@ import { Topbar } from "@/components/topbar"
 import { ReadingPanel } from "@/components/reading-panel"
 import { SaveToast } from "@/components/save-toast"
 import { useSaved } from "@/hooks/use-saved"
+import { useCustomViews } from "@/hooks/use-api"
 import type { Article } from "@/lib/types"
-import { useCallback, useState } from "react"
+import { useCallback, useState, useMemo } from "react"
 
 interface PageProps {
   isSaved: (id: string) => boolean
@@ -31,6 +32,17 @@ export function AppLayout({ children, activeNav, onNav }: AppLayoutProps) {
   })
 
   const { savedIds, toggleSave, isSaved } = useSaved()
+  const { data: customViews } = useCustomViews()
+
+  // 计算当前视图信息
+  const viewInfo = useMemo(() => {
+    const view = customViews?.find((v) => v.id === activeNav)
+    if (!view) return undefined
+    return {
+      name: view.name,
+      packNames: view.packs?.map((p) => p.pack?.name).filter(Boolean) as string[] || [],
+    }
+  }, [customViews, activeNav])
 
   const handleToggleSave = useCallback(
     (id: string) => {
@@ -74,7 +86,7 @@ export function AppLayout({ children, activeNav, onNav }: AppLayoutProps) {
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar activeNav={activeNav} />
+        <Topbar activeNav={activeNav} viewInfo={viewInfo} />
 
         <main className="flex-1 overflow-y-auto" style={{ background: "var(--background)" }}>
           {typeof children === "function"

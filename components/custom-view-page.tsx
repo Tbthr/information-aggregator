@@ -18,10 +18,14 @@ const ICON_MAP: Record<string, React.FC<{ className?: string }>> = {
   zap: ({ className }) => <Zap className={className} />,
 }
 
+// Pack type from API response
+type ViewPack = { packId: string; pack?: { id: string; name: string } }
+
 export function CustomViewPage({ viewId, isSaved, onToggleSave, onOpenArticle }: CustomViewPageProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [view, setView] = useState<CustomView | null>(null)
+  const [viewPacks, setViewPacks] = useState<ViewPack[]>([])
   const [articles, setArticles] = useState<Article[]>([])
 
   useEffect(() => {
@@ -43,6 +47,9 @@ export function CustomViewPage({ viewId, isSaved, onToggleSave, onOpenArticle }:
           setLoading(false)
           return
         }
+
+        // Save packs data for display
+        setViewPacks(foundView.packs || [])
 
         // Convert view metadata to CustomView format
         const customView: CustomView = {
@@ -114,18 +121,32 @@ export function CustomViewPage({ viewId, isSaved, onToggleSave, onOpenArticle }:
     <div className="max-w-3xl mx-auto px-6 py-8">
       {/* 页面头部 */}
       <div className="mb-8 pb-6 border-b border-border">
-        <div className="flex items-center gap-3 mb-2">
+        {/* 第一行：视图名称 */}
+        <div className="flex items-center gap-3 mb-3">
           <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center"
+            className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
             style={{ background: "var(--bullet-bg)" }}
           >
             <Icon className="w-4.5 h-4.5 text-primary" />
           </div>
-          <div>
-            <h1 className="font-serif text-2xl font-bold text-foreground">{view.name}</h1>
-            <p className="text-xs text-muted-foreground font-sans">{view.description}</p>
-          </div>
+          <h1 className="font-serif text-2xl font-bold text-foreground">{view.name}</h1>
         </div>
+
+        {/* 第二行：Pack 列表 */}
+        {viewPacks.length > 0 && (
+          <div className="flex flex-wrap gap-2 ml-12">
+            {viewPacks.map((p) =>
+              p.pack ? (
+                <span
+                  key={p.packId}
+                  className="inline-block text-[10px] font-sans font-medium px-2 py-0.5 rounded border border-border text-muted-foreground"
+                >
+                  {p.pack.name}
+                </span>
+              ) : null
+            )}
+          </div>
+        )}
       </div>
 
       {/* 文章流 */}

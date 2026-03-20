@@ -11,11 +11,17 @@ const PAGE_TITLES: Record<string, { title: string; subtitle?: string }> = {
   config: { title: "引擎配置", subtitle: "数据源与处理规则" },
 }
 
-interface TopbarProps {
-  activeNav: string
+interface ViewInfo {
+  name: string
+  packNames: string[]
 }
 
-export function Topbar({ activeNav }: TopbarProps) {
+interface TopbarProps {
+  activeNav: string
+  viewInfo?: ViewInfo
+}
+
+export function Topbar({ activeNav, viewInfo }: TopbarProps) {
   const [isDark, setIsDark] = useState(false)
 
   useEffect(() => {
@@ -38,13 +44,30 @@ export function Topbar({ activeNav }: TopbarProps) {
     }
   }
 
-  const info = PAGE_TITLES[activeNav] ?? { title: activeNav }
+  // 优先使用传入的 viewInfo，否则使用 PAGE_TITLES
+  const info = viewInfo
+    ? { title: viewInfo.name, packNames: viewInfo.packNames }
+    : PAGE_TITLES[activeNav] ?? { title: activeNav }
 
   return (
     <header className="h-14 shrink-0 border-b border-border flex items-center justify-between px-6 bg-background/95 backdrop-blur-sm sticky top-0 z-20">
       <div>
         <h1 className="font-sans font-semibold text-sm text-foreground leading-none">{info.title}</h1>
-        {info.subtitle && (
+        {/* Pack 名称列表 */}
+        {"packNames" in info && info.packNames && info.packNames.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-1">
+            {info.packNames.map((name) => (
+              <span
+                key={name}
+                className="inline-block text-[10px] font-sans font-medium px-1.5 py-0.5 rounded border border-border text-muted-foreground"
+              >
+                {name}
+              </span>
+            ))}
+          </div>
+        )}
+        {/* 普通页面的 subtitle */}
+        {"subtitle" in info && info.subtitle && (
           <p className="text-[10px] font-sans text-muted-foreground mt-0.5">{info.subtitle}</p>
         )}
       </div>
