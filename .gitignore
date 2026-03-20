@@ -1,6 +1,7 @@
 node_modules/
 .next/
 tsconfig.tsbuildinfo
+next-env.d.ts
 *.db
 *.db-journal
 coverage/
