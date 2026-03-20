@@ -1,53 +1,25 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { fetchBookmarks, addBookmark, removeBookmark } from "@/lib/api-client"
+import { useCallback } from "react"
+import useSWR from "swr"
+import { addBookmark, removeBookmark } from "@/lib/api-client"
 
 export function useSaved() {
-  const [savedIds, setSavedIds] = useState<Set<string>>(new Set())
-  const [loading, setLoading] = useState(true)
-
-  // Load bookmarks on mount
-  useEffect(() => {
-    let mounted = true
-
-    async function loadBookmarks() {
-      try {
-        const items = await fetchBookmarks()
-        if (mounted) {
-          setSavedIds(new Set(items.map((item) => item.id)))
-        }
-      } catch (error) {
-        console.error("Failed to load bookmarks:", error)
-      } finally {
-        if (mounted) {
-          setLoading(false)
-        }
+  const { data: savedIds = new Set<string>(), mutate: mutateSavedIds } = useSWR<Set<string>>(
+    "/api/bookmarks",
+    async (url) => {
+      const res = await fetch(url)
+      const json = await res.json()
+      if (json.success && json.data?.items) {
+        return new Set(json.data.items.map((item: { id: string }) => item.id))
       }
+      return new Set<string>()
+    },
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 5000,
     }
-
-    loadBookmarks()
-
-    return () => {
-      mounted = false
-    }
-  }, [])
-
-  const addSaved = useCallback((id: string) => {
-    setSavedIds((prev) => {
-      const next = new Set(prev)
-      next.add(id)
-      return next
-    })
-  }, [])
-
-  const removeSaved = useCallback((id: string) => {
-    setSavedIds((prev) => {
-      const next = new Set(prev)
-      next.delete(id)
-      return next
-    })
-  }, [])
+  )
 
   const toggleSave = useCallback(
     async (id: string) => {
@@ -56,30 +28,30 @@ export function useSaved() {
         if (currentlySaved) {
           const result = await removeBookmark(id)
           if (result.success) {
-            setSavedIds((prev) => {
+            mutateSavedIds((prev) => {
               const next = new Set(prev)
               next.delete(id)
               return next
-            })
+            }, false)
           }
         } else {
           const result = await addBookmark(id)
           if (result.success) {
-            setSavedIds((prev) => {
+            mutateSavedIds((prev) => {
               const next = new Set(prev)
               next.add(id)
               return next
-            })
+            }, false)
           }
         }
       } catch (error) {
         console.error("Failed to toggle bookmark:", error)
       }
     },
-    [savedIds]
+    [savedIds, mutateSavedIds]
   )
 
   const isSaved = useCallback((id: string) => savedIds.has(id), [savedIds])
 
-  return { savedIds, loading, addSaved, removeSaved, toggleSave, isSaved }
+  return { savedIds, toggleSave, isSaved }
 }
