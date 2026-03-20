@@ -44,13 +44,13 @@ function rawItemToCreateData(
   item: RawItem,
   fetchedAt: string,
   packIdMap: Map<string, string | null>,
-): Omit<Item, "source" | "bookmarks" | "newsFlashes" | "createdAt" | "updatedAt"> {
+): Omit<Item, "source" | "bookmarks" | "newsFlashes" | "createdAt" | "updatedAt" | "id"> {
   const sourceType = parseSourceType(item.metadataJson);
   const sourceName = sourceIdToName(item.sourceId);
   const packId = packIdMap.get(item.sourceId) ?? null;
 
   return {
-    id: item.id,
+    // id 由 Prisma 自动生成 cuid
     title: item.title,
     url: item.url,
     canonicalUrl: item.url,
@@ -84,21 +84,22 @@ export async function archiveRawItems(
     return { newCount: 0, updateCount: 0, totalCount: 0 };
   }
 
-  // 1. 批量查询已存在的 ID
-  const allIds = items.map((i) => i.id);
+  // 1. 批量查询已存在的 URL（用于去重）
+  const allUrls = items.map((i) => i.url);
   const existingItems = await prisma.item.findMany({
-    where: { id: { in: allIds } },
-    select: { id: true, snippet: true },
+    where: { url: { in: allUrls } },
+    select: { id: true, url: true, snippet: true },
   });
-  const existingIdSet = new Set(existingItems.map((i) => i.id));
+  const existingUrlSet = new Set(existingItems.map((i) => i.url));
+  const existingUrlToId = new Map(existingItems.map((i) => [i.url, i.id]));
 
   // 2. 分离新增和更新
   const newItems: RawItem[] = [];
-  const updateItems: RawItem[] = [];
+  const updateItems: Array<{ item: RawItem; existingId: string }> = [];
 
   for (const item of items) {
-    if (existingIdSet.has(item.id)) {
-      updateItems.push(item);
+    if (existingUrlSet.has(item.url)) {
+      updateItems.push({ item, existingId: existingUrlToId.get(item.url)! });
     } else {
       newItems.push(item);
     }
@@ -136,9 +137,9 @@ export async function archiveRawItems(
   // 4. 批量更新已存在的记录
   if (updateItems.length > 0) {
     // 使用事务批量更新
-    const updatePromises = updateItems.map((item) =>
+    const updatePromises = updateItems.map(({ item, existingId }) =>
       prisma.item.update({
-        where: { id: item.id },
+        where: { id: existingId },
         data: {
           fetchedAt: new Date(fetchedAt),
           snippet: item.snippet,
