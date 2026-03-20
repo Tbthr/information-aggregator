@@ -1,60 +1,22 @@
 "use client"
 
-import { useState } from "react"
-import { ChevronDown, ChevronRight, Plus, Trash2, Settings2, Clock, Key } from "lucide-react"
+import { useState, useEffect } from "react"
+import { ChevronDown, ChevronRight, Plus, Trash2, Settings2, Clock, Key, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 type Tab = "engine" | "params" | "auth"
 type Source = { id: string; name: string; url: string; type: "rss" | "json" }
-type Topic = { id: string; name: string; sources: Source[]; keywords: string[]; blacklist: string[]; schedule: string; prompt: string }
-
-const INITIAL_TOPICS: Topic[] = [
-  {
-    id: "t1",
-    name: "AI 与大模型",
-    sources: [
-      { id: "s1", name: "The Verge · AI", url: "https://theverge.com/ai/rss", type: "rss" },
-      { id: "s2", name: "Anthropic Blog", url: "https://anthropic.com/blog.rss", type: "rss" },
-      { id: "s3", name: "OpenAI News", url: "https://openai.com/blog/rss", type: "rss" },
-    ],
-    keywords: ["LLM", "GPT", "Claude", "Gemini", "推理", "智能体"],
-    blacklist: ["广告", "赞助", "评测笔记本"],
-    schedule: "08:00",
-    prompt: "请用中文对文章进行 3 要点摘要,聚焦技术突破和商业影响,语气简练专业。",
-  },
-  {
-    id: "t2",
-    name: "前端与工程",
-    sources: [
-      { id: "s4", name: "Vercel Blog", url: "https://vercel.com/blog/rss", type: "rss" },
-      { id: "s5", name: "web.dev", url: "https://web.dev/feed.xml", type: "rss" },
-    ],
-    keywords: ["React", "Next.js", "TypeScript", "性能", "Web API"],
-    blacklist: [],
-    schedule: "09:00",
-    prompt: "请总结文章的核心技术要点,列出开发者需要注意的变化。",
-  },
-]
+type Pack = {
+  id: string
+  name: string
+  description: string | null
+  sourceCount: number
+  itemCount: number
+  latestItem: string | null
+}
 
 export function ConfigPage() {
   const [activeTab, setActiveTab] = useState<Tab>("engine")
-  const [topics, setTopics] = useState<Topic[]>(INITIAL_TOPICS)
-  const [selectedTopic, setSelectedTopic] = useState<Topic>(INITIAL_TOPICS[0])
-  const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set(["t1"]))
-  const [editingTopic, setEditingTopic] = useState<Topic>(INITIAL_TOPICS[0])
-
-  const toggleExpand = (id: string) => {
-    setExpandedTopics((prev) => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
-  }
-
-  const selectTopic = (topic: Topic) => {
-    setSelectedTopic(topic)
-    setEditingTopic({ ...topic })
-  }
 
   return (
     <div className="h-full flex flex-col">
@@ -91,16 +53,7 @@ export function ConfigPage() {
 
       {/* Tab 内容 */}
       <div className="flex-1 overflow-hidden">
-        {activeTab === "engine" && (
-          <EngineConfig
-            topics={topics}
-            selectedTopic={selectedTopic}
-            expandedTopics={expandedTopics}
-            editingTopic={editingTopic}
-            toggleExpand={toggleExpand}
-            selectTopic={selectTopic}
-          />
-        )}
+        {activeTab === "engine" && <EngineConfig />}
         {activeTab === "params" && <ParamsConfig />}
         {activeTab === "auth" && <AuthConfig />}
       </div>
@@ -108,170 +61,250 @@ export function ConfigPage() {
   )
 }
 
-interface EngineConfigProps {
-  topics: Topic[]
-  selectedTopic: Topic
-  expandedTopics: Set<string>
-  editingTopic: Topic
-  toggleExpand: (id: string) => void
-  selectTopic: (topic: Topic) => void
-}
+function EngineConfig() {
+  const [packs, setPacks] = useState<Pack[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selectedPack, setSelectedPack] = useState<Pack | null>(null)
+  const [expandedPacks, setExpandedPacks] = useState<Set<string>>(new Set())
 
-function EngineConfig({ topics, selectedTopic, expandedTopics, editingTopic, toggleExpand, selectTopic }: EngineConfigProps) {
+  // Load packs from database
+  useEffect(() => {
+    async function loadPacks() {
+      try {
+        const response = await fetch("/api/packs")
+        const data = await response.json()
+        if (data.success) {
+          setPacks(data.data.packs)
+          // Select first pack if available
+          if (data.data.packs.length > 0) {
+            setSelectedPack(data.data.packs[0])
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load packs:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadPacks()
+  }, [])
+
+  const toggleExpand = (id: string) => {
+    setExpandedPacks((prev) => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  const selectPack = (pack: Pack) => {
+    setSelectedPack(pack)
+  }
+
+  const createPack = async () => {
+    const name = prompt("输入 Pack 名称:")
+    if (!name) return
+
+    const id = name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "")
+    if (!id) {
+      alert("请输入有效的名称（至少包含一个字母或数字）")
+      return
+    }
+
+    try {
+      const response = await fetch("/api/packs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, name }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        // Add new pack to the list
+        const newPack: Pack = {
+          id: data.data.id,
+          name: data.data.name,
+          description: data.data.description,
+          sourceCount: 0,
+          itemCount: 0,
+          latestItem: null,
+        }
+        setPacks((prev) => [...prev, newPack])
+        setSelectedPack(newPack)
+        setExpandedPacks((prev) => new Set(prev).add(newPack.id))
+      } else {
+        alert(data.error || "创建 Pack 失败")
+      }
+    } catch (error) {
+      console.error("Failed to create pack:", error)
+      alert("创建 Pack 失败")
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Loader2 className="w-5 h-5 animate-spin" />
+          <span className="text-sm font-sans">加载中...</span>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="h-full flex">
-      {/* 左侧主题树 */}
+      {/* 左侧 Pack 列表 */}
       <div className="w-72 shrink-0 border-r border-border bg-sidebar overflow-y-auto">
         <div className="p-4 border-b border-border flex items-center justify-between">
-          <p className="font-sans font-semibold text-sm text-sidebar-foreground">主题与数据源</p>
-          <button className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 font-sans font-medium transition-colors">
+          <p className="font-sans font-semibold text-sm text-sidebar-foreground">Pack 与数据源</p>
+          <button
+            onClick={createPack}
+            className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 font-sans font-medium transition-colors"
+          >
             <Plus className="w-3.5 h-3.5" />
-            新建主题
+            新建 Pack
           </button>
         </div>
 
         <div className="py-2">
-          {topics.map((topic) => (
-            <div key={topic.id}>
-              {/* 主题行 */}
-              <button
-                className={cn(
-                  "w-full flex items-center gap-2 px-4 py-2.5 text-left hover:bg-sidebar-accent transition-colors",
-                  selectedTopic.id === topic.id && "bg-sidebar-accent"
-                )}
-                onClick={() => { selectTopic(topic); toggleExpand(topic.id) }}
-              >
-                {expandedTopics.has(topic.id) ? (
-                  <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                ) : (
-                  <ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                )}
-                <span className={cn(
-                  "font-sans text-sm truncate",
-                  selectedTopic.id === topic.id ? "font-semibold text-sidebar-foreground" : "text-sidebar-foreground/80"
-                )}>
-                  {topic.name}
-                </span>
-                <span className="ml-auto text-[10px] text-muted-foreground shrink-0">{topic.sources.length}</span>
-              </button>
-
-              {/* 子源列表 */}
-              {expandedTopics.has(topic.id) && (
-                <div className="pl-7 py-1">
-                  {topic.sources.map((source) => (
-                    <div key={source.id} className="flex items-center gap-2 px-3 py-1.5 group">
-                      <span
-                        className="text-[9px] font-mono font-bold px-1 py-0.5 rounded uppercase"
-                        style={{ background: "var(--bullet-bg)", color: "var(--accent-foreground)" }}
-                      >
-                        {source.type}
-                      </span>
-                      <span className="text-xs font-sans text-muted-foreground truncate flex-1">{source.name}</span>
-                      <button className="opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Trash2 className="w-3 h-3 text-muted-foreground hover:text-destructive transition-colors" />
-                      </button>
-                    </div>
-                  ))}
-                  <button className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-primary font-sans hover:text-primary/80 transition-colors">
-                    <Plus className="w-3 h-3" />
-                    添加数据源
-                  </button>
-                </div>
-              )}
+          {packs.length === 0 ? (
+            <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+              暂无 Pack，点击上方按钮创建
             </div>
-          ))}
+          ) : (
+            packs.map((pack) => (
+              <div key={pack.id}>
+                {/* Pack 行 */}
+                <button
+                  className={cn(
+                    "w-full flex items-center gap-2 px-4 py-2.5 text-left hover:bg-sidebar-accent transition-colors",
+                    selectedPack?.id === pack.id && "bg-sidebar-accent"
+                  )}
+                  onClick={() => { selectPack(pack); toggleExpand(pack.id) }}
+                >
+                  {expandedPacks.has(pack.id) ? (
+                    <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  ) : (
+                    <ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  )}
+                  <span className={cn(
+                    "font-sans text-sm truncate",
+                    selectedPack?.id === pack.id ? "font-semibold text-sidebar-foreground" : "text-sidebar-foreground/80"
+                  )}>
+                    {pack.name}
+                  </span>
+                  <span className="ml-auto text-[10px] text-muted-foreground shrink-0">{pack.sourceCount}</span>
+                </button>
+
+                {/* 子源列表 - Placeholder for sources */}
+                {expandedPacks.has(pack.id) && (
+                  <div className="pl-7 py-1">
+                    {/* TODO: Load sources from API */}
+                    {pack.sourceCount === 0 && (
+                      <div className="px-3 py-1.5 text-xs text-muted-foreground">暂无数据源</div>
+                    )}
+                    <button className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-primary font-sans hover:text-primary/80 transition-colors">
+                      <Plus className="w-3 h-3" />
+                      添加数据源
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
         </div>
       </div>
 
-      {/* 右侧规则配置 */}
+      {/* 右侧详情配置 */}
       <div className="flex-1 overflow-y-auto p-8">
-        <div className="max-w-xl">
-          <div className="flex items-center gap-2 mb-6">
-            <Settings2 className="w-4 h-4 text-primary" />
-            <h2 className="font-sans font-semibold text-base text-foreground">
-              处理规则 · <span className="text-primary">{editingTopic.name}</span>
-            </h2>
-          </div>
+        {selectedPack ? (
+          <div className="max-w-xl">
+            <div className="flex items-center gap-2 mb-6">
+              <Settings2 className="w-4 h-4 text-primary" />
+              <h2 className="font-sans font-semibold text-base text-foreground">
+                Pack 详情 · <span className="text-primary">{selectedPack.name}</span>
+              </h2>
+            </div>
 
-          <div className="space-y-6">
-            {/* 关键词白名单 */}
-            <div>
-              <label className="block text-xs font-sans font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                关键词白名单（匹配则提高评分）
-              </label>
-              <div className="flex flex-wrap gap-2 p-3 rounded-lg border border-border bg-card min-h-[48px]">
-                {editingTopic.keywords.map((kw, i) => (
-                  <span key={i} className="flex items-center gap-1 text-xs font-sans px-2.5 py-1 rounded-full"
-                    style={{ background: "var(--bullet-bg)", color: "var(--accent-foreground)" }}>
-                    {kw}
-                    <button className="hover:text-destructive transition-colors text-muted-foreground">×</button>
-                  </span>
-                ))}
+            <div className="space-y-6">
+              {/* 基本信息 */}
+              <div>
+                <label className="block text-xs font-sans font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                  ID
+                </label>
                 <input
-                  placeholder="输入后回车添加…"
-                  className="text-xs font-sans bg-transparent outline-none placeholder:text-muted-foreground/50 min-w-[120px]"
+                  type="text"
+                  value={selectedPack.id}
+                  disabled
+                  className="w-full text-sm font-mono bg-muted border border-border rounded-lg px-3 py-2 text-muted-foreground cursor-not-allowed"
                 />
               </div>
-            </div>
 
-            {/* 关键词黑名单 */}
-            <div>
-              <label className="block text-xs font-sans font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                关键词黑名单（匹配则过滤）
-              </label>
-              <div className="flex flex-wrap gap-2 p-3 rounded-lg border border-border bg-card min-h-[48px]">
-                {editingTopic.blacklist.map((kw, i) => (
-                  <span key={i} className="flex items-center gap-1 text-xs font-sans px-2.5 py-1 rounded-full bg-destructive/10 text-destructive">
-                    {kw}
-                    <button className="hover:opacity-70 transition-opacity">×</button>
-                  </span>
-                ))}
+              <div>
+                <label className="block text-xs font-sans font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                  名称
+                </label>
                 <input
-                  placeholder="输入后回车添加…"
-                  className="text-xs font-sans bg-transparent outline-none placeholder:text-muted-foreground/50 min-w-[120px]"
+                  type="text"
+                  defaultValue={selectedPack.name}
+                  className="w-full text-sm font-sans bg-card border border-border rounded-lg px-3 py-2 text-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow"
                 />
               </div>
-            </div>
 
-            {/* 定时任务 */}
-            <div>
-              <label className="block text-xs font-sans font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                定时任务触发时间
-              </label>
-              <input
-                type="time"
-                defaultValue={editingTopic.schedule}
-                className="text-sm font-mono bg-card border border-border rounded-lg px-3 py-2 text-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow"
-              />
-              <p className="mt-1.5 text-xs text-muted-foreground font-sans">后端每天此时拉取并处理该主题的所有数据源</p>
-            </div>
+              <div>
+                <label className="block text-xs font-sans font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                  描述
+                </label>
+                <textarea
+                  rows={3}
+                  defaultValue={selectedPack.description || ""}
+                  placeholder="可选的 Pack 描述..."
+                  className="w-full text-sm font-sans bg-card border border-border rounded-lg px-3 py-2 text-foreground outline-none focus:ring-2 focus:ring-ring resize-none transition-shadow"
+                />
+              </div>
 
-            {/* AI Prompt */}
-            <div>
-              <label className="block text-xs font-sans font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                AI 总结 Prompt 指令
-              </label>
-              <textarea
-                rows={5}
-                defaultValue={editingTopic.prompt}
-                className="w-full text-sm font-sans bg-card border border-border rounded-lg px-4 py-3 text-foreground outline-none focus:ring-2 focus:ring-ring resize-none transition-shadow leading-relaxed"
-              />
-              <p className="mt-1.5 text-xs text-muted-foreground font-sans">
-                此 Prompt 将在后端定时任务中传递给 AI,用于生成文章摘要与要点
-              </p>
-            </div>
+              {/* 统计信息 */}
+              <div className="grid grid-cols-3 gap-4 p-4 rounded-lg border border-border bg-card">
+                <div className="text-center">
+                  <div className="text-2xl font-semibold text-foreground">{selectedPack.sourceCount}</div>
+                  <div className="text-xs text-muted-foreground">数据源</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-semibold text-foreground">{selectedPack.itemCount}</div>
+                  <div className="text-xs text-muted-foreground">条目数</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-sm font-medium text-foreground">
+                    {selectedPack.latestItem
+                      ? new Date(selectedPack.latestItem).toLocaleDateString()
+                      : "-"}
+                  </div>
+                  <div className="text-xs text-muted-foreground">最新更新</div>
+                </div>
+              </div>
 
-            {/* 保存按钮 */}
-            <div className="flex gap-3 pt-2">
-              <button className="px-5 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-sans font-medium hover:bg-primary/90 transition-colors">
-                保存配置
-              </button>
-              <button className="px-5 py-2 rounded-lg border border-border text-sm font-sans text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
-                重置
-              </button>
+              {/* 保存按钮 */}
+              <div className="flex gap-3 pt-2">
+                <button className="px-5 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-sans font-medium hover:bg-primary/90 transition-colors">
+                  保存配置
+                </button>
+                <button className="px-5 py-2 rounded-lg border border-border text-sm font-sans text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
+                  重置
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="h-full flex items-center justify-center text-muted-foreground">
+            <div className="text-center">
+              <Settings2 className="w-12 h-12 mx-auto mb-3 opacity-30" />
+              <p className="text-sm font-sans">选择或创建一个 Pack 开始配置</p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
