@@ -1,9 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { ChevronDown, ChevronRight, Plus, Trash2, Settings2 } from "lucide-react"
+import { ChevronDown, ChevronRight, Plus, Trash2, Settings2, Clock, Key } from "lucide-react"
 import { cn } from "@/lib/utils"
 
+type Tab = "engine" | "params" | "auth"
 type Source = { id: string; name: string; url: string; type: "rss" | "json" }
 type Topic = { id: string; name: string; sources: Source[]; keywords: string[]; blacklist: string[]; schedule: string; prompt: string }
 
@@ -19,7 +20,7 @@ const INITIAL_TOPICS: Topic[] = [
     keywords: ["LLM", "GPT", "Claude", "Gemini", "推理", "智能体"],
     blacklist: ["广告", "赞助", "评测笔记本"],
     schedule: "08:00",
-    prompt: "请用中文对文章进行 3 要点摘要，聚焦技术突破和商业影响，语气简练专业。",
+    prompt: "请用中文对文章进行 3 要点摘要,聚焦技术突破和商业影响,语气简练专业。",
   },
   {
     id: "t2",
@@ -31,11 +32,12 @@ const INITIAL_TOPICS: Topic[] = [
     keywords: ["React", "Next.js", "TypeScript", "性能", "Web API"],
     blacklist: [],
     schedule: "09:00",
-    prompt: "请总结文章的核心技术要点，列出开发者需要注意的变化。",
+    prompt: "请总结文章的核心技术要点,列出开发者需要注意的变化。",
   },
 ]
 
 export function ConfigPage() {
+  const [activeTab, setActiveTab] = useState<Tab>("engine")
   const [topics, setTopics] = useState<Topic[]>(INITIAL_TOPICS)
   const [selectedTopic, setSelectedTopic] = useState<Topic>(INITIAL_TOPICS[0])
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set(["t1"]))
@@ -54,6 +56,68 @@ export function ConfigPage() {
     setEditingTopic({ ...topic })
   }
 
+  return (
+    <div className="h-full flex flex-col">
+      {/* Tab 切换 */}
+      <div className="border-b border-border bg-sidebar px-6 py-3 flex gap-6">
+        <button
+          onClick={() => setActiveTab("engine")}
+          className={cn(
+            "text-sm font-sans font-medium transition-colors",
+            activeTab === "engine" ? "text-primary border-b-2 border-primary pb-2" : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          引擎配置
+        </button>
+        <button
+          onClick={() => setActiveTab("params")}
+          className={cn(
+            "text-sm font-sans font-medium transition-colors",
+            activeTab === "params" ? "text-primary border-b-2 border-primary pb-2" : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          参数配置
+        </button>
+        <button
+          onClick={() => setActiveTab("auth")}
+          className={cn(
+            "text-sm font-sans font-medium transition-colors",
+            activeTab === "auth" ? "text-primary border-b-2 border-primary pb-2" : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          认证配置
+        </button>
+      </div>
+
+      {/* Tab 内容 */}
+      <div className="flex-1 overflow-hidden">
+        {activeTab === "engine" && (
+          <EngineConfig
+            topics={topics}
+            selectedTopic={selectedTopic}
+            expandedTopics={expandedTopics}
+            editingTopic={editingTopic}
+            toggleExpand={toggleExpand}
+            selectTopic={selectTopic}
+          />
+        )}
+        {activeTab === "params" && <ParamsConfig />}
+        {activeTab === "auth" && <AuthConfig />}
+      </div>
+    </div>
+  )
+}
+
+interface EngineConfigProps {
+  topics: Topic[]
+  selectedTopic: Topic
+  expandedTopics: Set<string>
+  editingTopic: Topic
+  toggleExpand: (id: string) => void
+  selectTopic: (topic: Topic) => void
+}
+
+function EngineConfig({ topics, selectedTopic, expandedTopics, editingTopic, toggleExpand, selectTopic }: EngineConfigProps) {
   return (
     <div className="h-full flex">
       {/* 左侧主题树 */}
@@ -193,7 +257,7 @@ export function ConfigPage() {
                 className="w-full text-sm font-sans bg-card border border-border rounded-lg px-4 py-3 text-foreground outline-none focus:ring-2 focus:ring-ring resize-none transition-shadow leading-relaxed"
               />
               <p className="mt-1.5 text-xs text-muted-foreground font-sans">
-                此 Prompt 将在后端定时任务中传递给 AI，用于生成文章摘要与要点
+                此 Prompt 将在后端定时任务中传递给 AI,用于生成文章摘要与要点
               </p>
             </div>
 
@@ -208,6 +272,28 @@ export function ConfigPage() {
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  )
+}
+
+function ParamsConfig() {
+  return (
+    <div className="h-full overflow-y-auto p-8">
+      <div className="max-w-2xl">
+        <h2 className="text-lg font-sans font-semibold mb-6">参数配置</h2>
+        <p className="text-muted-foreground">参数配置功能开发中...</p>
+      </div>
+    </div>
+  )
+}
+
+function AuthConfig() {
+  return (
+    <div className="h-full overflow-y-auto p-8">
+      <div className="max-w-2xl">
+        <h2 className="text-lg font-sans font-semibold mb-6">认证配置</h2>
+        <p className="text-muted-foreground">认证配置功能开发中...</p>
       </div>
     </div>
   )
