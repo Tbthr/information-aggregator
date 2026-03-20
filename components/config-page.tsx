@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { ChevronDown, ChevronRight, Plus, Trash2, Settings2, Clock, Eye, EyeOff, Loader2, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { AuthConfigSection } from "./auth-config-section"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -455,6 +456,9 @@ function EngineConfig() {
                   <div className="text-xs text-muted-foreground">最新更新</div>
                 </div>
               </div>
+
+              {/* 认证配置 */}
+              <AuthConfigSection />
 
               {/* 保存/删除按钮 */}
               <div className="flex gap-3 pt-2">
