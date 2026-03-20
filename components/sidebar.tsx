@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { cn } from "@/lib/utils"
+import { usePacks, useCustomViews } from "@/hooks/use-api"
 import {
   Sun,
   BookOpen,
@@ -79,13 +80,14 @@ const EDITIONS = [
 ]
 
 export function Sidebar({ activeNav, onNav, savedCount, collapsed, onToggleCollapse }: SidebarProps) {
-  const [customViews, setCustomViews] = useState<CustomView[]>([])
-  const [viewsLoading, setViewsLoading] = useState(true)
+  // SWR hooks
+  const { data: customViews = [], isLoading: viewsLoading, mutate: mutateCustomViews } = useCustomViews()
+  const { data: packs = [] } = usePacks()
+
   const [createViewOpen, setCreateViewOpen] = useState(false)
   const [newViewName, setNewViewName] = useState("")
   const [newViewIcon, setNewViewIcon] = useState("zap")
   const [creating, setCreating] = useState(false)
-  const [packs, setPacks] = useState<Pack[]>([])
   const [selectedPackIds, setSelectedPackIds] = useState<Set<string>>(new Set())
   // 新建视图的 filter 配置
   const [newViewTimeWindow, setNewViewTimeWindow] = useState<ViewFilter["timeWindow"]>("week")
@@ -100,37 +102,6 @@ export function Sidebar({ activeNav, onNav, savedCount, collapsed, onToggleColla
   // 编辑视图的 filter 配置
   const [editViewTimeWindow, setEditViewTimeWindow] = useState<ViewFilter["timeWindow"]>("week")
   const [editViewSortBy, setEditViewSortBy] = useState<ViewFilter["sortBy"]>("ranked")
-
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const [viewsRes, packsRes] = await Promise.all([
-          fetch("/api/custom-views"),
-          fetch("/api/packs"),
-        ])
-        const viewsData = await viewsRes.json()
-        const packsData = await packsRes.json()
-
-        console.log("[Sidebar] API responses:", { viewsData, packsData })
-
-        if (viewsData.success && viewsData.data?.views) {
-          setCustomViews(viewsData.data.views)
-        }
-        if (packsData.success && packsData.data?.packs) {
-          console.log("[Sidebar] Loaded packs:", packsData.data.packs.length)
-          setPacks(packsData.data.packs)
-        } else {
-          console.log("[Sidebar] Packs load failed or empty:", packsData)
-        }
-      } catch (error) {
-        console.error("Failed to load data:", error)
-      } finally {
-        setViewsLoading(false)
-      }
-    }
-
-    loadData()
-  }, [])
 
   const createView = async () => {
     if (!newViewName.trim()) return
@@ -155,7 +126,7 @@ export function Sidebar({ activeNav, onNav, savedCount, collapsed, onToggleColla
 
       const data = await response.json()
       if (response.ok && data.success) {
-        setCustomViews((prev) => [...prev, data.data])
+        mutateCustomViews() // Revalidate SWR cache
         setCreateViewOpen(false)
         setNewViewName("")
         setNewViewIcon("zap")
@@ -232,10 +203,7 @@ export function Sidebar({ activeNav, onNav, savedCount, collapsed, onToggleColla
 
       const data = await response.json()
       if (response.ok && data.success) {
-        // 更新本地列表
-        setCustomViews((prev) =>
-          prev.map((v) => (v.id === editingView.id ? { ...v, name: editViewName, icon: editViewIcon } : v))
-        )
+        mutateCustomViews() // Revalidate SWR cache
         setEditViewOpen(false)
         setEditingView(null)
       } else {
