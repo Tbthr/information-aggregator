@@ -1,10 +1,19 @@
 import { NextResponse } from "next/server"
+import { z } from "zod"
 
 import { prisma } from "@/lib/prisma"
 import { loadAllPacks } from "../../../src/config/load-pack"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
+
+// Zod schema for Pack creation
+const packCreateSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  description: z.string().nullable().optional(),
+  policyJson: z.string().nullable().optional(),
+})
 
 export async function GET() {
   try {
@@ -62,6 +71,48 @@ export async function GET() {
     console.error("Error in /api/packs:", error)
     return NextResponse.json(
       { success: false, error: "Failed to load packs" },
+      { status: 500 }
+    )
+  }
+}
+
+export async function POST(request: Request) {
+  let body: unknown
+  try {
+    body = await request.json()
+  } catch {
+    return NextResponse.json(
+      { success: false, error: "Invalid JSON in request body" },
+      { status: 400 }
+    )
+  }
+
+  const parsed = packCreateSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json(
+      { success: false, error: "Invalid pack data", details: parsed.error.flatten() },
+      { status: 400 }
+    )
+  }
+
+  try {
+    const pack = await prisma.pack.create({
+      data: {
+        id: parsed.data.id,
+        name: parsed.data.name,
+        description: parsed.data.description,
+        policyJson: parsed.data.policyJson,
+      },
+    })
+
+    return NextResponse.json({
+      success: true,
+      data: pack,
+    })
+  } catch (error) {
+    console.error("Error creating pack:", error)
+    return NextResponse.json(
+      { success: false, error: "Failed to create pack" },
       { status: 500 }
     )
   }
