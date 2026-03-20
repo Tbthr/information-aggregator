@@ -86,6 +86,7 @@ model Pack {
 
   sources     Source[]
   customViews CustomViewPack[]
+  authConfig  AuthConfig?
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -247,9 +248,12 @@ model WeeklyReportConfig {
 }
 
 model AuthConfig {
-  id         String   @id @default("default")
+  id         String   @id @default(cuid())
+  packId     String   @unique
   adapter    String
   configJson String   @db.Text
+
+  pack       Pack     @relation(fields: [packId], references: [id], onDelete: Cascade)
 
   updatedAt DateTime @updatedAt
 }

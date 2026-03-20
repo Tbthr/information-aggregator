@@ -168,28 +168,8 @@ async function migrateReportConfigs() {
   console.log('Report configs migrated')
 }
 
-async function migrateAuthConfig() {
-  console.log('Migrating auth config...')
-
-  const authPath = path.join(process.cwd(), 'config/auth/x-family.yaml')
-  const content = await fs.readFile(authPath, 'utf-8')
-  const auth = yaml.load(content) as any
-
-  await prisma.authConfig.upsert({
-    where: { id: 'default' },
-    update: {
-      adapter: auth.adapter,
-      configJson: JSON.stringify(auth.config),
-    },
-    create: {
-      id: 'default',
-      adapter: auth.adapter,
-      configJson: JSON.stringify(auth.config),
-    },
-  })
-
-  console.log('Auth config migrated')
-}
+// AuthConfig is now per-pack, this function is no longer needed
+// async function migrateAuthConfig() { ... }
 
 async function migratePacks() {
   console.log('Migrating packs...')
@@ -265,7 +245,8 @@ async function main() {
     await migrateSettings()
     await migrateScheduler()
     await migrateReportConfigs()
-    await migrateAuthConfig()
+    // AuthConfig is now per-pack, skip global migration
+    // await migrateAuthConfig()
     await migratePacks()
 
     console.log('\nMigration completed successfully!')

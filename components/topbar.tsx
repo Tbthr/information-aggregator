@@ -7,8 +7,6 @@ import { cn } from "@/lib/utils"
 const PAGE_TITLES: Record<string, { title: string; subtitle?: string }> = {
   daily: { title: "每日晨报", subtitle: "The Daily · 2026年3月19日" },
   weekly: { title: "周末特刊", subtitle: "The Weekly · Week 11" },
-  "view-morning": { title: "晨间必读", subtitle: "自定义视图" },
-  "view-fish": { title: "摸鱼快看", subtitle: "自定义视图" },
   saved: { title: "我的收藏夹", subtitle: "已保存的文章" },
   config: { title: "引擎配置", subtitle: "数据源与处理规则" },
 }

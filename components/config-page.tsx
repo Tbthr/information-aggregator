@@ -458,7 +458,7 @@ function EngineConfig() {
               </div>
 
               {/* 认证配置 */}
-              <AuthConfigSection />
+              <AuthConfigSection packId={selectedPack.id} />
 
               {/* 保存/删除按钮 */}
               <div className="flex gap-3 pt-2">

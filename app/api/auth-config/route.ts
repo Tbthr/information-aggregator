@@ -5,10 +5,20 @@ export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
 // GET
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url)
+    const packId = searchParams.get("packId")
+
+    if (!packId) {
+      return NextResponse.json(
+        { success: false, error: "packId is required" },
+        { status: 400 }
+      )
+    }
+
     const config = await prisma.authConfig.findUnique({
-      where: { id: "default" },
+      where: { packId },
     })
 
     if (!config) {
@@ -39,11 +49,18 @@ export async function GET() {
 export async function PUT(request: Request) {
   try {
     const body = await request.json()
-    const { adapter, configJson } = body
+    const { packId, adapter, configJson } = body
+
+    if (!packId) {
+      return NextResponse.json(
+        { success: false, error: "packId is required" },
+        { status: 400 }
+      )
+    }
 
     const config = await prisma.authConfig.upsert({
-      where: { id: "default" },
-      create: { id: "default", adapter, configJson },
+      where: { packId },
+      create: { packId, adapter, configJson },
       update: { adapter, configJson },
     })
 
