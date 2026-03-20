@@ -25,24 +25,29 @@ type Pack = {
   itemCount: number
   latestItem: string | null
 }
-type ProviderConfig = {
-  authToken: string
+type ProviderConfigItem = {
+  id: string
+  provider: string
+  model: string
+  baseUrl: string | null
+  hasApiKey: boolean
+}
+
+type ProviderConfigForm = {
+  apiKey: string
   model: string
   baseUrl: string
 }
 
 type Settings = {
   id: string
-  defaultProvider: string | null
-  defaultBatchSize: number | null
-  defaultConcurrency: number | null
+  provider: string | null
+  batchSize: number | null
+  concurrency: number | null
   maxRetries: number | null
   initialDelay: number | null
   maxDelay: number | null
   backoffFactor: number | null
-  anthropicConfig: string | null
-  openaiConfig: string | null
-  geminiConfig: string | null
 }
 
 export function ConfigPage() {
@@ -592,26 +597,44 @@ function EngineConfig() {
 
 function AiConfig() {
   const [settings, setSettings] = useState<Settings | null>(null)
+  const [providerConfigs, setProviderConfigs] = useState<ProviderConfigItem[]>([])
+  const [currentProviderConfig, setCurrentProviderConfig] = useState<ProviderConfigForm>({
+    apiKey: "",
+    model: "",
+    baseUrl: "",
+  })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [showApiKey, setShowApiKey] = useState(false)
-  const [providerConfig, setProviderConfig] = useState<ProviderConfig>({
-    authToken: "",
-    model: "",
-    baseUrl: "",
-  })
 
+  // 加载设置和 provider 配置
   useEffect(() => {
     async function loadSettings() {
       try {
-        const response = await fetch("/api/settings")
-        const data = await response.json()
-        if (data.success) {
-          setSettings(data.data)
-          // 解析当前 provider 的配置
-          const config = parseProviderConfig(data.data, data.data.defaultProvider)
-          setProviderConfig(config)
+        const [settingsRes, configsRes] = await Promise.all([
+          fetch("/api/settings"),
+          fetch("/api/provider-configs"),
+        ])
+        const settingsData = await settingsRes.json()
+        const configsData = await configsRes.json()
+
+        if (settingsData.success) {
+          setSettings(settingsData.data)
+        }
+
+        if (configsData.success) {
+          setProviderConfigs(configsData.data)
+          // 设置当前 provider 的配置
+          const currentProvider = settingsData.data?.provider || "anthropic"
+          const config = configsData.data.find((c: ProviderConfigItem) => c.provider === currentProvider)
+          if (config) {
+            setCurrentProviderConfig({
+              apiKey: "",
+              model: config.model || "",
+              baseUrl: config.baseUrl || "",
+            })
+          }
         }
       } catch (error) {
         console.error("Failed to load settings:", error)
@@ -622,80 +645,27 @@ function AiConfig() {
     loadSettings()
   }, [])
 
-  // 解析 provider 配置 JSON
-  const parseProviderConfig = (settings: Settings | null, provider: string | null): ProviderConfig => {
-    const defaultConfig: ProviderConfig = { authToken: "", model: "", baseUrl: "" }
-    if (!settings || !provider) return defaultConfig
-
-    const configField = getConfigField(provider)
-    const configStr = settings[configField]
-
-    if (!configStr || typeof configStr !== "string") return defaultConfig
-
-    try {
-      const parsed = JSON.parse(configStr)
-      return {
-        authToken: parsed.authToken || "",
-        model: parsed.model || "",
-        baseUrl: parsed.baseUrl || "",
-      }
-    } catch {
-      return defaultConfig
-    }
+  // 更新 provider 配置表单
+  const updateProviderConfigForm = (key: keyof ProviderConfigForm, value: string) => {
+    setCurrentProviderConfig((prev) => ({ ...prev, [key]: value }))
   }
 
-  // 获取配置字段名
-  const getConfigField = (provider: string): keyof Settings => {
-    switch (provider) {
-      case "anthropic": return "anthropicConfig"
-      case "openai": return "openaiConfig"
-      case "gemini": return "geminiConfig"
-      default: return "anthropicConfig"
-    }
-  }
-
-  // 更新 provider 配置
-  const updateProviderConfig = (key: keyof ProviderConfig, value: string) => {
-    setProviderConfig((prev) => ({ ...prev, [key]: value }))
-  }
-
-  const handleSave = async () => {
-    if (!settings) return
-    setSaving(true)
-
-    // 将 providerConfig 序列化回 JSON
-    const configField = getConfigField(settings.defaultProvider || "anthropic")
-    const updatedSettings = {
-      ...settings,
-      [configField]: JSON.stringify(providerConfig),
-    }
-
-    try {
-      const response = await fetch("/api/settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updatedSettings),
-      })
-      if (response.ok) {
-        setSaved(true)
-        setTimeout(() => setSaved(false), 2000)
-      }
-    } catch (error) {
-      console.error("Failed to save settings:", error)
-    } finally {
-      setSaving(false)
-    }
-  }
-
+  // 更新 settings 字段
   const updateSetting = <K extends keyof Settings>(key: K, value: Settings[K]) => {
     setSettings((prev) => {
       if (!prev) return prev
       const newSettings = { ...prev, [key]: value }
 
       // 如果切换了 provider，需要重新加载配置
-      if (key === "defaultProvider") {
-        const config = parseProviderConfig(newSettings, value as string)
-        setProviderConfig(config)
+      if (key === "provider") {
+        const config = providerConfigs.find((c) => c.provider === value)
+        if (config) {
+          setCurrentProviderConfig({
+            apiKey: "",
+            model: config.model || "",
+            baseUrl: config.baseUrl || "",
+          })
+        }
       }
 
       return newSettings
@@ -706,13 +676,59 @@ function AiConfig() {
   const getProviderDefaults = (provider: string | null) => {
     switch (provider) {
       case "anthropic":
-        return { model: "claude-sonnet-4-6", baseUrl: "https://api.anthropic.com" }
+        return { model: "claude-3-5-sonnet-20241022", baseUrl: "https://api.anthropic.com" }
       case "openai":
         return { model: "gpt-4o", baseUrl: "https://api.openai.com/v1" }
       case "gemini":
-        return { model: "gemini-1.5-pro", baseUrl: "https://generativelanguage.googleapis.com" }
+        return { model: "gemini-2.0-flash", baseUrl: "https://generativelanguage.googleapis.com" }
       default:
         return { model: "", baseUrl: "" }
+    }
+  }
+
+  const handleSave = async () => {
+    if (!settings) return
+    setSaving(true)
+
+    try {
+      // 1. 保存 Settings
+      const settingsResponse = await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: settings.provider,
+          batchSize: settings.batchSize,
+          concurrency: settings.concurrency,
+          maxRetries: settings.maxRetries,
+          initialDelay: settings.initialDelay,
+          maxDelay: settings.maxDelay,
+          backoffFactor: settings.backoffFactor,
+        }),
+      })
+
+      // 2. 保存当前 ProviderConfig
+      const configResponse = await fetch("/api/provider-configs", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: settings.provider || "anthropic",
+          model: currentProviderConfig.model,
+          baseUrl: currentProviderConfig.baseUrl || null,
+          // 只在有输入时发送 apiKeyRef
+          ...(currentProviderConfig.apiKey && {
+            apiKeyRef: `\${${settings.provider?.toUpperCase()}_API_KEY}`,
+          }),
+        }),
+      })
+
+      if (settingsResponse.ok && configResponse.ok) {
+        setSaved(true)
+        setTimeout(() => setSaved(false), 2000)
+      }
+    } catch (error) {
+      console.error("Failed to save settings:", error)
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -740,8 +756,8 @@ function AiConfig() {
             </label>
             <p className="text-xs text-muted-foreground mb-2">选择默认使用的 AI 服务提供商</p>
             <select
-              value={settings?.defaultProvider || ""}
-              onChange={(e) => updateSetting("defaultProvider", e.target.value)}
+              value={settings?.provider || ""}
+              onChange={(e) => updateSetting("provider", e.target.value)}
               className="w-full text-sm font-sans bg-card border border-border rounded-lg px-3 py-2 text-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow"
             >
               <option value="">选择 Provider</option>
@@ -752,7 +768,7 @@ function AiConfig() {
           </div>
 
           {/* API 配置 - 拆分为 3 个独立字段 */}
-          {settings?.defaultProvider && (
+          {settings?.provider && (
             <div className="space-y-4 p-4 rounded-lg border border-border bg-card">
               <h3 className="text-sm font-sans font-semibold">API 配置</h3>
 
@@ -761,13 +777,13 @@ function AiConfig() {
                 <label className="block text-xs font-sans font-semibold uppercase tracking-wider text-muted-foreground mb-2">
                   API Key
                 </label>
-                <p className="text-xs text-muted-foreground mb-2">API Key 仅存储在本地，不会上传到云端</p>
+                <p className="text-xs text-muted-foreground mb-2">API Key 通过环境变量配置，请设置 {settings.provider.toUpperCase()}_API_KEY</p>
                 <div className="relative">
                   <input
                     type={showApiKey ? "text" : "password"}
-                    placeholder="输入 API Key"
-                    value={providerConfig.authToken}
-                    onChange={(e) => updateProviderConfig("authToken", e.target.value)}
+                    placeholder="仅在需要时输入新的 API Key"
+                    value={currentProviderConfig.apiKey}
+                    onChange={(e) => updateProviderConfigForm("apiKey", e.target.value)}
                     className="w-full text-sm font-sans bg-background border border-border rounded-lg px-3 py-2 pr-10 text-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow font-mono"
                   />
                   <button
@@ -788,9 +804,9 @@ function AiConfig() {
                 <p className="text-xs text-muted-foreground mb-2">指定使用的模型名称</p>
                 <input
                   type="text"
-                  placeholder={getProviderDefaults(settings.defaultProvider).model}
-                  value={providerConfig.model}
-                  onChange={(e) => updateProviderConfig("model", e.target.value)}
+                  placeholder={getProviderDefaults(settings.provider).model}
+                  value={currentProviderConfig.model}
+                  onChange={(e) => updateProviderConfigForm("model", e.target.value)}
                   className="w-full text-sm font-sans bg-background border border-border rounded-lg px-3 py-2 text-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow"
                 />
               </div>
@@ -803,9 +819,9 @@ function AiConfig() {
                 <p className="text-xs text-muted-foreground mb-2">API 端点地址，留空使用默认值</p>
                 <input
                   type="text"
-                  placeholder={getProviderDefaults(settings.defaultProvider).baseUrl}
-                  value={providerConfig.baseUrl}
-                  onChange={(e) => updateProviderConfig("baseUrl", e.target.value)}
+                  placeholder={getProviderDefaults(settings.provider).baseUrl}
+                  value={currentProviderConfig.baseUrl}
+                  onChange={(e) => updateProviderConfigForm("baseUrl", e.target.value)}
                   className="w-full text-sm font-sans bg-background border border-border rounded-lg px-3 py-2 text-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow"
                 />
               </div>
@@ -821,8 +837,8 @@ function AiConfig() {
               <p className="text-xs text-muted-foreground mb-2">每次请求处理的最大条目数</p>
               <input
                 type="number"
-                value={settings?.defaultBatchSize || 10}
-                onChange={(e) => updateSetting("defaultBatchSize", parseInt(e.target.value) || 10)}
+                value={settings?.batchSize || 3}
+                onChange={(e) => updateSetting("batchSize", parseInt(e.target.value) || 3)}
                 className="w-full text-sm font-sans bg-card border border-border rounded-lg px-3 py-2 text-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow"
               />
             </div>
@@ -833,8 +849,8 @@ function AiConfig() {
               <p className="text-xs text-muted-foreground mb-2">同时进行的请求数量</p>
               <input
                 type="number"
-                value={settings?.defaultConcurrency || 3}
-                onChange={(e) => updateSetting("defaultConcurrency", parseInt(e.target.value) || 3)}
+                value={settings?.concurrency || 1}
+                onChange={(e) => updateSetting("concurrency", parseInt(e.target.value) || 1)}
                 className="w-full text-sm font-sans bg-card border border-border rounded-lg px-3 py-2 text-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow"
               />
             </div>

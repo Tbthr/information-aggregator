@@ -27,8 +27,8 @@ export async function getDefaultConcurrencyOptions(): Promise<{ batchSize: numbe
   try {
     const settings = await loadAiSettings();
     cachedDefaults = {
-      batchSize: settings?.defaultBatchSize ?? FALLBACK_BATCH_SIZE,
-      concurrency: settings?.defaultConcurrency ?? FALLBACK_CONCURRENCY,
+      batchSize: settings?.batchSize ?? FALLBACK_BATCH_SIZE,
+      concurrency: settings?.concurrency ?? FALLBACK_CONCURRENCY,
     };
     return cachedDefaults;
   } catch {

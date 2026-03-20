@@ -179,20 +179,27 @@ model CustomViewPack {
 // ============================================================
 
 model Settings {
-  id                String   @id @default("default")
+  id            String   @id @default("default")
 
-  defaultProvider   String   @default("anthropic")
-  defaultBatchSize  Int      @default(3)
-  defaultConcurrency Int     @default(1)
+  provider      String   @default("anthropic")
+  batchSize     Int      @default(3)
+  concurrency   Int      @default(1)
 
-  maxRetries        Int      @default(3)
-  initialDelay      Int      @default(1000)
-  maxDelay          Int      @default(30000)
-  backoffFactor     Float    @default(2.0)
+  maxRetries    Int      @default(3)
+  initialDelay  Int      @default(1000)
+  maxDelay      Int      @default(30000)
+  backoffFactor Float    @default(2.0)
 
-  anthropicConfig   String?  @db.Text
-  geminiConfig      String?  @db.Text
-  openaiConfig      String?  @db.Text
+  updatedAt DateTime @updatedAt
+}
+
+model ProviderConfig {
+  id          String   @id @default(cuid())
+  provider    String   @unique  // anthropic, gemini, openai
+  model       String
+  baseUrl     String?
+  apiKeyRef   String?  // 环境变量引用
+  extraConfig String?  @db.Text
 
   updatedAt DateTime @updatedAt
 }

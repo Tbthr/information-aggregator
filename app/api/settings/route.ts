@@ -7,16 +7,13 @@ export const dynamic = "force-dynamic"
 
 // Zod schema for Settings validation
 const settingsUpdateSchema = z.object({
-  defaultProvider: z.string().optional(),
-  defaultBatchSize: z.number().int().min(1).optional(),
-  defaultConcurrency: z.number().int().min(1).optional(),
+  provider: z.string().optional(),
+  batchSize: z.number().int().min(1).optional(),
+  concurrency: z.number().int().min(1).optional(),
   maxRetries: z.number().int().min(0).optional(),
   initialDelay: z.number().int().min(0).optional(),
   maxDelay: z.number().int().min(0).optional(),
   backoffFactor: z.number().min(1).optional(),
-  anthropicConfig: z.string().nullable().optional(),
-  geminiConfig: z.string().nullable().optional(),
-  openaiConfig: z.string().nullable().optional(),
 })
 
 export async function GET() {

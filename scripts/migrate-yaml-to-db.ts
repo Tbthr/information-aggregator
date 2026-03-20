@@ -12,34 +12,75 @@ async function migrateSettings() {
   const content = await fs.readFile(settingsPath, 'utf-8')
   const settings = yaml.load(content) as any
 
+  // 迁移 Settings 表 (使用新字段名)
   await prisma.settings.upsert({
     where: { id: 'default' },
     update: {
-      defaultProvider: settings.ai.defaultProvider,
-      defaultBatchSize: settings.ai.defaultBatchSize,
-      defaultConcurrency: settings.ai.defaultConcurrency,
+      provider: settings.ai.defaultProvider,
+      batchSize: settings.ai.defaultBatchSize,
+      concurrency: settings.ai.defaultConcurrency,
       maxRetries: settings.ai.retry.maxRetries,
       initialDelay: settings.ai.retry.initialDelay,
       maxDelay: settings.ai.retry.maxDelay,
       backoffFactor: settings.ai.retry.backoffFactor,
-      anthropicConfig: JSON.stringify(settings.ai.anthropic),
-      geminiConfig: JSON.stringify(settings.ai.gemini),
-      openaiConfig: JSON.stringify(settings.ai.openai),
     },
     create: {
       id: 'default',
-      defaultProvider: settings.ai.defaultProvider,
-      defaultBatchSize: settings.ai.defaultBatchSize,
-      defaultConcurrency: settings.ai.defaultConcurrency,
+      provider: settings.ai.defaultProvider,
+      batchSize: settings.ai.defaultBatchSize,
+      concurrency: settings.ai.defaultConcurrency,
       maxRetries: settings.ai.retry.maxRetries,
       initialDelay: settings.ai.retry.initialDelay,
       maxDelay: settings.ai.retry.maxDelay,
       backoffFactor: settings.ai.retry.backoffFactor,
-      anthropicConfig: JSON.stringify(settings.ai.anthropic),
-      geminiConfig: JSON.stringify(settings.ai.gemini),
-      openaiConfig: JSON.stringify(settings.ai.openai),
     },
   })
+
+  // 迁移 ProviderConfig 表
+  if (settings.ai.anthropic) {
+    await prisma.providerConfig.upsert({
+      where: { provider: 'anthropic' },
+      update: {
+        model: settings.ai.anthropic.model,
+        baseUrl: settings.ai.anthropic.baseUrl || null,
+      },
+      create: {
+        provider: 'anthropic',
+        model: settings.ai.anthropic.model,
+        baseUrl: settings.ai.anthropic.baseUrl || null,
+      },
+    })
+  }
+
+  if (settings.ai.gemini) {
+    await prisma.providerConfig.upsert({
+      where: { provider: 'gemini' },
+      update: {
+        model: settings.ai.gemini.model,
+        baseUrl: settings.ai.gemini.baseUrl || null,
+      },
+      create: {
+        provider: 'gemini',
+        model: settings.ai.gemini.model,
+        baseUrl: settings.ai.gemini.baseUrl || null,
+      },
+    })
+  }
+
+  if (settings.ai.openai) {
+    await prisma.providerConfig.upsert({
+      where: { provider: 'openai' },
+      update: {
+        model: settings.ai.openai.model,
+        baseUrl: settings.ai.openai.baseUrl || null,
+      },
+      create: {
+        provider: 'openai',
+        model: settings.ai.openai.model,
+        baseUrl: settings.ai.openai.baseUrl || null,
+      },
+    })
+  }
 
   console.log('Settings migrated')
 }

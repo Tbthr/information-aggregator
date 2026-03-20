@@ -191,5 +191,5 @@ export function buildOpenAiConfig(
  * 获取默认 provider
  */
 export function getDefaultProvider(settings: AiSettings | null): AiProviderType {
-  return settings?.defaultProvider ?? "anthropic";
+  return settings?.provider ?? "anthropic";
 }

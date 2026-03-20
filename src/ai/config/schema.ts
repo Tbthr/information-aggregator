@@ -44,13 +44,13 @@ export interface OpenAiSettings {
  */
 export interface AiSettings {
   /** 默认 provider */
-  defaultProvider?: AiProviderType;
+  provider?: AiProviderType;
 
   /** 并发控制：批次大小（默认 3） */
-  defaultBatchSize?: number;
+  batchSize?: number;
 
   /** 并发控制：最大并发数（默认 1） */
-  defaultConcurrency?: number;
+  concurrency?: number;
 
   /** 重试配置 */
   retry?: RetryConfig;
