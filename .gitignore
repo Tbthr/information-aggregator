@@ -13,3 +13,6 @@ frontend/dist/
 frontend/playwright-report/
 frontend/test-results/
 .env
+
+# Screenshots
+screenshots/

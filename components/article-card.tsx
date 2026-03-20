@@ -18,7 +18,7 @@ export function ArticleCard({ article, isSaved, onToggleSave, onClick, variant =
       <div
         role="button"
         tabIndex={0}
-        className="group w-full text-left flex gap-4 py-4 border-b border-border hover:bg-accent/30 transition-colors px-1 -mx-1 rounded cursor-pointer"
+        className="group w-full text-left flex gap-4 py-4 border-b border-border/50 hover:bg-accent/30 transition-colors duration-200 px-1 -mx-1 rounded cursor-pointer"
         onClick={() => onClick(article)}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(article); } }}
       >
@@ -44,7 +44,7 @@ export function ArticleCard({ article, isSaved, onToggleSave, onClick, variant =
       <div
         role="button"
         tabIndex={0}
-        className="group w-full text-left flex flex-col gap-4 p-5 rounded-xl border border-border bg-card hover:border-primary/40 hover:shadow-sm transition-all duration-200 cursor-pointer"
+        className="group w-full text-left flex flex-col gap-4 p-5 rounded-xl border border-border/50 bg-card/80 backdrop-blur-sm hover:border-primary/30 hover:shadow-lg transition-all duration-300 cursor-pointer animate-card-hover"
         onClick={() => onClick(article)}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(article); } }}
       >
@@ -86,7 +86,7 @@ export function ArticleCard({ article, isSaved, onToggleSave, onClick, variant =
     <div
       role="button"
       tabIndex={0}
-      className="group w-full text-left flex flex-col gap-3 p-4 rounded-xl border border-border bg-card hover:border-primary/40 hover:shadow-sm transition-all duration-200 cursor-pointer"
+      className="group w-full text-left flex flex-col gap-3 p-4 rounded-xl border border-border/50 bg-card/80 backdrop-blur-sm hover:border-primary/30 hover:shadow-lg transition-all duration-300 cursor-pointer animate-card-hover"
       onClick={() => onClick(article)}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(article); } }}
     >

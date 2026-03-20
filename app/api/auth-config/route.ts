@@ -28,12 +28,13 @@ export async function GET(request: Request) {
       })
     }
 
-    // 隐藏敏感配置
+    // 返回配置（包括 configJson 用于编辑）
     return NextResponse.json({
       success: true,
       data: {
         id: config.id,
         adapter: config.adapter,
+        configJson: config.configJson || "",
         hasConfig: !!config.configJson,
       },
     })

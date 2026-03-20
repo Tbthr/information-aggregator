@@ -82,9 +82,9 @@
 }
 
 @theme inline {
-  --font-sans: var(--font-inter);
-  --font-serif: var(--font-noto-serif);
-  --font-mono: 'Geist Mono', 'Geist Mono Fallback';
+  --font-sans: var(--font-sora), system-ui, sans-serif;
+  --font-serif: 'LXGW WenKai', 'Noto Serif SC', serif;
+  --font-mono: 'JetBrains Mono', 'Geist Mono', 'Geist Mono Fallback', monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -155,5 +155,153 @@
   }
   .article-body p + p {
     margin-top: 1.25rem;
+  }
+
+  /* ===== 新增动画 ===== */
+
+  /* 1. 页面进入动画 */
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* 2. 卡片悬停动画 */
+  @keyframes card-hover {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(-4px); }
+  }
+
+  /* 3. 侧边栏展开动画 */
+  @keyframes slide-in-left {
+    from {
+      opacity: 0;
+      transform: translateX(-100%);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  /* 4. 骨架屏闪烁 */
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  /* 5. 按钮点击反馈 */
+  @keyframes button-press {
+    0% { transform: scale(1); }
+    50% { transform: scale(0.95); }
+    100% { transform: scale(1); }
+  }
+
+  /* 6. 页面加载进度条 */
+  @keyframes loading-bar {
+    0% { width: 0%; }
+    50% { width: 70%; }
+    100% { width: 100%; }
+  }
+
+  /* ===== 动画类 ===== */
+  .animate-fade-in-up {
+    animation: fade-in-up 0.5s ease-out forwards;
+  }
+
+  .animate-card-hover {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  .animate-card-hover:hover {
+    animation: card-hover 0.3s ease forwards;
+    box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.15);
+  }
+
+  .animate-slide-in-left {
+    animation: slide-in-left 0.4s ease-out forwards;
+  }
+
+  .animate-shimmer {
+    background: linear-gradient(
+      90deg,
+      oklch(0.955 0.005 94.5) 25%,
+      oklch(0.98 0.002 94.5) 50%,
+      oklch(0.955 0.005 94.5) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+
+  .dark .animate-shimmer {
+    background: linear-gradient(
+      90deg,
+      oklch(0.22 0.008 260) 25%,
+      oklch(0.28 0.01 260) 50%,
+      oklch(0.22 0.008 260) 75%
+    );
+    background-size: 200% 100%;
+  }
+
+  .animate-button-press:active {
+    animation: button-press 0.15s ease;
+  }
+
+  /* 延迟动画 (用于列表项) */
+  .animate-delay-100 { animation-delay: 100ms; }
+  .animate-delay-200 { animation-delay: 200ms; }
+  .animate-delay-300 { animation-delay: 300ms; }
+  .animate-delay-400 { animation-delay: 400ms; }
+  .animate-delay-500 { animation-delay: 500ms; }
+
+  /* ===== 背景增强 ===== */
+
+  /* 主背景渐变 */
+  .bg-gradient-subtle {
+    background: linear-gradient(
+      135deg,
+      var(--background) 0%,
+      oklch(0.97 0.008 195) 50%,
+      var(--background) 100%
+    );
+  }
+
+  .dark .bg-gradient-subtle {
+    background: linear-gradient(
+      135deg,
+      var(--background) 0%,
+      oklch(0.15 0.01 195) 50%,
+      var(--background) 100%
+    );
+  }
+
+  /* 卡片玻璃效果 */
+  .glass-card {
+    background: oklch(0.99 0.002 94.5 / 0.8);
+    backdrop-filter: blur(12px);
+    border: 1px solid oklch(0.9 0.005 94.5 / 0.5);
+  }
+
+  .dark .glass-card {
+    background: oklch(0.16 0.006 260 / 0.8);
+    border: 1px solid oklch(0.25 0.01 260 / 0.5);
+  }
+
+  /* 背景网格纹理 */
+  .bg-grid-pattern {
+    background-image:
+      linear-gradient(oklch(0.9 0.005 94.5 / 0.3) 1px, transparent 1px),
+      linear-gradient(90deg, oklch(0.9 0.005 94.5 / 0.3) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  .dark .bg-grid-pattern {
+    background-image:
+      linear-gradient(oklch(0.25 0.01 260 / 0.3) 1px, transparent 1px),
+      linear-gradient(90deg, oklch(0.25 0.01 260 / 0.3) 1px, transparent 1px);
   }
 }

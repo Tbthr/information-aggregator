@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Dialog,
   DialogContent,
@@ -12,10 +11,12 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Key, Check, Plus, Pencil } from "lucide-react"
 
 interface AuthConfigData {
   adapter: string
   hasConfig: boolean
+  configJson?: string
 }
 
 interface AuthConfigSectionProps {
@@ -39,6 +40,7 @@ export function AuthConfigSection({ packId }: AuthConfigSectionProps) {
           setConfig(data.data)
           if (data.data) {
             setAdapter(data.data.adapter || "x-family")
+            setConfigJson(data.data.configJson || "")
           }
         }
       } finally {
@@ -67,104 +69,146 @@ export function AuthConfigSection({ packId }: AuthConfigSectionProps) {
   }
 
   if (loading) {
-    return <div className="text-muted-foreground">加载中...</div>
+    return (
+      <div className="p-4 rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <span className="text-sm">加载中...</span>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-sm font-medium">认证配置</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {config ? (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">适配器:</span>
-              <span className="font-mono text-sm">{config.adapter}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">配置状态:</span>
-              <span className={config.hasConfig ? "text-green-600" : "text-muted-foreground"}>
-                {config.hasConfig ? "已配置" : "无"}
-              </span>
-            </div>
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="mt-2">
-                  编辑配置
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>编辑认证配置</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="adapter">适配器</Label>
-                    <Input
-                      id="adapter"
-                      value={adapter}
-                      onChange={(e) => setAdapter(e.target.value)}
-                      placeholder="x-family"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="configJson">配置 JSON</Label>
-                    <Input
-                      id="configJson"
-                      value={configJson}
-                      onChange={(e) => setConfigJson(e.target.value)}
-                      placeholder='{"key": "value"}'
-                    />
-                  </div>
-                  <Button onClick={handleSave} disabled={saving}>
-                    {saving ? "保存中..." : "保存"}
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+    <div className="p-4 rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm transition-all duration-200 hover:border-primary/30 hover:shadow-md">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Key className="w-4 h-4 text-primary" />
           </div>
-        ) : (
-          <div className="text-muted-foreground">
-            无认证配置
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="ml-2">
-                  添加配置
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>添加认证配置</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="adapter">适配器</Label>
-                    <Input
-                      id="adapter"
-                      value={adapter}
-                      onChange={(e) => setAdapter(e.target.value)}
-                      placeholder="x-family"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="configJson">配置 JSON</Label>
-                    <Input
-                      id="configJson"
-                      value={configJson}
-                      onChange={(e) => setConfigJson(e.target.value)}
-                      placeholder='{"key": "value"}'
-                    />
-                  </div>
-                  <Button onClick={handleSave} disabled={saving}>
-                    {saving ? "保存中..." : "保存"}
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
+          <span className="font-sans font-medium text-sm">认证配置</span>
+        </div>
+        {config?.hasConfig && (
+          <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-0.5 rounded-full">
+            <Check className="w-3 h-3" />
+            已配置
+          </span>
         )}
-      </CardContent>
-    </Card>
+      </div>
+
+      {config ? (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-background/50 border border-border/30">
+            <span className="text-xs text-muted-foreground">适配器</span>
+            <span className="font-mono text-xs text-foreground bg-muted px-2 py-0.5 rounded">{config.adapter}</span>
+          </div>
+
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm" className="w-full gap-2 border-border/50 hover:border-primary/30 hover:bg-primary/5">
+                <Pencil className="w-3.5 h-3.5" />
+                编辑配置
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Key className="w-4 h-4 text-primary" />
+                  编辑认证配置
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div>
+                  <Label htmlFor="adapter" className="text-xs font-sans font-semibold uppercase tracking-wider text-muted-foreground">
+                    适配器
+                  </Label>
+                  <Input
+                    id="adapter"
+                    value={adapter}
+                    onChange={(e) => setAdapter(e.target.value)}
+                    placeholder="x-family"
+                    className="mt-2 bg-card/80 backdrop-blur-sm border-border/50 focus:border-primary/50"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="configJson" className="text-xs font-sans font-semibold uppercase tracking-wider text-muted-foreground">
+                    配置 JSON
+                  </Label>
+                  <Input
+                    id="configJson"
+                    value={configJson}
+                    onChange={(e) => setConfigJson(e.target.value)}
+                    placeholder='{"key": "value"}'
+                    className="mt-2 font-mono bg-card/80 backdrop-blur-sm border-border/50 focus:border-primary/50"
+                  />
+                </div>
+                <Button onClick={handleSave} disabled={saving} className="w-full">
+                  {saving ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mr-2" />
+                      保存中...
+                    </>
+                  ) : "保存配置"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+      ) : (
+        <div className="py-4">
+          <p className="text-sm text-muted-foreground mb-3 text-center">暂无认证配置</p>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm" className="w-full gap-2 border-dashed border-2 border-border/50 hover:border-primary/30 hover:bg-primary/5">
+                <Plus className="w-3.5 h-3.5" />
+                添加配置
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Key className="w-4 h-4 text-primary" />
+                  添加认证配置
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div>
+                  <Label htmlFor="adapter" className="text-xs font-sans font-semibold uppercase tracking-wider text-muted-foreground">
+                    适配器
+                  </Label>
+                  <Input
+                    id="adapter"
+                    value={adapter}
+                    onChange={(e) => setAdapter(e.target.value)}
+                    placeholder="x-family"
+                    className="mt-2 bg-card/80 backdrop-blur-sm border-border/50 focus:border-primary/50"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="configJson" className="text-xs font-sans font-semibold uppercase tracking-wider text-muted-foreground">
+                    配置 JSON
+                  </Label>
+                  <Input
+                    id="configJson"
+                    value={configJson}
+                    onChange={(e) => setConfigJson(e.target.value)}
+                    placeholder='{"key": "value"}'
+                    className="mt-2 font-mono bg-card/80 backdrop-blur-sm border-border/50 focus:border-primary/50"
+                  />
+                </div>
+                <Button onClick={handleSave} disabled={saving} className="w-full">
+                  {saving ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mr-2" />
+                      保存中...
+                    </>
+                  ) : "添加配置"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+      )}
+    </div>
   )
 }

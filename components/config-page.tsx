@@ -556,16 +556,21 @@ function EngineConfig() {
               <label className="block text-xs font-sans text-muted-foreground mb-1">
                 数据源类型
               </label>
-              <select
-                value={newSourceType}
-                onChange={(e) => setNewSourceType(e.target.value)}
-                className="w-full text-sm font-sans bg-card border border-border rounded-lg px-3 py-2 text-foreground outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="rss">RSS Feed</option>
-                <option value="twitter">Twitter/X</option>
-                <option value="github">GitHub</option>
-                <option value="substack">Substack</option>
-              </select>
+              <div className="relative group">
+                <select
+                  value={newSourceType}
+                  onChange={(e) => setNewSourceType(e.target.value)}
+                  className="w-full text-sm font-sans bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl px-3 py-2.5 pr-10 text-foreground outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 appearance-none cursor-pointer transition-all duration-200 hover:border-primary/30 hover:shadow-lg hover:bg-card"
+                >
+                  <option value="rss">RSS Feed</option>
+                  <option value="twitter">Twitter/X</option>
+                  <option value="github">GitHub</option>
+                  <option value="substack">Substack</option>
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none bg-card/80 rounded px-1">
+                  <ChevronDown className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                </div>
+              </div>
             </div>
             <div>
               <label className="block text-xs font-sans text-muted-foreground mb-1">
@@ -788,20 +793,54 @@ function AiConfig() {
         <div className="space-y-6">
           {/* Provider 选择 */}
           <div>
-            <label className="block text-xs font-sans font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+            <label className="block text-xs font-sans font-semibold uppercase tracking-wider text-muted-foreground mb-3">
               默认 Provider
             </label>
-            <p className="text-xs text-muted-foreground mb-2">选择默认使用的 AI 服务提供商</p>
-            <select
-              value={settings?.provider || ""}
-              onChange={(e) => updateSetting("provider", e.target.value)}
-              className="w-full text-sm font-sans bg-card border border-border rounded-lg px-3 py-2 text-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow"
-            >
-              <option value="">选择 Provider</option>
-              <option value="anthropic">Anthropic</option>
-              <option value="openai">OpenAI</option>
-              <option value="gemini">Google Gemini</option>
-            </select>
+            <p className="text-xs text-muted-foreground mb-3">选择默认使用的 AI 服务提供商</p>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { value: "anthropic", label: "Anthropic", desc: "Claude AI" },
+                { value: "openai", label: "OpenAI", desc: "GPT-4" },
+                { value: "gemini", label: "Google", desc: "Gemini" },
+              ].map((provider) => (
+                <button
+                  key={provider.value}
+                  type="button"
+                  onClick={() => updateSetting("provider", provider.value)}
+                  className={cn(
+                    "relative flex flex-col items-center gap-2 p-4 rounded-xl border transition-all duration-200",
+                    settings?.provider === provider.value
+                      ? "border-primary bg-primary/5 shadow-md ring-2 ring-primary/20"
+                      : "border-border/50 bg-card/50 hover:border-primary/30 hover:bg-card hover:shadow-sm"
+                  )}
+                >
+                  <div className={cn(
+                    "w-10 h-10 rounded-full flex items-center justify-center transition-colors",
+                    settings?.provider === provider.value
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground"
+                  )}>
+                    {provider.value === "anthropic" && <span className="text-sm font-bold">A</span>}
+                    {provider.value === "openai" && <span className="text-sm font-bold">O</span>}
+                    {provider.value === "gemini" && <span className="text-sm font-bold">G</span>}
+                  </div>
+                  <div className="text-center">
+                    <p className={cn(
+                      "text-sm font-medium",
+                      settings?.provider === provider.value ? "text-primary" : "text-foreground"
+                    )}>
+                      {provider.label}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{provider.desc}</p>
+                  </div>
+                  {settings?.provider === provider.value && (
+                    <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                      <Check className="w-3 h-3 text-primary-foreground" />
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* API 配置 - 拆分为 3 个独立字段 */}

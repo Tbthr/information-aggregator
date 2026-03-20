@@ -5,6 +5,7 @@ import { Sidebar, type NavId } from "@/components/sidebar"
 import { Topbar } from "@/components/topbar"
 import { ReadingPanel } from "@/components/reading-panel"
 import { SaveToast } from "@/components/save-toast"
+import { ScrollProgress } from "@/components/scroll-progress"
 import { useSaved } from "@/hooks/use-saved"
 import { useCustomViews } from "@/hooks/use-api"
 import type { Article } from "@/lib/types"
@@ -76,7 +77,8 @@ export function AppLayout({ children, activeNav, onNav }: AppLayoutProps) {
   )
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-screen overflow-hidden bg-gradient-subtle">
+      <ScrollProgress />
       <Sidebar
         activeNav={activeNav}
         onNav={handleNav}

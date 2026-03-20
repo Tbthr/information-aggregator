@@ -220,7 +220,7 @@ export function Sidebar({ activeNav, onNav, savedCount, collapsed, onToggleColla
   return (
     <nav
       className={cn(
-        "h-full flex flex-col border-r border-sidebar-border bg-sidebar transition-all duration-300 ease-in-out overflow-hidden shrink-0",
+        "h-full flex flex-col border-r border-sidebar-border/30 bg-sidebar/95 backdrop-blur-md transition-all duration-300 ease-in-out overflow-hidden shrink-0 animate-slide-in-left",
         collapsed ? "w-14" : "w-56"
       )}
       aria-label="主导航"
