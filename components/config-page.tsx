@@ -611,6 +611,7 @@ function AiConfig() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [showApiKey, setShowApiKey] = useState(false)
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
 
   // 加载设置和 provider 配置
   useEffect(() => {
@@ -632,11 +633,12 @@ function AiConfig() {
           // 设置当前 provider 的配置
           const currentProvider = settingsData.data?.provider || "anthropic"
           const config = configsData.data.find((c: ProviderConfigItem) => c.provider === currentProvider)
+          const defaults = getProviderDefaults(currentProvider)
           if (config) {
             setCurrentProviderConfig({
               apiKey: "",
-              model: config.model || "",
-              baseUrl: config.baseUrl || "",
+              model: config.model || defaults.model,
+              baseUrl: config.baseUrl || defaults.baseUrl,
             })
           }
         }
@@ -663,11 +665,12 @@ function AiConfig() {
       // 如果切换了 provider，需要重新加载配置
       if (key === "provider") {
         const config = providerConfigs.find((c) => c.provider === value)
+        const defaults = getProviderDefaults(value as string)
         if (config) {
           setCurrentProviderConfig({
             apiKey: "",
-            model: config.model || "",
-            baseUrl: config.baseUrl || "",
+            model: config.model || defaults.model,
+            baseUrl: config.baseUrl || defaults.baseUrl,
           })
         }
       }
@@ -692,6 +695,30 @@ function AiConfig() {
 
   const handleSave = async () => {
     if (!settings) return
+
+    // 清除之前的错误
+    setValidationErrors({})
+
+    // 校验必填字段
+    const errors: Record<string, string> = {}
+    const currentConfig = providerConfigs.find((c) => c.provider === settings.provider)
+    const hasExistingApiKey = currentConfig?.hasApiKey
+
+    if (!currentProviderConfig.apiKey && !hasExistingApiKey) {
+      errors.apiKey = "API Key 是必填项"
+    }
+    if (!currentProviderConfig.model) {
+      errors.model = "模型是必填项"
+    }
+    if (!currentProviderConfig.baseUrl) {
+      errors.baseUrl = "Base URL 是必填项"
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors)
+      return
+    }
+
     setSaving(true)
 
     try {
@@ -717,15 +744,21 @@ function AiConfig() {
         body: JSON.stringify({
           provider: settings.provider || "anthropic",
           model: currentProviderConfig.model,
-          baseUrl: currentProviderConfig.baseUrl || null,
-          // 只在有输入时发送 apiKeyRef
+          baseUrl: currentProviderConfig.baseUrl,
+          // 如果有新的 API Key 输入则发送，否则不发送（保留原有）
           ...(currentProviderConfig.apiKey && {
-            apiKeyRef: `\${${settings.provider?.toUpperCase()}_API_KEY}`,
+            apiKey: currentProviderConfig.apiKey,
           }),
         }),
       })
 
       if (settingsResponse.ok && configResponse.ok) {
+        // 重新加载配置以更新 hasApiKey 状态
+        const configsRes = await fetch("/api/provider-configs")
+        const configsData = await configsRes.json()
+        if (configsData.success) {
+          setProviderConfigs(configsData.data)
+        }
         setSaved(true)
         setTimeout(() => setSaved(false), 2000)
       }
@@ -774,60 +807,77 @@ function AiConfig() {
           {/* API 配置 - 拆分为 3 个独立字段 */}
           {settings?.provider && (
             <div className="space-y-4 p-4 rounded-lg border border-border bg-card">
-              <h3 className="text-sm font-sans font-semibold">API 配置</h3>
+              <h3 className="text-sm font-sans font-semibold">API 配置 <span className="text-red-500">*</span></h3>
 
               {/* API Key */}
               <div>
                 <label className="block text-xs font-sans font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                  API Key
+                  API Key <span className="text-red-500">*</span>
+                  {providerConfigs.find((c) => c.provider === settings.provider)?.hasApiKey && (
+                    <span className="ml-2 text-xs font-normal text-green-600 dark:text-green-400">• 已配置</span>
+                  )}
                 </label>
-                <p className="text-xs text-muted-foreground mb-2">API Key 通过环境变量配置，请设置 {settings.provider.toUpperCase()}_API_KEY</p>
                 <div className="relative">
                   <input
                     type={showApiKey ? "text" : "password"}
-                    placeholder="仅在需要时输入新的 API Key"
+                    placeholder={!currentProviderConfig.apiKey && providerConfigs.find((c) => c.provider === settings.provider)?.hasApiKey ? "••••••••••••••••" : "输入 API Key"}
                     value={currentProviderConfig.apiKey}
                     onChange={(e) => updateProviderConfigForm("apiKey", e.target.value)}
-                    className="w-full text-sm font-sans bg-background border border-border rounded-lg px-3 py-2 pr-10 text-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow font-mono"
+                    className={`w-full text-sm font-sans bg-background border rounded-lg px-3 py-2 text-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow font-mono ${
+                      validationErrors.apiKey ? "border-red-500" : "border-border"
+                    } ${currentProviderConfig.apiKey ? "pr-10" : ""}`}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowApiKey(!showApiKey)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
+                  {currentProviderConfig.apiKey && (
+                    <button
+                      type="button"
+                      onClick={() => setShowApiKey(!showApiKey)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  )}
                 </div>
+                {validationErrors.apiKey && (
+                  <p className="text-xs text-red-500 mt-1">{validationErrors.apiKey}</p>
+                )}
               </div>
 
               {/* Model */}
               <div>
                 <label className="block text-xs font-sans font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                  模型
+                  模型 <span className="text-red-500">*</span>
                 </label>
-                <p className="text-xs text-muted-foreground mb-2">指定使用的模型名称</p>
                 <input
                   type="text"
                   placeholder={getProviderDefaults(settings.provider).model}
                   value={currentProviderConfig.model}
                   onChange={(e) => updateProviderConfigForm("model", e.target.value)}
-                  className="w-full text-sm font-sans bg-background border border-border rounded-lg px-3 py-2 text-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow"
+                  className={`w-full text-sm font-sans bg-background border rounded-lg px-3 py-2 text-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow ${
+                    validationErrors.model ? "border-red-500" : "border-border"
+                  }`}
                 />
+                {validationErrors.model && (
+                  <p className="text-xs text-red-500 mt-1">{validationErrors.model}</p>
+                )}
               </div>
 
               {/* Base URL */}
               <div>
                 <label className="block text-xs font-sans font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                  Base URL
+                  Base URL <span className="text-red-500">*</span>
                 </label>
-                <p className="text-xs text-muted-foreground mb-2">API 端点地址，留空使用默认值</p>
                 <input
                   type="text"
                   placeholder={getProviderDefaults(settings.provider).baseUrl}
                   value={currentProviderConfig.baseUrl}
                   onChange={(e) => updateProviderConfigForm("baseUrl", e.target.value)}
-                  className="w-full text-sm font-sans bg-background border border-border rounded-lg px-3 py-2 text-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow"
+                  className={`w-full text-sm font-sans bg-background border rounded-lg px-3 py-2 text-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow ${
+                    validationErrors.baseUrl ? "border-red-500" : "border-border"
+                  }`}
                 />
+                {validationErrors.baseUrl && (
+                  <p className="text-xs text-red-500 mt-1">{validationErrors.baseUrl}</p>
+                )}
               </div>
             </div>
           )}

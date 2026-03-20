@@ -8,9 +8,9 @@ export const dynamic = "force-dynamic"
 // Zod schema for ProviderConfig validation
 const providerConfigSchema = z.object({
   provider: z.enum(["anthropic", "gemini", "openai"]),
-  model: z.string().min(1),
-  baseUrl: z.string().url().nullable().optional(),
-  apiKeyRef: z.string().nullable().optional(),
+  model: z.string().min(1, "模型是必填项"),
+  baseUrl: z.string().url("Base URL 必须是有效的 URL"),
+  apiKey: z.string().optional(), // 可选，仅在有新值时提供
   extraConfig: z.string().nullable().optional(),
 })
 
@@ -61,13 +61,35 @@ export async function PUT(request: Request) {
     )
   }
 
-  const { provider, model, baseUrl, apiKeyRef, extraConfig } = parsed.data
+  const { provider, model, baseUrl, apiKey, extraConfig } = parsed.data
 
   try {
+    // 构建更新数据，只有提供 apiKey 时才更新
+    const updateData: {
+      model: string
+      baseUrl: string
+      extraConfig?: string | null
+      apiKeyRef?: string
+    } = {
+      model,
+      baseUrl,
+      extraConfig: extraConfig || null,
+    }
+
+    if (apiKey) {
+      updateData.apiKeyRef = apiKey
+    }
+
     const config = await prisma.providerConfig.upsert({
       where: { provider },
-      create: { provider, model, baseUrl, apiKeyRef, extraConfig },
-      update: { model, baseUrl, apiKeyRef, extraConfig },
+      create: {
+        provider,
+        model,
+        baseUrl,
+        apiKeyRef: apiKey || null,
+        extraConfig: extraConfig || null,
+      },
+      update: updateData,
     })
 
     // 不返回 apiKeyRef
