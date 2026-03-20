@@ -86,7 +86,6 @@ async function migrateReportConfigs() {
     update: {
       packs: daily.daily.packs,
       maxItems: daily.daily.maxItems,
-      maxSpotlight: daily.daily.maxSpotlight,
       sort: daily.daily.sort,
       enableOverview: daily.daily.enableOverview,
       newsFlashesEnabled: daily.daily.newsFlashes.enabled,
@@ -96,7 +95,6 @@ async function migrateReportConfigs() {
       id: 'default',
       packs: daily.daily.packs,
       maxItems: daily.daily.maxItems,
-      maxSpotlight: daily.daily.maxSpotlight,
       sort: daily.daily.sort,
       enableOverview: daily.daily.enableOverview,
       newsFlashesEnabled: daily.daily.newsFlashes.enabled,

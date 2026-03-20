@@ -1,11 +1,22 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ChevronDown, ChevronRight, Plus, Trash2, Settings2, Clock, Key, Loader2 } from "lucide-react"
+import { ChevronDown, ChevronRight, Plus, Trash2, Settings2, Clock, Eye, EyeOff, Loader2, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
-type Tab = "engine" | "params" | "auth"
-type Source = { id: string; name: string; url: string; type: "rss" | "json" }
+type Tab = "datasource" | "ai"
+type Source = { id: string; name: string; url: string | null; type: string; enabled: boolean; packId: string | null }
 type Pack = {
   id: string
   name: string
@@ -14,48 +25,57 @@ type Pack = {
   itemCount: number
   latestItem: string | null
 }
+type ProviderConfig = {
+  authToken: string
+  model: string
+  baseUrl: string
+}
+
+type Settings = {
+  id: string
+  defaultProvider: string | null
+  defaultBatchSize: number | null
+  defaultConcurrency: number | null
+  maxRetries: number | null
+  initialDelay: number | null
+  maxDelay: number | null
+  backoffFactor: number | null
+  anthropicConfig: string | null
+  openaiConfig: string | null
+  geminiConfig: string | null
+}
 
 export function ConfigPage() {
-  const [activeTab, setActiveTab] = useState<Tab>("engine")
+  const [activeTab, setActiveTab] = useState<Tab>("datasource")
 
   return (
     <div className="h-full flex flex-col">
       {/* Tab 切换 */}
       <div className="border-b border-border bg-sidebar px-6 py-3 flex gap-6">
         <button
-          onClick={() => setActiveTab("engine")}
+          onClick={() => setActiveTab("datasource")}
           className={cn(
             "text-sm font-sans font-medium transition-colors",
-            activeTab === "engine" ? "text-primary border-b-2 border-primary pb-2" : "text-muted-foreground hover:text-foreground"
+            activeTab === "datasource" ? "text-primary font-semibold" : "text-muted-foreground hover:text-foreground"
           )}
         >
-          引擎配置
+          数据源配置
         </button>
         <button
-          onClick={() => setActiveTab("params")}
+          onClick={() => setActiveTab("ai")}
           className={cn(
             "text-sm font-sans font-medium transition-colors",
-            activeTab === "params" ? "text-primary border-b-2 border-primary pb-2" : "text-muted-foreground hover:text-foreground"
+            activeTab === "ai" ? "text-primary font-semibold" : "text-muted-foreground hover:text-foreground"
           )}
         >
-          参数配置
-        </button>
-        <button
-          onClick={() => setActiveTab("auth")}
-          className={cn(
-            "text-sm font-sans font-medium transition-colors",
-            activeTab === "auth" ? "text-primary border-b-2 border-primary pb-2" : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          认证配置
+          AI 配置
         </button>
       </div>
 
       {/* Tab 内容 */}
       <div className="flex-1 overflow-hidden">
-        {activeTab === "engine" && <EngineConfig />}
-        {activeTab === "params" && <ParamsConfig />}
-        {activeTab === "auth" && <AuthConfig />}
+        {activeTab === "datasource" && <EngineConfig />}
+        {activeTab === "ai" && <AiConfig />}
       </div>
     </div>
   )
@@ -63,31 +83,49 @@ export function ConfigPage() {
 
 function EngineConfig() {
   const [packs, setPacks] = useState<Pack[]>([])
+  const [sources, setSources] = useState<Source[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedPack, setSelectedPack] = useState<Pack | null>(null)
   const [expandedPacks, setExpandedPacks] = useState<Set<string>>(new Set())
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [newPackName, setNewPackName] = useState("")
+  const [addSourcePackId, setAddSourcePackId] = useState<string | null>(null)
+  const [newSourceUrl, setNewSourceUrl] = useState("")
+  const [newSourceType, setNewSourceType] = useState("rss")
+  const [creatingSource, setCreatingSource] = useState(false)
+  // 用于编辑 Pack 详情的本地状态
+  const [editingPackName, setEditingPackName] = useState("")
+  const [editingPackDescription, setEditingPackDescription] = useState("")
+  const [savingPack, setSavingPack] = useState(false)
 
-  // Load packs from database
-  useEffect(() => {
-    async function loadPacks() {
-      try {
-        const response = await fetch("/api/packs")
-        const data = await response.json()
-        if (data.success) {
-          setPacks(data.data.packs)
-          // Select first pack if available
-          if (data.data.packs.length > 0) {
-            setSelectedPack(data.data.packs[0])
-          }
+  // Load packs and sources from database
+  const loadData = async () => {
+    try {
+      const [packsRes, sourcesRes] = await Promise.all([
+        fetch("/api/packs"),
+        fetch("/api/sources"),
+      ])
+      const packsData = await packsRes.json()
+      const sourcesData = await sourcesRes.json()
+
+      if (packsData.success) {
+        setPacks(packsData.data.packs)
+        if (packsData.data.packs.length > 0 && !selectedPack) {
+          setSelectedPack(packsData.data.packs[0])
         }
-      } catch (error) {
-        console.error("Failed to load packs:", error)
-      } finally {
-        setLoading(false)
       }
+      if (sourcesData.success) {
+        setSources(sourcesData.data.sources)
+      }
+    } catch (error) {
+      console.error("Failed to load data:", error)
+    } finally {
+      setLoading(false)
     }
+  }
 
-    loadPacks()
+  useEffect(() => {
+    loadData()
   }, [])
 
   const toggleExpand = (id: string) => {
@@ -100,13 +138,115 @@ function EngineConfig() {
 
   const selectPack = (pack: Pack) => {
     setSelectedPack(pack)
+    setEditingPackName(pack.name)
+    setEditingPackDescription(pack.description || "")
+  }
+
+  const deletePack = async (packId: string) => {
+    try {
+      const response = await fetch(`/api/packs/${packId}`, {
+        method: "DELETE",
+      })
+
+      if (response.ok) {
+        setPacks((prev) => prev.filter((p) => p.id !== packId))
+        setSources((prev) => prev.filter((s) => s.packId !== packId))
+        if (selectedPack?.id === packId) {
+          setSelectedPack(packs.length > 1 ? packs.find((p) => p.id !== packId) || null : null)
+        }
+      } else {
+        const data = await response.json()
+        alert(data.error || "删除 Pack 失败")
+      }
+    } catch (error) {
+      console.error("Failed to delete pack:", error)
+      alert("删除 Pack 失败")
+    }
+  }
+
+  const savePackConfig = async () => {
+    if (!selectedPack) return
+    setSavingPack(true)
+    try {
+      const response = await fetch(`/api/packs/${selectedPack.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editingPackName,
+          description: editingPackDescription || null,
+        }),
+      })
+      const data = await response.json()
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "保存失败")
+      }
+      // 更新本地状态
+      setPacks((prev) =>
+        prev.map((p) =>
+          p.id === selectedPack.id
+            ? { ...p, name: editingPackName, description: editingPackDescription }
+            : p
+        )
+      )
+      setSelectedPack({ ...selectedPack, name: editingPackName, description: editingPackDescription })
+    } catch (error) {
+      console.error("保存失败:", error)
+      alert(error instanceof Error ? error.message : "保存失败")
+    } finally {
+      setSavingPack(false)
+    }
+  }
+
+  const resetPackConfig = () => {
+    if (!selectedPack) return
+    setEditingPackName(selectedPack.name)
+    setEditingPackDescription(selectedPack.description || "")
+  }
+
+  const createSource = async () => {
+    if (!addSourcePackId || !newSourceUrl.trim()) return
+
+    setCreatingSource(true)
+    try {
+      const response = await fetch("/api/sources", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: newSourceType,
+          name: newSourceUrl,
+          url: newSourceUrl,
+          packId: addSourcePackId,
+          enabled: true,
+        }),
+      })
+
+      const data = await response.json()
+      if (response.ok && data.success) {
+        setSources((prev) => [...prev, data.data])
+        setAddSourcePackId(null)
+        setNewSourceUrl("")
+        setNewSourceType("rss")
+        // Reload packs to update source count
+        loadData()
+      } else {
+        alert(data.error || "创建数据源失败")
+      }
+    } catch (error) {
+      console.error("Failed to create source:", error)
+      alert("创建数据源失败")
+    } finally {
+      setCreatingSource(false)
+    }
   }
 
   const createPack = async () => {
-    const name = prompt("输入 Pack 名称:")
-    if (!name) return
+    if (!newPackName.trim()) return
 
-    const id = name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "")
+    const id = newPackName
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9-]/g, "")
+
     if (!id) {
       alert("请输入有效的名称（至少包含一个字母或数字）")
       return
@@ -116,13 +256,12 @@ function EngineConfig() {
       const response = await fetch("/api/packs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, name }),
+        body: JSON.stringify({ id, name: newPackName }),
       })
 
       const data = await response.json()
 
       if (response.ok && data.success) {
-        // Add new pack to the list
         const newPack: Pack = {
           id: data.data.id,
           name: data.data.name,
@@ -134,6 +273,8 @@ function EngineConfig() {
         setPacks((prev) => [...prev, newPack])
         setSelectedPack(newPack)
         setExpandedPacks((prev) => new Set(prev).add(newPack.id))
+        setCreateDialogOpen(false)
+        setNewPackName("")
       } else {
         alert(data.error || "创建 Pack 失败")
       }
@@ -141,6 +282,11 @@ function EngineConfig() {
       console.error("Failed to create pack:", error)
       alert("创建 Pack 失败")
     }
+  }
+
+  const startCreatePack = () => {
+    setNewPackName("")
+    setCreateDialogOpen(true)
   }
 
   if (loading) {
@@ -161,7 +307,7 @@ function EngineConfig() {
         <div className="p-4 border-b border-border flex items-center justify-between">
           <p className="font-sans font-semibold text-sm text-sidebar-foreground">Pack 与数据源</p>
           <button
-            onClick={createPack}
+            onClick={startCreatePack}
             className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 font-sans font-medium transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -199,14 +345,31 @@ function EngineConfig() {
                   <span className="ml-auto text-[10px] text-muted-foreground shrink-0">{pack.sourceCount}</span>
                 </button>
 
-                {/* 子源列表 - Placeholder for sources */}
+                {/* 子源列表 */}
                 {expandedPacks.has(pack.id) && (
                   <div className="pl-7 py-1">
-                    {/* TODO: Load sources from API */}
-                    {pack.sourceCount === 0 && (
+                    {Array.from(new Map(sources.filter(s => s.packId === pack.id).map(s => [s.id, s])).values()).length === 0 && (
                       <div className="px-3 py-1.5 text-xs text-muted-foreground">暂无数据源</div>
                     )}
-                    <button className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-primary font-sans hover:text-primary/80 transition-colors">
+                    {Array.from(new Map(sources.filter(s => s.packId === pack.id).map(s => [s.id, s])).values()).map((source) => (
+                      <div
+                        key={source.id}
+                        className="flex items-center gap-2 px-3 py-1.5 text-xs"
+                      >
+                        <span
+                          className={cn(
+                            "w-1.5 h-1.5 rounded-full shrink-0",
+                            source.enabled ? "bg-green-500" : "bg-gray-400"
+                          )}
+                        />
+                        <span className="text-sidebar-foreground/80 truncate">{source.name}</span>
+                        <span className="text-muted-foreground shrink-0">{source.type}</span>
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => setAddSourcePackId(pack.id)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-primary font-sans hover:text-primary/80 transition-colors"
+                    >
                       <Plus className="w-3 h-3" />
                       添加数据源
                     </button>
@@ -249,7 +412,8 @@ function EngineConfig() {
                 </label>
                 <input
                   type="text"
-                  defaultValue={selectedPack.name}
+                  value={editingPackName}
+                  onChange={(e) => setEditingPackName(e.target.value)}
                   className="w-full text-sm font-sans bg-card border border-border rounded-lg px-3 py-2 text-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow"
                 />
               </div>
@@ -260,7 +424,8 @@ function EngineConfig() {
                 </label>
                 <textarea
                   rows={3}
-                  defaultValue={selectedPack.description || ""}
+                  value={editingPackDescription}
+                  onChange={(e) => setEditingPackDescription(e.target.value)}
                   placeholder="可选的 Pack 描述..."
                   className="w-full text-sm font-sans bg-card border border-border rounded-lg px-3 py-2 text-foreground outline-none focus:ring-2 focus:ring-ring resize-none transition-shadow"
                 />
@@ -286,14 +451,46 @@ function EngineConfig() {
                 </div>
               </div>
 
-              {/* 保存按钮 */}
+              {/* 保存/删除按钮 */}
               <div className="flex gap-3 pt-2">
-                <button className="px-5 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-sans font-medium hover:bg-primary/90 transition-colors">
+                <button
+                  onClick={savePackConfig}
+                  disabled={savingPack}
+                  className="px-5 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-sans font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+                >
                   保存配置
                 </button>
-                <button className="px-5 py-2 rounded-lg border border-border text-sm font-sans text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
+                <button
+                  onClick={resetPackConfig}
+                  className="px-5 py-2 rounded-lg border border-border text-sm font-sans text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                >
                   重置
                 </button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <button className="ml-auto px-4 py-2 rounded-lg border border-destructive/30 text-sm font-sans text-destructive hover:bg-destructive/10 transition-colors flex items-center gap-2">
+                      <Trash2 className="w-4 h-4" />
+                      删除
+                    </button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>删除 Pack</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        确定要删除 "{selectedPack.name}" 吗？此操作将同时删除该 Pack 下的所有数据源，且无法撤销。
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>取消</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => deletePack(selectedPack.id)}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        删除
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </div>
           </div>
@@ -306,27 +503,417 @@ function EngineConfig() {
           </div>
         )}
       </div>
+
+      {/* 创建 Pack 对话框 */}
+      <AlertDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>新建 Pack</AlertDialogTitle>
+            <AlertDialogDescription>
+              输入 Pack 名称，系统将自动生成 ID。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <input
+            type="text"
+            value={newPackName}
+            onChange={(e) => setNewPackName(e.target.value)}
+            placeholder="例如：技术博客、新闻资讯"
+            className="w-full text-sm font-sans bg-card border border-border rounded-lg px-3 py-2 text-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow mt-2"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault()
+                createPack()
+              }
+            }}
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction onClick={createPack}>创建</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 添加数据源对话框 */}
+      <AlertDialog open={!!addSourcePackId} onOpenChange={() => setAddSourcePackId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>添加数据源</AlertDialogTitle>
+            <AlertDialogDescription>
+              为 {packs.find(p => p.id === addSourcePackId)?.name} 添加新的数据源。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="block text-xs font-sans text-muted-foreground mb-1">
+                数据源类型
+              </label>
+              <select
+                value={newSourceType}
+                onChange={(e) => setNewSourceType(e.target.value)}
+                className="w-full text-sm font-sans bg-card border border-border rounded-lg px-3 py-2 text-foreground outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="rss">RSS Feed</option>
+                <option value="twitter">Twitter/X</option>
+                <option value="github">GitHub</option>
+                <option value="substack">Substack</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-sans text-muted-foreground mb-1">
+                URL / 链接
+              </label>
+              <input
+                type="text"
+                value={newSourceUrl}
+                onChange={(e) => setNewSourceUrl(e.target.value)}
+                placeholder="https://example.com/feed.xml"
+                className="w-full text-sm font-sans bg-card border border-border rounded-lg px-3 py-2 text-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault()
+                    createSource()
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setAddSourcePackId(null); setNewSourceUrl("") }}>取消</AlertDialogCancel>
+            <AlertDialogAction onClick={createSource} disabled={creatingSource || !newSourceUrl.trim()}>
+              {creatingSource ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              添加
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
 
-function ParamsConfig() {
-  return (
-    <div className="h-full overflow-y-auto p-8">
-      <div className="max-w-2xl">
-        <h2 className="text-lg font-sans font-semibold mb-6">参数配置</h2>
-        <p className="text-muted-foreground">参数配置功能开发中...</p>
+function AiConfig() {
+  const [settings, setSettings] = useState<Settings | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [showApiKey, setShowApiKey] = useState(false)
+  const [providerConfig, setProviderConfig] = useState<ProviderConfig>({
+    authToken: "",
+    model: "",
+    baseUrl: "",
+  })
+
+  useEffect(() => {
+    async function loadSettings() {
+      try {
+        const response = await fetch("/api/settings")
+        const data = await response.json()
+        if (data.success) {
+          setSettings(data.data)
+          // 解析当前 provider 的配置
+          const config = parseProviderConfig(data.data, data.data.defaultProvider)
+          setProviderConfig(config)
+        }
+      } catch (error) {
+        console.error("Failed to load settings:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadSettings()
+  }, [])
+
+  // 解析 provider 配置 JSON
+  const parseProviderConfig = (settings: Settings | null, provider: string | null): ProviderConfig => {
+    const defaultConfig: ProviderConfig = { authToken: "", model: "", baseUrl: "" }
+    if (!settings || !provider) return defaultConfig
+
+    const configField = getConfigField(provider)
+    const configStr = settings[configField]
+
+    if (!configStr || typeof configStr !== "string") return defaultConfig
+
+    try {
+      const parsed = JSON.parse(configStr)
+      return {
+        authToken: parsed.authToken || "",
+        model: parsed.model || "",
+        baseUrl: parsed.baseUrl || "",
+      }
+    } catch {
+      return defaultConfig
+    }
+  }
+
+  // 获取配置字段名
+  const getConfigField = (provider: string): keyof Settings => {
+    switch (provider) {
+      case "anthropic": return "anthropicConfig"
+      case "openai": return "openaiConfig"
+      case "gemini": return "geminiConfig"
+      default: return "anthropicConfig"
+    }
+  }
+
+  // 更新 provider 配置
+  const updateProviderConfig = (key: keyof ProviderConfig, value: string) => {
+    setProviderConfig((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const handleSave = async () => {
+    if (!settings) return
+    setSaving(true)
+
+    // 将 providerConfig 序列化回 JSON
+    const configField = getConfigField(settings.defaultProvider || "anthropic")
+    const updatedSettings = {
+      ...settings,
+      [configField]: JSON.stringify(providerConfig),
+    }
+
+    try {
+      const response = await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedSettings),
+      })
+      if (response.ok) {
+        setSaved(true)
+        setTimeout(() => setSaved(false), 2000)
+      }
+    } catch (error) {
+      console.error("Failed to save settings:", error)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const updateSetting = <K extends keyof Settings>(key: K, value: Settings[K]) => {
+    setSettings((prev) => {
+      if (!prev) return prev
+      const newSettings = { ...prev, [key]: value }
+
+      // 如果切换了 provider，需要重新加载配置
+      if (key === "defaultProvider") {
+        const config = parseProviderConfig(newSettings, value as string)
+        setProviderConfig(config)
+      }
+
+      return newSettings
+    })
+  }
+
+  // Provider 默认配置
+  const getProviderDefaults = (provider: string | null) => {
+    switch (provider) {
+      case "anthropic":
+        return { model: "claude-sonnet-4-6", baseUrl: "https://api.anthropic.com" }
+      case "openai":
+        return { model: "gpt-4o", baseUrl: "https://api.openai.com/v1" }
+      case "gemini":
+        return { model: "gemini-1.5-pro", baseUrl: "https://generativelanguage.googleapis.com" }
+      default:
+        return { model: "", baseUrl: "" }
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Loader2 className="w-5 h-5 animate-spin" />
+          <span className="text-sm font-sans">加载中...</span>
+        </div>
       </div>
-    </div>
-  )
-}
+    )
+  }
 
-function AuthConfig() {
   return (
     <div className="h-full overflow-y-auto p-8">
       <div className="max-w-2xl">
-        <h2 className="text-lg font-sans font-semibold mb-6">认证配置</h2>
-        <p className="text-muted-foreground">认证配置功能开发中...</p>
+        <h2 className="text-lg font-sans font-semibold mb-6">AI 配置</h2>
+
+        <div className="space-y-6">
+          {/* Provider 选择 */}
+          <div>
+            <label className="block text-xs font-sans font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+              默认 Provider
+            </label>
+            <p className="text-xs text-muted-foreground mb-2">选择默认使用的 AI 服务提供商</p>
+            <select
+              value={settings?.defaultProvider || ""}
+              onChange={(e) => updateSetting("defaultProvider", e.target.value)}
+              className="w-full text-sm font-sans bg-card border border-border rounded-lg px-3 py-2 text-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow"
+            >
+              <option value="">选择 Provider</option>
+              <option value="anthropic">Anthropic</option>
+              <option value="openai">OpenAI</option>
+              <option value="gemini">Google Gemini</option>
+            </select>
+          </div>
+
+          {/* API 配置 - 拆分为 3 个独立字段 */}
+          {settings?.defaultProvider && (
+            <div className="space-y-4 p-4 rounded-lg border border-border bg-card">
+              <h3 className="text-sm font-sans font-semibold">API 配置</h3>
+
+              {/* API Key */}
+              <div>
+                <label className="block text-xs font-sans font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                  API Key
+                </label>
+                <p className="text-xs text-muted-foreground mb-2">API Key 仅存储在本地，不会上传到云端</p>
+                <div className="relative">
+                  <input
+                    type={showApiKey ? "text" : "password"}
+                    placeholder="输入 API Key"
+                    value={providerConfig.authToken}
+                    onChange={(e) => updateProviderConfig("authToken", e.target.value)}
+                    className="w-full text-sm font-sans bg-background border border-border rounded-lg px-3 py-2 pr-10 text-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowApiKey(!showApiKey)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Model */}
+              <div>
+                <label className="block text-xs font-sans font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                  模型
+                </label>
+                <p className="text-xs text-muted-foreground mb-2">指定使用的模型名称</p>
+                <input
+                  type="text"
+                  placeholder={getProviderDefaults(settings.defaultProvider).model}
+                  value={providerConfig.model}
+                  onChange={(e) => updateProviderConfig("model", e.target.value)}
+                  className="w-full text-sm font-sans bg-background border border-border rounded-lg px-3 py-2 text-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow"
+                />
+              </div>
+
+              {/* Base URL */}
+              <div>
+                <label className="block text-xs font-sans font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                  Base URL
+                </label>
+                <p className="text-xs text-muted-foreground mb-2">API 端点地址，留空使用默认值</p>
+                <input
+                  type="text"
+                  placeholder={getProviderDefaults(settings.defaultProvider).baseUrl}
+                  value={providerConfig.baseUrl}
+                  onChange={(e) => updateProviderConfig("baseUrl", e.target.value)}
+                  className="w-full text-sm font-sans bg-background border border-border rounded-lg px-3 py-2 text-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* 批次配置 */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-sans font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                批次大小
+              </label>
+              <p className="text-xs text-muted-foreground mb-2">每次请求处理的最大条目数</p>
+              <input
+                type="number"
+                value={settings?.defaultBatchSize || 10}
+                onChange={(e) => updateSetting("defaultBatchSize", parseInt(e.target.value) || 10)}
+                className="w-full text-sm font-sans bg-card border border-border rounded-lg px-3 py-2 text-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-sans font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                并发数
+              </label>
+              <p className="text-xs text-muted-foreground mb-2">同时进行的请求数量</p>
+              <input
+                type="number"
+                value={settings?.defaultConcurrency || 3}
+                onChange={(e) => updateSetting("defaultConcurrency", parseInt(e.target.value) || 3)}
+                className="w-full text-sm font-sans bg-card border border-border rounded-lg px-3 py-2 text-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow"
+              />
+            </div>
+          </div>
+
+          {/* 重试策略 */}
+          <div className="p-4 rounded-lg border border-border bg-card">
+            <h3 className="text-sm font-sans font-semibold mb-4">重试策略</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-sans text-muted-foreground mb-1">
+                  最大重试次数
+                </label>
+                <p className="text-xs text-muted-foreground mb-1">请求失败后的最大重试次数</p>
+                <input
+                  type="number"
+                  value={settings?.maxRetries || 3}
+                  onChange={(e) => updateSetting("maxRetries", parseInt(e.target.value) || 3)}
+                  className="w-full text-sm font-sans bg-background border border-border rounded-lg px-3 py-2 text-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-sans text-muted-foreground mb-1">
+                  初始延迟 (ms)
+                </label>
+                <p className="text-xs text-muted-foreground mb-1">首次重试前的等待时间</p>
+                <input
+                  type="number"
+                  value={settings?.initialDelay || 1000}
+                  onChange={(e) => updateSetting("initialDelay", parseInt(e.target.value) || 1000)}
+                  className="w-full text-sm font-sans bg-background border border-border rounded-lg px-3 py-2 text-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-sans text-muted-foreground mb-1">
+                  最大延迟 (ms)
+                </label>
+                <p className="text-xs text-muted-foreground mb-1">重试间隔的最大等待时间</p>
+                <input
+                  type="number"
+                  value={settings?.maxDelay || 30000}
+                  onChange={(e) => updateSetting("maxDelay", parseInt(e.target.value) || 30000)}
+                  className="w-full text-sm font-sans bg-background border border-border rounded-lg px-3 py-2 text-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-sans text-muted-foreground mb-1">
+                  退避系数
+                </label>
+                <p className="text-xs text-muted-foreground mb-1">每次重试延迟的增长倍数</p>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={settings?.backoffFactor || 2}
+                  onChange={(e) => updateSetting("backoffFactor", parseFloat(e.target.value) || 2)}
+                  className="w-full text-sm font-sans bg-background border border-border rounded-lg px-3 py-2 text-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 保存按钮 */}
+          <div className="flex items-center gap-3 pt-2">
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="px-5 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-sans font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              保存配置
+            </button>
+            {saved && (
+              <span className="text-sm text-green-600 flex items-center gap-1">
+                <Check className="w-4 h-4" />
+                已保存
+              </span>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )

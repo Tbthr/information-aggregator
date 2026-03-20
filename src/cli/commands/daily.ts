@@ -45,7 +45,6 @@ export async function dailyGenerateCommand(dateStr?: string): Promise<void> {
   } else {
     console.log(`Daily report generated for ${date}:`);
     console.log(`  Items: ${result.itemCount}`);
-    console.log(`  Spotlight: ${result.spotlightCount}`);
   }
 
   await prisma.$disconnect();

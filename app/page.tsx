@@ -23,7 +23,8 @@ export default function HomePage() {
         router.push("/config")
         break
       default:
-        router.push("/")
+        // For custom views, navigate to /view/[id]
+        router.push(`/view/${navId}`)
     }
   }
 

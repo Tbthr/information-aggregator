@@ -1,7 +1,6 @@
 export interface DailyReportConfig {
   packs: "all" | string[]
   maxItems: number
-  maxSpotlight: number
   sort: "ranked" | "recent"
   enableOverview: boolean
   newsFlashes: {

@@ -4,20 +4,19 @@ import { Prisma } from "@prisma/client"
 
 import { prisma } from "@/lib/prisma"
 import { loadAllPacksFromDb } from "../../../src/config/load-pack-prisma"
-import { generateSourceId } from "../../../src/config/source-id"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-// Zod schema for Source creation
+// Zod schema for Source creation (id is optional - Prisma will generate CUID)
 const sourceCreateSchema = z.object({
-  id: z.string().min(1),
+  id: z.string().min(1).optional(),
   type: z.string().min(1),
   name: z.string().min(1),
-  url: z.string().nullable().optional(),
+  url: z.string().min(1),
   description: z.string().nullable().optional(),
   enabled: z.boolean().optional(),
-  packId: z.string().nullable().optional(),
+  packId: z.string().min(1),
 })
 
 export async function GET() {
@@ -30,13 +29,19 @@ export async function GET() {
       }),
     ])
 
-    const persistedById = new Map(persistedSources.map((source) => [source.id, source]))
+    // Build lookup map by (packId, url) - the unique constraint
+    const persistedByKey = new Map(
+      persistedSources
+        .filter((s) => s.packId && s.url)
+        .map((source) => [`${source.packId}:${source.url}`, source])
+    )
+
     const configSources = packs.flatMap((pack) =>
       pack.sources.map((source) => {
-        const id = generateSourceId(source.url)
-        const persisted = persistedById.get(id)
+        const key = `${pack.id}:${source.url}`
+        const persisted = persistedByKey.get(key)
         return {
-          id,
+          id: persisted?.id ?? null, // Use persisted ID or null (will be generated on creation)
           type: persisted?.type ?? source.type,
           name: persisted?.name ?? source.description ?? source.url,
           url: persisted?.url ?? source.url,
@@ -47,9 +52,12 @@ export async function GET() {
       })
     )
 
-    const seen = new Set(configSources.map((source) => source.id))
-    const fallbackPersisted = persistedSources
-      .filter((source) => !seen.has(source.id))
+    // Track (packId, url) combinations from config sources
+    const seenKeys = new Set(configSources.map((s) => `${s.packId}:${s.url}`))
+
+    // Sources that exist in DB but not in config
+    const orphanSources = persistedSources
+      .filter((source) => source.packId && source.url && !seenKeys.has(`${source.packId}:${source.url}`))
       .map((source) => ({
         id: source.id,
         type: source.type,
@@ -60,10 +68,12 @@ export async function GET() {
         packId: source.packId,
       }))
 
+    const allSources = [...configSources, ...orphanSources]
+
     return NextResponse.json({
       success: true,
       data: {
-        sources: [...configSources, ...fallbackPersisted],
+        sources: allSources,
       },
       meta: {
         timing: {
@@ -117,7 +127,7 @@ export async function POST(request: Request) {
 
     const source = await prisma.source.create({
       data: {
-        id: parsed.data.id,
+        ...(parsed.data.id && { id: parsed.data.id }),
         type: parsed.data.type,
         name: parsed.data.name,
         url: parsed.data.url,
@@ -151,7 +161,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(
-      { success: false, error: "Failed to create source" },
+      { success: false, error: "Failed to create source", details: String(error) },
       { status: 500 }
     )
   }

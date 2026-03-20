@@ -4,6 +4,8 @@ import { Prisma } from "@prisma/client"
 
 import { prisma } from "@/lib/prisma"
 
+type SourceUpdateInput = Prisma.SourceUpdateInput
+
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
@@ -11,7 +13,7 @@ export const dynamic = "force-dynamic"
 const sourceUpdateSchema = z.object({
   type: z.string().min(1).optional(),
   name: z.string().min(1).optional(),
-  url: z.string().nullable().optional(),
+  url: z.string().min(1).optional(),
   description: z.string().nullable().optional(),
   enabled: z.boolean().optional(),
   packId: z.string().nullable().optional(),
@@ -55,9 +57,25 @@ export async function PATCH(
       }
     }
 
+    // Build update data, only including defined fields
+    const updateData: Prisma.SourceUpdateInput = {}
+
+    if (parsed.data.type !== undefined) updateData.type = parsed.data.type
+    if (parsed.data.name !== undefined) updateData.name = parsed.data.name
+    if (parsed.data.url !== undefined) updateData.url = parsed.data.url
+    if (parsed.data.description !== undefined) {
+      updateData.description = parsed.data.description === null ? { set: null } : parsed.data.description
+    }
+    if (parsed.data.enabled !== undefined) updateData.enabled = parsed.data.enabled
+    if (parsed.data.packId !== undefined) {
+      updateData.pack = parsed.data.packId
+        ? { connect: { id: parsed.data.packId } }
+        : { disconnect: true }
+    }
+
     const source = await prisma.source.update({
       where: { id },
-      data: parsed.data,
+      data: updateData,
     })
 
     return NextResponse.json({

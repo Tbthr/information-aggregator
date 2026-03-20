@@ -94,9 +94,8 @@ export interface FetchItemsResult {
 
 // Daily API response type
 interface DailyData {
-  overview: DailyOverview
-  spotlightArticles: Article[]
-  recommendedArticles: Article[]
+  overview: DailyOverview | null
+  articles: Article[]
   newsFlashes: NewsFlash[]
 }
 
@@ -119,7 +118,7 @@ interface CustomViewsData {
     name: string
     icon: string
     description: string
-    itemCount: number
+    packs: Array<{ packId: string; pack?: { id: string; name: string } }>
   }>
 }
 
@@ -240,7 +239,7 @@ export async function fetchBookmarks(): Promise<Article[]> {
  * Add a bookmark
  */
 export async function addBookmark(id: string): Promise<{ success: boolean; bookmarkedAt?: string }> {
-  const response = await fetchApi<{ bookmarkedAt: string }>(`/api/bookmarks/${id}`, {
+  const response = await fetchApi<{ bookmarkedAt: string }>(`/api/bookmarks/${encodeURIComponent(id)}`, {
     method: "POST",
   })
 
@@ -254,7 +253,7 @@ export async function addBookmark(id: string): Promise<{ success: boolean; bookm
  * Remove a bookmark
  */
 export async function removeBookmark(id: string): Promise<{ success: boolean }> {
-  const response = await fetchApi<unknown>(`/api/bookmarks/${id}`, {
+  const response = await fetchApi<unknown>(`/api/bookmarks/${encodeURIComponent(id)}`, {
     method: "DELETE",
   })
 
@@ -306,7 +305,7 @@ export async function fetchNewsFlashes(): Promise<Array<NewsFlash & { itemId?: s
  * Fetch custom views (list only, without articles)
  */
 export async function fetchCustomViews(): Promise<CustomViewsData["views"]> {
-  const response = await fetchApi<CustomViewsData>("/api/views")
+  const response = await fetchApi<CustomViewsData>("/api/custom-views")
 
   if (!response.success || !response.data) {
     return []
@@ -317,17 +316,40 @@ export async function fetchCustomViews(): Promise<CustomViewsData["views"]> {
 
 /**
  * Fetch items for a specific custom view
- * This uses the items API with appropriate filters
- * Custom views are now associated with packs instead of individual items
+ * Uses the view's associated packs to filter items
  */
 export async function fetchCustomViewItems(
   viewId: string,
   params: Omit<FetchItemsParams, "packs"> = {}
 ): Promise<FetchItemsResult> {
-  // Custom views might filter by source types or other criteria
-  // For now, we pass through to fetchItems with the view context
+  // 1. 获取视图关联的 pack IDs
+  const viewsResponse = await fetchApi<CustomViewsData>("/api/custom-views")
+
+  const emptyResult: FetchItemsResult = {
+    items: [],
+    sources: [],
+    pagination: { total: 0, page: 1, pageSize: 20, totalPages: 0 },
+  }
+
+  if (!viewsResponse.success || !viewsResponse.data) {
+    return emptyResult
+  }
+
+  const view = viewsResponse.data.views.find((v) => v.id === viewId)
+  if (!view) {
+    return emptyResult
+  }
+
+  const packIds = view.packs.map((p) => p.packId)
+
+  // 2. 如果没有关联的 packs，返回空结果
+  if (packIds.length === 0) {
+    return emptyResult
+  }
+
+  // 3. 使用 pack IDs 获取文章
   return fetchItems({
     ...params,
-    // In the future, this could filter by view-specific criteria
+    packs: packIds.join(","),
   })
 }

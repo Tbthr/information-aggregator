@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { fetchBookmarks } from "@/lib/api-client"
+import { fetchBookmarks, addBookmark, removeBookmark } from "@/lib/api-client"
 
 export function useSaved() {
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set())
@@ -50,14 +50,33 @@ export function useSaved() {
   }, [])
 
   const toggleSave = useCallback(
-    (id: string) => {
-      if (savedIds.has(id)) {
-        removeSaved(id)
-      } else {
-        addSaved(id)
+    async (id: string) => {
+      const currentlySaved = savedIds.has(id)
+      try {
+        if (currentlySaved) {
+          const result = await removeBookmark(id)
+          if (result.success) {
+            setSavedIds((prev) => {
+              const next = new Set(prev)
+              next.delete(id)
+              return next
+            })
+          }
+        } else {
+          const result = await addBookmark(id)
+          if (result.success) {
+            setSavedIds((prev) => {
+              const next = new Set(prev)
+              next.add(id)
+              return next
+            })
+          }
+        }
+      } catch (error) {
+        console.error("Failed to toggle bookmark:", error)
       }
     },
-    [savedIds, addSaved, removeSaved]
+    [savedIds]
   )
 
   const isSaved = useCallback((id: string) => savedIds.has(id), [savedIds])

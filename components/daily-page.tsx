@@ -144,8 +144,7 @@ export function DailyPage({ isSaved, onToggleSave, onOpenArticle }: DailyPagePro
 
         if (dailyData) {
           setOverview(dailyData.overview)
-          // Merge spotlight + recommended articles
-          setArticles([...dailyData.spotlightArticles, ...dailyData.recommendedArticles])
+          setArticles(dailyData.articles)
         }
 
         setNewsFlashes(flashesData)

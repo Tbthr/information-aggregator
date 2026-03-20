@@ -52,8 +52,7 @@ export async function GET() {
         success: true,
         data: {
           overview: null,
-          spotlightArticles: items.slice(0, 2).map(toArticle),
-          recommendedArticles: items.slice(2).map(toArticle),
+          articles: items.map(toArticle),
           newsFlashes: [],
         },
         meta: {
@@ -66,18 +65,12 @@ export async function GET() {
     }
 
     // 查询关联的 items
-    const allItemIds = [...overview.spotlightIds, ...overview.itemIds]
     const items = await prisma.item.findMany({
-      where: { id: { in: allItemIds } },
+      where: { id: { in: overview.itemIds } },
     })
 
     const itemMap = new Map(items.map((i) => [i.id, i]))
-    const spotlightArticles = overview.spotlightIds
-      .map((id) => itemMap.get(id))
-      .filter((item): item is NonNullable<typeof item> => item !== undefined)
-      .map(toArticle)
-    const recommendedArticles = overview.itemIds
-      .filter((id) => !overview.spotlightIds.includes(id))
+    const articles = overview.itemIds
       .map((id) => itemMap.get(id))
       .filter((item): item is NonNullable<typeof item> => item !== undefined)
       .map(toArticle)
@@ -96,8 +89,7 @@ export async function GET() {
           date: overview.date,
           summary: overview.summary,
         },
-        spotlightArticles,
-        recommendedArticles,
+        articles,
         newsFlashes: newsFlashes.map((f) => ({
           id: f.id,
           time: f.time,

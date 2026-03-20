@@ -16,18 +16,15 @@ const prisma = new PrismaClient();
 
 export interface DailyGenerateConfig {
   maxItems: number;
-  maxSpotlight: number;
 }
 
 const DEFAULT_CONFIG: DailyGenerateConfig = {
   maxItems: 20,
-  maxSpotlight: 3,
 };
 
 export interface DailyGenerateResult {
   date: string;
   itemCount: number;
-  spotlightCount: number;
 }
 
 /**
@@ -39,9 +36,9 @@ export async function generateDailyReport(
   config: Partial<DailyGenerateConfig> = {},
 ): Promise<DailyGenerateResult> {
   const mergedConfig = { ...DEFAULT_CONFIG, ...config };
-  const { maxItems, maxSpotlight } = mergedConfig;
+  const { maxItems } = mergedConfig;
 
-  logger.info("Generating daily report", { date, maxItems, maxSpotlight });
+  logger.info("Generating daily report", { date, maxItems });
 
   // 1. 查询当日 Item（按 publishedAt 过滤）
   const startOfDay = new Date(`${date}T00:00:00.000Z`);
@@ -66,12 +63,9 @@ export async function generateDailyReport(
 
   if (items.length === 0) {
     logger.warn("No items found for date", { date });
-    return { date, itemCount: 0, spotlightCount: 0 };
+    return { date, itemCount: 0 };
   }
 
-  // 2. 选择 spotlight
-  const spotlightItems = items.slice(0, maxSpotlight);
-  const spotlightIds = spotlightItems.map((i) => i.id);
   const itemIds = items.map((i) => i.id);
 
   // 3. AI 生成日报概览
@@ -105,26 +99,22 @@ export async function generateDailyReport(
       dayLabel,
       summary,
       itemIds,
-      spotlightIds,
     },
     update: {
       dayLabel,
       summary,
       itemIds,
-      spotlightIds,
     },
   });
 
   logger.info("Daily report generated", {
     date,
     itemCount: items.length,
-    spotlightCount: spotlightItems.length,
   });
 
   return {
     date,
     itemCount: items.length,
-    spotlightCount: spotlightItems.length,
   };
 }
 

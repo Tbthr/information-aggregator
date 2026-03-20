@@ -2,7 +2,6 @@
 daily:
   packs: all
   maxItems: 20
-  maxSpotlight: 3
   sort: ranked
   enableOverview: true
   newsFlashes:

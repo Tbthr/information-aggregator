@@ -43,10 +43,10 @@ model Item {
 }
 
 model Source {
-  id          String   @id
+  id          String   @id @default(cuid())
   type        String
   name        String
-  url         String?
+  url         String
   description String?
   enabled     Boolean  @default(true)
   configJson  String?  @db.Text
@@ -58,6 +58,9 @@ model Source {
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@unique([packId, url])
+  @@index([packId])
 }
 
 model SourceHealth {
@@ -114,7 +117,6 @@ model DailyOverview {
   summary      String   @db.Text
 
   itemIds      String[]
-  spotlightIds String[]
 
   createdAt    DateTime @default(now())
 }
@@ -148,7 +150,7 @@ model TimelineEvent {
 }
 
 model CustomView {
-  id          String   @id
+  id          String   @id @default(cuid())
   name        String
   icon        String
   description String?
@@ -212,7 +214,6 @@ model DailyReportConfig {
 
   packs               String   @default("all")
   maxItems            Int      @default(20)
-  maxSpotlight        Int      @default(3)
   sort                String   @default("ranked")
 
   enableOverview      Boolean  @default(true)

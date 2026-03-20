@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic"
 
 // Zod schema for CustomView creation
 const customViewCreateSchema = z.object({
-  id: z.string().min(1),
+  id: z.string().min(1).optional(), // Optional - Prisma will generate CUID if not provided
   name: z.string().min(1),
   icon: z.string().min(1),
   description: z.string().nullable().optional(),
@@ -65,7 +65,7 @@ export async function POST(request: Request) {
   try {
     const view = await prisma.customView.create({
       data: {
-        id: parsed.data.id,
+        ...(parsed.data.id && { id: parsed.data.id }),
         name: parsed.data.name,
         icon: parsed.data.icon,
         description: parsed.data.description,

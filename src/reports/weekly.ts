@@ -91,7 +91,14 @@ export async function generateWeeklyReport(
   logger.info("Generating weekly report", { weekNumber, start, end });
 
   // 1. 查询本周 DailyOverview（或直接查 Item）
-  let dailyOverviews = await prisma.dailyOverview.findMany({
+  let dailyOverviews: Array<{
+    id: string;
+    createdAt: Date;
+    date: string;
+    dayLabel: string;
+    summary: string;
+    itemIds: string[];
+  }> = await prisma.dailyOverview.findMany({
     where: {
       date: {
         gte: formatDate(start),
@@ -139,7 +146,6 @@ export async function generateWeeklyReport(
       dayLabel: formatDayLabel(new Date(d)),
       summary: "",
       itemIds: items.slice(0, maxItemsPerDay).map((i) => i.id),
-      spotlightIds: items.slice(0, 2).map((i) => i.id),
     }));
   }
 
