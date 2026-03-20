@@ -1,0 +1,12 @@
+pack:
+  id: github
+  name: GitHub 趋势
+  description: |
+    关注 GitHub 上的热门开源项目和趋势仓库。
+    优先保留：创新项目、实用工具、值得关注的新技术
+    可以过滤：重复项目、低质量项目、纯营销项目
+
+sources:
+  - type: github-trending
+    url: https://github.com/trending
+    description: GitHub Trending 页面

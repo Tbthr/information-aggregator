@@ -1,7 +1,7 @@
 import { readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 
-import { loadAllPacks } from "../config/load-pack";
+import { loadAllPacksFromDb } from "../config/load-pack-prisma";
 import { checkAuthConfig, showAuthStatus } from "./auth-commands";
 import { getCliVersion, getHelpText, parseCliArgs } from "./index";
 import { archiveCollectCommand, archiveStatsCommand } from "./commands/archive";
@@ -18,13 +18,9 @@ async function main(): Promise<void> {
   }
 
   if (parsed.command === "sources list") {
-    const packFiles = (await readdir(resolve(process.cwd(), "config/packs")))
-      .filter((fileName) => fileName.endsWith(".yaml"))
-      .sort();
+    const packs = await loadAllPacksFromDb();
 
-    const packs = await loadAllPacks("config/packs");
-
-    console.log(`Found ${packs.length} packs with ${packFiles.length} files:`);
+    console.log(`Found ${packs.length} packs in database:`);
     for (const pack of packs) {
       console.log(`\n[${pack.id}] ${pack.name}`);
       if (pack.description) {
@@ -36,8 +32,8 @@ async function main(): Promise<void> {
   }
 
   if (parsed.command === "config validate") {
-    const packs = await loadAllPacks("config/packs");
-    console.log(`Config validation passed: ${packs.length} packs loaded`);
+    const packs = await loadAllPacksFromDb();
+    console.log(`Config validation passed: ${packs.length} packs loaded from database`);
     return;
   }
 

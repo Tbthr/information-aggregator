@@ -1,7 +1,7 @@
 import { describe, expect, test, beforeEach, afterEach } from "bun:test";
 import { readdir, writeFile, mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
-import { validateInlineSource, validateSourcePack, loadAllPacks, dedupePacksBySourceUrl } from "./load-pack";
+import { validateInlineSource, validateSourcePack, loadAllPacksFromYaml, dedupePacksBySourceUrl } from "./load-pack";
 import type { InlineSource, SourcePack } from "../types/index";
 import type { PackPolicy, SourcePolicy } from "../types/policy";
 
@@ -106,7 +106,7 @@ describe("validateSourcePack", () => {
   });
 });
 
-describe("loadAllPacks", () => {
+describe("loadAllPacksFromYaml", () => {
   const tempDir = join(process.cwd(), "temp-test-packs");
 
   beforeEach(async () => {
@@ -127,7 +127,7 @@ describe("loadAllPacks", () => {
       "pack:\n  id: pack2\n  name: Pack 2\nsources:\n  - type: rss\n    url: https://example.com/2.xml"
     );
 
-    const result = await loadAllPacks(tempDir);
+    const result = await loadAllPacksFromYaml(tempDir);
     expect(result).toHaveLength(2);
     expect(result.map((p) => p.id).sort()).toEqual(["pack1", "pack2"]);
   });
@@ -139,12 +139,12 @@ describe("loadAllPacks", () => {
     );
     await writeFile(join(tempDir, "readme.txt"), "not a pack");
 
-    const result = await loadAllPacks(tempDir);
+    const result = await loadAllPacksFromYaml(tempDir);
     expect(result).toHaveLength(1);
   });
 
   test("returns empty array for empty directory", async () => {
-    const result = await loadAllPacks(tempDir);
+    const result = await loadAllPacksFromYaml(tempDir);
     expect(result).toEqual([]);
   });
 });

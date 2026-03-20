@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import {
   Sun,
@@ -9,19 +10,35 @@ import {
   Plus,
   Bookmark,
   Settings,
-  ChevronRight,
   Rss,
   PanelLeftClose,
   PanelLeft,
+  LucideIcon,
 } from "lucide-react"
 
-export type NavId =
-  | "daily"
-  | "weekly"
-  | "view-morning"
-  | "view-fish"
-  | "saved"
-  | "config"
+export type NavId = string
+
+interface CustomView {
+  id: string
+  name: string
+  icon: string
+}
+
+// Icon mapping for dynamic custom views
+const ICON_MAP: Record<string, LucideIcon> = {
+  coffee: Coffee,
+  zap: Zap,
+  sun: Sun,
+  book: BookOpen,
+  bookmark: Bookmark,
+  settings: Settings,
+  rss: Rss,
+}
+
+function getIconComponent(iconName: string) {
+  const Icon = ICON_MAP[iconName] || Zap
+  return <Icon className="w-4 h-4 shrink-0" />
+}
 
 interface SidebarProps {
   activeNav: NavId
@@ -36,12 +53,28 @@ const EDITIONS = [
   { id: "weekly" as NavId, label: "周末特刊", sublabel: "The Weekly", icon: BookOpen },
 ]
 
-const MY_VIEWS = [
-  { id: "view-morning" as NavId, label: "晨间必读", icon: Coffee },
-  { id: "view-fish" as NavId, label: "摸鱼快看", icon: Zap },
-]
-
 export function Sidebar({ activeNav, onNav, savedCount, collapsed, onToggleCollapse }: SidebarProps) {
+  const [customViews, setCustomViews] = useState<CustomView[]>([])
+  const [viewsLoading, setViewsLoading] = useState(true)
+
+  useEffect(() => {
+    async function loadCustomViews() {
+      try {
+        const response = await fetch("/api/custom-views")
+        const data = await response.json()
+        if (data.success) {
+          setCustomViews(data.data.views)
+        }
+      } catch (error) {
+        console.error("Failed to load custom views:", error)
+      } finally {
+        setViewsLoading(false)
+      }
+    }
+
+    loadCustomViews()
+  }, [])
+
   return (
     <nav
       className={cn(
@@ -123,16 +156,22 @@ export function Sidebar({ activeNav, onNav, savedCount, collapsed, onToggleColla
               </button>
             </div>
           )}
-          {MY_VIEWS.map(({ id, label, icon: Icon }) => (
-            <NavButton
-              key={id}
-              active={activeNav === id}
-              collapsed={collapsed}
-              onClick={() => onNav(id)}
-              icon={<Icon className="w-4 h-4 shrink-0" />}
-              label={label}
-            />
-          ))}
+          {viewsLoading ? (
+            !collapsed && (
+              <p className="px-4 py-2 text-xs text-muted-foreground">Loading...</p>
+            )
+          ) : (
+            customViews.map((view) => (
+              <NavButton
+                key={view.id}
+                active={activeNav === view.id}
+                collapsed={collapsed}
+                onClick={() => onNav(view.id)}
+                icon={getIconComponent(view.icon)}
+                label={view.name}
+              />
+            ))
+          )}
         </section>
       </div>
 

@@ -6,7 +6,7 @@ import { collectRssSource } from "../adapters/rss";
 import { collectXBirdSource } from "../adapters/x-bird";
 import { loadAuthByRef } from "../config/load-auth";
 import { registerAdapterFamilies, type AdapterFamily } from "../adapters/registry";
-import { loadAllPacks } from "../config/load-pack";
+import { loadAllPacksFromDb } from "../config/load-pack-prisma";
 import { buildClusters } from "../pipeline/cluster";
 import { collectSources, type CollectDependencies } from "../pipeline/collect";
 import { dedupeExact } from "../pipeline/dedupe-exact";
@@ -154,7 +154,7 @@ export async function runQuery(args: QueryArgs, dependencies: RunQueryDependenci
   const buildClustersImpl = dependencies.buildClusters ?? buildClusters;
 
   const packs = await Promise.resolve(
-    dependencies.loadPacks?.() ?? loadAllPacks("config/packs")
+    dependencies.loadPacks?.() ?? loadAllPacksFromDb()
   );
 
   // 加载 auth 配置（基于 pack.auth 引用）

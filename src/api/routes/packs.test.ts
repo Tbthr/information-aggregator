@@ -5,16 +5,16 @@ const createDbMock = mock(() => {
   throw new Error("createDb mock not configured");
 });
 
-const loadAllPacksMock = mock(() => {
-  throw new Error("loadAllPacks mock not configured");
+const loadAllPacksFromDbMock = mock(() => {
+  throw new Error("loadAllPacksFromDb mock not configured");
 });
 
 mock.module("../../db/client", () => ({
   createDb: createDbMock,
 }));
 
-mock.module("../../config/load-pack", () => ({
-  loadAllPacks: loadAllPacksMock,
+mock.module("../../config/load-pack-prisma", () => ({
+  loadAllPacksFromDb: loadAllPacksFromDbMock,
 }));
 
 const { packsRoute } = await import("./packs");
@@ -22,11 +22,11 @@ const { packsRoute } = await import("./packs");
 describe("packs route", () => {
   afterEach(() => {
     createDbMock.mockReset();
-    loadAllPacksMock.mockReset();
+    loadAllPacksFromDbMock.mockReset();
   });
 
   test("counts retained items with keepDecision and treats null judgment as kept", async () => {
-    loadAllPacksMock.mockResolvedValue([
+    loadAllPacksFromDbMock.mockResolvedValue([
       {
         id: "test-pack",
         name: "Test Pack",

@@ -1,10 +1,10 @@
 /**
  * Pack 配置缓存模块
- * 避免每次请求都重新加载 YAML 配置文件
+ * 从数据库加载 Pack 配置并缓存
  */
 
 import type { SourcePack } from "../types/index";
-import { loadAllPacks } from "./load-pack";
+import { loadAllPacksFromDb } from "./load-pack-prisma";
 
 let packsCache: SourcePack[] | null = null;
 let cacheTime = 0;
@@ -12,11 +12,9 @@ const DEFAULT_CACHE_TTL = 60_000; // 1 分钟
 
 /**
  * 获取缓存的 packs 配置
- * @param dir 配置目录，默认 config/packs
  * @param ttlMs 缓存 TTL（毫秒），默认 60000
  */
 export async function getPacks(
-  dir = "config/packs",
   ttlMs = DEFAULT_CACHE_TTL
 ): Promise<SourcePack[]> {
   const now = Date.now();
@@ -26,8 +24,8 @@ export async function getPacks(
     return packsCache;
   }
 
-  // 重新加载
-  packsCache = await loadAllPacks(dir);
+  // 从数据库重新加载
+  packsCache = await loadAllPacksFromDb();
   cacheTime = now;
 
   return packsCache;
@@ -37,10 +35,9 @@ export async function getPacks(
  * 获取缓存的 pack（按 ID）
  */
 export async function getPackById(
-  packId: string,
-  dir = "config/packs"
+  packId: string
 ): Promise<SourcePack | undefined> {
-  const packs = await getPacks(dir);
+  const packs = await getPacks();
   return packs.find((p) => p.id === packId);
 }
 

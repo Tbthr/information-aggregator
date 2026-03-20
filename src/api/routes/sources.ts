@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { createDb } from "../../db/client";
-import { loadAllPacks } from "../../config/load-pack";
+import { loadAllPacksFromDb } from "../../config/load-pack-prisma";
 import { generateSourceId } from "../../config/source-id";
 import { syncPacksToDb } from "../../db/queries/source-packs";
 import { upsertSource } from "../../db/queries/sources";
@@ -19,7 +19,7 @@ app.get("/:id", async (c) => {
   const db = createDb("data/archive.db");
 
   try {
-    const packs = await loadAllPacks("config/packs");
+    const packs = await loadAllPacksFromDb();
     syncPacksToDb(db, packs);
     for (const pack of packs) {
       for (const source of pack.sources) {

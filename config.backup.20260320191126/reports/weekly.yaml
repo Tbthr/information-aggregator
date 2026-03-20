@@ -1,0 +1,6 @@
+# config/reports/weekly.yaml
+weekly:
+  days: 7
+  maxTimelineEvents: 10
+  maxDeepDives: 5
+  enableEditorial: true

@@ -10,6 +10,12 @@ const DEFAULT_POLICY_MODE: PolicyMode = 'filter_then_assist';
 
 export const VALID_SOURCE_TYPES = new Set<SourceType>(CANONICAL_SOURCE_TYPES);
 
+/**
+ * @deprecated Use loadAllPacksFromDb() from load-pack-prisma.ts instead.
+ * YAML-based loading is deprecated and will be removed in a future version.
+ */
+export const USE_DATABASE = true;
+
 function validatePackPolicy(input: unknown): PackPolicy | undefined {
   if (!isRecord(input)) {
     return undefined;
@@ -102,7 +108,12 @@ export async function loadPack(filePath: string): Promise<SourcePack> {
   return validateSourcePack(parsed);
 }
 
-export async function loadAllPacks(directory: string): Promise<SourcePack[]> {
+/**
+ * Load all packs from YAML files
+ * @param directory Path to the packs directory
+ * @deprecated Use loadAllPacksFromDb() from load-pack-prisma.ts instead
+ */
+export async function loadAllPacksFromYaml(directory: string): Promise<SourcePack[]> {
   const files = await readdir(directory);
   const yamlFiles = files.filter((f) => f.endsWith(".yaml") || f.endsWith(".yml"));
 
@@ -111,6 +122,24 @@ export async function loadAllPacks(directory: string): Promise<SourcePack[]> {
   );
 
   return packs;
+}
+
+/**
+ * Load all packs - uses database by default, falls back to YAML
+ * @param directory Path to the packs directory (ignored when using database)
+ * @deprecated This function now tries to load from database first.
+ * Use loadAllPacksFromDb() from load-pack-prisma.ts for explicit database loading.
+ */
+export async function loadAllPacks(directory: string): Promise<SourcePack[]> {
+  // Try to load from database first
+  try {
+    const { loadAllPacksFromDb } = await import("./load-pack-prisma");
+    return await loadAllPacksFromDb();
+  } catch (error) {
+    // Fall back to YAML if database is not available
+    console.warn("Failed to load packs from database, falling back to YAML:", error);
+    return loadAllPacksFromYaml(directory);
+  }
 }
 
 export function dedupePacksBySourceUrl(packs: SourcePack[]): SourcePack[] {

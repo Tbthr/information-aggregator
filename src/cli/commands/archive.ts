@@ -1,4 +1,4 @@
-import { loadAllPacks } from "../../config/load-pack";
+import { loadAllPacksFromDb } from "../../config/load-pack-prisma";
 import { generateSourceId } from "../../config/source-id";
 import { resolveSelection } from "../../query/resolve-selection";
 import { collectSources, type CollectDependencies } from "../../pipeline/collect";
@@ -41,7 +41,6 @@ function buildAdapters(): CollectDependencies["adapters"] {
 
 export interface ArchiveOptions {
   concurrency?: number;
-  packDir?: string;
   enrichMode?: "new" | "backfill" | "force";
 }
 
@@ -52,12 +51,11 @@ export async function archiveCollectCommand(
   packIds: string[],
   options: ArchiveOptions = {},
 ): Promise<void> {
-  const packDir = options.packDir || "config/packs";
   const enrichMode = options.enrichMode ?? "new";
 
   console.log(`Connecting to Supabase database...`);
-  console.log(`Loading packs from: ${packDir}`);
-  const packs = await loadAllPacks(packDir);
+  console.log(`Loading packs from database...`);
+  const packs = await loadAllPacksFromDb();
 
   // 同步 Packs
   const packRecords = packs.map((p) => ({

@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { createDb } from "../../db/client";
-import { loadAllPacks } from "../../config/load-pack";
+import { loadAllPacksFromDb } from "../../config/load-pack-prisma";
 import { PacksQuerySchema } from "../schemas/query";
 import type { ApiResponse, PacksData, PackInfo } from "../types";
 import type { PackPolicy } from "../../types/policy";
@@ -15,7 +15,7 @@ const app = new Hono();
  */
 app.get("/", zValidator("query", PacksQuerySchema), async (c) => {
   const query = c.req.valid("query");
-  const packs = await loadAllPacks("config/packs");
+  const packs = await loadAllPacksFromDb();
 
   let packInfos: PackInfo[];
 
@@ -90,7 +90,7 @@ app.get("/", zValidator("query", PacksQuerySchema), async (c) => {
  */
 app.get("/:id", async (c) => {
   const packId = c.req.param("id");
-  const packs = await loadAllPacks("config/packs");
+  const packs = await loadAllPacksFromDb();
   const pack = packs.find((p) => p.id === packId);
 
   if (!pack) {

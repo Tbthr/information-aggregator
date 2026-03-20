@@ -27,7 +27,7 @@ app.get("/", zValidator("query", ItemsQuerySchema), async (c) => {
   const db = getDb("data/archive.db");
 
   // 加载 packs 获取 source 映射（使用缓存）
-  const packs = await getPacks("config/packs");
+  const packs = await getPacks();
   const packMap = new Map(packs.map((p) => [p.id, p]));
 
   // 构建 sourceId 过滤条件

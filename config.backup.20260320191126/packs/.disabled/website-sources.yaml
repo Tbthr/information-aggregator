@@ -1,0 +1,38 @@
+# Website 类型数据源（需要手动处理）
+# 这些网站没有提供 RSS/JSON Feed，需要手动转换或寻找替代数据源
+pack:
+  id: website-sources
+  name: 网站数据源（待处理）
+  description: 无法直接抓取的网站，需要手动查找对应的 RSS/JSON Feed
+  enabled: false
+
+sources:
+  # === AI 资讯 ===
+  - type: website
+    url: https://aihot.today/
+    description: AI 今日热点，中文 AI 资讯聚合
+
+  - type: website
+    url: https://ai.hubtoday.app/
+    description: AI HubToday，AI 新闻聚合
+
+  # === 科技资讯 ===
+  - type: website
+    url: https://techurls.com/
+    description: TechURLs，科技资讯聚合
+
+  - type: website
+    url: https://www.bestblogs.dev/en/newsletter
+    description: BestBlogs Newsletter，优质博客精选
+
+  - type: website
+    url: https://zeli.app/
+    description: Zeli，科技资讯聚合
+
+  - type: website
+    url: https://newsnow.busiyi.world/
+    description: NewsNow，即时新闻聚合
+
+  - type: website
+    url: https://www.attentionvc.ai/article?window=all&lang=zh
+    description: X 长文热榜
