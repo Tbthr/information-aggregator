@@ -40,9 +40,14 @@ function sourceIdToName(sourceId: string): string {
 /**
  * 将 RawItem 转换为数据库记录（用于 createMany）
  */
-function rawItemToCreateData(item: RawItem, fetchedAt: string): Omit<Item, "source" | "bookmarks" | "newsFlashes" | "createdAt" | "updatedAt"> {
+function rawItemToCreateData(
+  item: RawItem,
+  fetchedAt: string,
+  packIdMap: Map<string, string | null>,
+): Omit<Item, "source" | "bookmarks" | "newsFlashes" | "createdAt" | "updatedAt"> {
   const sourceType = parseSourceType(item.metadataJson);
   const sourceName = sourceIdToName(item.sourceId);
+  const packId = packIdMap.get(item.sourceId) ?? null;
 
   return {
     id: item.id,
@@ -53,7 +58,7 @@ function rawItemToCreateData(item: RawItem, fetchedAt: string): Omit<Item, "sour
     sourceId: item.sourceId,
     sourceName,
     sourceType,
-    packId: null,
+    packId,
     publishedAt: item.publishedAt ? new Date(item.publishedAt) : null,
     fetchedAt: new Date(fetchedAt),
     author: item.author ?? null,
@@ -102,9 +107,20 @@ export async function archiveRawItems(
   let newCount = 0;
   let updateCount = 0;
 
+  // 2.5 批量获取所有涉及的 source 的 packId
+  const allSourceIds = [...new Set(items.map((i) => i.sourceId))];
+  const sources = await prisma.source.findMany({
+    where: { id: { in: allSourceIds } },
+    select: { id: true, packId: true },
+  });
+  const packIdMap = new Map<string, string | null>();
+  for (const source of sources) {
+    packIdMap.set(source.id, source.packId);
+  }
+
   // 3. 批量创建新记录
   if (newItems.length > 0) {
-    const createData = newItems.map((item) => rawItemToCreateData(item, fetchedAt));
+    const createData = newItems.map((item) => rawItemToCreateData(item, fetchedAt, packIdMap));
 
     // 分批创建，避免单次操作过大
     for (let i = 0; i < createData.length; i += BATCH_SIZE) {
