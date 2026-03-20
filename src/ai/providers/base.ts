@@ -30,6 +30,24 @@ import {
 } from "../utils";
 import { createLogger, truncateWithLength, maskSensitiveUrl, type Logger } from "../../utils/logger";
 import { isRecord, isArray } from "../../types/validation";
+import { loadAiSettings } from "../config/load";
+
+/**
+ * 辅助函数：延迟执行
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * 重试配置接口
+ */
+export interface RetryConfig {
+  maxRetries: number;      // 最大重试次数
+  initialDelay: number;    // 初始延迟(ms)
+  maxDelay: number;        // 最大延迟(ms)
+  backoffFactor: number;   // 退避因子
+}
 
 /**
  * 请求策略接口 - 处理不同 Provider 的请求差异
@@ -63,68 +81,142 @@ export abstract class BaseAiClient<TConfig> implements AiClient {
     this.logger = createLogger(`ai:${slug}`);
   }
 
+  /**
+   * 获取重试配置
+   */
+  protected async getRetryConfig(): Promise<RetryConfig> {
+    try {
+      const settings = await loadAiSettings();
+      const config = settings?.retry;
+      return {
+        maxRetries: config?.maxRetries ?? 3,
+        initialDelay: config?.initialDelay ?? 1000,
+        maxDelay: config?.maxDelay ?? 30000,
+        backoffFactor: config?.backoffFactor ?? 2,
+      };
+    } catch {
+      // 如果读取配置失败，返回默认值
+      return {
+        maxRetries: 3,
+        initialDelay: 1000,
+        maxDelay: 30000,
+        backoffFactor: 2,
+      };
+    }
+  }
+
   protected async request(prompt: string): Promise<unknown> {
     const url = this.strategy.buildUrl(this.config);
     const maskedUrl = maskSensitiveUrl(url);
     const body = this.strategy.buildBody(prompt, this.config);
     const bodyStr = JSON.stringify(body);
+
+    // 从配置读取重试参数
+    const retryConfig = await this.getRetryConfig();
+
+    let lastError: Error | null = null;
+    let delay = retryConfig.initialDelay;
     const startTime = Date.now();
 
-    this.logger.info("Sending request", {
-      url: maskedUrl,
-      promptLength: prompt.length,
-    });
+    // 重试循环
+    for (let attempt = 0; attempt <= retryConfig.maxRetries; attempt++) {
+      try {
+        const requestStartTime = Date.now();
 
-    this.logger.debug("Request details", {
-      url: maskedUrl,
-      prompt: truncateWithLength(prompt, 200),
-      body: truncateWithLength(bodyStr, 500),
-    });
-
-    try {
-      const response = await getFetchImpl(this.fetchImpl)(url, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          ...this.strategy.buildHeaders(this.config),
-        },
-        body: bodyStr,
-      });
-
-      const elapsed = Date.now() - startTime;
-
-      if (!response.ok) {
-        this.logger.error("Request failed", {
+        this.logger.info("Sending request", {
           url: maskedUrl,
-          status: response.status,
-          elapsed,
+          promptLength: prompt.length,
+          attempt: attempt + 1,
+          maxRetries: retryConfig.maxRetries + 1,
         });
-        throw new Error(`${this.strategy.providerName} request failed: ${response.status}`);
+
+        this.logger.debug("Request details", {
+          url: maskedUrl,
+          prompt: truncateWithLength(prompt, 200),
+          body: truncateWithLength(bodyStr, 500),
+        });
+
+        const response = await getFetchImpl(this.fetchImpl)(url, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            ...this.strategy.buildHeaders(this.config),
+          },
+          body: bodyStr,
+        });
+
+        const elapsed = Date.now() - requestStartTime;
+
+        // 处理 429 速率限制错误
+        if (response.status === 429) {
+          const retryAfter = response.headers.get('Retry-After');
+          if (retryAfter) {
+            delay = parseInt(retryAfter) * 1000;
+          }
+
+          this.logger.warn("Request rate limited, will retry", {
+            url: maskedUrl,
+            status: response.status,
+            attempt: attempt + 1,
+            delay,
+            retryAfter,
+          });
+
+          throw new Error(`Rate limited (429)`);
+        }
+
+        // 其他错误：直接抛出
+        if (!response.ok) {
+          this.logger.error("Request failed", {
+            url: maskedUrl,
+            status: response.status,
+            elapsed,
+          });
+          throw new Error(`${this.strategy.providerName} request failed: ${response.status}`);
+        }
+
+        const json = await response.json();
+        const text = this.strategy.extractText(json);
+
+        this.logger.info("Request completed", {
+          status: response.status,
+          responseLength: text.length,
+          elapsed,
+          attempt: attempt + 1,
+        });
+
+        this.logger.debug("Response details", {
+          response: truncateWithLength(JSON.stringify(json), 1000),
+        });
+
+        return json;
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+
+        // 如果还有重试机会，等待后重试
+        if (attempt < retryConfig.maxRetries) {
+          this.logger.warn("Request failed, retrying", {
+            attempt: attempt + 1,
+            maxRetries: retryConfig.maxRetries + 1,
+            delay,
+            error: lastError.message,
+          });
+
+          await sleep(delay);
+          delay = Math.min(delay * retryConfig.backoffFactor, retryConfig.maxDelay);
+        }
       }
-
-      const json = await response.json();
-      const text = this.strategy.extractText(json);
-
-      this.logger.info("Request completed", {
-        status: response.status,
-        responseLength: text.length,
-        elapsed,
-      });
-
-      this.logger.debug("Response details", {
-        response: truncateWithLength(JSON.stringify(json), 1000),
-      });
-
-      return json;
-    } catch (error) {
-      const elapsed = Date.now() - startTime;
-      this.logger.error("Request error", {
-        url: maskedUrl,
-        error: error instanceof Error ? error.message : String(error),
-        elapsed,
-      });
-      throw error;
     }
+
+    // 所有重试都失败了
+    const totalElapsed = Date.now() - startTime;
+    this.logger.error("All retries exhausted", {
+      url: maskedUrl,
+      totalElapsed,
+      error: lastError?.message,
+    });
+
+    throw lastError;
   }
 
   protected getText(response: unknown): string {

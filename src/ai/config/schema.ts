@@ -5,6 +5,18 @@
 /** 支持的 AI Provider 类型 */
 export type AiProviderType = "anthropic" | "gemini" | "openai";
 
+/** 重试配置 */
+export interface RetryConfig {
+  /** 最大重试次数（默认 3） */
+  maxRetries?: number;
+  /** 初始延迟(ms)（默认 1000） */
+  initialDelay?: number;
+  /** 最大延迟(ms)（默认 30000） */
+  maxDelay?: number;
+  /** 退避因子（默认 2） */
+  backoffFactor?: number;
+}
+
 /** Anthropic 配置 */
 export interface AnthropicSettings {
   /** API Token（支持 ${VAR} 引用环境变量） */
@@ -34,11 +46,14 @@ export interface AiSettings {
   /** 默认 provider */
   defaultProvider?: AiProviderType;
 
-  /** 并发控制：批次大小（默认 5） */
+  /** 并发控制：批次大小（默认 3） */
   defaultBatchSize?: number;
 
-  /** 并发控制：最大并发数（默认 2） */
+  /** 并发控制：最大并发数（默认 1） */
   defaultConcurrency?: number;
+
+  /** 重试配置 */
+  retry?: RetryConfig;
 
   /** Anthropic 配置 */
   anthropic?: AnthropicSettings;
