@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
+import { Prisma } from "@prisma/client"
 
 import { prisma } from "@/lib/prisma"
-import { loadAllPacks } from "../../../src/config/load-pack"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -18,9 +18,11 @@ const packCreateSchema = z.object({
 export async function GET() {
   try {
     const startTime = Date.now()
-    const packs = await loadAllPacks("config/packs")
 
-    const [sourceCounts, itemStats] = await Promise.all([
+    const [packs, sourceCounts, itemStats] = await Promise.all([
+      prisma.pack.findMany({
+        orderBy: { name: "asc" },
+      }),
       prisma.source.groupBy({
         by: ["packId"],
         _count: { _all: true },
@@ -51,8 +53,7 @@ export async function GET() {
       id: pack.id,
       name: pack.name,
       description: pack.description ?? null,
-      sourceCount:
-        sourceCountByPack.get(pack.id) ?? pack.sources.filter((source) => source.enabled !== false).length,
+      sourceCount: sourceCountByPack.get(pack.id) ?? 0,
       itemCount: itemStatsByPack.get(pack.id)?.itemCount ?? 0,
       latestItem: itemStatsByPack.get(pack.id)?.latestItem ?? null,
     }))
@@ -111,6 +112,15 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     console.error("Error creating pack:", error)
+
+    // Handle duplicate ID (P2002 - unique constraint violation)
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return NextResponse.json(
+        { success: false, error: "Pack with this ID already exists" },
+        { status: 409 }
+      )
+    }
+
     return NextResponse.json(
       { success: false, error: "Failed to create pack" },
       { status: 500 }

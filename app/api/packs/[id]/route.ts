@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
+import { Prisma } from "@prisma/client"
 
 import { prisma } from "@/lib/prisma"
 
@@ -79,6 +80,15 @@ export async function PUT(
     })
   } catch (error) {
     console.error("Error updating pack:", error)
+
+    // Handle record not found (P2025)
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+      return NextResponse.json(
+        { success: false, error: "Pack not found" },
+        { status: 404 }
+      )
+    }
+
     return NextResponse.json(
       { success: false, error: "Failed to update pack" },
       { status: 500 }
@@ -101,6 +111,15 @@ export async function DELETE(
     })
   } catch (error) {
     console.error("Error deleting pack:", error)
+
+    // Handle record not found (P2025)
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+      return NextResponse.json(
+        { success: false, error: "Pack not found" },
+        { status: 404 }
+      )
+    }
+
     return NextResponse.json(
       { success: false, error: "Failed to delete pack" },
       { status: 500 }
