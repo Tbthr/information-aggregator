@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import type { Article } from "@/lib/types"
-import { fetchItems, addBookmark, removeBookmark, type FetchItemsParams } from "@/lib/api-client"
+import { fetchItems, type FetchItemsParams } from "@/lib/api-client"
 import { useSaved } from "./use-saved"
 
 export interface UseItemsParams {
@@ -32,7 +32,7 @@ export function useItems(params: UseItemsParams = {}): UseItemsResult {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const { savedIds, addSaved, removeSaved, isSaved } = useSaved()
+  const { savedIds, toggleSave: toggleSaveFromHook, isSaved } = useSaved()
 
   // Use ref to track mounted state and prevent race conditions
   const isMountedRef = useRef(true)
@@ -102,25 +102,9 @@ export function useItems(params: UseItemsParams = {}): UseItemsResult {
 
   const toggleSave = useCallback(
     async (id: string) => {
-      const currentlySaved = savedIds.has(id)
-
-      try {
-        if (currentlySaved) {
-          const result = await removeBookmark(id)
-          if (result.success) {
-            removeSaved(id)
-          }
-        } else {
-          const result = await addBookmark(id)
-          if (result.success) {
-            addSaved(id)
-          }
-        }
-      } catch (err) {
-        console.error("Failed to toggle bookmark:", err)
-      }
+      await toggleSaveFromHook(id)
     },
-    [savedIds, addSaved, removeSaved]
+    [toggleSaveFromHook]
   )
 
   const refetch = useCallback(() => {
