@@ -64,8 +64,8 @@ export async function PUT(request: Request) {
   try {
     const settings = await prisma.settings.upsert({
       where: { id: "default" },
-      update: parsed.data,
-      create: { id: "default", ...parsed.data },
+      update: { ...parsed.data, updatedAt: new Date() },
+      create: { id: "default", ...parsed.data, updatedAt: new Date() },
     })
 
     return NextResponse.json({

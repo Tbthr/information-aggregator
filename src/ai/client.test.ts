@@ -76,10 +76,10 @@ describe("createAiClient", () => {
   });
 
   describe("Anthropic provider", () => {
-    test("returns client from settings.yaml when no explicit config", async () => {
-      // 注意：如果 settings.yaml 中有 anthropic 配置，会使用该配置
+    test("returns client from DB settings when no explicit config", async () => {
+      // 注意：如果数据库 Settings/ProviderConfig 中有 anthropic 配置，会使用该配置
       const client = await createAiClient("anthropic", {});
-      // settings.yaml 中有硬编码的 authToken 和 model，所以应该返回 client
+      // DB 中有配置的 authToken 和 model，所以应该返回 client
       expect(client).toBeInstanceOf(AnthropicClient);
     });
 
@@ -89,10 +89,10 @@ describe("createAiClient", () => {
       expect(client).toBeInstanceOf(AnthropicClient);
     });
 
-    test("uses settings.yaml authToken when only model is explicitly provided", async () => {
-      // 当只提供 model 时，会从 settings.yaml 获取 authToken
+    test("uses DB authToken when only model is explicitly provided", async () => {
+      // 当只提供 model 时，会从数据库获取 authToken
       const client = await createAiClient("anthropic", { model: "GLM-5" });
-      // settings.yaml 中有 authToken，所以应该返回 client
+      // DB 中有 authToken，所以应该返回 client
       expect(client).toBeInstanceOf(AnthropicClient);
     });
 
@@ -141,7 +141,7 @@ describe("createAiClient", () => {
 
       const calls: { url: string; body: unknown }[] = [];
       const client = await createAiClient("anthropic", {
-        model: "GLM-5",  // 显式提供 model（settings.yaml 中的 model 优先）
+        model: "GLM-5",  // 显式提供 model（DB 配置中的 model 优先）
         fetch: async (url, init) => {
           calls.push({
             url: String(url),
@@ -165,7 +165,7 @@ describe("createAiClient", () => {
       });
     });
 
-    test("uses baseUrl from settings.yaml when not explicitly provided", async () => {
+    test("uses baseUrl from DB settings when not explicitly provided", async () => {
       process.env.ANTHROPIC_AUTH_TOKEN = "token";
       process.env.ANTHROPIC_MODEL = "claude-3";
 
@@ -183,7 +183,7 @@ describe("createAiClient", () => {
       });
 
       await client?.narrateDigest("prompt");
-      // settings.yaml 中配置了自定义 baseUrl，所以会使用该配置
+      // DB 中配置了自定义 baseUrl，所以会使用该配置
       expect(calls[0]).toBe("https://open.bigmodel.cn/api/anthropic/v1/messages");
     });
 

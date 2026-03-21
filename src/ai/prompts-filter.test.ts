@@ -5,7 +5,7 @@ describe("buildFilterPrompt", () => {
   const baseItem: FilterItem = {
     index: 0,
     title: "Test Title",
-    snippet: "Test content snippet",
+    summary: "Test content summary",
     url: "https://example.com/test",
   };
 
@@ -43,17 +43,17 @@ describe("buildFilterPrompt", () => {
     expect(prompt).not.toContain("- 主题说明:");
   });
 
-  test("截断过长的 snippet", () => {
-    const longSnippet = "a".repeat(500);
+  test("截断过长的 summary", () => {
+    const longSummary = "a".repeat(500);
     const item: FilterItem = {
       ...baseItem,
-      snippet: longSnippet,
+      summary: longSummary,
     };
 
     const prompt = buildFilterPrompt([item], baseContext);
 
     expect(prompt).toContain("a...");  // 应该被截断并添加省略号
-    expect(prompt).not.toContain(longSnippet);
+    expect(prompt).not.toContain(longSummary);
   });
 
   test("限制最多 20 个条目", () => {

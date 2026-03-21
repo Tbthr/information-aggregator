@@ -40,7 +40,7 @@ export interface OpenAiSettings {
 }
 
 /**
- * AI 全局配置（可放在 config/settings.yaml 中）
+ * AI 全局配置（存储在数据库 Settings 表中）
  */
 export interface AiSettings {
   /** 默认 provider */

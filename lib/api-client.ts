@@ -34,23 +34,16 @@ interface ItemData {
   id: string
   title: string
   url: string
-  canonicalUrl: string
   source: {
     id: string
     type: string
-    packId: string
   }
   publishedAt: string | null
   fetchedAt: string
-  snippet: string | null
+  firstSeenAt: string
+  lastSeenAt: string
   author: string | null
   score: number
-  scores: {
-    sourceWeight: number
-    freshness: number
-    engagement: number
-    contentQuality: number
-  }
   metadata: Record<string, unknown>
 
   // New enrichment fields
@@ -61,6 +54,9 @@ interface ItemData {
   categories: string[]
   sourceName: string
   isBookmarked: boolean
+  saved?: {
+    savedAt: string
+  }
 }
 
 // Query params for fetching items
@@ -118,7 +114,7 @@ interface CustomViewsData {
     name: string
     icon: string
     description: string
-    packs: Array<{ packId: string; pack?: { id: string; name: string } }>
+    customViewPacks: Array<{ packId: string; pack?: { id: string; name: string } }>
   }>
 }
 
@@ -167,9 +163,9 @@ export function mapItemToArticle(item: ItemData): Article {
     id: item.id,
     title: item.title,
     source: item.sourceName || item.source.type,
-    sourceUrl: item.canonicalUrl || item.url,
+    sourceUrl: item.url,
     publishedAt: item.publishedAt || item.fetchedAt,
-    summary: item.summary || item.snippet || "",
+    summary: item.summary || "",
     bullets: item.bullets || [],
     content: item.content || "",
     imageUrl: item.imageUrl ?? undefined,
@@ -340,7 +336,7 @@ export async function fetchCustomViewItems(
     return emptyResult
   }
 
-  const packIds = view.packs.map((p) => p.packId)
+  const packIds = view.customViewPacks.map((p) => p.packId)
 
   // 2. 如果没有关联的 packs，返回空结果
   if (packIds.length === 0) {

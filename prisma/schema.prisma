@@ -3,21 +3,75 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
+}
+
+model AuthConfig {
+  sourceId   String   @id
+  configJson String
+  updatedAt  DateTime
+  source     Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+}
+
+model Bookmark {
+  id           String   @id @default(cuid())
+  itemId       String   @unique
+  bookmarkedAt DateTime @default(now())
+  item         Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+}
+
+model CustomView {
+  id             String           @id @default(cuid())
+  name           String
+  icon           String
+  description    String?
+  createdAt      DateTime         @default(now())
+  filterJson     String?
+  updatedAt      DateTime
+  order          Int              @default(0)
+  customViewPacks CustomViewPack[]
+}
+
+model CustomViewPack {
+  id         String     @id @default(cuid())
+  viewId     String
+  packId     String
+  pack       Pack       @relation(fields: [packId], references: [id], onDelete: Cascade)
+  view       CustomView @relation(fields: [viewId], references: [id], onDelete: Cascade)
+
+  @@unique([viewId, packId])
+  @@index([viewId])
+}
+
+model DailyOverview {
+  id        String   @id @default(cuid())
+  date      String   @unique
+  dayLabel  String
+  summary   String
+  itemIds   String[]
+  createdAt DateTime @default(now())
+}
+
+model DailyReportConfig {
+  id                  String   @id @default("default")
+  packs               String   @default("all")
+  maxItems            Int      @default(20)
+  sort                String   @default("ranked")
+  enableOverview      Boolean  @default(true)
+  newsFlashesEnabled  Boolean  @default(true)
+  newsFlashesMaxCount Int      @default(12)
+  updatedAt           DateTime
 }
 
 model Item {
   id           String   @id @default(cuid())
   title        String
   url          String
-  canonicalUrl String
-  snippet      String?  @db.Text
   sourceId     String
   sourceName   String
   sourceType   String
-  packId       String?
   publishedAt  DateTime?
   fetchedAt    DateTime @default(now())
   author       String?
@@ -27,7 +81,6 @@ model Item {
   imageUrl     String?
   categories   String[]
   score        Float    @default(5.0)
-  scoresJson   String?  @db.Text
   metadataJson String?  @db.Text
 
   source       Source        @relation(fields: [sourceId], references: [id])
@@ -43,9 +96,63 @@ model Item {
   @@index([score])
 }
 
+model NewsFlash {
+  id        String   @id @default(cuid())
+  time      String
+  text      String
+  itemId    String?
+  dailyDate String?
+  createdAt DateTime @default(now())
+  item      Item?    @relation(fields: [itemId], references: [id])
+}
+
+model Pack {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+
+  sources     Source[]
+  customViews CustomViewPack[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ProviderConfig {
+  id          String   @id @default(cuid())
+  provider    String   @unique
+  model       String
+  baseUrl     String?
+  apiKeyRef   String?
+  extraConfig String?
+  updatedAt   DateTime
+}
+
+model SchedulerJob {
+  id          String    @id @default(cuid())
+  name        String
+  cron        String
+  description String?
+  enabled     Boolean   @default(true)
+  lastRunAt   DateTime?
+  nextRunAt   DateTime?
+  updatedAt   DateTime
+}
+
+model Settings {
+  id            String   @id @default("default")
+  maxRetries    Int      @default(3)
+  initialDelay  Int      @default(1000)
+  maxDelay      Int      @default(30000)
+  backoffFactor Float    @default(2.0)
+  updatedAt     DateTime
+  batchSize     Int      @default(3)
+  concurrency   Int      @default(1)
+  provider      String   @default("anthropic")
+}
+
 model Source {
   id          String   @id @default(cuid())
-  slug        String?  @unique  // Legacy ID preserved for backward compatibility
   type        String
   name        String
   url         String
@@ -64,195 +171,48 @@ model Source {
 
   @@unique([packId, url])
   @@index([packId])
-  @@index([slug])
 }
 
 model SourceHealth {
-  id                  String   @id @default(cuid())
-  sourceId            String   @unique
+  id                  String    @id @default(cuid())
+  sourceId            String    @unique
   lastSuccessAt       DateTime?
   lastFailureAt       DateTime?
-  lastError           String?  @db.Text
-  consecutiveFailures Int      @default(0)
-
-  source              Source   @relation(fields: [sourceId], references: [id])
-  updatedAt           DateTime @updatedAt
-}
-
-model Pack {
-  id          String   @id
-  name        String
-  description String?
-  policyJson  String?  @db.Text
-
-  sources     Source[]
-  customViews CustomViewPack[]
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-model Bookmark {
-  id           String   @id @default(cuid())
-  itemId       String
-  bookmarkedAt DateTime @default(now())
-
-  item         Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
-
-  @@unique([itemId])
-}
-
-model NewsFlash {
-  id        String   @id @default(cuid())
-  time      String
-  text      String   @db.Text
-  itemId    String?
-  dailyDate String?
-
-  item      Item?    @relation(fields: [itemId], references: [id])
-
-  createdAt DateTime @default(now())
-}
-
-model DailyOverview {
-  id           String   @id @default(cuid())
-  date         String   @unique
-  dayLabel     String
-  summary      String   @db.Text
-
-  itemIds      String[]
-
-  createdAt    DateTime @default(now())
-}
-
-model WeeklyReport {
-  id            String   @id @default(cuid())
-  weekNumber    String   @unique
-  headline      String
-  subheadline   String?  @db.Text
-  editorial     String?  @db.Text
-
-  timelineEvents TimelineEvent[]
-
-  createdAt     DateTime @default(now())
+  lastError           String?
+  consecutiveFailures Int       @default(0)
+  updatedAt           DateTime
+  source              Source    @relation(fields: [sourceId], references: [id])
 }
 
 model TimelineEvent {
-  id             String   @id @default(cuid())
+  id             String       @id @default(cuid())
   weeklyReportId String
   date           String
   dayLabel       String
   title          String
-  summary        String   @db.Text
-  order          Int      @default(0)
-
+  summary        String
+  order          Int          @default(0)
   itemIds        String[]
-
   weeklyReport   WeeklyReport @relation(fields: [weeklyReportId], references: [id], onDelete: Cascade)
 
   @@index([weeklyReportId])
 }
 
-model CustomView {
-  id          String   @id @default(cuid())
-  name        String
-  icon        String
-  description String?
-  filterJson  String?  @db.Text
-  order       Int      @default(0)
-
-  packs       CustomViewPack[]
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-model CustomViewPack {
-  id        String     @id @default(cuid())
-  viewId    String
-  packId    String
-
-  view      CustomView @relation(fields: [viewId], references: [id], onDelete: Cascade)
-  pack      Pack       @relation(fields: [packId], references: [id], onDelete: Cascade)
-
-  @@unique([viewId, packId])
-  @@index([viewId])
-}
-
-// ============================================================
-// Configuration Tables
-// ============================================================
-
-model Settings {
-  id            String   @id @default("default")
-
-  provider      String   @default("anthropic")
-  batchSize     Int      @default(3)
-  concurrency   Int      @default(1)
-
-  maxRetries    Int      @default(3)
-  initialDelay  Int      @default(1000)
-  maxDelay      Int      @default(30000)
-  backoffFactor Float    @default(2.0)
-
-  updatedAt DateTime @updatedAt
-}
-
-model ProviderConfig {
-  id          String   @id @default(cuid())
-  provider    String   @unique  // anthropic, gemini, openai
-  model       String
-  baseUrl     String?
-  apiKeyRef   String?  // 环境变量引用
-  extraConfig String?  @db.Text
-
-  updatedAt DateTime @updatedAt
-}
-
-model SchedulerJob {
-  id          String    @id
-  name        String
-  cron        String
-  description String?
-  enabled     Boolean   @default(true)
-  lastRunAt   DateTime?
-  nextRunAt   DateTime?
-
-  updatedAt DateTime @updatedAt
-}
-
-model DailyReportConfig {
-  id                  String   @id @default("default")
-
-  packs               String   @default("all")
-  maxItems            Int      @default(20)
-  sort                String   @default("ranked")
-
-  enableOverview      Boolean  @default(true)
-
-  newsFlashesEnabled  Boolean  @default(true)
-  newsFlashesMaxCount Int      @default(12)
-
-  updatedAt DateTime @updatedAt
+model WeeklyReport {
+  id            String          @id @default(cuid())
+  weekNumber    String          @unique
+  headline      String
+  subheadline   String?
+  editorial     String?
+  createdAt     DateTime        @default(now())
+  timelineEvents TimelineEvent[]
 }
 
 model WeeklyReportConfig {
   id                String   @id @default("default")
-
   days              Int      @default(7)
   maxTimelineEvents Int      @default(10)
   maxDeepDives      Int      @default(5)
-
   enableEditorial   Boolean  @default(true)
-
-  updatedAt DateTime @updatedAt
-}
-
-model AuthConfig {
-  sourceId   String   @id              // 1:1 关联 Source
-  configJson String   @db.Text
-
-  source     Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
-
-  updatedAt DateTime @updatedAt
+  updatedAt         DateTime
 }

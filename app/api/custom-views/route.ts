@@ -21,7 +21,7 @@ export async function GET() {
   try {
     const views = await prisma.customView.findMany({
       include: {
-        packs: {
+        customViewPacks: {
           include: {
             pack: true,
           },
@@ -70,12 +70,13 @@ export async function POST(request: Request) {
         icon: parsed.data.icon,
         description: parsed.data.description,
         filterJson: parsed.data.filterJson,
-        packs: {
+        updatedAt: new Date(),
+        customViewPacks: {
           create: parsed.data.packIds.map((packId) => ({ packId })),
         },
       },
       include: {
-        packs: {
+        customViewPacks: {
           include: {
             pack: true,
           },

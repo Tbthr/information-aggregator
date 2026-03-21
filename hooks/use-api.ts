@@ -16,7 +16,7 @@ interface CustomView {
   name: string
   icon: string
   description?: string
-  packs?: Array<{ packId: string; pack?: { id: string; name: string } }>
+  customViewPacks?: Array<{ packId: string; pack?: { id: string; name: string } }>
 }
 
 interface DailyData {

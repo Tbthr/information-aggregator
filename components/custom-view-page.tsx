@@ -49,7 +49,7 @@ export function CustomViewPage({ viewId, isSaved, onToggleSave, onOpenArticle }:
         }
 
         // Save packs data for display
-        setViewPacks(foundView.packs || [])
+        setViewPacks(foundView.customViewPacks || [])
 
         // Convert view metadata to CustomView format
         const customView: CustomView = {

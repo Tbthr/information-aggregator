@@ -6,41 +6,13 @@
  */
 
 import { prisma } from "../../lib/prisma";
-import type { InlineSource, SourcePack, SourceType, PackPolicy, SourcePolicy, PolicyMode } from "../types/index";
-import { CANONICAL_SOURCE_TYPES } from "../types/index";
-
-const VALID_POLICY_MODES: PolicyMode[] = ['assist_only', 'filter_then_assist'];
-const VALID_SOURCE_TYPES = new Set<SourceType>(CANONICAL_SOURCE_TYPES);
-
-/**
- * Parse policy JSON string into PackPolicy object
- */
-function parsePolicyJson(policyJson: string | null): PackPolicy | undefined {
-  if (!policyJson) return undefined;
-
-  try {
-    const parsed = JSON.parse(policyJson);
-    if (!parsed || typeof parsed !== 'object') return undefined;
-
-    const mode = parsed.mode;
-    if (!mode || !VALID_POLICY_MODES.includes(mode)) {
-      return { mode: 'filter_then_assist' };
-    }
-
-    return {
-      mode,
-      filterPrompt: typeof parsed.filterPrompt === 'string' ? parsed.filterPrompt : undefined,
-    };
-  } catch {
-    return undefined;
-  }
-}
+import type { InlineSource, SourcePack, SourceType } from "../types/index";
 
 /**
  * Convert database Pack and Source records to SourcePack type
  */
 function convertToSourcePack(
-  packRecord: { id: string; name: string; description: string | null; policyJson: string | null },
+  packRecord: { id: string; name: string; description: string | null },
   sourceRecords: Array<{
     id: string;
     type: string;
@@ -50,36 +22,13 @@ function convertToSourcePack(
     configJson: string | null;
   }>
 ): SourcePack {
-  const packPolicy = parsePolicyJson(packRecord.policyJson);
-
   const sources: InlineSource[] = sourceRecords.map((source) => {
-    // Build source policy - inherit from pack if not defined
-    let sourcePolicy: SourcePolicy | undefined = packPolicy
-      ? { ...packPolicy, inheritedFrom: 'pack' }
-      : undefined;
-
-    // Parse source-specific config for policy override
-    if (source.configJson) {
-      try {
-        const config = JSON.parse(source.configJson);
-        if (config.policy) {
-          const parsedPolicy = parsePolicyJson(JSON.stringify(config.policy));
-          if (parsedPolicy) {
-            sourcePolicy = parsedPolicy;
-          }
-        }
-      } catch {
-        // Ignore parse errors
-      }
-    }
-
     return {
       type: source.type as SourceType,
       url: source.url ?? '',
       description: source.description ?? undefined,
       enabled: source.enabled,
       configJson: source.configJson ?? undefined,
-      policy: sourcePolicy,
     };
   });
 
@@ -88,7 +37,6 @@ function convertToSourcePack(
     name: packRecord.name,
     description: packRecord.description ?? undefined,
     sources,
-    policy: packPolicy,
   };
 }
 
@@ -177,7 +125,3 @@ export async function loadPacksByIds(packIds: string[]): Promise<SourcePack[]> {
     return convertToSourcePack(pack, packSources);
   });
 }
-
-// Re-export types and validation functions for backward compatibility
-export { VALID_SOURCE_TYPES } from "./load-pack";
-export { validateInlineSource, validateSourcePack, dedupePacksBySourceUrl } from "./load-pack";

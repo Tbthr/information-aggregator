@@ -2,9 +2,6 @@
  * API 响应类型定义
  */
 
-import type { PolicyMode } from '../types/policy.js';
-import type { FilterJudgment } from '../types/ai-response.js';
-
 // 分页元数据
 export interface PaginationMeta {
   total: number;
@@ -47,7 +44,6 @@ export interface ApiResponse<T> {
 export interface SourceInfo {
   id: string;
   type: string;
-  packId: string;
   itemCount: number;
   health: {
     lastSuccessAt: string | null;
@@ -56,46 +52,33 @@ export interface SourceInfo {
   };
 }
 
-// 评分信息
-export interface ScoreInfo {
-  sourceWeight: number;
-  freshness: number;
-  engagement: number;
-  contentQuality: number;
-}
-
 // 内容项
 export interface ItemData {
   id: string;
   title: string;
   url: string;
-  canonicalUrl: string;
   source: {
     id: string;
     type: string;
-    packId: string;
   };
   publishedAt: string | null;
   fetchedAt: string;
   firstSeenAt: string;
   lastSeenAt: string;
-  snippet: string | null;
   author: string | null;
   score: number;
-  scores: ScoreInfo;
-  enrichment?: {
-    keyPoints?: string[];
-    tags?: string[];
-    summary?: string;
-  };
-  policy?: {
-    mode: PolicyMode;
-  };
-  filterJudgment?: FilterJudgment;
   saved?: {
     savedAt: string;
   };
   metadata: Record<string, unknown>;
+
+  summary: string | null;
+  bullets: string[];
+  content: string | null;
+  imageUrl: string | null;
+  categories: string[];
+  sourceName: string;
+  isBookmarked: boolean;
 }
 
 // Items 列表响应数据

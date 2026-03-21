@@ -19,7 +19,7 @@ let cachedDefaults: { batchSize: number; concurrency: number } | null = null;
 
 /**
  * 获取默认的并发配置
- * 优先从 settings.yaml 读取，否则使用 fallback 值
+ * 优先从数据库 Settings 表读取，否则使用 fallback 值
  */
 export async function getDefaultConcurrencyOptions(): Promise<{ batchSize: number; concurrency: number }> {
   if (cachedDefaults) return cachedDefaults;

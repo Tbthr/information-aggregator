@@ -10,6 +10,7 @@ export interface ArchiveResult {
   newCount: number;
   updateCount: number;
   totalCount: number;
+  newItemIds: string[];
 }
 
 /**
@@ -25,68 +26,65 @@ function parseSourceType(metadataJson: string): SourceType {
 }
 
 /**
- * 从 sourceId 生成 sourceName（简化版）
- */
-function sourceIdToName(sourceId: string): string {
-  const parts = sourceId.split("-");
-  if (parts.length > 1) {
-    return parts.slice(0, -1).join("-").replace(/-/g, " ");
-  }
-  return sourceId;
-}
-
-/**
  * 将 RawItem 转换为数据库记录（用于 createMany）
  */
 function rawItemToCreateData(
   item: RawItem,
   fetchedAt: string,
-  packIdMap: Map<string, string | null>,
+  sourceNameMap: Record<string, string>,
 ): Omit<Item, "source" | "bookmarks" | "newsFlashes" | "createdAt" | "updatedAt" | "id"> {
   const sourceType = parseSourceType(item.metadataJson);
-  const sourceName = sourceIdToName(item.sourceId);
-  const packId = packIdMap.get(item.sourceId) ?? null;
+  const sourceName = sourceNameMap[item.sourceId] ?? item.sourceId;
 
   return {
     // id 由 Prisma 自动生成 cuid
     title: item.title,
     url: item.url,
-    canonicalUrl: item.url,
-    snippet: item.snippet ?? null,
     sourceId: item.sourceId,
     sourceName,
     sourceType,
-    packId,
     publishedAt: item.publishedAt ? new Date(item.publishedAt) : null,
     fetchedAt: new Date(fetchedAt),
     author: item.author ?? null,
     summary: null,
     bullets: [],
-    content: null,
+    content: item.content ?? null,
     imageUrl: null,
     categories: [],
     score: 5.0,
-    scoresJson: null,
     metadataJson: item.metadataJson ?? null,
   };
 }
 
 /**
  * 归档写入 Supabase：批量 UPSERT 模式
+ * @param sourceNameMap sourceId → source.name 的映射，用于正确填充 sourceName 字段
  */
 export async function archiveRawItems(
   items: RawItem[],
   fetchedAt: string,
+  sourceNameMap: Record<string, string> = {},
 ): Promise<ArchiveResult> {
   if (items.length === 0) {
-    return { newCount: 0, updateCount: 0, totalCount: 0 };
+    return { newCount: 0, updateCount: 0, totalCount: 0, newItemIds: [] };
+  }
+
+  // 如果未提供 sourceNameMap，从 DB 查询补充
+  let resolvedNameMap = sourceNameMap;
+  if (Object.keys(resolvedNameMap).length === 0 && items.length > 0) {
+    const sourceIds = [...new Set(items.map((i) => i.sourceId))];
+    const sources = await prisma.source.findMany({
+      where: { id: { in: sourceIds } },
+      select: { id: true, name: true },
+    });
+    resolvedNameMap = Object.fromEntries(sources.map((s) => [s.id, s.name]));
   }
 
   // 1. 批量查询已存在的 URL（用于去重）
   const allUrls = items.map((i) => i.url);
   const existingItems = await prisma.item.findMany({
     where: { url: { in: allUrls } },
-    select: { id: true, url: true, snippet: true },
+    select: { id: true, url: true },
   });
   const existingUrlSet = new Set(existingItems.map((i) => i.url));
   const existingUrlToId = new Map(existingItems.map((i) => [i.url, i.id]));
@@ -105,21 +103,11 @@ export async function archiveRawItems(
 
   let newCount = 0;
   let updateCount = 0;
-
-  // 2.5 批量获取所有涉及的 source 的 packId
-  const allSourceIds = [...new Set(items.map((i) => i.sourceId))];
-  const sources = await prisma.source.findMany({
-    where: { id: { in: allSourceIds } },
-    select: { id: true, packId: true },
-  });
-  const packIdMap = new Map<string, string | null>();
-  for (const source of sources) {
-    packIdMap.set(source.id, source.packId);
-  }
+  let newItemIds: string[] = [];
 
   // 3. 批量创建新记录
   if (newItems.length > 0) {
-    const createData = newItems.map((item) => rawItemToCreateData(item, fetchedAt, packIdMap));
+    const createData = newItems.map((item) => rawItemToCreateData(item, fetchedAt, resolvedNameMap));
 
     // 分批创建，避免单次操作过大
     for (let i = 0; i < createData.length; i += BATCH_SIZE) {
@@ -130,17 +118,26 @@ export async function archiveRawItems(
       });
       newCount += result.count;
     }
+
+    // 仅查询本次实际新建的 item ID（排除已有 URL 对应的 item）
+    const newUrls = newItems.map(i => i.url);
+    const createdItems = await prisma.item.findMany({
+      where: { url: { in: newUrls } },
+      select: { id: true, url: true },
+    });
+    const existingUrlToExistingId = new Map(existingItems.map(i => [i.url, i.id]));
+    newItemIds = createdItems
+      .filter(i => !existingUrlToExistingId.has(i.url))
+      .map(i => i.id);
   }
 
   // 4. 批量更新已存在的记录
   if (updateItems.length > 0) {
-    // 使用事务批量更新
     const updatePromises = updateItems.map(({ item, existingId }) =>
       prisma.item.update({
         where: { id: existingId },
         data: {
           fetchedAt: new Date(fetchedAt),
-          snippet: item.snippet,
         },
       }),
     );
@@ -157,6 +154,7 @@ export async function archiveRawItems(
     newCount,
     updateCount,
     totalCount: items.length,
+    newItemIds,
   };
 }
 
@@ -168,7 +166,6 @@ export async function syncPacksToPrisma(
     id: string;
     name: string;
     description?: string;
-    policyJson?: string;
   }>,
 ): Promise<void> {
   if (packs.length === 0) return;
@@ -180,12 +177,10 @@ export async function syncPacksToPrisma(
         id: pack.id,
         name: pack.name,
         description: pack.description,
-        policyJson: pack.policyJson,
       },
       update: {
         name: pack.name,
         description: pack.description,
-        policyJson: pack.policyJson,
       },
     }),
   );
@@ -290,10 +285,12 @@ export async function recordSourceSuccess(
       sourceId,
       lastSuccessAt: new Date(metrics.fetchedAt),
       consecutiveFailures: 0,
+      updatedAt: new Date(),
     },
     update: {
       lastSuccessAt: new Date(metrics.fetchedAt),
       consecutiveFailures: 0,
+      updatedAt: new Date(),
     },
   });
 }
@@ -313,10 +310,12 @@ export async function recordSourcesSuccessBatch(
         sourceId: s.sourceId,
         lastSuccessAt: new Date(s.fetchedAt),
         consecutiveFailures: 0,
+        updatedAt: new Date(),
       },
       update: {
         lastSuccessAt: new Date(s.fetchedAt),
         consecutiveFailures: 0,
+        updatedAt: new Date(),
       },
     }),
   );
@@ -342,11 +341,13 @@ export async function recordSourceFailure(
       lastFailureAt: new Date(),
       lastError: error,
       consecutiveFailures: 1,
+      updatedAt: new Date(),
     },
     update: {
       lastFailureAt: new Date(),
       lastError: error,
       consecutiveFailures: { increment: 1 },
+      updatedAt: new Date(),
     },
   });
 }

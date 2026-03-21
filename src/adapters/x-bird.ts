@@ -328,9 +328,9 @@ function parseBirdItems(payload: string, source: Source): RawItem[] {
           ? `https://x.com/${authorUsername}/status/${item.id}`
           : ""),
         author: authorUsername,
-        snippet: rawText,
         publishedAt: item.created_at ?? item.createdAt,
         fetchedAt: new Date().toISOString(),
+        content: rawText,
         metadataJson: JSON.stringify({
           provider: "bird",
           sourceType: source.type,

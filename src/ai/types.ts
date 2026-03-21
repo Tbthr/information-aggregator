@@ -78,7 +78,7 @@ export interface AiClient {
   summarizeCluster(prompt: string): Promise<string>;
   narrateDigest(prompt: string): Promise<string>;
   suggestTopics(prompt: string): Promise<TopicSuggestion[]>;
-  summarizeItem(title: string, snippet: string): Promise<string>;
+  summarizeItem(title: string, content: string): Promise<string>;
   // 深度 enrichment 方法
   scoreWithContent(title: string, content: string, url?: string): Promise<number>;
   extractKeyPoints(title: string, content: string, maxPoints?: number): Promise<string[]>;

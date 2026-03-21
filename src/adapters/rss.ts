@@ -29,14 +29,12 @@ export function parseRssItems(xml: string, sourceId: string): RawItem[] {
     const title = extractTag(block, "title") ?? `Untitled ${index + 1}`;
     const url = extractTag(block, "link") ?? atomHref ?? "";
     const publishedAt = extractTag(block, "pubDate") ?? extractTag(block, "published") ?? extractTag(block, "updated");
-    const snippet = extractTag(block, "description") ?? extractTag(block, "summary") ?? extractTag(block, "content");
 
     return {
       id: `${sourceId}-${index + 1}-${url || title}`,
       sourceId,
       title,
       url,
-      snippet,
       publishedAt,
       fetchedAt: new Date().toISOString(),
       metadataJson: JSON.stringify({

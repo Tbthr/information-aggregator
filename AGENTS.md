@@ -69,7 +69,7 @@ grep -r "ComponentName" components/ app/
 
 ### 样式和交互验证
 
-**前端样式和交互验证必须使用 `playwriter` skill 进行验证。**
+**前端样式和交互验证必须使用 `playwriter` skill 进行验证，启动subAgent执行**
 
 ```
 /playwriter
@@ -100,7 +100,3 @@ pnpm build
 ```
 
 Expected: Build succeeds with no errors.
-
-## API Reference
-
-See `docs/api-data-formats.md` for complete API documentation.

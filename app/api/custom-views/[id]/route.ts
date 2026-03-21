@@ -25,7 +25,7 @@ export async function GET(
     const view = await prisma.customView.findUnique({
       where: { id },
       include: {
-        packs: {
+        customViewPacks: {
           include: {
             pack: {
               include: {
@@ -97,7 +97,7 @@ export async function PUT(
       updateData.filterJson = parsed.data.filterJson
     }
     if (parsed.data.packIds !== undefined) {
-      updateData.packs = {
+      updateData.customViewPacks = {
         deleteMany: {},
         create: parsed.data.packIds.map((packId) => ({ packId })),
       }
@@ -107,7 +107,7 @@ export async function PUT(
       where: { id },
       data: updateData,
       include: {
-        packs: {
+        customViewPacks: {
           include: {
             pack: true,
           },

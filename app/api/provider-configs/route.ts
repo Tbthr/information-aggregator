@@ -88,8 +88,9 @@ export async function PUT(request: Request) {
         baseUrl,
         apiKeyRef: apiKey || null,
         extraConfig: extraConfig || null,
+        updatedAt: new Date(),
       },
-      update: updateData,
+      update: { ...updateData, updatedAt: new Date() },
     })
 
     // 不返回 apiKeyRef

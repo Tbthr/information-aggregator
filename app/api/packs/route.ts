@@ -12,14 +12,13 @@ const packCreateSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   description: z.string().nullable().optional(),
-  policyJson: z.string().nullable().optional(),
 })
 
 export async function GET() {
   try {
     const startTime = Date.now()
 
-    const [packs, sourceCounts, itemStats] = await Promise.all([
+    const [packs, sourceCounts, itemStats, allSources] = await Promise.all([
       prisma.pack.findMany({
         orderBy: { name: "asc" },
       }),
@@ -29,25 +28,34 @@ export async function GET() {
         where: { packId: { not: null } },
       }),
       prisma.item.groupBy({
-        by: ["packId"],
+        by: ["sourceId"],
         _count: { _all: true },
         _max: { fetchedAt: true },
-        where: { packId: { not: null } },
+      }),
+      prisma.source.findMany({
+        select: { id: true, packId: true },
       }),
     ])
 
     const sourceCountByPack = new Map(
       sourceCounts.map((row) => [row.packId ?? "", row._count._all])
     )
-    const itemStatsByPack = new Map(
-      itemStats.map((row) => [
-        row.packId ?? "",
-        {
-          itemCount: row._count._all,
-          latestItem: row._max.fetchedAt?.toISOString() ?? null,
-        },
-      ])
-    )
+
+    // Build sourceId -> packId lookup
+    const sourcePackMap = new Map(allSources.map((s) => [s.id, s.packId ?? ""]))
+
+    // Aggregate item stats per packId via sourceId
+    const itemStatsByPack = new Map<string, { itemCount: number; latestItem: string | null }>()
+    for (const row of itemStats) {
+      const packId = sourcePackMap.get(row.sourceId) ?? ""
+      const existing = itemStatsByPack.get(packId) ?? { itemCount: 0, latestItem: null as string | null }
+      existing.itemCount += row._count._all
+      const rowLatest = row._max.fetchedAt?.toISOString() ?? null
+      if (rowLatest && (!existing.latestItem || rowLatest > existing.latestItem)) {
+        existing.latestItem = rowLatest
+      }
+      itemStatsByPack.set(packId, existing)
+    }
 
     const data = packs.map((pack) => ({
       id: pack.id,
@@ -102,7 +110,6 @@ export async function POST(request: Request) {
         id: parsed.data.id,
         name: parsed.data.name,
         description: parsed.data.description,
-        policyJson: parsed.data.policyJson,
       },
     })
 

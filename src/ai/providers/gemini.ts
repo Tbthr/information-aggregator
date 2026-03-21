@@ -44,7 +44,7 @@ const geminiStrategy: RequestStrategy<GeminiInternalConfig> = {
 export class GeminiClient extends BaseAiClient<GeminiInternalConfig> implements AiClient {
   constructor(config: GeminiConfig) {
     if (!config.model) {
-      throw new Error("GeminiClient: model is required, configure it in settings.yaml");
+      throw new Error("GeminiClient: model is required, configure it in Settings page");
     }
     const fullConfig: GeminiInternalConfig = {
       ...config,

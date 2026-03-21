@@ -242,8 +242,8 @@ export abstract class BaseAiClient<TConfig> implements AiClient {
     return parseTopicSuggestions(text);
   }
 
-  async summarizeItem(title: string, snippet: string): Promise<string> {
-    return this.getText(await this.request(`${title}\n\n${snippet}`));
+  async summarizeItem(title: string, content: string): Promise<string> {
+    return this.getText(await this.request(`${title}\n\n${content}`));
   }
 
   // 深度 enrichment 方法

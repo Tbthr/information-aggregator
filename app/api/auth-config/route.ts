@@ -50,9 +50,9 @@ export async function PUT(request: Request) {
     const body = await request.json()
     const { sourceId, configJson } = body
 
-    if (!sourceId) {
+    if (typeof sourceId !== "string" || !sourceId) {
       return NextResponse.json(
-        { success: false, error: "sourceId is required" },
+        { success: false, error: "sourceId is required and must be a string" },
         { status: 400 }
       )
     }
@@ -75,8 +75,8 @@ export async function PUT(request: Request) {
 
     const config = await prisma.authConfig.upsert({
       where: { sourceId },
-      create: { sourceId, configJson },
-      update: { configJson },
+      create: { sourceId, configJson, updatedAt: new Date() },
+      update: { configJson, updatedAt: new Date() },
     })
 
     return NextResponse.json({

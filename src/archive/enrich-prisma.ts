@@ -159,17 +159,25 @@ export async function enrichItems(
   // 获取 Item 详情
   const items = await prisma.item.findMany({
     where: { id: { in: itemIds } },
-    select: { id: true, url: true, title: true },
+    select: { id: true, url: true, title: true, content: true },
   });
 
   const itemMap = new Map(items.map((i) => [i.id, i]));
   const results: ItemEnrichData[] = [];
 
   // 阶段1: 内容提取（带并发控制）
-  logger.info("Starting content extraction", { count: items.length });
+  // 跳过已有 content 的条目（如 bird CLI 返回的推文全文）
+  const itemsNeedingExtraction = items.filter((item) => !item.content);
+  const itemsWithExistingContent = items.filter((item) => !!item.content);
+
+  logger.info("Starting content extraction", {
+    total: items.length,
+    skipping: itemsWithExistingContent.length,
+    extracting: itemsNeedingExtraction.length,
+  });
 
   const extractionResults = await processWithConcurrency(
-    items,
+    itemsNeedingExtraction,
     {
       batchSize: mergedConfig.extractionBatchSize,
       concurrency: mergedConfig.extractionConcurrency,
@@ -180,11 +188,23 @@ export async function enrichItems(
     },
   );
 
+  // 补充已有 content 的条目
+  const existingContentResults = itemsWithExistingContent.map((item) => ({
+    itemId: item.id,
+    content: {
+      url: item.url ?? "",
+      textContent: item.content ?? undefined,
+      extractedAt: new Date().toISOString(),
+    } satisfies ExtractedContent,
+  }));
+
+  const allExtractionResults = [...extractionResults, ...existingContentResults];
+
   // 阶段2: AI 增强（带并发控制）
   logger.info("Starting AI enrichment", { count: items.length });
 
   const enrichmentResults = await processWithConcurrency(
-    extractionResults,
+    allExtractionResults,
     {
       batchSize: mergedConfig.aiBatchSize,
       concurrency: mergedConfig.aiConcurrency,

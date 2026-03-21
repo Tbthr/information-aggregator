@@ -11,8 +11,8 @@ export interface FilterItem {
   index: number;
   /** 标题 */
   title: string;
-  /** 摘要/片段 */
-  snippet: string;
+  /** 摘要 */
+  summary: string;
   /** 原始链接 */
   url: string;
 }
@@ -33,7 +33,7 @@ export interface PackContext {
 
 // 输入限制常量
 const MAX_ITEMS_COUNT = 20;
-const MAX_SNIPPET_LENGTH = 300;
+const MAX_SUMMARY_LENGTH = 300;
 
 /**
  * 构建过滤判断 prompt
@@ -45,13 +45,13 @@ export function buildFilterPrompt(items: FilterItem[], packContext: PackContext)
     .slice(0, MAX_ITEMS_COUNT)
     .map(item => ({
       ...item,
-      snippet: item.snippet.length > MAX_SNIPPET_LENGTH
-        ? item.snippet.slice(0, MAX_SNIPPET_LENGTH) + "..."
-        : item.snippet,
+      summary: item.summary.length > MAX_SUMMARY_LENGTH
+        ? item.summary.slice(0, MAX_SUMMARY_LENGTH) + "..."
+        : item.summary,
     }));
 
   const itemsText = safeItems
-    .map((item, i) => `[${i}] 标题: ${item.title}\n    摘要: ${item.snippet}\n    链接: ${item.url}`)
+    .map((item, i) => `[${i}] 标题: ${item.title}\n    摘要: ${item.summary}\n    链接: ${item.url}`)
     .join("\n\n");
 
   // 主题说明部分

@@ -35,7 +35,6 @@ export interface ApiResponse<T> {
 export interface SourceInfo {
   id: string
   type: string
-  packId: string
   itemCount: number
   health: {
     lastSuccessAt: string | null
@@ -44,31 +43,20 @@ export interface SourceInfo {
   }
 }
 
-export interface ItemScores {
-  sourceWeight: number
-  freshness: number
-  engagement: number
-  contentQuality: number
-}
-
 export interface ItemData {
   id: string
   title: string
   url: string
-  canonicalUrl: string
   source: {
     id: string
     type: string
-    packId: string
   }
   publishedAt: string | null
   fetchedAt: string
   firstSeenAt: string
   lastSeenAt: string
-  snippet: string | null
   author: string | null
   score: number
-  scores: ItemScores
   saved?: {
     savedAt: string
   }

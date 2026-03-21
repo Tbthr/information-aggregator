@@ -280,7 +280,7 @@ export function Sidebar({ activeNav, onNav, savedCount, collapsed, onToggleColla
         setEditingView(viewData)
         setViewName(viewData.name)
         setViewIcon(viewData.icon || "zap")
-        const packIds = viewData.packs?.map((p: { packId: string }) => p.packId) || []
+        const packIds = viewData.customViewPacks?.map((p: { packId: string }) => p.packId) || []
         setSelectedPackIds(new Set(packIds))
         if (viewData.filterJson) {
           try {

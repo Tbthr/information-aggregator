@@ -1,5 +1,5 @@
-export function buildCandidateQualityPrompt(title: string, snippet = ""): string {
-  return `Score the information value of this candidate.\nTitle: ${title}\nSnippet: ${snippet}`;
+export function buildCandidateQualityPrompt(title: string, content = ""): string {
+  return `Score the information value of this candidate.\nTitle: ${title}\nContent: ${content}`;
 }
 
 export function buildClusterSummaryPrompt(title: string, items: string[]): string {
@@ -23,7 +23,7 @@ interface XEngagement {
  */
 export function buildXPostScorePrompt(
   title: string,
-  snippet: string,
+  content: string,
   engagement?: XEngagement,
   author?: string,
 ): string {
@@ -35,7 +35,7 @@ export function buildXPostScorePrompt(
   return `你是一个社交媒体内容质量评估专家。请对以下 X/Twitter 帖子进行质量评分。
 
 标题: ${title}
-内容摘要: ${snippet.slice(0, 500)}${snippet.length > 500 ? "..." : ""}${authorInfo}${engagementInfo}
+内容: ${content.slice(0, 500)}${content.length > 500 ? "..." : ""}${authorInfo}${engagementInfo}
 
 请从以下维度评估（各 1-10 分）：
 1. 信息价值：内容是否提供有价值的信息、见解或新闻
@@ -50,11 +50,11 @@ export function buildXPostScorePrompt(
 /**
  * 构建 X 帖子摘要 prompt，生成 50 字内中文摘要
  */
-export function buildXPostSummaryPrompt(title: string, snippet: string): string {
+export function buildXPostSummaryPrompt(title: string, content: string): string {
   return `请为以下 X/Twitter 帖子生成一个简洁的中文摘要。
 
 标题: ${title}
-内容: ${snippet.slice(0, 300)}${snippet.length > 300 ? "..." : ""}
+内容: ${content.slice(0, 300)}${content.length > 300 ? "..." : ""}
 
 要求：
 1. 摘要控制在 50 字以内

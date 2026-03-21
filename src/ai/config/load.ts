@@ -1,6 +1,4 @@
-import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
-import YAML from "yaml";
+import { prisma } from "../../../lib/prisma";
 import type { AnthropicConfig, GeminiConfig, AiProviderConfig } from "../types";
 import type { AiSettings, AiProviderType } from "./schema";
 import { AI_ENV_MAPPING } from "./schema";
@@ -36,22 +34,59 @@ function mergeConfigValue<T extends string>(
 }
 
 /**
- * 加载 settings.yaml 中的 AI 配置
+ * 从数据库 Settings 表加载 AI 配置
  */
-export async function loadAiSettings(settingsPath = "config/settings.yaml"): Promise<AiSettings | null> {
+export async function loadAiSettings(): Promise<AiSettings | null> {
   try {
-    const absolutePath = resolve(process.cwd(), settingsPath);
-    const content = await readFile(absolutePath, "utf8");
-    const parsed = YAML.parse(content) as { ai?: AiSettings } | null;
-    return parsed?.ai ?? null;
-  } catch {
+    const settings = await prisma.settings.findUnique({ where: { id: "default" } });
+    const providerConfigs = await prisma.providerConfig.findMany();
+
+    if (!settings) return null;
+
+    // Map ProviderConfig DB records to AiSettings provider fields
+    const providerMap = new Map(providerConfigs.map(p => [p.provider, p]));
+
+    const anthropic = providerMap.get("anthropic");
+    const gemini = providerMap.get("gemini");
+    const openai = providerMap.get("openai");
+
+    return {
+      provider: settings.provider && providerMap.has(settings.provider)
+        ? (settings.provider as AiProviderType)
+        : undefined,
+      batchSize: settings.batchSize ?? undefined,
+      concurrency: settings.concurrency ?? undefined,
+      retry: {
+        maxRetries: settings.maxRetries ?? undefined,
+        initialDelay: settings.initialDelay ?? undefined,
+        maxDelay: settings.maxDelay ?? undefined,
+        backoffFactor: settings.backoffFactor ?? undefined,
+      },
+      anthropic: anthropic ? {
+        authToken: anthropic.apiKeyRef ?? undefined,
+        model: anthropic.model,
+        baseUrl: anthropic.baseUrl ?? undefined,
+      } : undefined,
+      gemini: gemini ? {
+        apiKey: gemini.apiKeyRef ?? undefined,
+        model: gemini.model,
+        baseUrl: gemini.baseUrl ?? undefined,
+      } : undefined,
+      openai: openai ? {
+        apiKey: openai.apiKeyRef ?? undefined,
+        model: openai.model,
+        baseUrl: openai.baseUrl ?? undefined,
+      } : undefined,
+    };
+  } catch (error) {
+    console.error("[loadAiSettings] Failed to load AI settings from database:", error);
     return null;
   }
 }
 
 /**
  * 构建 Anthropic 配置
- * 优先级：显式 config > settings.yaml > 环境变量
+ * 优先级：显式 config > 数据库 Settings > 环境变量
  * model 为必需字段，必须从配置中读取
  */
 export function buildAnthropicConfig(
@@ -65,7 +100,7 @@ export function buildAnthropicConfig(
   const explicitModel = explicitConfig?.model;
   const explicitBaseUrl = explicitConfig?.baseUrl;
 
-  // 优先级 2: settings.yaml（解析环境变量引用）
+  // 优先级 2: 数据库 Settings（解析环境变量引用）
   const settingsAuthToken = s?.authToken ? resolveEnvRef(s.authToken) : undefined;
   const settingsModel = s?.model;
   const settingsBaseUrl = s?.baseUrl;
@@ -97,7 +132,7 @@ export function buildAnthropicConfig(
 
 /**
  * 构建 Gemini 配置
- * 优先级：显式 config > settings.yaml > 环境变量
+ * 优先级：显式 config > 数据库 Settings > 环境变量
  * model 为必需字段，必须从配置中读取
  */
 export function buildGeminiConfig(
@@ -111,7 +146,7 @@ export function buildGeminiConfig(
   const explicitModel = explicitConfig?.model;
   const explicitBaseUrl = explicitConfig?.baseUrl;
 
-  // 优先级 2: settings.yaml
+  // 优先级 2: 数据库 Settings
   const settingsApiKey = s?.apiKey ? resolveEnvRef(s.apiKey) : undefined;
   const settingsModel = s?.model;
   const settingsBaseUrl = s?.baseUrl;
@@ -143,7 +178,7 @@ export function buildGeminiConfig(
 
 /**
  * 构建 OpenAI-compatible 配置
- * 优先级：显式 config > settings.yaml > 环境变量
+ * 优先级：显式 config > 数据库 Settings > 环境变量
  * model 为必需字段，必须从配置中读取
  */
 export function buildOpenAiConfig(
@@ -157,7 +192,7 @@ export function buildOpenAiConfig(
   const explicitModel = explicitConfig?.model;
   const explicitBaseUrl = explicitConfig?.baseUrl;
 
-  // 优先级 2: settings.yaml
+  // 优先级 2: 数据库 Settings
   const settingsApiKey = s?.apiKey ? resolveEnvRef(s.apiKey) : undefined;
   const settingsModel = s?.model;
   const settingsBaseUrl = s?.baseUrl;

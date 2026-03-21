@@ -29,7 +29,6 @@ export function parseJsonFeedItems(payload: JsonFeedPayload, sourceId: string): 
       sourceId,
       title: item.title ?? `Untitled ${index + 1}`,
       url: item.url ?? item.external_url ?? "",
-      snippet: item.content_text ?? item.content_html ?? "",
       publishedAt: item.date_published,
       fetchedAt: new Date().toISOString(),
       metadataJson: JSON.stringify({

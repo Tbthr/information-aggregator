@@ -136,16 +136,11 @@ export function parseGitHubTrendingHtml(html: string, sourceId: string): RawItem
           repo,
         };
 
-        const snippet = [description, language, todayStars ? `+${todayStars} stars today` : ""]
-          .filter(Boolean)
-          .join(" | ");
-
         return {
           id: `${sourceId}-${index + 1}`,
           sourceId,
           title,
           url,
-          snippet: snippet || undefined,
           fetchedAt: new Date().toISOString(),
           metadataJson: JSON.stringify({
             provider: "github-trending",

@@ -9,15 +9,10 @@ type SourceUpdateInput = Prisma.SourceUpdateInput
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-// Helper to find source by id or slug
-async function findSourceByIdOrSlug(idOrSlug: string) {
-  return prisma.source.findFirst({
-    where: {
-      OR: [
-        { id: idOrSlug },
-        { slug: idOrSlug },
-      ],
-    },
+// Helper to find source by id
+async function findSourceById(id: string) {
+  return prisma.source.findUnique({
+    where: { id },
   })
 }
 
@@ -55,8 +50,8 @@ export async function PATCH(
   }
 
   try {
-    // First find the source by id or slug
-    const existingSource = await findSourceByIdOrSlug(id)
+    // Find the source by id
+    const existingSource = await findSourceById(id)
     if (!existingSource) {
       return NextResponse.json(
         { success: false, error: "Source not found" },
@@ -127,8 +122,8 @@ export async function DELETE(
 ) {
   const { id } = await params
   try {
-    // First find the source by id or slug
-    const existingSource = await findSourceByIdOrSlug(id)
+    // Find the source by id
+    const existingSource = await findSourceById(id)
     if (!existingSource) {
       return NextResponse.json(
         { success: false, error: "Source not found" },

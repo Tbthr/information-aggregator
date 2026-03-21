@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { verifyCronRequest, unauthorizedResponse, runAfterJob } from "../_lib";
 import { loadAllPacksFromDb } from "../../../../src/config/load-pack-prisma";
 import { generateSourceId } from "../../../../src/config/source-id";
-import { resolveSelection } from "../../../../src/query/resolve-selection";
 import { collectSources, type CollectDependencies } from "../../../../src/pipeline/collect";
+import { normalizeItems } from "../../../../src/pipeline/normalize";
+import { dedupeExact } from "../../../../src/pipeline/dedupe-exact";
+import { dedupeNear } from "../../../../src/pipeline/dedupe-near";
 import {
   archiveRawItems,
   syncPacksToPrisma,
@@ -15,6 +17,7 @@ import { getItemsToEnrich, enrichItems } from "../../../../src/archive/enrich-pr
 import { createAiClient, loadSettings } from "../../../../src/ai/providers";
 import { buildAdapters } from "../../../../src/adapters/build-adapters";
 import { createLogger } from "../../../../src/utils/logger";
+import type { RawItem, NormalizedItem, SourcePack, SourceType } from "../../../../src/types/index";
 
 const logger = createLogger("cron:collect");
 
@@ -37,7 +40,6 @@ export async function POST(request: Request) {
         id: p.id,
         name: p.name,
         description: p.description,
-        policyJson: p.policy ? JSON.stringify(p.policy) : undefined,
       }));
       await syncPacksToPrisma(packRecords);
 
@@ -67,17 +69,37 @@ export async function POST(request: Request) {
       }
       await upsertSourcesBatch(allSources);
 
-      // 解析选择
-      const selection = resolveSelection(
-        {
-          packIds: packs.map((p) => p.id),
-          viewId: "json",
-          window: "all",
-        },
-        packs,
-      );
+      // 解析选择（内联 resolveSelection 逻辑）
+      interface ResolvedSource {
+        id: string;
+        type: SourceType;
+        url: string;
+        description?: string;
+        packId: string;
+        configJson?: string;
+      }
 
-      logger.info("Collecting from sources", { count: selection.sources.length });
+      function resolveSourcesForCollection(packs: SourcePack[]): ResolvedSource[] {
+        const seen = new Set<string>();
+        const sources: ResolvedSource[] = [];
+        for (const pack of packs) {
+          for (const source of pack.sources) {
+            if (!source.enabled && source.enabled !== undefined) continue;
+            if (seen.has(source.url)) continue;
+            seen.add(source.url);
+            sources.push({
+              ...source,
+              id: generateSourceId(source.url),
+              packId: pack.id,
+            });
+          }
+        }
+        return sources;
+      }
+
+      const sources = resolveSourcesForCollection(packs);
+
+      logger.info("Collecting from sources", { count: sources.length });
 
       // 收集失败的数据源
       const failedSources: Array<{ sourceId: string; error: string }> = [];
@@ -102,12 +124,41 @@ export async function POST(request: Request) {
       };
 
       // 抓取
-      const items = await collectSources(selection.sources, dependencies);
+      const items = await collectSources(sources, dependencies);
       logger.info("Collected items", { count: items.length });
+
+      // Normalize and dedupe
+      const normalized = normalizeItems(items);
+      const noExactKey = normalized.filter(i => !i.exactDedupKey);
+      if (noExactKey.length > 0) {
+        logger.warn("Items dropped: missing exactDedupKey", { count: noExactKey.length });
+      }
+      const afterExact = dedupeExact(normalized.filter((i): i is NormalizedItem & { exactDedupKey: string } => !!i.exactDedupKey));
+      const noProcessedAt = afterExact.filter(i => !i.processedAt);
+      if (noProcessedAt.length > 0) {
+        logger.warn("Items dropped: missing processedAt", { count: noProcessedAt.length });
+      }
+      const afterNear = dedupeNear(afterExact.filter((i): i is NormalizedItem & { exactDedupKey: string; processedAt: string } => !!i.processedAt));
+
+      // Convert NormalizedItem[] back to RawItem[] for archival
+      const dedupedRawItems = afterNear.map((item): RawItem => ({
+        id: item.id,
+        sourceId: item.sourceId ?? "",
+        title: item.title ?? "",
+        url: item.canonicalUrl ?? item.url ?? "",
+        fetchedAt: item.processedAt ?? new Date().toISOString(),
+        metadataJson: item.metadataJson ?? "{}",
+        publishedAt: item.processedAt,
+        author: undefined,
+        content: item.content,
+      }));
+
+      logger.info("After dedup", { original: items.length, deduped: dedupedRawItems.length });
 
       // 归档
       const now = new Date().toISOString();
-      const result = await archiveRawItems(items, now);
+      const sourceNameMap = Object.fromEntries(sources.map((s) => [s.id, s.description ?? s.id]));
+      const result = await archiveRawItems(dedupedRawItems, now, sourceNameMap);
       logger.info("Archived items", { newCount: result.newCount, updateCount: result.updateCount });
 
       // AI 增强
@@ -116,7 +167,7 @@ export async function POST(request: Request) {
         if (settings) {
           const aiClient = await createAiClient();
           if (aiClient) {
-            const newItemIds = items.slice(0, result.newCount).map((i) => i.id);
+            const newItemIds = result.newItemIds;
             const enrichItemIds = await getItemsToEnrich("new", newItemIds);
             if (enrichItemIds.length > 0) {
               logger.info("Enriching items", { count: enrichItemIds.length });
@@ -136,7 +187,7 @@ export async function POST(request: Request) {
       }
 
       // 更新成功数据源的健康状态（排除已失败的源）
-      const healthRecords = selection.sources
+      const healthRecords = sources
         .filter((source) => !failedSourceIds.has(source.id))
         .map((source) => {
           const sourceItems = items.filter((i) => i.sourceId === source.id);

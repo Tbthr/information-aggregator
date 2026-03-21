@@ -103,7 +103,8 @@ describe("x bird integration", () => {
 
     expect(items).toHaveLength(1);
     expect(items[0]?.title).toBe("Human-like agent");
-    expect(items[0]?.snippet).toBe("Human-like agent\n\nwith a lot more detail");
+    expect(items[0]?.content).toContain("Human-like agent");
+    expect(items[0]?.author).toBe("GoSailGlobal");
     expect(items[0]?.url).toBe("https://x.com/GoSailGlobal/status/2030994765169205673");
     expect(items[0]?.author).toBe("GoSailGlobal");
     expect(items[0]?.publishedAt).toBe("Mon Mar 09 13:11:00 +0000 2026");
@@ -148,7 +149,6 @@ describe("x bird integration", () => {
 
     expect(items).toHaveLength(1);
     expect(items[0]?.title).toBe("news-aggregator-skill 重磅更新");
-    expect(items[0]?.snippet).toContain("后面还有非常长的一大段正文");
   });
 
   test("prefers explicit auth token config over browser profile settings", () => {

@@ -184,7 +184,7 @@ function buildItemsWhere(query: ItemsQuery): Prisma.ItemWhereInput {
 
   if (packIds.length > 0) {
     and.push({
-      OR: [{ packId: { in: packIds } }, { source: { packId: { in: packIds } } }],
+      source: { packId: { in: packIds } },
     })
   }
 
@@ -204,7 +204,6 @@ function buildItemsWhere(query: ItemsQuery): Prisma.ItemWhereInput {
     and.push({
       OR: [
         { title: { contains: query.search, mode: "insensitive" } },
-        { snippet: { contains: query.search, mode: "insensitive" } },
         { summary: { contains: query.search, mode: "insensitive" } },
         { content: { contains: query.search, mode: "insensitive" } },
         { sourceName: { contains: query.search, mode: "insensitive" } },
@@ -218,37 +217,22 @@ function buildItemsWhere(query: ItemsQuery): Prisma.ItemWhereInput {
 function serializeItem(item: ItemRecord): ItemData {
   const bookmarkedAt = item.bookmarks[0]?.bookmarkedAt?.toISOString()
   const metadata = parseJson<Record<string, unknown>>(item.metadataJson, {})
-  const scores = parseJson<Partial<ItemData["scores"]>>(item.scoresJson, {
-    sourceWeight: 1,
-    freshness: 0.5,
-    engagement: 0.5,
-    contentQuality: 0.5,
-  })
 
   return {
     id: item.id,
     title: item.title,
     url: item.url,
-    canonicalUrl: item.canonicalUrl,
     source: {
       id: item.sourceId,
       type: item.sourceType || item.source.type || "unknown",
-      packId: item.packId ?? item.source.packId ?? "unknown",
     },
     sourceName: item.sourceName || item.source.name || item.sourceType,
     publishedAt: item.publishedAt ? item.publishedAt.toISOString() : null,
     fetchedAt: item.fetchedAt.toISOString(),
     firstSeenAt: item.fetchedAt.toISOString(),
     lastSeenAt: item.fetchedAt.toISOString(),
-    snippet: item.snippet ?? null,
     author: item.author ?? null,
     score: item.score,
-    scores: {
-      sourceWeight: toNumber(scores.sourceWeight, 0),
-      freshness: toNumber(scores.freshness, 0),
-      engagement: toNumber(scores.engagement, 0),
-      contentQuality: toNumber(scores.contentQuality, 0),
-    },
     isBookmarked: !!bookmarkedAt,
     saved: bookmarkedAt ? { savedAt: bookmarkedAt } : undefined,
     metadata,
@@ -277,7 +261,6 @@ function summarizeSources(rows: ItemRecord[]): SourceInfo[] {
     string,
     {
       type: string
-      packId: string
       count: number
       lastSuccessAt: string | null
     }
@@ -286,7 +269,6 @@ function summarizeSources(rows: ItemRecord[]): SourceInfo[] {
   for (const row of rows) {
     const current = stats.get(row.sourceId) ?? {
       type: row.sourceType || row.source.type || "unknown",
-      packId: row.packId ?? row.source.packId ?? "unknown",
       count: 0,
       lastSuccessAt: null as string | null,
     }
@@ -298,7 +280,6 @@ function summarizeSources(rows: ItemRecord[]): SourceInfo[] {
   return Array.from(stats.entries()).map(([id, value]) => ({
     id,
     type: value.type,
-    packId: value.packId,
     itemCount: value.count,
     health: {
       lastSuccessAt: value.lastSuccessAt,
@@ -345,10 +326,6 @@ function parseJson<T>(value: string | null, fallback: T): T {
   } catch {
     return fallback
   }
-}
-
-function toNumber(value: number | undefined, fallback: number): number {
-  return typeof value === "number" && Number.isFinite(value) ? value : fallback
 }
 
 function normalizeOptional(value: string | null): string | undefined {

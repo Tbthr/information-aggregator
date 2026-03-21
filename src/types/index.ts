@@ -1,6 +1,3 @@
-import type { PackPolicy, SourcePolicy } from './policy';
-export type { PackPolicy, SourcePolicy, PolicyMode } from './policy';
-
 export type RunKind = "query";
 export type QuerySort = "ranked" | "recent" | "engagement";
 export type CanonicalRelationship = "original" | "discussion" | "share";
@@ -27,7 +24,6 @@ export interface InlineSource {
   description?: string;
   enabled?: boolean;
   configJson?: string;
-  policy?: SourcePolicy;
 }
 
 // Source 类型别名，用于 adapter 函数签名
@@ -43,7 +39,6 @@ export interface SourcePack {
   description?: string;
   auth?: string;           // auth 引用
   sources: InlineSource[];
-  policy?: PackPolicy;
   // 模板引用
   promptTemplate?: string;   // 引用 config/prompts/{name}.md
   viewTemplate?: string;     // 引用 config/views/{name}.md
@@ -56,9 +51,9 @@ export interface RawItem {
   url: string;
   fetchedAt: string;
   metadataJson: string;
-  snippet?: string;
   publishedAt?: string;
   author?: string;
+  content?: string;
 }
 
 export interface RawItemEngagement {
@@ -129,7 +124,6 @@ export interface NormalizedItem {
   relationshipToCanonical?: CanonicalRelationship;
   isDiscussionSource?: boolean;
   normalizedTitle: string;
-  normalizedSnippet?: string;
   normalizedText?: string;
   exactDedupKey?: string;
   processedAt?: string;
@@ -140,39 +134,8 @@ export interface NormalizedItem {
   sourceType?: SourceType;
   contentType?: string;
   engagementScore?: number;
+  content?: string;
 }
-
-export interface Cluster {
-  id: string;
-  canonicalItemId: string;
-  memberItemIds: string[];
-  dedupeMethod: "exact" | "near";
-  runId?: string;
-  title?: string;
-  summary?: string;
-  url?: string;
-}
-
-export interface RunRecord {
-  id: string;
-  kind: RunKind;
-  startedAt?: string;
-  createdAt?: string;
-  finishedAt?: string;
-  status: RunStatus;
-  sourceSelectionJson?: string;
-  paramsJson?: string;
-}
-
-export interface OutputRecord {
-  id: string;
-  runId: string;
-  kind: RunKind;
-  format: "markdown" | "json";
-  body: string;
-  createdAt: string;
-}
-
 
 export interface SourceHealth {
   sourceId: string;

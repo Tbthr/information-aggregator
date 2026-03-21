@@ -1,6 +1,6 @@
 import { type CanonicalRelationship, type NormalizedItem, type RawItem } from "../types/index";
 import { parseRawItemMetadata } from "../utils/metadata";
-import { normalizeSnippet, normalizeTitle } from "./normalize-text";
+import { normalizeTitle, normalizeWhitespace } from "./normalize-text";
 import { normalizeUrl, resolveCanonicalUrl } from "./normalize-url";
 
 function toBoundedEngagementScore(metadataJson: string): number {
@@ -51,7 +51,6 @@ export function normalizeItems(items: RawItem[]): NormalizedItem[] {
     const canonicalUrl = resolveCanonicalUrl(item.url, metadata);
     const relation = resolveRelationship(item, canonicalUrl, metadata?.contentType);
     const normalizedTitle = normalizeTitle(item.title);
-    const normalizedSnippet = normalizeSnippet(item.snippet);
 
     return {
       id: item.id,
@@ -64,8 +63,7 @@ export function normalizeItems(items: RawItem[]): NormalizedItem[] {
       relationshipToCanonical: relation.relationshipToCanonical,
       isDiscussionSource: relation.isDiscussionSource,
       normalizedTitle,
-      normalizedSnippet,
-      normalizedText: [normalizedTitle, normalizedSnippet].filter(Boolean).join(" "),
+      normalizedText: [normalizedTitle, normalizeWhitespace(item.content ?? "")].filter(Boolean).join(" "),
       metadataJson: item.metadataJson,
       sourceType: metadata?.sourceType,
       contentType: metadata?.contentType,
@@ -73,6 +71,7 @@ export function normalizeItems(items: RawItem[]): NormalizedItem[] {
       exactDedupKey: canonicalUrl,
       // Raw items stay immutable; normalization is stored separately so dedup rules can evolve safely.
       processedAt: item.fetchedAt,
+      content: item.content,
     };
   });
 }

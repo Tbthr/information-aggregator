@@ -41,7 +41,7 @@ export function AppLayout({ children, activeNav, onNav }: AppLayoutProps) {
     if (!view) return undefined
     return {
       name: view.name,
-      packNames: view.packs?.map((p) => p.pack?.name).filter(Boolean) as string[] || [],
+      packNames: view.customViewPacks?.map((p) => p.pack?.name).filter(Boolean) as string[] || [],
     }
   }, [customViews, activeNav])
 

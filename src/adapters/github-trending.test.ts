@@ -18,7 +18,7 @@ describe("parseGitHubTrendingHtml", () => {
       expect(items).toHaveLength(1);
       expect(items[0]?.url).toBe("https://github.com/openai/information-aggregator");
       expect(items[0]?.title).toBe("openai / information-aggregator");
-      expect(items[0]?.snippet).toContain("TypeScript");
+      expect(items[0]?.metadataJson).toContain("TypeScript");
     });
 
     test("handles multiple articles", () => {
@@ -97,7 +97,7 @@ describe("parseGitHubTrendingHtml", () => {
       expect(metadata.repo).toBe("gpt-4");
     });
 
-    test("includes today stars in snippet when available", () => {
+    test("includes today stars in metadata when available", () => {
       const html = `
         <article class="Box-row">
           <h2><a href="/user/repo"> user / repo </a></h2>
@@ -111,7 +111,8 @@ describe("parseGitHubTrendingHtml", () => {
 
       const items = parseGitHubTrendingHtml(html, "github-trending");
 
-      expect(items[0]?.snippet).toContain("+567 stars today");
+      const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
+      expect(metadata.todayStars).toBe("567");
     });
   });
 

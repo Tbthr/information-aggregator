@@ -11,7 +11,6 @@ export const dynamic = "force-dynamic"
 const packUpdateSchema = z.object({
   name: z.string().min(1).optional(),
   description: z.string().nullable().optional(),
-  policyJson: z.string().nullable().optional(),
 })
 
 export async function GET(

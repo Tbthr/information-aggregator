@@ -18,7 +18,7 @@ export async function GET(
     const view = await prisma.customView.findUnique({
       where: { id },
       include: {
-        packs: {
+        customViewPacks: {
           include: {
             pack: {
               include: {
@@ -40,13 +40,20 @@ export async function GET(
     }
 
     // Extract source IDs
-    const sourceIds = view.packs.flatMap((p) =>
-      p.pack.sources.map((s) => s.id)
+    const sourceIds = view.customViewPacks.flatMap((p: { pack: { sources: Array<{ id: string }> } }) =>
+      p.pack.sources.map((s: { id: string }) => s.id)
     )
 
-    // Parse filter JSON
-    const filters = view.filterJson ? JSON.parse(view.filterJson) : {}
-    const { days = 7, minScore = 0, limit = 50 } = filters
+    // Parse filter JSON with bounds validation
+    let filters: Record<string, unknown> = {}
+    try {
+      filters = view.filterJson ? JSON.parse(view.filterJson) : {}
+    } catch {
+      // Malformed filterJson in DB, use defaults
+    }
+    const days = Math.max(1, Math.min(365, Number(filters.days) || 7))
+    const minScore = Math.max(0, Math.min(10, Number(filters.minScore) || 0))
+    const limit = Math.max(1, Math.min(200, Number(filters.limit) || 50))
 
     // Calculate date threshold
     const dateThreshold = new Date()
