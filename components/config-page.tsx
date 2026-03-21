@@ -1,9 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ChevronDown, ChevronRight, Plus, Trash2, Settings2, Clock, Eye, EyeOff, Loader2, Check } from "lucide-react"
+import { ChevronDown, ChevronRight, Plus, Trash2, Settings2, Clock, Eye, EyeOff, Loader2, Check, Key, Pencil, Rss, Globe, Flame, MessageSquare, Bookmark, Heart, Github, FileJson, List } from "lucide-react"
+import type { LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { AuthConfigSection } from "./auth-config-section"
+import { SourceEditDialog } from "./source-edit-dialog"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,9 +16,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 
 type Tab = "datasource" | "ai"
-type Source = { id: string; name: string; url: string | null; type: string; enabled: boolean; packId: string | null }
+type Source = { id: string; name: string; url: string | null; type: string; enabled: boolean; packId: string | null; description?: string | null }
 type Pack = {
   id: string
   name: string
@@ -50,6 +52,39 @@ type Settings = {
   maxDelay: number | null
   backoffFactor: number | null
 }
+
+const SOURCE_TYPE_CATEGORIES: Array<{ label: string; types: Array<{ value: string; label: string; icon: LucideIcon | string }> }> = [
+  {
+    label: "RSS & Feeds",
+    types: [
+      { value: "rss", label: "RSS Feed", icon: Rss },
+      { value: "json-feed", label: "JSON Feed", icon: FileJson },
+    ],
+  },
+  {
+    label: "Web",
+    types: [
+      { value: "website", label: "Website", icon: Globe },
+      { value: "hn", label: "Hacker News", icon: Flame },
+      { value: "reddit", label: "Reddit", icon: MessageSquare },
+    ],
+  },
+  {
+    label: "Social",
+    types: [
+      { value: "x-home", label: "X Home", icon: "X" },
+      { value: "x-list", label: "X List", icon: List },
+      { value: "x-bookmarks", label: "X Bookmarks", icon: Bookmark },
+      { value: "x-likes", label: "X Likes", icon: Heart },
+    ],
+  },
+  {
+    label: "Dev",
+    types: [
+      { value: "github-trending", label: "GitHub Trending", icon: Github },
+    ],
+  },
+]
 
 export function ConfigPage() {
   const [activeTab, setActiveTab] = useState<Tab>("datasource")
@@ -103,6 +138,8 @@ function EngineConfig() {
   const [editingPackName, setEditingPackName] = useState("")
   const [editingPackDescription, setEditingPackDescription] = useState("")
   const [savingPack, setSavingPack] = useState(false)
+  const [authStatusMap, setAuthStatusMap] = useState<Record<string, boolean>>({})
+  const [editingSource, setEditingSource] = useState<Source | null>(null)
 
   // Load packs and sources from database
   const loadData = async () => {
@@ -122,6 +159,23 @@ function EngineConfig() {
       }
       if (sourcesData.success) {
         setSources(sourcesData.data.sources)
+        // 批量加载 auth 状态
+        const sourceIds = sourcesData.data.sources.map((s: Source) => s.id).filter(Boolean)
+        if (sourceIds.length > 0) {
+          try {
+            const authRes = await fetch(`/api/auth-config/batch?sourceIds=${sourceIds.join(",")}`)
+            const authData = await authRes.json()
+            if (authData.success) {
+              const map: Record<string, boolean> = {}
+              for (const [id, info] of Object.entries(authData.data)) {
+                map[id] = (info as { hasConfig: boolean }).hasConfig
+              }
+              setAuthStatusMap(map)
+            }
+          } catch {
+            // ignore auth status fetch failure
+          }
+        }
       }
     } catch (error) {
       console.error("Failed to load data:", error)
@@ -360,7 +414,8 @@ function EngineConfig() {
                     {Array.from(new Map(sources.filter(s => s.packId === pack.id).map(s => [s.id, s])).values()).map((source) => (
                       <div
                         key={source.id}
-                        className="flex items-center gap-2 px-3 py-1.5 text-xs"
+                        className="relative group flex items-center gap-2 px-3 py-1.5 text-xs cursor-pointer hover:bg-sidebar-accent/60 rounded-sm transition-colors"
+                        onClick={() => setEditingSource(source)}
                       >
                         <span
                           className={cn(
@@ -368,8 +423,27 @@ function EngineConfig() {
                             source.enabled ? "bg-green-500" : "bg-gray-400"
                           )}
                         />
-                        <span className="text-sidebar-foreground/80 truncate">{source.name}</span>
+                        <span className="text-sidebar-foreground/80 truncate flex-1">{source.name}</span>
+                        {authStatusMap[source.id] && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Key className="w-3 h-3 text-green-500 shrink-0" />
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="text-xs">
+                              X/Twitter 认证已配置
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
                         <span className="text-muted-foreground shrink-0">{source.type}</span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setEditingSource(source)
+                          }}
+                          className="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Pencil className="w-3 h-3 text-muted-foreground" />
+                        </button>
                       </div>
                     ))}
                     <button
@@ -456,9 +530,6 @@ function EngineConfig() {
                   <div className="text-xs text-muted-foreground">最新更新</div>
                 </div>
               </div>
-
-              {/* 认证配置 */}
-              <AuthConfigSection packId={selectedPack.id} />
 
               {/* 保存/删除按钮 */}
               <div className="flex gap-3 pt-2">
@@ -553,23 +624,54 @@ function EngineConfig() {
           </AlertDialogHeader>
           <div className="space-y-4 py-2">
             <div>
-              <label className="block text-xs font-sans text-muted-foreground mb-1">
+              <label className="block text-xs font-sans text-muted-foreground mb-2">
                 数据源类型
               </label>
-              <div className="relative group">
-                <select
-                  value={newSourceType}
-                  onChange={(e) => setNewSourceType(e.target.value)}
-                  className="w-full text-sm font-sans bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl px-3 py-2.5 pr-10 text-foreground outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 appearance-none cursor-pointer transition-all duration-200 hover:border-primary/30 hover:shadow-lg hover:bg-card"
-                >
-                  <option value="rss">RSS Feed</option>
-                  <option value="twitter">Twitter/X</option>
-                  <option value="github">GitHub</option>
-                  <option value="substack">Substack</option>
-                </select>
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none bg-card/80 rounded px-1">
-                  <ChevronDown className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                </div>
+              <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+                {SOURCE_TYPE_CATEGORIES.map((category) => (
+                  <div key={category.label}>
+                    <p className="text-[10px] font-sans font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                      {category.label}
+                    </p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {category.types.map((type) => (
+                        <button
+                          key={type.value}
+                          type="button"
+                          onClick={() => setNewSourceType(type.value)}
+                          className={cn(
+                            "relative flex flex-col items-center gap-1.5 p-2.5 rounded-xl border transition-all duration-200",
+                            newSourceType === type.value
+                              ? "border-primary bg-primary/5 shadow-md ring-2 ring-primary/20"
+                              : "border-border/50 bg-card/50 hover:border-primary/30 hover:bg-card hover:shadow-sm"
+                          )}
+                        >
+                          <div className={cn(
+                            "w-7 h-7 rounded-full flex items-center justify-center transition-colors",
+                            newSourceType === type.value
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-muted-foreground"
+                          )}>
+                            {typeof type.icon === "string"
+                              ? <span className="text-[10px] font-bold">{type.icon}</span>
+                              : <type.icon className="w-3.5 h-3.5" />}
+                          </div>
+                          <p className={cn(
+                            "text-[10px] font-medium text-center leading-tight",
+                            newSourceType === type.value ? "text-primary" : "text-foreground"
+                          )}>
+                            {type.label}
+                          </p>
+                          {newSourceType === type.value && (
+                            <div className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full bg-primary flex items-center justify-center">
+                              <Check className="w-2 h-2 text-primary-foreground" />
+                            </div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
             <div>
@@ -600,6 +702,20 @@ function EngineConfig() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* 编辑数据源对话框 */}
+      <SourceEditDialog
+        source={editingSource}
+        open={!!editingSource}
+        onOpenChange={(open) => { if (!open) setEditingSource(null) }}
+        onSave={(updatedSource, authHasConfig) => {
+          setSources(prev => prev.map(s => s.id === updatedSource.id ? updatedSource : s))
+          if (authHasConfig !== undefined) {
+            setAuthStatusMap(prev => ({ ...prev, [updatedSource.id]: authHasConfig }))
+          }
+          setEditingSource(null)
+        }}
+      />
     </div>
   )
 }

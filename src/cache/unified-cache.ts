@@ -15,7 +15,6 @@ export interface UnifiedCacheOptions {
 
 export interface CacheStats {
   memorySize: number;
-  dbSize: number;
   hits: number;
   misses: number;
   hitRate: number;
@@ -31,7 +30,7 @@ export class UnifiedContentCache {
   private hits = 0;
   private misses = 0;
 
-  constructor(_db: unknown, options: UnifiedCacheOptions = {}) {
+  constructor(options: UnifiedCacheOptions = {}) {
     this.memoryCache = new ContentCache<ExtractedContent>({
       ttl: options.memoryTtl ?? 86400,
       maxSize: options.maxMemorySize ?? 1000,
@@ -75,7 +74,6 @@ export class UnifiedContentCache {
 
     return {
       memorySize: memoryStats.size,
-      dbSize: 0,
       hits: this.hits,
       misses: this.misses,
       hitRate: total > 0 ? this.hits / total : 0,
@@ -89,8 +87,7 @@ export class UnifiedContentCache {
 }
 
 export function createUnifiedCache(
-  db: unknown,
   options?: UnifiedCacheOptions
 ): UnifiedContentCache {
-  return new UnifiedContentCache(db, options);
+  return new UnifiedContentCache(options);
 }

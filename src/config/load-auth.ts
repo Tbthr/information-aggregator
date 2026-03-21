@@ -1,7 +1,8 @@
-import { readFile, readdir } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import YAML from "yaml";
 import type { AuthConfig } from "../types/index";
+import { prisma } from "../../lib/prisma";
 
 export function validateAuthConfig(input: unknown): AuthConfig {
   if (typeof input !== "object" || input === null) {
@@ -64,33 +65,38 @@ export function mergeAuthConfig<T extends { configJson?: string }>(
 }
 
 /**
- * 异步加载所有 auth 配置
- * @param authDir auth 配置目录路径
+ * 从数据库 AuthConfig 表加载所有 auth 配置
  * @returns auth 配置映射（按 authKey 分组）
  */
-export async function loadAllAuthConfigs(authDir: string = "config/auth"): Promise<Record<string, Record<string, unknown>>> {
+export async function loadAuthConfigsFromDb(): Promise<Record<string, Record<string, unknown>>> {
+  const configs = await prisma.authConfig.findMany({
+    include: { source: { select: { type: true } } },
+  });
   const result: Record<string, Record<string, unknown>> = {};
 
-  try {
-    const files = await readdir(resolve(process.cwd(), authDir));
-    for (const file of files) {
-      if (file.endsWith(".yaml") || file.endsWith(".yml")) {
-        const authKey = file.replace(/\.(yaml|yml)$/, "");
-        const filePath = resolve(authDir, file);
-        try {
-          const content = await readFile(filePath, "utf8");
-          const parsed = YAML.parse(content) as Record<string, unknown> | null;
-          if (parsed?.config) {
-            result[authKey] = parsed.config as Record<string, unknown>;
-          }
-        } catch {
-          // 忽略解析错误
-        }
-      }
+  for (const config of configs) {
+    const authKey = getAuthKeyForSourceType(config.source.type);
+    if (!authKey) continue;
+
+    try {
+      result[authKey] = JSON.parse(config.configJson);
+    } catch {
+      // 跳过无效 JSON
     }
-  } catch {
-    // 目录不存在或无法读取，返回空对象
   }
 
   return result;
+}
+
+/**
+ * 根据 source type 推断 authKey
+ */
+function getAuthKeyForSourceType(sourceType: string): string | null {
+  const mapping: Record<string, string> = {
+    "x-bookmarks": "x-family",
+    "x-home": "x-family",
+    "x-likes": "x-family",
+    "x-list": "x-family",
+  };
+  return mapping[sourceType] ?? null;
 }

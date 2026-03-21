@@ -2,6 +2,7 @@ import type { RawItem, Source } from "../types/index";
 import { createLogger, maskSensitiveArgs, truncateWithLength } from "../utils/logger";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { spawn } from "node:child_process";
 
 const logger = createLogger("adapter:bird");
 
@@ -374,14 +375,22 @@ export async function collectXBirdSource(
 
     logger.debug("Full command args", { args: maskedCommand });
 
-    // @ts-expect-error Bun.spawn is only available in Bun runtime
-    const proc = Bun.spawn(command, {
-      stdout: "pipe",
-      stderr: "pipe",
+    const proc = spawn(command[0], command.slice(1), {
+      stdio: ["ignore", "pipe", "pipe"],
     });
-    const output = await new Response(proc.stdout).text();
-    const error = await new Response(proc.stderr).text();
-    const exitCode = await proc.exited;
+    const [output, error, exitCode] = await new Promise<[string, string, number]>((resolve) => {
+      const stdoutChunks: Buffer[] = [];
+      const stderrChunks: Buffer[] = [];
+      proc.stdout?.on("data", (chunk: Buffer) => stdoutChunks.push(chunk));
+      proc.stderr?.on("data", (chunk: Buffer) => stderrChunks.push(chunk));
+      proc.on("close", (code) => {
+        resolve([
+          Buffer.concat(stdoutChunks).toString(),
+          Buffer.concat(stderrChunks).toString(),
+          code ?? 1,
+        ]);
+      });
+    });
     const elapsed = Date.now() - startTime;
 
     if (exitCode !== 0) {

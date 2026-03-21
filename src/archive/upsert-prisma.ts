@@ -329,6 +329,29 @@ export async function recordSourcesSuccessBatch(
 }
 
 /**
+ * 记录数据源失败状态
+ */
+export async function recordSourceFailure(
+  sourceId: string,
+  error: string,
+): Promise<void> {
+  await prisma.sourceHealth.upsert({
+    where: { sourceId },
+    create: {
+      sourceId,
+      lastFailureAt: new Date(),
+      lastError: error,
+      consecutiveFailures: 1,
+    },
+    update: {
+      lastFailureAt: new Date(),
+      lastError: error,
+      consecutiveFailures: { increment: 1 },
+    },
+  });
+}
+
+/**
  * 获取归档统计
  */
 export async function getArchiveStats(): Promise<{

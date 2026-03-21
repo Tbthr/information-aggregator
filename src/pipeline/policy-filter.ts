@@ -18,8 +18,6 @@ const logger = createLogger("pipeline:policy-filter");
 export interface PolicyFilterConfig {
   /** AI 客户端（可选，用于 filter_then_assist 模式） */
   aiClient?: AiClient;
-  /** 数据库实例（可选，用于缓存） */
-  db?: unknown;
   /** 批处理大小（默认 10） */
   batchSize?: number;
   /** 并发数（默认 3，由 AI client 内部处理） */
@@ -145,7 +143,6 @@ export async function policyFilterCandidates(
             batch,
             pack,
             aiClient,
-            config.db
           );
           stats.aiCallCount++;
 
@@ -184,7 +181,6 @@ async function processFilterThenAssist(
   candidates: RankedCandidate[],
   pack: SourcePack,
   aiClient: AiClient,
-  db?: unknown
 ): Promise<CandidateWithJudgment[]> {
   // 构建缓存查询参数
   const cacheQueries = candidates.map((c) => ({
@@ -193,9 +189,7 @@ async function processFilterThenAssist(
   }));
 
   // 批量查询缓存
-  const cachedJudgments = db
-    ? await batchGetCachedJudgments(db, cacheQueries)
-    : new Map<string, FilterJudgment>();
+  const cachedJudgments = await batchGetCachedJudgments(cacheQueries);
 
   // 分离需要 AI 判断的条目
   const needsAiJudgment: Array<{ candidate: RankedCandidate; index: number }> = [];
@@ -241,15 +235,15 @@ async function processFilterThenAssist(
       }
 
       // 准备保存缓存
-      if (db && judgment) {
+      if (judgment) {
         const fingerprint = cacheQueries[originalIndex]?.fingerprint || "";
         judgmentsToSave.set(item.candidate.id, { judgment, fingerprint });
       }
     });
 
     // 批量保存缓存
-    if (db && judgmentsToSave.size > 0) {
-      await batchSaveJudgments(db, judgmentsToSave);
+    if (judgmentsToSave.size > 0) {
+      await batchSaveJudgments(judgmentsToSave);
     }
   }
 

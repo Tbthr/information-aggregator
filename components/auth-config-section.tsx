@@ -14,32 +14,30 @@ import { Label } from "@/components/ui/label"
 import { Key, Check, Plus, Pencil } from "lucide-react"
 
 interface AuthConfigData {
-  adapter: string
+  sourceId: string
   hasConfig: boolean
   configJson?: string
 }
 
 interface AuthConfigSectionProps {
-  packId: string
+  sourceId: string
 }
 
-export function AuthConfigSection({ packId }: AuthConfigSectionProps) {
+export function AuthConfigSection({ sourceId }: AuthConfigSectionProps) {
   const [config, setConfig] = useState<AuthConfigData | null>(null)
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [adapter, setAdapter] = useState("x-family")
   const [configJson, setConfigJson] = useState("")
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     async function loadConfig() {
       try {
-        const res = await fetch(`/api/auth-config?packId=${packId}`)
+        const res = await fetch(`/api/auth-config?sourceId=${sourceId}`)
         const data = await res.json()
         if (data.success) {
           setConfig(data.data)
           if (data.data) {
-            setAdapter(data.data.adapter || "x-family")
             setConfigJson(data.data.configJson || "")
           }
         }
@@ -48,7 +46,7 @@ export function AuthConfigSection({ packId }: AuthConfigSectionProps) {
       }
     }
     loadConfig()
-  }, [packId])
+  }, [sourceId])
 
   const handleSave = async () => {
     setSaving(true)
@@ -56,11 +54,11 @@ export function AuthConfigSection({ packId }: AuthConfigSectionProps) {
       const res = await fetch("/api/auth-config", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ packId, adapter, configJson }),
+        body: JSON.stringify({ sourceId, configJson }),
       })
       const data = await res.json()
       if (data.success) {
-        setConfig({ adapter, hasConfig: !!configJson })
+        setConfig({ sourceId, hasConfig: !!configJson })
         setDialogOpen(false)
       }
     } finally {
@@ -98,11 +96,6 @@ export function AuthConfigSection({ packId }: AuthConfigSectionProps) {
 
       {config ? (
         <div className="space-y-3">
-          <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-background/50 border border-border/30">
-            <span className="text-xs text-muted-foreground">适配器</span>
-            <span className="font-mono text-xs text-foreground bg-muted px-2 py-0.5 rounded">{config.adapter}</span>
-          </div>
-
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" className="w-full gap-2 border-border/50 hover:border-primary/30 hover:bg-primary/5">
@@ -118,18 +111,6 @@ export function AuthConfigSection({ packId }: AuthConfigSectionProps) {
                 </DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
-                <div>
-                  <Label htmlFor="adapter" className="text-xs font-sans font-semibold uppercase tracking-wider text-muted-foreground">
-                    适配器
-                  </Label>
-                  <Input
-                    id="adapter"
-                    value={adapter}
-                    onChange={(e) => setAdapter(e.target.value)}
-                    placeholder="x-family"
-                    className="mt-2 bg-card/80 backdrop-blur-sm border-border/50 focus:border-primary/50"
-                  />
-                </div>
                 <div>
                   <Label htmlFor="configJson" className="text-xs font-sans font-semibold uppercase tracking-wider text-muted-foreground">
                     配置 JSON
@@ -172,18 +153,6 @@ export function AuthConfigSection({ packId }: AuthConfigSectionProps) {
                 </DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
-                <div>
-                  <Label htmlFor="adapter" className="text-xs font-sans font-semibold uppercase tracking-wider text-muted-foreground">
-                    适配器
-                  </Label>
-                  <Input
-                    id="adapter"
-                    value={adapter}
-                    onChange={(e) => setAdapter(e.target.value)}
-                    placeholder="x-family"
-                    className="mt-2 bg-card/80 backdrop-blur-sm border-border/50 focus:border-primary/50"
-                  />
-                </div>
                 <div>
                   <Label htmlFor="configJson" className="text-xs font-sans font-semibold uppercase tracking-wider text-muted-foreground">
                     配置 JSON

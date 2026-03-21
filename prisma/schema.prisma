@@ -57,6 +57,7 @@ model Source {
   pack        Pack?    @relation(fields: [packId], references: [id])
   items       Item[]
   health      SourceHealth?
+  authConfig  AuthConfig?
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -86,7 +87,6 @@ model Pack {
 
   sources     Source[]
   customViews CustomViewPack[]
-  authConfig  AuthConfig?
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -249,12 +249,10 @@ model WeeklyReportConfig {
 }
 
 model AuthConfig {
-  id         String   @id @default(cuid())
-  packId     String   @unique
-  adapter    String
+  sourceId   String   @id              // 1:1 关联 Source
   configJson String   @db.Text
 
-  pack       Pack     @relation(fields: [packId], references: [id], onDelete: Cascade)
+  source     Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
 
   updatedAt DateTime @updatedAt
 }

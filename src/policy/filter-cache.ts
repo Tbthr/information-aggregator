@@ -14,7 +14,6 @@ export function generateFingerprint(url: string, publishedAt: string | null): st
 }
 
 export async function getCachedJudgment(
-  _db: unknown,
   itemId: string,
   itemFingerprint: string,
 ): Promise<FilterJudgment | null> {
@@ -29,7 +28,6 @@ export async function getCachedJudgment(
 }
 
 export async function saveJudgment(
-  _db: unknown,
   itemId: string,
   judgment: FilterJudgment,
   itemFingerprint: string,
@@ -38,7 +36,6 @@ export async function saveJudgment(
 }
 
 export async function batchGetCachedJudgments(
-  _db: unknown,
   items: Array<{ itemId: string; fingerprint: string }>,
 ): Promise<Map<string, FilterJudgment>> {
   const result = new Map<string, FilterJudgment>();
@@ -55,7 +52,6 @@ export async function batchGetCachedJudgments(
 }
 
 export async function batchSaveJudgments(
-  _db: unknown,
   judgments: Map<string, { judgment: FilterJudgment; fingerprint: string }>,
 ): Promise<void> {
   for (const [itemId, data] of judgments) {

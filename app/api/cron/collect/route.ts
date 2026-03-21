@@ -1,6 +1,5 @@
-import { after } from "next/server";
 import { NextResponse } from "next/server";
-import { verifyCronRequest, unauthorizedResponse } from "../_lib";
+import { verifyCronRequest, unauthorizedResponse, runAfterJob } from "../_lib";
 import { loadAllPacksFromDb } from "../../../../src/config/load-pack-prisma";
 import { generateSourceId } from "../../../../src/config/source-id";
 import { resolveSelection } from "../../../../src/query/resolve-selection";
@@ -10,6 +9,7 @@ import {
   syncPacksToPrisma,
   upsertSourcesBatch,
   recordSourcesSuccessBatch,
+  recordSourceFailure,
 } from "../../../../src/archive/upsert-prisma";
 import { getItemsToEnrich, enrichItems } from "../../../../src/archive/enrich-prisma";
 import { createAiClient, loadSettings } from "../../../../src/ai/providers";
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     return unauthorizedResponse();
   }
 
-  after(async () => {
+  runAfterJob("collect", async () => {
     try {
       logger.info("Starting collect job");
 
@@ -79,6 +79,9 @@ export async function POST(request: Request) {
 
       logger.info("Collecting from sources", { count: selection.sources.length });
 
+      // 收集失败的数据源
+      const failedSources: Array<{ sourceId: string; error: string }> = [];
+
       // 构建依赖
       const dependencies: CollectDependencies = {
         adapters: await buildAdapters(),
@@ -89,6 +92,12 @@ export async function POST(request: Request) {
             status: event.status,
             itemCount: event.itemCount,
           });
+          if (event.status === "failure") {
+            failedSources.push({
+              sourceId: event.sourceId,
+              error: event.error || "Unknown error",
+            });
+          }
         },
       };
 
@@ -118,8 +127,17 @@ export async function POST(request: Request) {
         }
       }
 
-      // 更新数据源健康状态
+      // 记录失败的数据源（先记录失败，避免被成功记录覆盖）
+      const failedSourceIds = new Set(failedSources.map((s) => s.sourceId));
+      if (failedSources.length > 0) {
+        await Promise.allSettled(
+          failedSources.map((s) => recordSourceFailure(s.sourceId, s.error))
+        );
+      }
+
+      // 更新成功数据源的健康状态（排除已失败的源）
       const healthRecords = selection.sources
+        .filter((source) => !failedSourceIds.has(source.id))
         .map((source) => {
           const sourceItems = items.filter((i) => i.sourceId === source.id);
           return { sourceId: source.id, fetchedAt: now, itemCount: sourceItems.length };

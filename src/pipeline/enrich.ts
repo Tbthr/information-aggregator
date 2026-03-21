@@ -28,7 +28,6 @@ export interface EnrichDependencies {
   enrichmentConfig?: EnrichmentConfig;
   fetchImpl?: typeof fetch;
   aiClient?: AiClient | null;
-  db?: unknown;
   cache?: ContentCache<ExtractedContent> | null;
 }
 
@@ -74,7 +73,6 @@ export async function enrichCandidates<T extends RankedCandidate>(
     enrichmentConfig = {},
     fetchImpl = fetch,
     aiClient,
-    db,
     cache,
   } = dependencies;
 

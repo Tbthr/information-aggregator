@@ -1,6 +1,5 @@
-import { after } from "next/server";
 import { NextResponse } from "next/server";
-import { verifyCronRequest, unauthorizedResponse } from "../_lib";
+import { verifyCronRequest, unauthorizedResponse, runAfterJob } from "../_lib";
 import { createAiClient, loadSettings } from "../../../../src/ai/providers";
 import { generateDailyReport } from "../../../../src/reports/daily";
 import { createLogger } from "../../../../src/utils/logger";
@@ -21,7 +20,7 @@ export async function POST(request: Request) {
 
   const date = formatDate(new Date());
 
-  after(async () => {
+  runAfterJob("daily", async () => {
     try {
       logger.info("Starting daily report generation", { date });
 

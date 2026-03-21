@@ -3,9 +3,8 @@ import { buildCandidateQualityPrompt } from "../ai/prompts";
 import { collectGitHubTrendingSource } from "../adapters/github-trending";
 import { collectJsonFeedSource } from "../adapters/json-feed";
 import { collectRssSource } from "../adapters/rss";
-import { collectXBirdSource } from "../adapters/x-bird";
 import { loadAuthByRef } from "../config/load-auth";
-import { registerAdapterFamilies, type AdapterFamily } from "../adapters/registry";
+import { registerAdapterFamilies, ADAPTER_FAMILIES } from "../adapters/registry";
 import { loadAllPacksFromDb } from "../config/load-pack-prisma";
 import { buildClusters } from "../pipeline/cluster";
 import { collectSources, type CollectDependencies } from "../pipeline/collect";
@@ -36,7 +35,6 @@ export interface RunQueryDependencies {
   now?: () => string;
   // 深度 enrichment 配置
   enrichmentConfig?: EnrichmentConfig;
-  db?: unknown;
   cache?: ContentCache | null;
 }
 
@@ -49,15 +47,6 @@ export interface QueryResult {
   clusters: Cluster[];
   warnings: string[];
 }
-
-// 定义适配器家族
-const ADAPTER_FAMILIES: AdapterFamily[] = [
-  {
-    names: ["x-bookmarks", "x-home", "x-likes", "x-list"],
-    collect: collectXBirdSource,
-    authKey: "x-family",
-  },
-];
 
 function buildDefaultCollectDependencies(authConfigs: Record<string, Record<string, unknown>> = {}): CollectDependencies {
   // 批量注册适配器家族
@@ -190,7 +179,6 @@ export async function runQuery(args: QueryArgs, dependencies: RunQueryDependenci
     // 深度 enrichment 配置
     enrichmentConfig: dependencies.enrichmentConfig,
     aiClient: dependencies.aiClient,
-    db: dependencies.db,
     cache: dependencies.cache ?? (dependencies.enrichmentConfig?.cacheEnabled !== false ? createContentCache({
       ttl: dependencies.enrichmentConfig?.cacheTtl,
     }) : null),

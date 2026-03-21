@@ -8,17 +8,17 @@ export const dynamic = "force-dynamic"
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
-    const packId = searchParams.get("packId")
+    const sourceId = searchParams.get("sourceId")
 
-    if (!packId) {
+    if (!sourceId) {
       return NextResponse.json(
-        { success: false, error: "packId is required" },
+        { success: false, error: "sourceId is required" },
         { status: 400 }
       )
     }
 
     const config = await prisma.authConfig.findUnique({
-      where: { packId },
+      where: { sourceId },
     })
 
     if (!config) {
@@ -28,12 +28,10 @@ export async function GET(request: Request) {
       })
     }
 
-    // 返回配置（包括 configJson 用于编辑）
     return NextResponse.json({
       success: true,
       data: {
-        id: config.id,
-        adapter: config.adapter,
+        sourceId: config.sourceId,
         configJson: config.configJson || "",
         hasConfig: !!config.configJson,
       },
@@ -50,26 +48,41 @@ export async function GET(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json()
-    const { packId, adapter, configJson } = body
+    const { sourceId, configJson } = body
 
-    if (!packId) {
+    if (!sourceId) {
       return NextResponse.json(
-        { success: false, error: "packId is required" },
+        { success: false, error: "sourceId is required" },
+        { status: 400 }
+      )
+    }
+
+    if (typeof configJson !== "string" || !configJson) {
+      return NextResponse.json(
+        { success: false, error: "configJson is required and must be a string" },
+        { status: 400 }
+      )
+    }
+
+    try {
+      JSON.parse(configJson)
+    } catch {
+      return NextResponse.json(
+        { success: false, error: "configJson must be valid JSON" },
         { status: 400 }
       )
     }
 
     const config = await prisma.authConfig.upsert({
-      where: { packId },
-      create: { packId, adapter, configJson },
-      update: { adapter, configJson },
+      where: { sourceId },
+      create: { sourceId, configJson },
+      update: { configJson },
     })
 
     return NextResponse.json({
       success: true,
       data: {
-        id: config.id,
-        adapter: config.adapter,
+        sourceId: config.sourceId,
       },
     })
   } catch (error) {
