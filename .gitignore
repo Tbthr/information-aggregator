@@ -6,13 +6,12 @@ next-env.d.ts
 *.db-journal
 coverage/
 .worktrees/
-# docs/plans/ - 计划文档需要版本跟踪
-.agents/
-.claude/
 frontend/dist/
 frontend/playwright-report/
 frontend/test-results/
 .env
+.DS_Store
+.claude/skills/ui-ux-pro-max/
 
 # Screenshots
 screenshots/
