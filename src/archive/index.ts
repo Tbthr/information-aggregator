@@ -1,6 +1,8 @@
 export {
   archiveRawItems,
-  queryArchiveByWindow,
+  syncPacksToPrisma,
+  upsertSourcesBatch,
+  recordSourcesSuccessBatch,
   getArchiveStats,
   type ArchiveResult,
-} from "./upsert";
+} from "./upsert-prisma";

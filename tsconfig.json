@@ -6,9 +6,6 @@
     "strict": true,
     "noEmit": true,
     "skipLibCheck": true,
-    "types": [
-      "bun"
-    ],
     "allowSyntheticDefaultImports": true,
     "baseUrl": ".",
     "paths": {
@@ -51,6 +48,6 @@
   ],
   "exclude": [
     "node_modules",
-    "src/archive"
+    "**/*.test.ts"
   ]
 }

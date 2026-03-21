@@ -7,12 +7,10 @@
 
 import type { RankedCandidate, EnrichmentConfig, ExtractedContent, AiEnrichmentResult } from "../types/index";
 import type { AiClient } from "../ai/client";
-import type { Database } from "bun:sqlite";
 import type { ContentCache } from "../cache/content-cache";
 
 import { extractArticleContent, isExtractionSuccess } from "./extract-content";
 import { processWithConcurrency } from "../ai/concurrency";
-import type { EnrichmentResultDb, getEnrichmentResult, setExtractedContentCache, upsertEnrichmentResult } from "../db/client";
 import { createLogger } from "../utils/logger";
 import { isSocialPost, createSocialPostContent } from "../utils/social-post";
 
@@ -30,7 +28,7 @@ export interface EnrichDependencies {
   enrichmentConfig?: EnrichmentConfig;
   fetchImpl?: typeof fetch;
   aiClient?: AiClient | null;
-  db?: Database | null;
+  db?: unknown;
   cache?: ContentCache<ExtractedContent> | null;
 }
 
@@ -150,12 +148,6 @@ export async function enrichCandidates<T extends RankedCandidate>(
           extractedContent = cache.get(url);
         }
 
-        // 检查数据库缓存
-        if (!extractedContent && db && cacheEnabled) {
-          const { getExtractedContentCache } = await import("../db/client");
-          extractedContent = getExtractedContentCache(db, url);
-        }
-
         // 执行提取
         if (!extractedContent) {
           extractedContent = await extractArticleContent(url, {
@@ -168,10 +160,6 @@ export async function enrichCandidates<T extends RankedCandidate>(
           if (isExtractionSuccess(extractedContent)) {
             if (cache && cacheEnabled) {
               cache.set(url, extractedContent, cacheTtl);
-            }
-            if (db && cacheEnabled) {
-              const { setExtractedContentCache } = await import("../db/client");
-              setExtractedContentCache(db, url, extractedContent, cacheTtl);
             }
           }
         }
@@ -295,28 +283,6 @@ export async function enrichCandidates<T extends RankedCandidate>(
           update.contentQualityAi = aiResult.score;
         }
         enrichmentMap.set(candidateId, update);
-      }
-    }
-  }
-
-  // ========== 第四阶段：持久化到数据库 ==========
-  if (db) {
-    const { upsertEnrichmentResult } = await import("../db/client");
-    for (const [candidateId, state] of enrichmentMap) {
-      if (state.extractedContent || state.aiEnrichment) {
-        try {
-          upsertEnrichmentResult(
-            db,
-            candidateId,
-            state.extractedContent,
-            state.aiEnrichment,
-          );
-        } catch (error) {
-          logger.warn("Failed to persist enrichment", {
-            candidateId,
-            error: error instanceof Error ? error.message : String(error),
-          });
-        }
       }
     }
   }

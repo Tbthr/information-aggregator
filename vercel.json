@@ -2,5 +2,10 @@
   "buildCommand": "prisma generate && next build",
   "installCommand": "pnpm install",
   "framework": "nextjs",
-  "regions": ["hkg1"]
+  "regions": ["hkg1"],
+  "crons": [
+    { "path": "/api/cron/collect", "schedule": "0 */30 * * * *" },
+    { "path": "/api/cron/daily", "schedule": "0 30 6 * * *" },
+    { "path": "/api/cron/weekly", "schedule": "0 0 7 * * 1" }
+  ]
 }

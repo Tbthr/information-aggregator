@@ -1,9 +1,7 @@
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../../lib/prisma";
 import type { RawItem, SourceType } from "../types/index";
 
 import type { Item } from "@prisma/client";
-
-const prisma = new PrismaClient();
 
 // 批量操作的分批大小
 const BATCH_SIZE = 100;
@@ -368,4 +366,4 @@ export async function getArchiveStats(): Promise<{
   };
 }
 
-export { prisma };
+

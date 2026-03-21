@@ -36,7 +36,7 @@ export interface RunQueryDependencies {
   now?: () => string;
   // 深度 enrichment 配置
   enrichmentConfig?: EnrichmentConfig;
-  db?: import("bun:sqlite").Database | null;
+  db?: unknown;
   cache?: ContentCache | null;
 }
 

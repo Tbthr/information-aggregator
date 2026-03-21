@@ -2,7 +2,7 @@
  * 周报生成模块
  */
 
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../../lib/prisma";
 import type { AiClient } from "../ai/types";
 import {
   buildWeeklyEditorialPrompt,
@@ -13,8 +13,6 @@ import {
 import { createLogger } from "../utils/logger";
 
 const logger = createLogger("reports:weekly");
-
-const prisma = new PrismaClient();
 
 export interface WeeklyGenerateConfig {
   days: number;
@@ -267,4 +265,4 @@ export async function generateWeeklyReport(
   };
 }
 
-export { prisma };
+

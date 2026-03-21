@@ -374,6 +374,7 @@ export async function collectXBirdSource(
 
     logger.debug("Full command args", { args: maskedCommand });
 
+    // @ts-expect-error Bun.spawn is only available in Bun runtime
     const proc = Bun.spawn(command, {
       stdout: "pipe",
       stderr: "pipe",

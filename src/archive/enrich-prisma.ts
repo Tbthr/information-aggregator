@@ -3,15 +3,13 @@
  * 对 Item 进行内容提取和 AI 增强
  */
 
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../../lib/prisma";
 import { extractArticleContent, isExtractionSuccess, type ExtractedContent } from "../pipeline/extract-content";
 import { processWithConcurrency } from "../ai/concurrency";
 import type { AiClient } from "../ai/types";
 import { createLogger } from "../utils/logger";
 
 const logger = createLogger("archive:enrich-prisma");
-
-const prisma = new PrismaClient();
 
 // 默认配置
 const DEFAULT_CONFIG = {
@@ -263,4 +261,4 @@ export async function enrichItems(
   };
 }
 
-export { prisma };
+

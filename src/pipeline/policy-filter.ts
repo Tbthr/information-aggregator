@@ -3,7 +3,6 @@
  * 根据 Pack/Source 的策略过滤候选条目
  */
 
-import type { Database } from "bun:sqlite";
 import type { RankedCandidate, SourcePack } from "../types/index";
 import type { SourcePolicy } from "../types/policy";
 import type { AiClient } from "../ai/types";
@@ -20,7 +19,7 @@ export interface PolicyFilterConfig {
   /** AI 客户端（可选，用于 filter_then_assist 模式） */
   aiClient?: AiClient;
   /** 数据库实例（可选，用于缓存） */
-  db?: Database;
+  db?: unknown;
   /** 批处理大小（默认 10） */
   batchSize?: number;
   /** 并发数（默认 3，由 AI client 内部处理） */
@@ -185,7 +184,7 @@ async function processFilterThenAssist(
   candidates: RankedCandidate[],
   pack: SourcePack,
   aiClient: AiClient,
-  db?: Database
+  db?: unknown
 ): Promise<CandidateWithJudgment[]> {
   // 构建缓存查询参数
   const cacheQueries = candidates.map((c) => ({

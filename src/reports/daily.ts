@@ -2,7 +2,7 @@
  * 日报生成模块
  */
 
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../../lib/prisma";
 import type { AiClient } from "../ai/types";
 import {
   buildDailyOverviewPrompt,
@@ -11,8 +11,6 @@ import {
 import { createLogger } from "../utils/logger";
 
 const logger = createLogger("reports:daily");
-
-const prisma = new PrismaClient();
 
 export interface DailyGenerateConfig {
   maxItems: number;
@@ -118,4 +116,4 @@ export async function generateDailyReport(
   };
 }
 
-export { prisma };
+
