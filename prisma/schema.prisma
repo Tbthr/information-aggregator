@@ -159,6 +159,7 @@ model CustomView {
   icon        String
   description String?
   filterJson  String?  @db.Text
+  order       Int      @default(0)
 
   packs       CustomViewPack[]
 

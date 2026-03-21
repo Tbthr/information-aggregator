@@ -86,12 +86,13 @@ export function SavedPage({ savedIds, isSaved, onToggleSave, onOpenArticle }: Sa
         </div>
       ) : (
         <div className="space-y-3">
-          {savedArticles.map((article) => (
+          {savedArticles.map((article, i) => (
             <div
               key={article.id}
               role="button"
               tabIndex={0}
-              className="group w-full text-left flex gap-4 p-4 rounded-xl border border-border hover:border-primary/40 hover:bg-accent/20 transition-all duration-200 bg-card cursor-pointer"
+              className="group w-full text-left flex gap-4 p-4 rounded-xl border border-border hover:border-primary/40 hover:bg-accent/20 bg-card cursor-pointer animate-card-hover animate-fade-in-up"
+              style={{ animationDelay: `${i * 50}ms` }}
               onClick={() => onOpenArticle(article)}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenArticle(article); } }}
             >

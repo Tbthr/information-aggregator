@@ -53,7 +53,7 @@ function FeedCard({
     <div
       role="button"
       tabIndex={0}
-      className="group w-full text-left border border-border rounded-2xl p-6 hover:border-primary/50 hover:shadow-md transition-all duration-200 bg-card cursor-pointer"
+      className="group w-full text-left border border-border rounded-2xl p-6 hover:border-primary/50 hover:shadow-md bg-card cursor-pointer animate-card-hover"
       onClick={() => onOpenArticle(article)}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -186,14 +186,19 @@ export function DailyPage({ isSaved, onToggleSave, onOpenArticle }: DailyPagePro
 
         <div className="space-y-4">
           {articles.map((article, i) => (
-            <FeedCard
+            <div
               key={article.id}
-              article={article}
-              isSaved={isSaved(article.id)}
-              onToggleSave={onToggleSave}
-              onOpenArticle={onOpenArticle}
-              rank={i + 1}
-            />
+              className="animate-fade-in-up"
+              style={{ animationDelay: `${Math.min(i * 50, 300)}ms` }}
+            >
+              <FeedCard
+                article={article}
+                isSaved={isSaved(article.id)}
+                onToggleSave={onToggleSave}
+                onOpenArticle={onOpenArticle}
+                rank={i + 1}
+              />
+            </div>
           ))}
         </div>
       </section>

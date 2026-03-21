@@ -27,7 +27,7 @@ export async function GET() {
           },
         },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { order: "asc" },
     })
 
     return NextResponse.json({

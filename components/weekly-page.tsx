@@ -128,7 +128,11 @@ export function WeeklyPage({ isSaved, onToggleSave, onOpenArticle }: WeeklyPageP
 
           <div className="space-y-6">
             {timelineEvents.map((event, i) => (
-              <div key={event.id} className="flex gap-6">
+              <div
+                key={event.id}
+                className="flex gap-6 animate-fade-in-up"
+                style={{ animationDelay: `${i * 100}ms` }}
+              >
                 {/* 日期标签 */}
                 <div className="shrink-0 w-[72px] text-right pr-4 relative">
                   <div
@@ -161,12 +165,13 @@ export function WeeklyPage({ isSaved, onToggleSave, onOpenArticle }: WeeklyPageP
         </div>
 
         <div className="space-y-6">
-          {deepDives.map((article) => (
+          {deepDives.map((article, i) => (
             <div
               key={article.id}
               role="button"
               tabIndex={0}
-              className="group w-full text-left border border-border rounded-2xl p-7 hover:border-primary/50 hover:shadow-md transition-all duration-200 bg-card cursor-pointer"
+              className="group w-full text-left border border-border rounded-2xl p-7 hover:border-primary/50 hover:shadow-md bg-card cursor-pointer animate-card-hover animate-fade-in-up"
+              style={{ animationDelay: `${i * 100}ms` }}
               onClick={() => onOpenArticle(article)}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenArticle(article); } }}
             >
