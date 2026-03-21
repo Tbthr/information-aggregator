@@ -9,7 +9,7 @@ Standardized git commit and push workflow with pre-push validation.
    - Run `git diff --stat` for change summary
 
 2. **Validation** (required before commit)
-   - Run `pnpm typecheck` - must pass with no errors
+   - Run `pnpm check` - must pass with no errors
    - Run `pnpm build` - must succeed
    - If any validation fails: show errors and STOP
 
@@ -25,7 +25,7 @@ Standardized git commit and push workflow with pre-push validation.
 
 ## Error Handling
 
-- If typecheck fails: show errors, ask if user wants to proceed anyway
+- If check fails: show errors, ask if user wants to proceed anyway
 - If build fails: show errors, do NOT proceed without user override
 - If push fails: show error and suggest resolution
 
