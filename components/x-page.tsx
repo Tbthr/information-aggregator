@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { Search, Settings, ChevronLeft, ChevronRight } from "lucide-react"
 import { TweetCard } from "@/components/tweet-card"
+import { TweetListSkeleton } from "@/components/loading-skeletons"
 import { useTweets } from "@/hooks/use-tweets"
 import { useXConfig } from "@/hooks/use-x-config"
 import type { XTab } from "@/lib/types"
@@ -164,7 +165,7 @@ export function XPage() {
       {/* Feed */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {loading && items.length === 0 ? (
-          <div className="text-center text-muted-foreground py-8">加载中...</div>
+          <TweetListSkeleton />
         ) : items.length === 0 ? (
           <div className="text-center text-muted-foreground py-8">暂无推文</div>
         ) : (

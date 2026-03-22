@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server"
 import { z } from "zod"
 
 import { prisma } from "@/lib/prisma"
+import { success, error, parseBody, validateBody, ParseError } from "@/lib/api-response"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -19,26 +19,20 @@ const reorderSchema = z.object({
 export async function PUT(request: Request) {
   let body: unknown
   try {
-    body = await request.json()
-  } catch {
-    return NextResponse.json(
-      { success: false, error: "Invalid JSON in request body" },
-      { status: 400 }
-    )
+    body = await parseBody(request)
+  } catch (e) {
+    if (e instanceof ParseError) return error(e.message, e.status)
+    throw e
   }
 
-  const parsed = reorderSchema.safeParse(body)
-  if (!parsed.success) {
-    return NextResponse.json(
-      { success: false, error: "Invalid reorder data", details: parsed.error.flatten() },
-      { status: 400 }
-    )
-  }
+  const validated = validateBody(body, reorderSchema)
+  if (!validated.success) return validated.response
+  const { data: parsedData } = validated
 
   try {
     // Update each view's order in a transaction
     await prisma.$transaction(
-      parsed.data.orders.map((item) =>
+      parsedData.orders.map((item) =>
         prisma.customView.update({
           where: { id: item.id },
           data: { order: item.order },
@@ -46,14 +40,9 @@ export async function PUT(request: Request) {
       )
     )
 
-    return NextResponse.json({
-      success: true,
-    })
-  } catch (error) {
-    console.error("Error reordering custom views:", error)
-    return NextResponse.json(
-      { success: false, error: "Failed to reorder custom views" },
-      { status: 500 }
-    )
+    return success()
+  } catch (err) {
+    console.error("Error reordering custom views:", err)
+    return error("Failed to reorder custom views")
   }
 }

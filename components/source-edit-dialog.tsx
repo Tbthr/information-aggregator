@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Pencil, Loader2 } from "lucide-react"
+import { toast } from "@/hooks/use-toast"
 
 type Source = { id: string; name: string; url: string | null; type: string; enabled: boolean; packId: string | null; description?: string | null }
 
@@ -54,7 +55,7 @@ export function SourceEditDialog({ source, open, onOpenChange, onSave }: SourceE
       }
     } catch (error) {
       console.error("Failed to save source:", error)
-      alert("保存失败")
+      toast({ title: "保存失败", variant: "destructive" })
     } finally {
       setSaving(false)
     }

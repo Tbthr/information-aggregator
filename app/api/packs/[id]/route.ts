@@ -1,8 +1,7 @@
-import { NextResponse } from "next/server"
 import { z } from "zod"
-import { Prisma } from "@prisma/client"
 
 import { prisma } from "@/lib/prisma"
+import { success, error, parseBody, validateBody, handlePrismaError, ParseError } from "@/lib/api-response"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -25,22 +24,13 @@ export async function GET(
     })
 
     if (!pack) {
-      return NextResponse.json(
-        { success: false, error: "Pack not found" },
-        { status: 404 }
-      )
+      return error("Pack not found", 404)
     }
 
-    return NextResponse.json({
-      success: true,
-      data: pack,
-    })
-  } catch (error) {
-    console.error("Error fetching pack:", error)
-    return NextResponse.json(
-      { success: false, error: "Failed to load pack" },
-      { status: 500 }
-    )
+    return success(pack)
+  } catch (err) {
+    console.error("Error fetching pack:", err)
+    return error("Failed to load pack")
   }
 }
 
@@ -51,47 +41,32 @@ export async function PUT(
   const { id } = await params
   let body: unknown
   try {
-    body = await request.json()
-  } catch {
-    return NextResponse.json(
-      { success: false, error: "Invalid JSON in request body" },
-      { status: 400 }
-    )
+    body = await parseBody(request)
+  } catch (e) {
+    if (e instanceof ParseError) return error(e.message, e.status)
+    throw e
   }
 
-  const parsed = packUpdateSchema.safeParse(body)
-  if (!parsed.success) {
-    return NextResponse.json(
-      { success: false, error: "Invalid pack data", details: parsed.error.flatten() },
-      { status: 400 }
-    )
-  }
+  const validated = validateBody(body, packUpdateSchema)
+  if (!validated.success) return validated.response
+  const { data: parsedData } = validated
 
   try {
     const pack = await prisma.pack.update({
       where: { id },
-      data: parsed.data,
+      data: parsedData,
     })
 
-    return NextResponse.json({
-      success: true,
-      data: pack,
+    return success(pack)
+  } catch (err) {
+    console.error("Error updating pack:", err)
+
+    const prismaErr = handlePrismaError(err, {
+      p2025: "Pack not found",
     })
-  } catch (error) {
-    console.error("Error updating pack:", error)
+    if (prismaErr) return prismaErr
 
-    // Handle record not found (P2025)
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
-      return NextResponse.json(
-        { success: false, error: "Pack not found" },
-        { status: 404 }
-      )
-    }
-
-    return NextResponse.json(
-      { success: false, error: "Failed to update pack" },
-      { status: 500 }
-    )
+    return error("Failed to update pack")
   }
 }
 
@@ -105,23 +80,15 @@ export async function DELETE(
       where: { id },
     })
 
-    return NextResponse.json({
-      success: true,
+    return success()
+  } catch (err) {
+    console.error("Error deleting pack:", err)
+
+    const prismaErr = handlePrismaError(err, {
+      p2025: "Pack not found",
     })
-  } catch (error) {
-    console.error("Error deleting pack:", error)
+    if (prismaErr) return prismaErr
 
-    // Handle record not found (P2025)
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
-      return NextResponse.json(
-        { success: false, error: "Pack not found" },
-        { status: 404 }
-      )
-    }
-
-    return NextResponse.json(
-      { success: false, error: "Failed to delete pack" },
-      { status: 500 }
-    )
+    return error("Failed to delete pack")
   }
 }

@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server"
 import { z } from "zod"
 import { Prisma } from "@prisma/client"
 
 import { prisma } from "@/lib/prisma"
+import { success, error, parseBody, validateBody, handlePrismaError, ParseError } from "@/lib/api-response"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -38,22 +38,13 @@ export async function GET(
     })
 
     if (!view) {
-      return NextResponse.json(
-        { success: false, error: "Custom view not found" },
-        { status: 404 }
-      )
+      return error("Custom view not found", 404)
     }
 
-    return NextResponse.json({
-      success: true,
-      data: view,
-    })
-  } catch (error) {
-    console.error("Error fetching custom view:", error)
-    return NextResponse.json(
-      { success: false, error: "Failed to load custom view" },
-      { status: 500 }
-    )
+    return success(view)
+  } catch (err) {
+    console.error("Error fetching custom view:", err)
+    return error("Failed to load custom view")
   }
 }
 
@@ -64,42 +55,36 @@ export async function PUT(
   const { id } = await params
   let body: unknown
   try {
-    body = await request.json()
-  } catch {
-    return NextResponse.json(
-      { success: false, error: "Invalid JSON in request body" },
-      { status: 400 }
-    )
+    body = await parseBody(request)
+  } catch (e) {
+    if (e instanceof ParseError) return error(e.message, e.status)
+    throw e
   }
 
-  const parsed = customViewUpdateSchema.safeParse(body)
-  if (!parsed.success) {
-    return NextResponse.json(
-      { success: false, error: "Invalid custom view data", details: parsed.error.flatten() },
-      { status: 400 }
-    )
-  }
+  const validated = validateBody(body, customViewUpdateSchema)
+  if (!validated.success) return validated.response
+  const { data: parsedData } = validated
 
   try {
     // Build update data conditionally
     const updateData: Prisma.CustomViewUpdateInput = {}
 
-    if (parsed.data.name !== undefined) {
-      updateData.name = parsed.data.name
+    if (parsedData.name !== undefined) {
+      updateData.name = parsedData.name
     }
-    if (parsed.data.icon !== undefined) {
-      updateData.icon = parsed.data.icon
+    if (parsedData.icon !== undefined) {
+      updateData.icon = parsedData.icon
     }
-    if (parsed.data.description !== undefined) {
-      updateData.description = parsed.data.description
+    if (parsedData.description !== undefined) {
+      updateData.description = parsedData.description
     }
-    if (parsed.data.filterJson !== undefined) {
-      updateData.filterJson = parsed.data.filterJson
+    if (parsedData.filterJson !== undefined) {
+      updateData.filterJson = parsedData.filterJson
     }
-    if (parsed.data.packIds !== undefined) {
+    if (parsedData.packIds !== undefined) {
       updateData.customViewPacks = {
         deleteMany: {},
-        create: parsed.data.packIds.map((packId) => ({ packId })),
+        create: parsedData.packIds.map((packId) => ({ packId })),
       }
     }
 
@@ -115,33 +100,17 @@ export async function PUT(
       },
     })
 
-    return NextResponse.json({
-      success: true,
-      data: view,
+    return success(view)
+  } catch (err) {
+    console.error("Error updating custom view:", err)
+
+    const prismaErr = handlePrismaError(err, {
+      p2025: "Custom view not found",
+      p2003: "One or more pack IDs do not exist",
     })
-  } catch (error) {
-    console.error("Error updating custom view:", error)
+    if (prismaErr) return prismaErr
 
-    // Handle record not found (P2025)
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
-      return NextResponse.json(
-        { success: false, error: "Custom view not found" },
-        { status: 404 }
-      )
-    }
-
-    // Handle foreign key constraint violation (P2003 - pack not found)
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
-      return NextResponse.json(
-        { success: false, error: "One or more pack IDs do not exist" },
-        { status: 400 }
-      )
-    }
-
-    return NextResponse.json(
-      { success: false, error: "Failed to update custom view" },
-      { status: 500 }
-    )
+    return error("Failed to update custom view")
   }
 }
 
@@ -155,23 +124,15 @@ export async function DELETE(
       where: { id },
     })
 
-    return NextResponse.json({
-      success: true,
+    return success()
+  } catch (err) {
+    console.error("Error deleting custom view:", err)
+
+    const prismaErr = handlePrismaError(err, {
+      p2025: "Custom view not found",
     })
-  } catch (error) {
-    console.error("Error deleting custom view:", error)
+    if (prismaErr) return prismaErr
 
-    // Handle record not found (P2025)
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
-      return NextResponse.json(
-        { success: false, error: "Custom view not found" },
-        { status: 404 }
-      )
-    }
-
-    return NextResponse.json(
-      { success: false, error: "Failed to delete custom view" },
-      { status: 500 }
-    )
+    return error("Failed to delete custom view")
   }
 }

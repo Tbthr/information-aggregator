@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server"
 import { z } from "zod"
 import { Prisma } from "@prisma/client"
 
 import { prisma } from "@/lib/prisma"
+import { success, error, parseBody, validateBody, handlePrismaError, ParseError } from "@/lib/api-response"
 
 type SourceUpdateInput = Prisma.SourceUpdateInput
 
@@ -33,59 +33,47 @@ export async function PATCH(
   const { id } = await params
   let body: unknown
   try {
-    body = await request.json()
-  } catch {
-    return NextResponse.json(
-      { success: false, error: "Invalid JSON in request body" },
-      { status: 400 }
-    )
+    body = await parseBody(request)
+  } catch (e) {
+    if (e instanceof ParseError) return error(e.message, e.status)
+    throw e
   }
 
-  const parsed = sourceUpdateSchema.safeParse(body)
-  if (!parsed.success) {
-    return NextResponse.json(
-      { success: false, error: "Invalid source data", details: parsed.error.flatten() },
-      { status: 400 }
-    )
-  }
+  const validated = validateBody(body, sourceUpdateSchema)
+  if (!validated.success) return validated.response
+  const { data: parsedData } = validated
 
   try {
     // Find the source by id
     const existingSource = await findSourceById(id)
     if (!existingSource) {
-      return NextResponse.json(
-        { success: false, error: "Source not found" },
-        { status: 404 }
-      )
+      return error("Source not found", 404)
     }
 
     // Validate packId exists if provided
-    if (parsed.data.packId !== undefined && parsed.data.packId !== null) {
+    if (parsedData.packId !== undefined && parsedData.packId !== null) {
       const pack = await prisma.pack.findUnique({
-        where: { id: parsed.data.packId },
+        where: { id: parsedData.packId },
       })
 
       if (!pack) {
-        return NextResponse.json(
-          { success: false, error: "Pack not found" },
-          { status: 404 }
-        )
+        return error("Pack not found", 404)
       }
     }
 
     // Build update data, only including defined fields
     const updateData: Prisma.SourceUpdateInput = {}
 
-    if (parsed.data.type !== undefined) updateData.type = parsed.data.type
-    if (parsed.data.name !== undefined) updateData.name = parsed.data.name
-    if (parsed.data.url !== undefined) updateData.url = parsed.data.url
-    if (parsed.data.description !== undefined) {
-      updateData.description = parsed.data.description === null ? { set: null } : parsed.data.description
+    if (parsedData.type !== undefined) updateData.type = parsedData.type
+    if (parsedData.name !== undefined) updateData.name = parsedData.name
+    if (parsedData.url !== undefined) updateData.url = parsedData.url
+    if (parsedData.description !== undefined) {
+      updateData.description = parsedData.description === null ? { set: null } : parsedData.description
     }
-    if (parsed.data.enabled !== undefined) updateData.enabled = parsed.data.enabled
-    if (parsed.data.packId !== undefined) {
-      updateData.pack = parsed.data.packId
-        ? { connect: { id: parsed.data.packId } }
+    if (parsedData.enabled !== undefined) updateData.enabled = parsedData.enabled
+    if (parsedData.packId !== undefined) {
+      updateData.pack = parsedData.packId
+        ? { connect: { id: parsedData.packId } }
         : { disconnect: true }
     }
 
@@ -94,25 +82,16 @@ export async function PATCH(
       data: updateData,
     })
 
-    return NextResponse.json({
-      success: true,
-      data: source,
+    return success(source)
+  } catch (err) {
+    console.error("Error updating source:", err)
+
+    const prismaErr = handlePrismaError(err, {
+      p2003: "Pack not found",
     })
-  } catch (error) {
-    console.error("Error updating source:", error)
+    if (prismaErr) return prismaErr
 
-    // Handle foreign key constraint (P2003 - packId not found)
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
-      return NextResponse.json(
-        { success: false, error: "Pack not found" },
-        { status: 404 }
-      )
-    }
-
-    return NextResponse.json(
-      { success: false, error: "Failed to update source" },
-      { status: 500 }
-    )
+    return error("Failed to update source")
   }
 }
 
@@ -125,25 +104,17 @@ export async function DELETE(
     // Find the source by id
     const existingSource = await findSourceById(id)
     if (!existingSource) {
-      return NextResponse.json(
-        { success: false, error: "Source not found" },
-        { status: 404 }
-      )
+      return error("Source not found", 404)
     }
 
     await prisma.source.delete({
       where: { id: existingSource.id }, // Always use the actual id for delete
     })
 
-    return NextResponse.json({
-      success: true,
-    })
-  } catch (error) {
-    console.error("Error deleting source:", error)
+    return success()
+  } catch (err) {
+    console.error("Error deleting source:", err)
 
-    return NextResponse.json(
-      { success: false, error: "Failed to delete source" },
-      { status: 500 }
-    )
+    return error("Failed to delete source")
   }
 }

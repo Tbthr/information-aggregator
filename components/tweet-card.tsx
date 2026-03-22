@@ -2,6 +2,7 @@
 
 import { Heart, MessageCircle, Repeat2, Bookmark, ExternalLink } from "lucide-react"
 import { formatEngagement } from "@/lib/tweet-utils"
+import { formatDateTime } from "@/lib/format-date"
 import type { Tweet } from "@/lib/types"
 
 interface TweetCardProps {
@@ -33,14 +34,7 @@ export function TweetCard({ tweet, isSaved, onToggleSave }: TweetCardProps) {
             </span>
           )}
           <div className="text-xs text-muted-foreground">
-            {tweet.publishedAt
-              ? new Date(tweet.publishedAt).toLocaleDateString("zh-CN", {
-                  month: "short",
-                  day: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })
-              : ""}
+            {tweet.publishedAt ? formatDateTime(tweet.publishedAt) : ""}
           </div>
         </div>
       </div>

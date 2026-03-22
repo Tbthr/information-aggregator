@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react"
+import { useMemo, useCallback } from "react"
+import useSWR from "swr"
 import type { Article } from "@/lib/types"
 import { fetchItems, type FetchItemsParams } from "@/lib/api-client"
 import { useSaved } from "./use-saved"
@@ -26,79 +27,51 @@ export interface UseItemsResult {
   isSaved: (id: string) => boolean
 }
 
+function buildItemsKey(params: UseItemsParams): string {
+  return JSON.stringify({
+    packs: params.packId,
+    sources: params.sourceId,
+    sourceTypes: params.sourceType,
+    window: params.window,
+    page: params.page,
+    pageSize: params.pageSize,
+    sort: params.sort,
+    search: params.searchQuery,
+  })
+}
+
 export function useItems(params: UseItemsParams = {}): UseItemsResult {
-  const [items, setItems] = useState<Article[]>([])
-  const [total, setTotal] = useState(0)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const key = buildItemsKey(params)
 
-  const { savedIds, toggleSave: toggleSaveFromHook, isSaved } = useSaved()
-
-  // Use ref to track mounted state and prevent race conditions
-  const isMountedRef = useRef(true)
-
-  const fetchItemsData = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-
-    try {
+  const { data, isLoading, error, mutate } = useSWR(
+    key,
+    () => {
       const apiParams: FetchItemsParams = {
         page: params.page,
         pageSize: params.pageSize,
         window: params.window,
         sort: params.sort,
         search: params.searchQuery,
+        packs: params.packId,
+        sources: params.sourceId,
+        sourceTypes: params.sourceType,
       }
-
-      if (params.packId) {
-        apiParams.packs = params.packId
-      }
-      if (params.sourceId) {
-        apiParams.sources = params.sourceId
-      }
-      if (params.sourceType) {
-        apiParams.sourceTypes = params.sourceType
-      }
-
-      const result = await fetchItems(apiParams)
-
-      // Only update state if still mounted
-      if (isMountedRef.current) {
-        // Store items without saved state - derive it at render time
-        setItems(result.items as Article[])
-        setTotal(result.pagination.total)
-      }
-    } catch (err) {
-      // Only update state if still mounted
-      if (isMountedRef.current) {
-        setError(err instanceof Error ? err.message : "Failed to fetch items")
-        setItems([])
-        setTotal(0)
-      }
-    } finally {
-      if (isMountedRef.current) {
-        setLoading(false)
-      }
+      return fetchItems(apiParams)
+    },
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 5000,
     }
-    // Note: savedIds intentionally NOT in deps - it's only used for client-side mapping, not API calls
-  }, [params.page, params.pageSize, params.packId, params.sourceId, params.sourceType, params.window, params.searchQuery, params.sort])
+  )
 
-  useEffect(() => {
-    isMountedRef.current = true
-    fetchItemsData()
+  const { savedIds, toggleSave: toggleSaveFromHook, isSaved } = useSaved()
 
-    return () => {
-      isMountedRef.current = false
-    }
-  }, [fetchItemsData])
-
-  // Derive items with bookmarked state at render time
   const itemsWithBookmarkedState = useMemo(() => {
-    return items.map((item) => ({
+    return (data?.items ?? []).map((item) => ({
       ...item,
       isBookmarked: savedIds.has(item.id),
     }))
-  }, [items, savedIds])
+  }, [data?.items, savedIds])
 
   const toggleSave = useCallback(
     async (id: string) => {
@@ -107,16 +80,12 @@ export function useItems(params: UseItemsParams = {}): UseItemsResult {
     [toggleSaveFromHook]
   )
 
-  const refetch = useCallback(() => {
-    fetchItemsData()
-  }, [fetchItemsData])
-
   return {
     items: itemsWithBookmarkedState,
-    total,
-    loading,
-    error,
-    refetch,
+    total: data?.pagination.total ?? 0,
+    loading: isLoading,
+    error: error?.message ?? null,
+    refetch: () => mutate(),
     toggleSave,
     isSaved,
   }

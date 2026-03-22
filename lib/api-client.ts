@@ -1,33 +1,4 @@
-import type { Article, NewsFlash, TimelineEvent, CustomView, DailyOverview, WeeklyReport, Tweet, XPageConfigData } from "./types"
-
-// API Response Types
-interface ApiResponse<T> {
-  success: boolean
-  data?: T
-  error?: string
-  meta?: {
-    timing?: {
-      generatedAt: string
-      latencyMs: number
-    }
-    pagination?: {
-      total: number
-      page: number
-      pageSize: number
-      totalPages: number
-    }
-    query?: {
-      packIds: string[]
-      window: "today" | "week" | "month"
-      sourceIds?: string[]
-      sourceTypes?: string[]
-      page: number
-      pageSize: number
-      sort: "ranked" | "recent"
-      search?: string
-    }
-  }
-}
+import type { Article, NewsFlash, TimelineEvent, CustomView, DailyOverview, WeeklyReport, Tweet, XPageConfigData, ApiResponse } from "./types"
 
 // Item data from API
 interface ItemData {

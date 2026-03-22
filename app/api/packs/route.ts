@@ -1,8 +1,7 @@
-import { NextResponse } from "next/server"
 import { z } from "zod"
-import { Prisma } from "@prisma/client"
 
 import { prisma } from "@/lib/prisma"
+import { success, error, parseBody, validateBody, startTimer, timing, handlePrismaError, ParseError } from "@/lib/api-response"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -16,7 +15,7 @@ const packCreateSchema = z.object({
 
 export async function GET() {
   try {
-    const startTime = Date.now()
+    const startTime = startTimer()
 
     const [packs, sourceCounts, itemStats, allSources] = await Promise.all([
       prisma.pack.findMany({
@@ -66,71 +65,47 @@ export async function GET() {
       latestItem: itemStatsByPack.get(pack.id)?.latestItem ?? null,
     }))
 
-    return NextResponse.json({
-      success: true,
-      data: { packs: data },
-      meta: {
-        timing: {
-          generatedAt: new Date().toISOString(),
-          latencyMs: Date.now() - startTime,
-        },
-      },
-    })
-  } catch (error) {
-    console.error("Error in /api/packs:", error)
-    return NextResponse.json(
-      { success: false, error: "Failed to load packs" },
-      { status: 500 }
+    return success(
+      { packs: data },
+      { timing: timing(startTime) }
     )
+  } catch (err) {
+    console.error("Error in /api/packs:", err)
+    return error("Failed to load packs")
   }
 }
 
 export async function POST(request: Request) {
   let body: unknown
   try {
-    body = await request.json()
-  } catch {
-    return NextResponse.json(
-      { success: false, error: "Invalid JSON in request body" },
-      { status: 400 }
-    )
+    body = await parseBody(request)
+  } catch (e) {
+    if (e instanceof ParseError) return error(e.message, e.status)
+    throw e
   }
 
-  const parsed = packCreateSchema.safeParse(body)
-  if (!parsed.success) {
-    return NextResponse.json(
-      { success: false, error: "Invalid pack data", details: parsed.error.flatten() },
-      { status: 400 }
-    )
-  }
+  const validated = validateBody(body, packCreateSchema)
+  if (!validated.success) return validated.response
+  const { data: parsedData } = validated
 
   try {
     const pack = await prisma.pack.create({
       data: {
-        id: parsed.data.id,
-        name: parsed.data.name,
-        description: parsed.data.description,
+        id: parsedData.id,
+        name: parsedData.name,
+        description: parsedData.description,
       },
     })
 
-    return NextResponse.json({
-      success: true,
-      data: pack,
+    return success(pack)
+  } catch (err) {
+    console.error("Error creating pack:", err)
+
+    const prismaErr = handlePrismaError(err, {
+      p2002: "Pack with this ID already exists",
     })
-  } catch (error) {
-    console.error("Error creating pack:", error)
+    if (prismaErr) return prismaErr
 
-    // Handle duplicate ID (P2002 - unique constraint violation)
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return NextResponse.json(
-        { success: false, error: "Pack with this ID already exists" },
-        { status: 409 }
-      )
-    }
-
-    return NextResponse.json(
-      { success: false, error: "Failed to create pack" },
-      { status: 500 }
-    )
+    return error("Failed to create pack")
   }
 }

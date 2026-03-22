@@ -1,3 +1,27 @@
+// ── API Response ──
+
+export interface ApiResponse<T = unknown> {
+  success: boolean
+  data?: T
+  error?: string
+  details?: unknown
+  meta?: {
+    timing?: {
+      generatedAt: string
+      latencyMs: number
+    }
+    pagination?: {
+      total: number
+      page: number
+      pageSize: number
+      totalPages: number
+    }
+    query?: Record<string, unknown>
+  }
+}
+
+// ── Domain Types ──
+
 export type Article = {
   id: string
   title: string

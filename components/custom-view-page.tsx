@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Coffee, Zap } from "lucide-react"
 import { ArticleCard } from "@/components/article-card"
+import { ArticleListSkeleton } from "@/components/loading-skeletons"
 import type { Article, CustomView } from "@/lib/types"
 import { fetchCustomViews, fetchCustomViewItems } from "@/lib/api-client"
 
@@ -88,8 +89,8 @@ export function CustomViewPage({ viewId, isSaved, onToggleSave, onOpenArticle }:
   if (loading) {
     return (
       <div className="max-w-3xl mx-auto px-6 py-8">
-        <div className="flex items-center justify-center py-24">
-          <div className="text-muted-foreground font-sans text-sm">加载中...</div>
+        <div className="py-8">
+          <ArticleListSkeleton />
         </div>
       </div>
     )

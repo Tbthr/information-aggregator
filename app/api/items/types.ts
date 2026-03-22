@@ -21,16 +21,7 @@ export interface ApiPaginationMeta {
   totalPages: number
 }
 
-export interface ApiResponse<T> {
-  success: true
-  data: T
-  meta: {
-    query: ApiQueryMeta
-    timing: ApiTimingMeta
-    pagination: ApiPaginationMeta
-  }
-  warnings?: string[]
-}
+export type { ApiResponse } from "@/lib/types"
 
 export interface SourceInfo {
   id: string

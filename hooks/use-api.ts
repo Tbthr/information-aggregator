@@ -1,15 +1,10 @@
 "use client"
 
 import useSWR, { SWRConfiguration } from "swr"
-import type { Article, NewsFlash, DailyOverview } from "@/lib/types"
+import type { Article, NewsFlash, DailyOverview, ApiResponse } from "@/lib/types"
+import type { Pack } from "@/components/sidebar/types"
 
 // ============ Types ============
-
-interface Pack {
-  id: string
-  name: string
-  description?: string | null
-}
 
 interface CustomView {
   id: string
@@ -23,12 +18,6 @@ interface DailyData {
   overview: DailyOverview | null
   articles: Article[]
   newsFlashes: NewsFlash[]
-}
-
-interface ApiResponse<T> {
-  success: boolean
-  data?: T
-  error?: string
 }
 
 // ============ Fetcher ============

@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import { Bookmark, ExternalLink } from "lucide-react"
+import { ArticleListSkeleton } from "@/components/loading-skeletons"
 import { formatRelative } from "@/lib/format-date"
 import { SaveButton } from "@/components/save-button"
+import { useBookmarks } from "@/hooks/use-api"
 import type { Article } from "@/lib/types"
-import { fetchBookmarks } from "@/lib/api-client"
 
 interface SavedPageProps {
   savedIds: Set<string>
@@ -15,46 +15,13 @@ interface SavedPageProps {
 }
 
 export function SavedPage({ savedIds, isSaved, onToggleSave, onOpenArticle }: SavedPageProps) {
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [savedArticles, setSavedArticles] = useState<Article[]>([])
+  const { data: savedArticles = [], isLoading, error } = useBookmarks()
 
-  useEffect(() => {
-    let mounted = true
-
-    async function loadSavedArticles() {
-      setLoading(true)
-      setError(null)
-
-      try {
-        const items = await fetchBookmarks()
-
-        if (mounted) {
-          setSavedArticles(items)
-        }
-      } catch (err) {
-        if (mounted) {
-          setError(err instanceof Error ? err.message : "Failed to load saved items")
-        }
-      } finally {
-        if (mounted) {
-          setLoading(false)
-        }
-      }
-    }
-
-    loadSavedArticles()
-
-    return () => {
-      mounted = false
-    }
-  }, [])
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="max-w-3xl mx-auto px-6 py-8">
-        <div className="flex items-center justify-center py-24">
-          <div className="text-muted-foreground font-sans text-sm">加载中...</div>
+        <div className="py-8">
+          <ArticleListSkeleton />
         </div>
       </div>
     )
@@ -64,7 +31,7 @@ export function SavedPage({ savedIds, isSaved, onToggleSave, onOpenArticle }: Sa
     return (
       <div className="max-w-3xl mx-auto px-6 py-8">
         <div className="flex items-center justify-center py-24">
-          <div className="text-destructive font-sans text-sm">{error}</div>
+          <div className="text-destructive font-sans text-sm">{error.message}</div>
         </div>
       </div>
     )

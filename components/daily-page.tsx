@@ -1,6 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
+import { ArticleListSkeleton } from "@/components/loading-skeletons"
 import { formatRelative } from "@/lib/format-date"
 import { SaveButton } from "@/components/save-button"
 import type { Article } from "@/lib/types"
@@ -129,8 +130,8 @@ export function DailyPage({ isSaved, onToggleSave, onOpenArticle }: DailyPagePro
   if (isLoading) {
     return (
       <div className="max-w-2xl mx-auto px-6 py-8">
-        <div className="flex items-center justify-center py-24">
-          <div className="text-muted-foreground font-sans text-sm">加载中...</div>
+        <div className="py-8">
+          <ArticleListSkeleton />
         </div>
       </div>
     )

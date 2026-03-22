@@ -117,3 +117,107 @@ pnpm build
 ```
 
 Expected: Build succeeds with no errors.
+
+## API Route Standards
+
+### 共享工具库
+
+API 路由**必须**使用 `lib/api-response.ts` 中的共享工具，禁止重复编写以下模式：
+
+```typescript
+import { parseBody, validateBody, success, error, startTimer, timing, handlePrismaError } from "@/lib/api-response"
+```
+
+| 模式 | 使用方式 |
+|------|----------|
+| JSON body 解析 | `parseBody(request)` — 失败抛 `ParseError` |
+| Zod 校验 | `validateBody(body, schema)` — 返回 `ValidationResult<T>` |
+| 成功响应 | `success(data)` 或 `success(data, { timing: timing(startTime) })` |
+| 错误响应 | `error("message")` 或 `error("message", status)` |
+| Prisma 错误 | `handlePrismaError(err, { p2002: "...", p2003: "...", p2025: "..." })` |
+
+### 共享 Mapper 和工具
+
+- `app/api/_lib/mappers.ts` — 跨路由共享的数据转换函数（如 `toArticle()`）
+- `app/api/_lib/json-utils.ts` — 跨路由共享的 JSON 工具函数（如 `safeJsonParse()`）
+
+新增共享工具时，放入 `_lib/` 目录并同步更新本节。
+
+## Data Fetching Standards
+
+### 统一使用 SWR
+
+所有数据获取 hook **必须**使用 SWR（`import useSWR from "swr"`），禁止手动 `useState` + `useEffect` + `isMountedRef` 模式。
+
+```typescript
+// 正确
+const { data, isLoading, error, mutate } = useSWR(key, fetcher, { revalidateOnFocus: false, dedupingInterval: 5000 })
+
+// 错误 — 禁止
+const [data, setData] = useState(null)
+const [loading, setLoading] = useState(true)
+const isMountedRef = useRef(true)
+useEffect(() => { ... }, [])
+```
+
+SWR 配置统一：`revalidateOnFocus: false, dedupingInterval: 5000`。需要 revalidate 时使用 `revalidateOnReconnect: true`。
+
+### 共享 SWR Hooks
+
+优先复用 `hooks/use-api.ts` 中已有的 hook（`usePacks`, `useCustomViews`, `useBookmarks`, `useDaily`），不要重复实现。
+
+## UI Standards
+
+### 用户通知
+
+**禁止使用 `alert()`。** 所有用户通知必须使用 toast：
+
+```typescript
+import { toast } from "@/hooks/use-toast"
+toast({ title: "操作失败", variant: "destructive" })
+```
+
+### 加载状态
+
+**禁止使用纯文本 "加载中..."。** 使用 `components/loading-skeletons.tsx` 中的共享 Skeleton 组件：
+
+- `ArticleListSkeleton` — 文章列表加载占位
+- `TweetListSkeleton` — 推文列表加载占位
+- `PageSkeleton` — 页面级加载占位
+
+### 类型定义规范
+
+- **共享类型**: 跨文件使用的类型定义在 `lib/types.ts`（前端/后端通用）或 `components/<module>/types.ts`（模块内共享）
+- **内联类型**: 仅在单文件内使用的类型可以内联定义
+- **禁止重复**: 同一类型禁止在多个文件中重复定义，发现重复时提取到共享位置
+- **禁止 `success: true` 窄化**: `ApiResponse<T>` 的 `success` 字段必须是 `boolean`，不能窄化为 `true`（否则错误响应无法通过类型校验）
+
+## Component Architecture
+
+### 组件文件大小限制
+
+单文件超过 **300 行** 时应考虑拆分。拆分原则：
+
+- 按职责拆分（导航、CRUD、拖拽排序等）
+- 类型定义放入 `types.ts`
+- 常量/映射放入独立文件
+- 子组件通过 props 传递数据，不直接访问兄弟组件状态
+
+### 拆分后的目录结构
+
+```
+components/
+├── sidebar/              # sidebar 模块
+│   ├── types.ts
+│   ├── icon-map.tsx
+│   ├── nav-button.tsx
+│   ├── sortable-view-item.tsx
+│   └── view-edit-drawer.tsx
+├── config/              # config 模块
+│   ├── types.ts
+│   ├── source-type-categories.ts
+│   ├── pack-list-panel.tsx
+│   ├── pack-detail-panel.tsx
+│   └── add-source-dialog.tsx
+└── sidebar.tsx           # 主组件（仅保留导航布局和状态协调）
+```

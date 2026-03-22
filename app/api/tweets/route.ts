@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { safeJsonParse } from "../_lib/json-utils";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-
-function safeJsonParse<T>(json: string | null | undefined): T | undefined {
-  if (!json) return undefined;
-  try { return JSON.parse(json) as T; } catch { return undefined; }
-}
 
 export async function GET(request: NextRequest) {
   try {

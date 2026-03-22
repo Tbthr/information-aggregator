@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { ArticleListSkeleton } from "@/components/loading-skeletons"
 import { formatRelative } from "@/lib/format-date"
 import { SaveButton } from "@/components/save-button"
 import type { Article, TimelineEvent, WeeklyReport } from "@/lib/types"
@@ -57,8 +58,8 @@ export function WeeklyPage({ isSaved, onToggleSave, onOpenArticle }: WeeklyPageP
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto px-6 py-8">
-        <div className="flex items-center justify-center py-24">
-          <div className="text-muted-foreground font-sans text-sm">加载中...</div>
+        <div className="py-8">
+          <ArticleListSkeleton />
         </div>
       </div>
     )

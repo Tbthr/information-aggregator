@@ -1,8 +1,7 @@
-import { NextResponse } from "next/server"
 import { z } from "zod"
-import { Prisma } from "@prisma/client"
 
 import { prisma } from "@/lib/prisma"
+import { success, error, parseBody, validateBody, handlePrismaError, ParseError } from "@/lib/api-response"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -30,49 +29,37 @@ export async function GET() {
       orderBy: { order: "asc" },
     })
 
-    return NextResponse.json({
-      success: true,
-      data: { views },
-    })
-  } catch (error) {
-    console.error("Error in /api/custom-views:", error)
-    return NextResponse.json(
-      { success: false, error: "Failed to load custom views" },
-      { status: 500 }
-    )
+    return success({ views })
+  } catch (err) {
+    console.error("Error in /api/custom-views:", err)
+    return error("Failed to load custom views")
   }
 }
 
 export async function POST(request: Request) {
   let body: unknown
   try {
-    body = await request.json()
-  } catch {
-    return NextResponse.json(
-      { success: false, error: "Invalid JSON in request body" },
-      { status: 400 }
-    )
+    body = await parseBody(request)
+  } catch (e) {
+    if (e instanceof ParseError) return error(e.message, e.status)
+    throw e
   }
 
-  const parsed = customViewCreateSchema.safeParse(body)
-  if (!parsed.success) {
-    return NextResponse.json(
-      { success: false, error: "Invalid custom view data", details: parsed.error.flatten() },
-      { status: 400 }
-    )
-  }
+  const validated = validateBody(body, customViewCreateSchema)
+  if (!validated.success) return validated.response
+  const { data: parsedData } = validated
 
   try {
     const view = await prisma.customView.create({
       data: {
-        ...(parsed.data.id && { id: parsed.data.id }),
-        name: parsed.data.name,
-        icon: parsed.data.icon,
-        description: parsed.data.description,
-        filterJson: parsed.data.filterJson,
+        ...(parsedData.id && { id: parsedData.id }),
+        name: parsedData.name,
+        icon: parsedData.icon,
+        description: parsedData.description,
+        filterJson: parsedData.filterJson,
         updatedAt: new Date(),
         customViewPacks: {
-          create: parsed.data.packIds.map((packId) => ({ packId })),
+          create: parsedData.packIds.map((packId) => ({ packId })),
         },
       },
       include: {
@@ -84,32 +71,16 @@ export async function POST(request: Request) {
       },
     })
 
-    return NextResponse.json({
-      success: true,
-      data: view,
+    return success(view)
+  } catch (err) {
+    console.error("Error creating custom view:", err)
+
+    const prismaErr = handlePrismaError(err, {
+      p2002: "Custom view with this ID already exists",
+      p2003: "One or more pack IDs do not exist",
     })
-  } catch (error) {
-    console.error("Error creating custom view:", error)
+    if (prismaErr) return prismaErr
 
-    // Handle duplicate ID (P2002 - unique constraint violation)
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return NextResponse.json(
-        { success: false, error: "Custom view with this ID already exists" },
-        { status: 409 }
-      )
-    }
-
-    // Handle foreign key constraint violation (P2003 - pack not found)
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
-      return NextResponse.json(
-        { success: false, error: "One or more pack IDs do not exist" },
-        { status: 400 }
-      )
-    }
-
-    return NextResponse.json(
-      { success: false, error: "Failed to create custom view" },
-      { status: 500 }
-    )
+    return error("Failed to create custom view")
   }
 }

@@ -28,17 +28,8 @@ export interface TimingMeta {
   latencyMs: number;
 }
 
-// 通用 API 响应
-export interface ApiResponse<T> {
-  success: boolean;
-  data: T;
-  meta: {
-    query: QueryMeta;
-    timing: TimingMeta;
-    pagination: PaginationMeta;
-  };
-  warnings?: string[];
-}
+// 通用 API 响应 — 统一定义见 lib/types.ts
+export type { ApiResponse } from "../../lib/types"
 
 // 数据源信息
 export interface SourceInfo {

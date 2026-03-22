@@ -1,9 +1,8 @@
-import { NextResponse } from "next/server"
 import { z } from "zod"
-import { Prisma } from "@prisma/client"
 
 import { prisma } from "@/lib/prisma"
 import { loadAllPacksFromDb } from "../../../src/config/load-pack-prisma"
+import { success, error, parseBody, validateBody, startTimer, timing, handlePrismaError, ParseError } from "@/lib/api-response"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -21,7 +20,7 @@ const sourceCreateSchema = z.object({
 
 export async function GET() {
   try {
-    const startTime = Date.now()
+    const startTime = startTimer()
     const [packs, persistedSources] = await Promise.all([
       loadAllPacksFromDb(),
       prisma.source.findMany({
@@ -70,99 +69,63 @@ export async function GET() {
 
     const allSources = [...configSources, ...orphanSources]
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        sources: allSources,
-      },
-      meta: {
-        timing: {
-          generatedAt: new Date().toISOString(),
-          latencyMs: Date.now() - startTime,
-        },
-      },
-    })
-  } catch (error) {
-    console.error("Error in /api/sources:", error)
-    return NextResponse.json(
-      { success: false, error: "Failed to load sources" },
-      { status: 500 }
+    return success(
+      { sources: allSources },
+      { timing: timing(startTime) }
     )
+  } catch (err) {
+    console.error("Error in /api/sources:", err)
+    return error("Failed to load sources")
   }
 }
 
 export async function POST(request: Request) {
   let body: unknown
   try {
-    body = await request.json()
-  } catch {
-    return NextResponse.json(
-      { success: false, error: "Invalid JSON in request body" },
-      { status: 400 }
-    )
+    body = await parseBody(request)
+  } catch (e) {
+    if (e instanceof ParseError) return error(e.message, e.status)
+    throw e
   }
 
-  const parsed = sourceCreateSchema.safeParse(body)
-  if (!parsed.success) {
-    return NextResponse.json(
-      { success: false, error: "Invalid source data", details: parsed.error.flatten() },
-      { status: 400 }
-    )
-  }
+  const validated = validateBody(body, sourceCreateSchema)
+  if (!validated.success) return validated.response
+  const { data: parsedData } = validated
 
   try {
     // Validate packId exists if provided
-    if (parsed.data.packId) {
+    if (parsedData.packId) {
       const pack = await prisma.pack.findUnique({
-        where: { id: parsed.data.packId },
+        where: { id: parsedData.packId },
       })
 
       if (!pack) {
-        return NextResponse.json(
-          { success: false, error: "Pack not found" },
-          { status: 404 }
-        )
+        return error("Pack not found", 404)
       }
     }
 
     const source = await prisma.source.create({
       data: {
-        ...(parsed.data.id && { id: parsed.data.id }),
-        type: parsed.data.type,
-        name: parsed.data.name,
-        url: parsed.data.url,
-        description: parsed.data.description,
-        enabled: parsed.data.enabled ?? true,
-        packId: parsed.data.packId,
+        ...(parsedData.id && { id: parsedData.id }),
+        type: parsedData.type,
+        name: parsedData.name,
+        url: parsedData.url,
+        description: parsedData.description,
+        enabled: parsedData.enabled ?? true,
+        packId: parsedData.packId,
       },
     })
 
-    return NextResponse.json({
-      success: true,
-      data: source,
+    return success(source)
+  } catch (err) {
+    console.error("Error creating source:", err)
+
+    const prismaErr = handlePrismaError(err, {
+      p2002: "Source with this ID already exists",
+      p2003: "Pack not found",
     })
-  } catch (error) {
-    console.error("Error creating source:", error)
+    if (prismaErr) return prismaErr
 
-    // Handle duplicate ID (P2002 - unique constraint violation)
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return NextResponse.json(
-        { success: false, error: "Source with this ID already exists" },
-        { status: 409 }
-      )
-    }
-
-    // Handle foreign key constraint (P2003 - packId not found)
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
-      return NextResponse.json(
-        { success: false, error: "Pack not found" },
-        { status: 404 }
-      )
-    }
-
-    return NextResponse.json(
-      { success: false, error: "Failed to create source", details: String(error) },
-      { status: 500 }
-    )
+    return error("Failed to create source", 500, String(err))
   }
 }

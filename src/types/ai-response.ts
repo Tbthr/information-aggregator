@@ -3,6 +3,8 @@
  * 用于类型安全地处理各种 AI provider 的响应
  */
 
+import { isRecord } from "./validation"
+
 /**
  * OpenAI Responses API 响应格式
  */
@@ -83,9 +85,4 @@ export interface FilterJudgment {
   readingHint?: string;
   /** 判断时间戳（ISO 8601 格式） */
   judgedAt: string;
-}
-
-// 内部使用的类型守卫
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

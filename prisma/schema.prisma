@@ -87,6 +87,7 @@ model Item {
   @@index([sourceId])
   @@index([fetchedAt])
   @@index([score])
+  @@index([publishedAt])
 }
 
 model NewsFlash {
@@ -208,6 +209,8 @@ model Tweet {
   @@index([tab])
   @@index([fetchedAt])
   @@index([score])
+  @@index([authorHandle])
+  @@index([publishedAt])
 }
 
 model TweetBookmark {
