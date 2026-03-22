@@ -1,4 +1,4 @@
-import type { Article, NewsFlash, TimelineEvent, CustomView, DailyOverview, WeeklyReport } from "./types"
+import type { Article, NewsFlash, TimelineEvent, CustomView, DailyOverview, WeeklyReport, Tweet, XPageConfigData } from "./types"
 
 // API Response Types
 interface ApiResponse<T> {
@@ -348,4 +348,92 @@ export async function fetchCustomViewItems(
     ...params,
     packs: packIds.join(","),
   })
+}
+
+// ── Tweet API ──
+
+export interface FetchTweetsParams {
+  tab?: string
+  window?: "today" | "week" | "month"
+  sort?: "ranked" | "recent" | "engagement"
+  page?: number
+  pageSize?: number
+  search?: string
+}
+
+export async function fetchTweets(params: FetchTweetsParams = {}): Promise<{
+  items: Tweet[]
+  pagination: { total: number; page: number; pageSize: number; totalPages: number }
+}> {
+  const sp = new URLSearchParams();
+  if (params.tab) sp.set("tab", params.tab);
+  if (params.window) sp.set("window", params.window);
+  if (params.sort) sp.set("sort", params.sort);
+  if (params.page) sp.set("page", String(params.page));
+  if (params.pageSize) sp.set("pageSize", String(params.pageSize));
+  if (params.search) sp.set("search", params.search);
+
+  const res = await fetchApi<{ items: Tweet[]; pagination: { total: number; page: number; pageSize: number; totalPages: number } }>(
+    `/api/tweets?${sp.toString()}`,
+  );
+
+  if (!res.success || !res.data) {
+    return {
+      items: [],
+      pagination: { total: 0, page: params.page || 1, pageSize: params.pageSize || 20, totalPages: 0 },
+    }
+  }
+
+  return { items: res.data.items, pagination: res.data.pagination };
+}
+
+export async function fetchTweetBookmarks(): Promise<Tweet[]> {
+  const res = await fetchApi<{ items: Tweet[] }>("/api/tweet-bookmarks");
+
+  if (!res.success || !res.data) {
+    return []
+  }
+
+  return res.data.items;
+}
+
+export async function addTweetBookmark(id: string): Promise<{ success: boolean; bookmarkedAt?: string }> {
+  const res = await fetchApi<{ bookmarkedAt: string }>(`/api/tweet-bookmarks/${id}`, {
+    method: "POST",
+  });
+
+  return {
+    success: res.success,
+    bookmarkedAt: res.data?.bookmarkedAt,
+  }
+}
+
+export async function removeTweetBookmark(id: string): Promise<{ success: boolean }> {
+  const res = await fetchApi<unknown>(`/api/tweet-bookmarks/${id}`, { method: "DELETE" });
+  return { success: res.success };
+}
+
+export async function fetchXConfig(tab?: string): Promise<XPageConfigData[]> {
+  const sp = tab ? `?tab=${tab}` : "";
+  const res = await fetchApi<XPageConfigData[] | XPageConfigData>(`/api/x-config${sp}`);
+
+  if (!res.success || !res.data) {
+    return []
+  }
+
+  return Array.isArray(res.data) ? res.data : [res.data];
+}
+
+export async function updateXConfig(config: Partial<XPageConfigData> & { tab: string }): Promise<XPageConfigData | null> {
+  const res = await fetchApi<XPageConfigData>("/api/x-config", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(config),
+  });
+
+  if (!res.success || !res.data) {
+    return null
+  }
+
+  return res.data;
 }
