@@ -235,56 +235,58 @@ async function persistResults(
   errorMessage?: string,
   errorSteps?: string[]
 ) {
-  // Upsert DailyOverview
-  const overview = await prisma.dailyOverview.upsert({
-    where: { date },
-    create: {
-      date,
-      dayLabel,
-      topicCount: topics.length,
-      errorMessage,
-      errorSteps: errorSteps ?? [],
-    },
-    update: {
-      dayLabel,
-      topicCount: topics.length,
-      errorMessage,
-      errorSteps: errorSteps ?? [],
-    },
+  return prisma.$transaction(async (tx) => {
+    // Upsert DailyOverview
+    const overview = await tx.dailyOverview.upsert({
+      where: { date },
+      create: {
+        date,
+        dayLabel,
+        topicCount: topics.length,
+        errorMessage,
+        errorSteps: errorSteps ?? [],
+      },
+      update: {
+        dayLabel,
+        topicCount: topics.length,
+        errorMessage,
+        errorSteps: errorSteps ?? [],
+      },
+    })
+
+    // Delete old topics and picks
+    await tx.digestTopic.deleteMany({ where: { dailyId: overview.id } })
+    await tx.dailyPick.deleteMany({ where: { dailyId: overview.id } })
+
+    // Create new topics
+    if (topics.length > 0) {
+      await tx.digestTopic.createMany({
+        data: topics.map((topic, index) => ({
+          dailyId: overview.id,
+          order: index,
+          title: topic.title,
+          summary: topic.summary,
+          itemIds: topic.itemIds,
+          tweetIds: topic.tweetIds,
+        })),
+      })
+    }
+
+    // Create new picks
+    if (picks.length > 0) {
+      await tx.dailyPick.createMany({
+        data: picks.map((pick, index) => ({
+          dailyId: overview.id,
+          order: index,
+          itemId: pick.itemId,
+          tweetId: pick.tweetId,
+          reason: pick.reason,
+        })),
+      })
+    }
+
+    return overview
   })
-
-  // Delete old topics and picks
-  await prisma.digestTopic.deleteMany({ where: { dailyId: overview.id } })
-  await prisma.dailyPick.deleteMany({ where: { dailyId: overview.id } })
-
-  // Create new topics
-  if (topics.length > 0) {
-    await prisma.digestTopic.createMany({
-      data: topics.map((topic, index) => ({
-        dailyId: overview.id,
-        order: index,
-        title: topic.title,
-        summary: topic.summary,
-        itemIds: topic.itemIds,
-        tweetIds: topic.tweetIds,
-      })),
-    })
-  }
-
-  // Create new picks
-  if (picks.length > 0) {
-    await prisma.dailyPick.createMany({
-      data: picks.map((pick, index) => ({
-        dailyId: overview.id,
-        order: index,
-        itemId: pick.itemId,
-        tweetId: pick.tweetId,
-        reason: pick.reason,
-      })),
-    })
-  }
-
-  return overview
 }
 
 // ============================================================
