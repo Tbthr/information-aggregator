@@ -22,6 +22,9 @@ export default function WeeklyRoute() {
       case "config":
         router.push("/config")
         break
+      case "x":
+        router.push("/x")
+        break
       default:
         router.push("/")
     }

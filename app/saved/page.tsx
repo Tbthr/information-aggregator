@@ -24,6 +24,9 @@ export default function SavedRoute() {
       case "config":
         router.push("/config")
         break
+      case "x":
+        router.push("/x")
+        break
       default:
         router.push("/")
     }

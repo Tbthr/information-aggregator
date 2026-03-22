@@ -24,6 +24,9 @@ export default function ViewRoute() {
       case "config":
         router.push("/config")
         break
+      case "x":
+        router.push("/x")
+        break
       default:
         // For custom views, navigate to /view/[id]
         router.push(`/view/${navId}`)

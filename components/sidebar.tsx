@@ -37,6 +37,7 @@ import {
   Heart,
   Flame,
   Sparkles,
+  AtSign,
 } from "lucide-react"
 import {
   Drawer,
@@ -157,6 +158,10 @@ interface SidebarProps {
 const EDITIONS = [
   { id: "daily" as NavId, label: "每日晨报", sublabel: "The Daily", icon: Sun },
   { id: "weekly" as NavId, label: "周末特刊", sublabel: "The Weekly", icon: BookOpen },
+]
+
+const SOCIAL_NAV = [
+  { id: "x" as NavId, label: "X / Twitter", sublabel: "Social", icon: AtSign },
 ]
 
 // 可排序视图项组件
@@ -484,6 +489,26 @@ export function Sidebar({ activeNav, onNav, savedCount, collapsed, onToggleColla
             </p>
           )}
           {EDITIONS.map(({ id, label, sublabel, icon: Icon }) => (
+            <NavButton
+              key={id}
+              active={activeNav === id}
+              collapsed={collapsed}
+              onClick={() => onNav(id)}
+              icon={<Icon className="w-4 h-4 shrink-0" />}
+              label={label}
+              sublabel={sublabel}
+            />
+          ))}
+        </section>
+
+        {/* 社交 */}
+        <section>
+          {!collapsed && (
+            <p className="px-4 mb-1 text-[10px] font-sans font-semibold tracking-widest uppercase text-muted-foreground">
+              社交
+            </p>
+          )}
+          {SOCIAL_NAV.map(({ id, label, sublabel, icon: Icon }) => (
             <NavButton
               key={id}
               active={activeNav === id}

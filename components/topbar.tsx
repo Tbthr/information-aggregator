@@ -9,6 +9,7 @@ const PAGE_TITLES: Record<string, { title: string; subtitle?: string }> = {
   weekly: { title: "周末特刊", subtitle: "The Weekly · Week 11" },
   saved: { title: "我的收藏夹", subtitle: "已保存的文章" },
   config: { title: "引擎配置", subtitle: "数据源与处理规则" },
+  x: { title: "X / Twitter", subtitle: "Social Feed" },
 }
 
 interface ViewInfo {
