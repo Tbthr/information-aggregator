@@ -17,7 +17,7 @@ import { dedupeExact } from "../src/pipeline/dedupe-exact";
 import { dedupeNear } from "../src/pipeline/dedupe-near";
 import { archiveRawItems } from "../src/archive/upsert-prisma";
 import { getItemsToEnrich, enrichItems } from "../src/archive/enrich-prisma";
-import { createAiClient, loadSettings } from "../src/ai/providers";
+import { createAiClient } from "../src/ai/providers";
 import { createLogger } from "../src/utils/logger";
 import type { RawItem, NormalizedItem, SourceType } from "../src/types/index";
 
@@ -287,13 +287,7 @@ async function runEnrich(newItemIds: string[]) {
     return;
   }
 
-  const settings = await loadSettings();
-  if (!settings) {
-    console.warn("  ⚠ 无法加载 AI settings，跳过 enrichment");
-    return;
-  }
-
-  const aiClient = await createAiClient();
+  const aiClient = createAiClient();
   if (!aiClient) {
     console.warn("  ⚠ 无法创建 AI client，跳过 enrichment");
     return;

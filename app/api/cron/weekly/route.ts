@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyCronRequest, unauthorizedResponse, runAfterJob } from "../_lib";
-import { createAiClient, loadSettings } from "../../../../src/ai/providers";
+import { createAiClient } from "../../../../src/ai/providers";
 import { generateWeeklyReport } from "../../../../src/reports/weekly";
 import { createLogger } from "../../../../src/utils/logger";
 
@@ -20,13 +20,7 @@ export async function POST(request: Request) {
     try {
       logger.info("Starting weekly report generation");
 
-      const settings = await loadSettings();
-      if (!settings) {
-        logger.warn("AI settings not configured, skipping weekly report");
-        return;
-      }
-
-      const aiClient = await createAiClient();
+      const aiClient = createAiClient();
       if (!aiClient) {
         logger.warn("Failed to create AI client, skipping weekly report");
         return;

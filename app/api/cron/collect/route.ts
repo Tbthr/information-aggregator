@@ -14,7 +14,7 @@ import {
   recordSourceFailure,
 } from "../../../../src/archive/upsert-prisma";
 import { getItemsToEnrich, enrichItems } from "../../../../src/archive/enrich-prisma";
-import { createAiClient, loadSettings } from "../../../../src/ai/providers";
+import { createAiClient } from "../../../../src/ai/providers";
 import { buildAdapters } from "../../../../src/adapters/build-adapters";
 import { createLogger } from "../../../../src/utils/logger";
 import type { RawItem, NormalizedItem, SourcePack, SourceType } from "../../../../src/types/index";
@@ -163,17 +163,14 @@ export async function POST(request: Request) {
 
       // AI 增强
       if (result.newCount > 0) {
-        const settings = await loadSettings();
-        if (settings) {
-          const aiClient = await createAiClient();
-          if (aiClient) {
-            const newItemIds = result.newItemIds;
-            const enrichItemIds = await getItemsToEnrich("new", newItemIds);
-            if (enrichItemIds.length > 0) {
-              logger.info("Enriching items", { count: enrichItemIds.length });
-              const enrichResult = await enrichItems(enrichItemIds, aiClient);
-              logger.info("Enriched items", { success: enrichResult.successCount, failed: enrichResult.failCount });
-            }
+        const aiClient = createAiClient();
+        if (aiClient) {
+          const newItemIds = result.newItemIds;
+          const enrichItemIds = await getItemsToEnrich("new", newItemIds);
+          if (enrichItemIds.length > 0) {
+            logger.info("Enriching items", { count: enrichItemIds.length });
+            const enrichResult = await enrichItems(enrichItemIds, aiClient);
+            logger.info("Enriched items", { success: enrichResult.successCount, failed: enrichResult.failCount });
           }
         }
       }

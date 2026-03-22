@@ -30,23 +30,14 @@ import {
 } from "../utils";
 import { createLogger, truncateWithLength, maskSensitiveUrl, type Logger } from "../../utils/logger";
 import { isRecord, isArray } from "../../types/validation";
-import { loadAiSettings } from "../config/load";
+import { getAiConfig } from "../config/load";
+import type { RetryConfig } from "../config/schema";
 
 /**
  * 辅助函数：延迟执行
  */
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-/**
- * 重试配置接口
- */
-export interface RetryConfig {
-  maxRetries: number;      // 最大重试次数
-  initialDelay: number;    // 初始延迟(ms)
-  maxDelay: number;        // 最大延迟(ms)
-  backoffFactor: number;   // 退避因子
 }
 
 /**
@@ -84,25 +75,8 @@ export abstract class BaseAiClient<TConfig> implements AiClient {
   /**
    * 获取重试配置
    */
-  protected async getRetryConfig(): Promise<RetryConfig> {
-    try {
-      const settings = await loadAiSettings();
-      const config = settings?.retry;
-      return {
-        maxRetries: config?.maxRetries ?? 3,
-        initialDelay: config?.initialDelay ?? 1000,
-        maxDelay: config?.maxDelay ?? 30000,
-        backoffFactor: config?.backoffFactor ?? 2,
-      };
-    } catch {
-      // 如果读取配置失败，返回默认值
-      return {
-        maxRetries: 3,
-        initialDelay: 1000,
-        maxDelay: 30000,
-        backoffFactor: 2,
-      };
-    }
+  protected getRetryConfig(): RetryConfig {
+    return getAiConfig().retry;
   }
 
   protected async request(prompt: string): Promise<unknown> {
@@ -112,7 +86,7 @@ export abstract class BaseAiClient<TConfig> implements AiClient {
     const bodyStr = JSON.stringify(body);
 
     // 从配置读取重试参数
-    const retryConfig = await this.getRetryConfig();
+    const retryConfig = this.getRetryConfig();
 
     let lastError: Error | null = null;
     let delay = retryConfig.initialDelay;

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyCronRequest, unauthorizedResponse, runAfterJob } from "../_lib";
-import { createAiClient, loadSettings } from "../../../../src/ai/providers";
+import { createAiClient } from "../../../../src/ai/providers";
 import { generateDailyReport } from "../../../../src/reports/daily";
 import { createLogger } from "../../../../src/utils/logger";
 import { formatUtcDate } from "@/lib/date-utils";
@@ -21,13 +21,7 @@ export async function POST(request: Request) {
     try {
       logger.info("Starting daily report generation", { date });
 
-      const settings = await loadSettings();
-      if (!settings) {
-        logger.warn("AI settings not configured, skipping daily report");
-        return;
-      }
-
-      const aiClient = await createAiClient();
+      const aiClient = createAiClient();
       if (!aiClient) {
         logger.warn("Failed to create AI client, skipping daily report");
         return;

@@ -1,87 +1,48 @@
 /**
- * AI 全局配置 Schema
+ * AI 配置 Schema（基于环境变量）
  */
 
 /** 支持的 AI Provider 类型 */
 export type AiProviderType = "anthropic" | "gemini" | "openai";
 
+/** 单个 endpoint：一个 API Key 配对一个 Base URL */
+export interface ProviderEndpoint {
+  apiKey: string;
+  baseUrl: string;
+}
+
+/** 单个 provider 的配置 */
+export interface ProviderConfig {
+  /** 模型名称（该 provider 下所有 endpoint 共用同一模型） */
+  model: string;
+  /** 有序的 endpoint 列表，index 0 为主 endpoint，后续为 fallback */
+  endpoints: ProviderEndpoint[];
+}
+
 /** 重试配置 */
 export interface RetryConfig {
-  /** 最大重试次数（默认 3） */
-  maxRetries?: number;
-  /** 初始延迟(ms)（默认 1000） */
-  initialDelay?: number;
-  /** 最大延迟(ms)（默认 30000） */
-  maxDelay?: number;
-  /** 退避因子（默认 2） */
-  backoffFactor?: number;
+  /** 单个 endpoint 最大重试次数（不含首次请求） */
+  maxRetries: number;
+  /** 首次重试等待时间（毫秒） */
+  initialDelay: number;
+  /** 重试等待时间上限（毫秒） */
+  maxDelay: number;
+  /** 退避因子，每次重试等待时间乘以此值 */
+  backoffFactor: number;
 }
 
-/** Anthropic 配置 */
-export interface AnthropicSettings {
-  /** API Token（支持 ${VAR} 引用环境变量） */
-  authToken?: string;
-  model?: string;
-  baseUrl?: string;
-}
-
-/** Gemini 配置 */
-export interface GeminiSettings {
-  apiKey?: string;
-  model?: string;
-  baseUrl?: string;
-}
-
-/** OpenAI-compatible 配置 */
-export interface OpenAiSettings {
-  apiKey?: string;
-  model?: string;
-  baseUrl?: string;
-}
-
-/**
- * AI 全局配置（存储在数据库 Settings 表中）
- */
-export interface AiSettings {
+/** 完整的 AI 配置（从环境变量加载） */
+export interface AiConfig {
   /** 默认 provider */
-  provider?: AiProviderType;
-
-  /** 并发控制：批次大小（默认 3） */
-  batchSize?: number;
-
-  /** 并发控制：最大并发数（默认 1） */
-  concurrency?: number;
-
+  provider: AiProviderType;
+  /** 各 provider 的配置（未配置则为 null） */
+  anthropic: ProviderConfig | null;
+  gemini: ProviderConfig | null;
+  openai: ProviderConfig | null;
   /** 重试配置 */
-  retry?: RetryConfig;
-
-  /** Anthropic 配置 */
-  anthropic?: AnthropicSettings;
-
-  /** Gemini 配置 */
-  gemini?: GeminiSettings;
-
-  /** OpenAI-compatible 配置 */
-  openai?: OpenAiSettings;
+  retry: RetryConfig;
+  /** 批处理：每批项目数量 */
+  batchSize: number;
+  /** 批处理：批内最大并发数 */
+  concurrency: number;
 }
-
-/**
- * 环境变量映射
- */
-export const AI_ENV_MAPPING = {
-  anthropic: {
-    authToken: "ANTHROPIC_AUTH_TOKEN",
-    model: "ANTHROPIC_MODEL",
-    baseUrl: "ANTHROPIC_BASE_URL",
-  },
-  gemini: {
-    apiKey: "GEMINI_API_KEY",
-    model: "GEMINI_MODEL",
-    baseUrl: "GEMINI_BASE_URL",
-  },
-  openai: {
-    apiKey: "OPENAI_API_KEY",
-    model: "OPENAI_MODEL",
-    baseUrl: "OPENAI_BASE_URL",
-  },
-} as const;

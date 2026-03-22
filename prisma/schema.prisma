@@ -118,29 +118,6 @@ model Pack {
   updatedAt   DateTime @updatedAt    @db.Timestamptz
 }
 
-model ProviderConfig {
-  id          String   @id @default(cuid())
-  provider    String   @unique
-  model       String
-  baseUrl     String?
-  apiKeyRef   String?
-  extraConfig String?
-  updatedAt   DateTime @db.Timestamptz
-}
-
-
-model Settings {
-  id            String   @id @default("default")
-  maxRetries    Int      @default(3)
-  initialDelay  Int      @default(1000)
-  maxDelay      Int      @default(30000)
-  backoffFactor Float    @default(2.0)
-  updatedAt     DateTime @db.Timestamptz
-  batchSize     Int      @default(3)
-  concurrency   Int      @default(1)
-  provider      String   @default("anthropic")
-}
-
 model Source {
   id          String   @id @default(cuid())
   type        String

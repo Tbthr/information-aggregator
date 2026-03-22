@@ -1,63 +1,66 @@
-import type { AiProviderConfig, AnthropicConfig, GeminiConfig, AiClient } from "../types";
-import type { AiSettings, AiProviderType } from "../config/schema";
-import { loadAiSettings, buildAnthropicConfig, buildGeminiConfig, buildOpenAiConfig, getDefaultProvider } from "../config/load";
+import type { AnthropicConfig, GeminiConfig, AiProviderConfig, AiClient } from "../types";
+import type { AiProviderType } from "../config/schema";
+import { getAiConfig } from "../config/load";
 import { ProviderAiClient } from "./openai";
 import { AnthropicClient } from "./anthropic";
 import { GeminiClient } from "./gemini";
+import { FallbackAiClient } from "./fallback";
 
-// 导出客户端类
 export { ProviderAiClient } from "./openai";
 export { AnthropicClient } from "./anthropic";
 export { GeminiClient } from "./gemini";
 
-// 缓存已加载的设置（单次运行中避免重复 IO）
-let cachedSettings: AiSettings | null | undefined = undefined;
-
-async function getSettings(): Promise<AiSettings | null> {
-  if (cachedSettings !== undefined) return cachedSettings;
-  cachedSettings = await loadAiSettings();
-  return cachedSettings;
-}
-
-/**
- * 清除设置缓存（用于测试）
- */
-export function clearSettingsCache(): void {
-  cachedSettings = undefined;
-}
-
-/**
- * 统一的异步工厂函数
- * 优先级：显式传参 > 配置文件 > 环境变量 > 默认值
- */
-export async function createAiClient(
-  provider?: AiProviderType,
-  explicitConfig?: Partial<AnthropicConfig> | Partial<GeminiConfig> | AiProviderConfig
-): Promise<AiClient | null> {
-  const settings = await getSettings();
-  const p = provider ?? getDefaultProvider(settings);
-
-  switch (p) {
-    case "anthropic": {
-      const config = buildAnthropicConfig(explicitConfig as Partial<AnthropicConfig>, settings);
-      return config ? new AnthropicClient(config) : null;
-    }
-    case "gemini": {
-      const config = buildGeminiConfig(explicitConfig as Partial<GeminiConfig>, settings);
-      return config ? new GeminiClient(config) : null;
-    }
-    case "openai": {
-      const config = buildOpenAiConfig(explicitConfig as AiProviderConfig, settings);
-      return config ? new ProviderAiClient(config) : null;
-    }
-    default:
-      return null;
+function createSingleClient(
+  provider: AiProviderType,
+  endpoint: { apiKey: string; baseUrl: string },
+  model: string,
+): AiClient {
+  switch (provider) {
+    case "anthropic":
+      return new AnthropicClient({
+        authToken: endpoint.apiKey,
+        model,
+        baseUrl: endpoint.baseUrl,
+      });
+    case "gemini":
+      return new GeminiClient({
+        apiKey: endpoint.apiKey,
+        model,
+        baseUrl: endpoint.baseUrl,
+      });
+    case "openai":
+      return new ProviderAiClient({
+        apiKey: endpoint.apiKey,
+        model,
+        baseUrl: endpoint.baseUrl,
+      });
   }
 }
 
 /**
- * 加载 AI 设置（供高级场景使用）
+ * 同步工厂函数：创建 AI Client（支持多 endpoint fallback）
  */
-export async function loadSettings(): Promise<AiSettings | null> {
-  return getSettings();
+export function createAiClient(provider?: AiProviderType): AiClient | null {
+  const config = getAiConfig();
+  const p = provider ?? config.provider;
+  const providerConfig = config[p];
+
+  if (!providerConfig || providerConfig.endpoints.length === 0) return null;
+
+  // 单 endpoint：直接创建
+  if (providerConfig.endpoints.length === 1) {
+    return createSingleClient(p, providerConfig.endpoints[0], providerConfig.model);
+  }
+
+  // 多 endpoint：包装 FallbackAiClient
+  return new FallbackAiClient(
+    (endpoint) => createSingleClient(p, endpoint, providerConfig.model),
+    providerConfig.endpoints,
+    config.retry,
+  );
 }
+
+/**
+ * 获取 AI 配置（供高级场景使用）
+ */
+export { getAiConfig as loadSettings } from "../config/load";
