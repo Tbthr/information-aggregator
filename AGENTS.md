@@ -91,6 +91,12 @@ grep -r "ComponentName" components/ app/
 - 交互动画/行为验证
 - 页面渲染结果确认
 
+**每次使用完 playwriter skill 后，必须清理当前会话创建的 session：**
+
+```bash
+playwriter session delete <id>   # 删除 session 并释放资源（session list 查看当前 session）
+```
+
 ## Database
 
 ### Schema 变更约定

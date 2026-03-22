@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ChevronDown, ChevronRight, Plus, Trash2, Settings2, Loader2, Check, Key, Pencil, Rss, Globe, Flame, MessageSquare, Bookmark, Heart, Github, FileJson, List } from "lucide-react"
+import { ChevronDown, ChevronRight, Plus, Trash2, Settings2, Loader2, Check, Pencil, Rss, Globe, Flame, MessageSquare, Bookmark, Heart, Github, FileJson, List } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { SourceEditDialog } from "./source-edit-dialog"
@@ -16,7 +16,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 
 type Source = { id: string; name: string; url: string | null; type: string; enabled: boolean; packId: string | null; description?: string | null }
 type Pack = {
@@ -95,7 +94,6 @@ function EngineConfig() {
   const [editingPackName, setEditingPackName] = useState("")
   const [editingPackDescription, setEditingPackDescription] = useState("")
   const [savingPack, setSavingPack] = useState(false)
-  const [authStatusMap, setAuthStatusMap] = useState<Record<string, boolean>>({})
   const [editingSource, setEditingSource] = useState<Source | null>(null)
 
   // Load packs and sources from database
@@ -116,23 +114,6 @@ function EngineConfig() {
       }
       if (sourcesData.success) {
         setSources(sourcesData.data.sources)
-        // 批量加载 auth 状态
-        const sourceIds = sourcesData.data.sources.map((s: Source) => s.id).filter(Boolean)
-        if (sourceIds.length > 0) {
-          try {
-            const authRes = await fetch(`/api/auth-config/batch?sourceIds=${sourceIds.join(",")}`)
-            const authData = await authRes.json()
-            if (authData.success) {
-              const map: Record<string, boolean> = {}
-              for (const [id, info] of Object.entries(authData.data)) {
-                map[id] = (info as { hasConfig: boolean }).hasConfig
-              }
-              setAuthStatusMap(map)
-            }
-          } catch {
-            // ignore auth status fetch failure
-          }
-        }
       }
     } catch (error) {
       console.error("Failed to load data:", error)
@@ -381,16 +362,6 @@ function EngineConfig() {
                           )}
                         />
                         <span className="text-sidebar-foreground/80 truncate flex-1">{source.name}</span>
-                        {authStatusMap[source.id] && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Key className="w-3 h-3 text-green-500 shrink-0" />
-                            </TooltipTrigger>
-                            <TooltipContent side="top" className="text-xs">
-                              X/Twitter 认证已配置
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
                         <span className="text-muted-foreground shrink-0">{source.type}</span>
                         <button
                           onClick={(e) => {
@@ -665,11 +636,8 @@ function EngineConfig() {
         source={editingSource}
         open={!!editingSource}
         onOpenChange={(open) => { if (!open) setEditingSource(null) }}
-        onSave={(updatedSource, authHasConfig) => {
+        onSave={(updatedSource) => {
           setSources(prev => prev.map(s => s.id === updatedSource.id ? updatedSource : s))
-          if (authHasConfig !== undefined) {
-            setAuthStatusMap(prev => ({ ...prev, [updatedSource.id]: authHasConfig }))
-          }
           setEditingSource(null)
         }}
       />

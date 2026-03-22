@@ -241,9 +241,3 @@ export interface EnrichmentConfig {
   aiBatchSize?: number;                 // AI 批处理大小，默认 5
   aiConcurrency?: number;               // AI 并发数，默认 2
 }
-
-// 授权配置
-export interface AuthConfig {
-  adapter: string;
-  config: Record<string, unknown>;
-}

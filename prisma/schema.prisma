@@ -8,13 +8,6 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-model AuthConfig {
-  sourceId   String   @id
-  configJson String
-  updatedAt  DateTime @db.Timestamptz
-  source     Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
-}
-
 model Bookmark {
   id           String   @id @default(cuid())
   itemId       String   @unique
@@ -131,7 +124,6 @@ model Source {
   pack        Pack?    @relation(fields: [packId], references: [id])
   items       Item[]
   health      SourceHealth?
-  authConfig  AuthConfig?
 
   createdAt   DateTime @default(now()) @db.Timestamptz
   updatedAt   DateTime @updatedAt    @db.Timestamptz

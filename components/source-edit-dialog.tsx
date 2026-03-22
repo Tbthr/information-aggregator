@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Key, Check, Pencil, Loader2 } from "lucide-react"
+import { Pencil, Loader2 } from "lucide-react"
 
 type Source = { id: string; name: string; url: string | null; type: string; enabled: boolean; packId: string | null; description?: string | null }
 
@@ -19,16 +19,13 @@ interface SourceEditDialogProps {
   source: Source | null
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSave: (updatedSource: Source, authHasConfig?: boolean) => void
+  onSave: (updatedSource: Source) => void
 }
 
 export function SourceEditDialog({ source, open, onOpenChange, onSave }: SourceEditDialogProps) {
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [url, setUrl] = useState("")
-  const [configJson, setConfigJson] = useState("")
-  const [hasConfig, setHasConfig] = useState(false)
-  const [authLoading, setAuthLoading] = useState(false)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -37,19 +34,6 @@ export function SourceEditDialog({ source, open, onOpenChange, onSave }: SourceE
     setName(source.name)
     setUrl(source.url || "")
     setDescription("")
-
-    // Load auth config
-    setAuthLoading(true)
-    fetch(`/api/auth-config?sourceId=${source.id}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.success && data.data) {
-          setHasConfig(data.data.hasConfig)
-          setConfigJson(data.data.configJson || "")
-        }
-      })
-      .catch(() => {})
-      .finally(() => setAuthLoading(false))
   }, [source, open])
 
   const handleSave = async () => {
@@ -57,7 +41,6 @@ export function SourceEditDialog({ source, open, onOpenChange, onSave }: SourceE
     setSaving(true)
 
     try {
-      // Update source fields
       const sourceRes = await fetch(`/api/sources/${source.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -66,23 +49,7 @@ export function SourceEditDialog({ source, open, onOpenChange, onSave }: SourceE
       const sourceData = await sourceRes.json()
 
       if (sourceRes.ok && sourceData.success) {
-        // Update auth config if changed
-        if (configJson.trim()) {
-          await fetch("/api/auth-config", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ sourceId: source.id, configJson }),
-          })
-          onSave(
-            { ...source, name, url, description },
-            true,
-          )
-        } else {
-          onSave(
-            { ...source, name, url, description },
-            hasConfig,
-          )
-        }
+        onSave({ ...source, name, url, description })
         onOpenChange(false)
       }
     } catch (error) {
@@ -101,7 +68,7 @@ export function SourceEditDialog({ source, open, onOpenChange, onSave }: SourceE
             <Pencil className="w-4 h-4 text-primary" />
             编辑数据源
           </DialogTitle>
-          <DialogDescription>修改数据源配置和认证信息</DialogDescription>
+          <DialogDescription>修改数据源配置</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
@@ -151,33 +118,6 @@ export function SourceEditDialog({ source, open, onOpenChange, onSave }: SourceE
               onChange={(e) => setDescription(e.target.value)}
               placeholder="可选的数据源描述..."
               className="w-full text-sm font-sans bg-card border border-border rounded-lg px-3 py-2 text-foreground outline-none focus:ring-2 focus:ring-ring resize-none transition-shadow mt-1"
-            />
-          </div>
-
-          {/* Auth config */}
-          <div className="pt-3 border-t border-border">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center">
-                <Key className="w-3.5 h-3.5 text-primary" />
-              </div>
-              <Label className="text-xs font-sans font-semibold uppercase tracking-wider text-muted-foreground">
-                认证配置
-              </Label>
-              {authLoading ? (
-                <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
-              ) : hasConfig ? (
-                <span className="flex items-center gap-1 text-[10px] text-green-600 dark:text-green-400">
-                  <Check className="w-3 h-3" />
-                  已配置
-                </span>
-              ) : null}
-            </div>
-            <input
-              type="text"
-              value={configJson}
-              onChange={(e) => setConfigJson(e.target.value)}
-              placeholder={'{"authToken": "...", "ct0": "..."}'}
-              className="w-full text-sm font-sans bg-card border border-border rounded-lg px-3 py-2 text-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow font-mono"
             />
           </div>
         </div>

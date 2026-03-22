@@ -106,7 +106,7 @@ export async function POST(request: Request) {
 
       // 构建依赖
       const dependencies: CollectDependencies = {
-        adapters: await buildAdapters(),
+        adapters: buildAdapters(),
         concurrency: 3,
         onSourceEvent: (event) => {
           logger.info("Source event", {
