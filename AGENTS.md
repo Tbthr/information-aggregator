@@ -35,13 +35,13 @@ information-aggregator/
 | `pnpm dev` | Start development server |
 | `pnpm build` | Production build + TypeScript check |
 | `pnpm lint` | ESLint check |
-| `pnpm typecheck` | TypeScript 类型检查 (或 `tsc --noEmit`) |
+| `pnpm check` | TypeScript 类型检查 (`tsc --noEmit`) |
 
 ### Pre-commit Checklist
 
 **每次提交前必须执行：**
 
-1. `pnpm typecheck` - 确保无 TypeScript 错误
+1. `pnpm check` - 确保无 TypeScript 错误
 2. `pnpm build` - 确保构建成功
 3. 修复所有错误后再 push
 
@@ -50,7 +50,7 @@ information-aggregator/
 1. **Type Safety**: 所有代码必须通过 TypeScript 检查，禁止使用 `any` 除非必要
 2. **Component Pattern**: 优先使用 shadcn/ui 组件
 3. **API Client**: 使用 `@/lib/api-client` 进行所有 API 调用
-4. **TypeScript Strict**: 所有代码必须正确类型化，变更后运行 `pnpm typecheck`
+4. **TypeScript Strict**: 所有代码必须正确类型化，变更后运行 `pnpm check`
 
 ### Time & Timezone
 
@@ -97,10 +97,10 @@ grep -r "ComponentName" components/ app/
 
 | 场景 | 命令 |
 |------|------|
-| 开发迭代 | `prisma db push` |
-| 生产就绪 | `prisma migrate dev --name <migration_name>` |
+| 开发迭代 | `pnpm exec prisma db push` |
+| 生产就绪 | `pnpm exec prisma migrate dev --name <migration_name>` |
 
-**注意：** 修改 schema 后立即执行相应命令，避免 database drift。
+**注意：** 修改 schema 后立即执行相应命令，避免 database drift。使用 `pnpm exec` 而非 `npx`，避免 rtk hook 拦截问题。
 
 ## Testing & Verification
 
