@@ -553,7 +553,7 @@ git commit -m "refactor: rewrite report AI prompts for topic clustering pipeline
 
 ---
 
-## Task 4: 重写日报生成 Pipeline
+## Task 5: 重写日报生成 Pipeline
 
 **Files:**
 - Modify: `src/reports/daily.ts`
@@ -769,9 +769,6 @@ async function generateDailyPicks(
   items: Item[],
   tweets: Tweet[],
   topicItemIds: Set<string>,
-  items: Item[],
-  tweets: Tweet[],
-  topicCount: number,
   aiClient: AiClient,
   config: DailyReportConfig
 ) {
@@ -994,13 +991,13 @@ git commit -m "feat: rewrite daily report generation as 5-step pipeline"
 
 ---
 
-## Task 5: 确保 AiClient 接口兼容
+## Task 4: 确保 AiClient 接口兼容
 
 **Files:**
 - Modify: `src/ai/types.ts`
 - Modify: `src/ai/providers/` 下的具体实现
 
-> **重要**: 此 Task 必须在 Task 4（日报 pipeline）之前完成，因为 pipeline 依赖 AiClient 的文本生成方法。
+> **重要**: 此 Task 必须在 Task 5（日报 pipeline）之前完成，因为 pipeline 依赖 AiClient 的文本生成方法。
 
 - [ ] **Step 1: 读取 AiClient 接口，确认可用的文本生成方法**
 
