@@ -46,3 +46,58 @@ export type WeeklyReport = {
   subheadline: string
   editorial: string
 }
+
+export type Tweet = {
+  id: string
+  tweetId: string
+  tab: string
+  text: string
+  url: string
+  expandedUrl?: string
+  publishedAt: string
+  fetchedAt: string
+  authorHandle: string
+  authorName?: string
+  likeCount: number
+  replyCount: number
+  retweetCount: number
+  summary?: string
+  bullets: string[]
+  categories: string[]
+  score?: number
+  isBookmarked?: boolean
+  media?: Array<{ type: string; url: string; previewUrl?: string }>
+  quotedTweet?: {
+    id: string
+    text: string
+    authorHandle: string
+    authorName?: string
+    likeCount: number
+    replyCount: number
+    retweetCount: number
+  }
+  thread?: Array<{ id?: string; text?: string; author?: string }>
+  parent?: { id?: string; text?: string; author?: string }
+  article?: { title: string; url?: string; previewText?: string }
+}
+
+export type XTab = "bookmarks" | "likes" | "home" | "lists"
+
+export type XPageConfigData = {
+  tab: string
+  enabled: boolean
+  birdMode: string
+  count: number
+  fetchAll: boolean
+  maxPages?: number
+  authTokenEnv?: string
+  ct0Env?: string
+  listsJson?: string
+  filterPrompt?: string
+  enrichEnabled: boolean
+  enrichScoring: boolean
+  enrichKeyPoints: boolean
+  enrichTagging: boolean
+  timeWindow: string
+  sortOrder: string
+}
