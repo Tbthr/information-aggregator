@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Bookmark, ExternalLink } from "lucide-react"
+import { formatRelative } from "@/lib/format-date"
 import { SaveButton } from "@/components/save-button"
 import type { Article } from "@/lib/types"
 import { fetchBookmarks } from "@/lib/api-client"
@@ -101,7 +102,7 @@ export function SavedPage({ savedIds, isSaved, onToggleSave, onOpenArticle }: Sa
                   <span className="text-[10px] font-sans font-semibold tracking-wider uppercase text-primary shrink-0">
                     {article.source}
                   </span>
-                  <span className="text-[10px] text-muted-foreground">{article.publishedAt}</span>
+                  <span className="text-[10px] text-muted-foreground">{formatRelative(article.publishedAt)}</span>
                 </div>
                 <h3 className="font-serif font-bold text-base leading-snug text-foreground group-hover:text-primary transition-colors text-balance">
                   {article.title}

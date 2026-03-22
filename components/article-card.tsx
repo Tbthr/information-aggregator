@@ -1,6 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
+import { formatRelative } from "@/lib/format-date"
 import { SaveButton } from "@/components/save-button"
 import type { Article } from "@/lib/types"
 
@@ -27,7 +28,7 @@ export function ArticleCard({ article, isSaved, onToggleSave, onClick, variant =
             <span className="text-xs font-sans font-semibold tracking-wider uppercase text-primary shrink-0">
               {article.source}
             </span>
-            <span className="text-xs text-muted-foreground">{article.publishedAt}</span>
+            <span className="text-xs text-muted-foreground">{formatRelative(article.publishedAt)}</span>
           </div>
           <h3 className="font-sans font-semibold text-sm leading-snug text-foreground group-hover:text-primary transition-colors text-balance">
             {article.title}
@@ -54,7 +55,7 @@ export function ArticleCard({ article, isSaved, onToggleSave, onClick, variant =
               <span className="text-xs font-sans font-semibold tracking-wider uppercase text-primary">
                 {article.source}
               </span>
-              <span className="text-xs text-muted-foreground">{article.publishedAt}</span>
+              <span className="text-xs text-muted-foreground">{formatRelative(article.publishedAt)}</span>
             </div>
             <h3 className="font-serif text-lg font-bold leading-snug text-foreground group-hover:text-primary transition-colors text-balance">
               {article.title}
@@ -96,7 +97,7 @@ export function ArticleCard({ article, isSaved, onToggleSave, onClick, variant =
             <span className="text-[10px] font-sans font-semibold tracking-wider uppercase text-primary">
               {article.source}
             </span>
-            <span className="text-[10px] text-muted-foreground">{article.publishedAt}</span>
+            <span className="text-[10px] text-muted-foreground">{formatRelative(article.publishedAt)}</span>
           </div>
           <h3 className="font-sans font-semibold text-sm leading-snug text-foreground group-hover:text-primary transition-colors text-balance">
             {article.title}

@@ -3,22 +3,19 @@ import { verifyCronRequest, unauthorizedResponse, runAfterJob } from "../_lib";
 import { createAiClient, loadSettings } from "../../../../src/ai/providers";
 import { generateDailyReport } from "../../../../src/reports/daily";
 import { createLogger } from "../../../../src/utils/logger";
+import { formatUtcDate } from "@/lib/date-utils";
 
 const logger = createLogger("cron:daily");
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
-function formatDate(date: Date): string {
-  return date.toISOString().split("T")[0];
-}
-
 export async function POST(request: Request) {
   if (!verifyCronRequest(request)) {
     return unauthorizedResponse();
   }
 
-  const date = formatDate(new Date());
+  const date = formatUtcDate(new Date());
 
   runAfterJob("daily", async () => {
     try {

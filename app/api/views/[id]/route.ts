@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 
 import { prisma } from "@/lib/prisma"
+import { utcDaysAgo } from "@/lib/date-utils"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -56,8 +57,7 @@ export async function GET(
     const limit = Math.max(1, Math.min(200, Number(filters.limit) || 50))
 
     // Calculate date threshold
-    const dateThreshold = new Date()
-    dateThreshold.setDate(dateThreshold.getDate() - days)
+    const dateThreshold = utcDaysAgo(days)
 
     // Query items from all sources
     const items = await prisma.item.findMany({

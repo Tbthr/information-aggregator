@@ -1,6 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
+import { formatRelative } from "@/lib/format-date"
 import { SaveButton } from "@/components/save-button"
 import type { Article } from "@/lib/types"
 import { useDaily } from "@/hooks/use-api"
@@ -73,7 +74,7 @@ function FeedCard({
           {article.source}
         </span>
         <span className="text-muted-foreground/50 text-[10px]">·</span>
-        <span className="text-[10px] font-mono text-muted-foreground">{article.publishedAt}</span>
+        <span className="text-[10px] font-mono text-muted-foreground">{formatRelative(article.publishedAt)}</span>
         <div className="ml-auto flex items-center gap-2">
           <ScoreBadge score={article.aiScore} />
           <SaveButton

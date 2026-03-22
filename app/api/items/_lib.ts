@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client"
 import { z } from "zod"
 
 import { prisma } from "@/lib/prisma"
+import { utcStartOfDay } from "@/lib/date-utils"
 import type {
   ApiResponse,
   BookmarksData,
@@ -294,9 +295,7 @@ function resolveWindowStart(window: ItemsQuery["window"]): Date | null {
 
   switch (window) {
     case "today": {
-      const start = new Date(now)
-      start.setHours(0, 0, 0, 0)
-      return start
+      return utcStartOfDay(now)
     }
     case "week":
       return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)

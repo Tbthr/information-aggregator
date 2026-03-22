@@ -52,6 +52,17 @@ information-aggregator/
 3. **API Client**: 使用 `@/lib/api-client` 进行所有 API 调用
 4. **TypeScript Strict**: 所有代码必须正确类型化，变更后运行 `pnpm typecheck`
 
+### Time & Timezone
+
+**核心原则：数据库存 UTC，后端用 UTC 方法，前端转本地时间展示。**
+
+1. **Database**: Prisma schema 中所有 DateTime 字段必须标注 `@db.Timestamptz`
+2. **Backend**: 禁止使用 `setHours()`/`getHours()`/`getDay()`/`setDate()` 等 local time 方法，统一使用 `setUTCHours()`/`getUTCHours()`/`getUTCDay()`/`setUTCDate()` 等 UTC 方法。工具函数见 `lib/date-utils.ts`
+3. **API**: 所有时间字段以 ISO 8601 字符串（带 `Z` 后缀）传递给前端，使用 `.toISOString()`
+4. **Frontend**: 禁止直接展示原始 ISO 时间字符串，必须使用 `lib/format-date.ts` 中的格式化函数（基于 `Intl.DateTimeFormat`，零依赖）
+5. **日报/周报**: "某一天"按北京时间（UTC+8）界定，使用 `beijingDayRange()` / `beijingWeekRange()` 计算查询范围
+6. **Cron**: Vercel Cron 使用 UTC 时间，配置时需转换为北京时间（UTC+8）
+
 ## Frontend Development
 
 ### 组件修改前验证

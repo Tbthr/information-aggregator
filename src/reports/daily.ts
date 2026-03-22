@@ -3,6 +3,7 @@
  */
 
 import { prisma } from "../../lib/prisma";
+import { beijingDayRange, formatUtcDayLabel } from "../../lib/date-utils";
 import type { AiClient } from "../ai/types";
 import {
   buildDailyOverviewPrompt,
@@ -38,9 +39,8 @@ export async function generateDailyReport(
 
   logger.info("Generating daily report", { date, maxItems });
 
-  // 1. 查询当日 Item（按 publishedAt 过滤）
-  const startOfDay = new Date(`${date}T00:00:00.000Z`);
-  const endOfDay = new Date(`${date}T23:59:59.999Z`);
+  // 1. 查询当日 Item（按 publishedAt 过滤，使用北京时间界定一天）
+  const { start: startOfDay, end: endOfDay } = beijingDayRange(date);
 
   const items = await prisma.item.findMany({
     where: {
@@ -86,8 +86,7 @@ export async function generateDailyReport(
   }
 
   // 4. 生成 dayLabel
-  const dateObj = new Date(date);
-  const dayLabel = `${dateObj.getMonth() + 1}月${dateObj.getDate()}日`;
+  const dayLabel = formatUtcDayLabel(new Date(date));
 
   // 5. 写入 DailyOverview（upsert）
   await prisma.dailyOverview.upsert({

@@ -3,6 +3,7 @@
  */
 
 import { prisma } from "../../lib/prisma";
+import { beijingWeekRange, formatUtcDate, formatUtcDayLabel, utcWeekNumber } from "../../lib/date-utils";
 import type { AiClient } from "../ai/types";
 import {
   buildWeeklyEditorialPrompt,
@@ -30,46 +31,12 @@ export interface WeeklyGenerateResult {
 }
 
 /**
- * 计算周范围
+ * 计算周范围（按北京时间界定周一~周日）
  */
 function getWeekRange(date: Date): { start: Date; end: Date; weekNumber: string } {
-  const dayOfWeek = date.getDay();
-  const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-
-  const monday = new Date(date);
-  monday.setDate(date.getDate() + diffToMonday);
-  monday.setHours(0, 0, 0, 0);
-
-  const end = new Date(monday);
-  end.setDate(monday.getDate() + 6);
-  end.setHours(23, 59, 59, 999);
-
-  // ISO week number
-  const year = monday.getFullYear();
-  const firstDayOfYear = new Date(year, 0, 1);
-  const days = Math.floor((monday.getTime() - firstDayOfYear.getTime()) / (24 * 60 * 60 * 1000));
-  const weekNumber = Math.ceil((days + firstDayOfYear.getDay() + 1) / 7);
-
-  return {
-    start: monday,
-    end,
-    weekNumber: `${year}-W${String(weekNumber).padStart(2, "0")}`,
-  };
-}
-
-/**
- * 格式化日期为 YYYY-MM-DD
- */
-function formatDate(date: Date): string {
-  return date.toISOString().split("T")[0];
-}
-
-/**
- * 格式化日期为中文星期
- */
-function formatDayLabel(date: Date): string {
-  const days = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
-  return days[date.getDay()];
+  const { start, end } = beijingWeekRange(date);
+  const weekNumber = utcWeekNumber(start);
+  return { start, end, weekNumber };
 }
 
 /**
@@ -99,8 +66,8 @@ export async function generateWeeklyReport(
   }> = await prisma.dailyOverview.findMany({
     where: {
       date: {
-        gte: formatDate(start),
-        lte: formatDate(end),
+        gte: formatUtcDate(start),
+        lte: formatUtcDate(end),
       },
     },
     orderBy: { date: "asc" },
@@ -129,7 +96,7 @@ export async function generateWeeklyReport(
     // 按日期分组
     const itemsByDate = new Map<string, typeof items>();
     for (const item of items) {
-      const dateStr = item.publishedAt ? formatDate(item.publishedAt) : formatDate(new Date());
+      const dateStr = item.publishedAt ? formatUtcDate(item.publishedAt) : formatUtcDate(new Date());
       if (!itemsByDate.has(dateStr)) {
         itemsByDate.set(dateStr, []);
       }
@@ -141,7 +108,7 @@ export async function generateWeeklyReport(
       id: `temp-${d}`,
       createdAt: new Date(),
       date: d,
-      dayLabel: formatDayLabel(new Date(d)),
+      dayLabel: formatUtcDayLabel(new Date(d)),
       summary: "",
       itemIds: items.slice(0, maxItemsPerDay).map((i) => i.id),
     }));

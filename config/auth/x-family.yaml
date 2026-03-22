@@ -1,5 +1,0 @@
-# config/auth/x-family.yaml
-adapter: x_family
-config:
-  chromeProfile: Default
-  cookieSource: chrome

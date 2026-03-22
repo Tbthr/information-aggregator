@@ -3,6 +3,7 @@
 import { useEffect } from "react"
 import { X, ExternalLink, Bookmark } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { formatDateTime } from "@/lib/format-date"
 import type { Article } from "@/lib/types"
 import { SaveButton } from "@/components/save-button"
 
@@ -63,7 +64,7 @@ export function ReadingPanel({ article, open, onClose, isSaved, onToggleSave }: 
               <>
                 <span className="font-medium text-foreground">{article.source}</span>
                 <span>·</span>
-                <span>{article.publishedAt}</span>
+                <span>{formatDateTime(article.publishedAt)}</span>
               </>
             )}
           </div>

@@ -11,14 +11,14 @@ datasource db {
 model AuthConfig {
   sourceId   String   @id
   configJson String
-  updatedAt  DateTime
+  updatedAt  DateTime @db.Timestamptz
   source     Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
 }
 
 model Bookmark {
   id           String   @id @default(cuid())
   itemId       String   @unique
-  bookmarkedAt DateTime @default(now())
+  bookmarkedAt DateTime @default(now()) @db.Timestamptz
   item         Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
 }
 
@@ -27,9 +27,9 @@ model CustomView {
   name           String
   icon           String
   description    String?
-  createdAt      DateTime         @default(now())
+  createdAt      DateTime         @default(now()) @db.Timestamptz
   filterJson     String?
-  updatedAt      DateTime
+  updatedAt      DateTime         @db.Timestamptz
   order          Int              @default(0)
   customViewPacks CustomViewPack[]
 }
@@ -51,7 +51,7 @@ model DailyOverview {
   dayLabel  String
   summary   String
   itemIds   String[]
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @db.Timestamptz
 }
 
 model DailyReportConfig {
@@ -62,7 +62,7 @@ model DailyReportConfig {
   enableOverview      Boolean  @default(true)
   newsFlashesEnabled  Boolean  @default(true)
   newsFlashesMaxCount Int      @default(12)
-  updatedAt           DateTime
+  updatedAt           DateTime @db.Timestamptz
 }
 
 model Item {
@@ -72,8 +72,8 @@ model Item {
   sourceId     String
   sourceName   String
   sourceType   String
-  publishedAt  DateTime?
-  fetchedAt    DateTime @default(now())
+  publishedAt  DateTime?              @db.Timestamptz
+  fetchedAt    DateTime @default(now()) @db.Timestamptz
   author       String?
   summary      String?  @db.Text
   bullets      String[]
@@ -87,8 +87,8 @@ model Item {
   bookmarks    Bookmark[]
   newsFlashes  NewsFlash[]
 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime @default(now()) @db.Timestamptz
+  updatedAt    DateTime @updatedAt    @db.Timestamptz
 
   @@unique([url])
   @@index([sourceId])
@@ -102,7 +102,7 @@ model NewsFlash {
   text      String
   itemId    String?
   dailyDate String?
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @db.Timestamptz
   item      Item?    @relation(fields: [itemId], references: [id])
 }
 
@@ -114,8 +114,8 @@ model Pack {
   sources     Source[]
   customViews CustomViewPack[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now()) @db.Timestamptz
+  updatedAt   DateTime @updatedAt    @db.Timestamptz
 }
 
 model ProviderConfig {
@@ -125,7 +125,7 @@ model ProviderConfig {
   baseUrl     String?
   apiKeyRef   String?
   extraConfig String?
-  updatedAt   DateTime
+  updatedAt   DateTime @db.Timestamptz
 }
 
 model SchedulerJob {
@@ -134,9 +134,9 @@ model SchedulerJob {
   cron        String
   description String?
   enabled     Boolean   @default(true)
-  lastRunAt   DateTime?
-  nextRunAt   DateTime?
-  updatedAt   DateTime
+  lastRunAt   DateTime? @db.Timestamptz
+  nextRunAt   DateTime? @db.Timestamptz
+  updatedAt   DateTime  @db.Timestamptz
 }
 
 model Settings {
@@ -145,7 +145,7 @@ model Settings {
   initialDelay  Int      @default(1000)
   maxDelay      Int      @default(30000)
   backoffFactor Float    @default(2.0)
-  updatedAt     DateTime
+  updatedAt     DateTime @db.Timestamptz
   batchSize     Int      @default(3)
   concurrency   Int      @default(1)
   provider      String   @default("anthropic")
@@ -166,8 +166,8 @@ model Source {
   health      SourceHealth?
   authConfig  AuthConfig?
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now()) @db.Timestamptz
+  updatedAt   DateTime @updatedAt    @db.Timestamptz
 
   @@unique([packId, url])
   @@index([packId])
@@ -176,11 +176,11 @@ model Source {
 model SourceHealth {
   id                  String    @id @default(cuid())
   sourceId            String    @unique
-  lastSuccessAt       DateTime?
-  lastFailureAt       DateTime?
+  lastSuccessAt       DateTime? @db.Timestamptz
+  lastFailureAt       DateTime? @db.Timestamptz
   lastError           String?
   consecutiveFailures Int       @default(0)
-  updatedAt           DateTime
+  updatedAt           DateTime  @db.Timestamptz
   source              Source    @relation(fields: [sourceId], references: [id])
 }
 
@@ -204,7 +204,7 @@ model WeeklyReport {
   headline      String
   subheadline   String?
   editorial     String?
-  createdAt     DateTime        @default(now())
+  createdAt     DateTime        @default(now()) @db.Timestamptz
   timelineEvents TimelineEvent[]
 }
 
@@ -214,5 +214,5 @@ model WeeklyReportConfig {
   maxTimelineEvents Int      @default(10)
   maxDeepDives      Int      @default(5)
   enableEditorial   Boolean  @default(true)
-  updatedAt         DateTime
+  updatedAt         DateTime @db.Timestamptz
 }

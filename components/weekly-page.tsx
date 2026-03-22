@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { formatRelative } from "@/lib/format-date"
 import { SaveButton } from "@/components/save-button"
 import type { Article, TimelineEvent, WeeklyReport } from "@/lib/types"
 import { fetchWeeklyReport } from "@/lib/api-client"
@@ -181,7 +182,7 @@ export function WeeklyPage({ isSaved, onToggleSave, onOpenArticle }: WeeklyPageP
                   {article.source}
                 </span>
                 <span className="text-muted-foreground/50 text-[10px]">·</span>
-                <span className="text-[10px] font-mono text-muted-foreground">{article.publishedAt}</span>
+                <span className="text-[10px] font-mono text-muted-foreground">{formatRelative(article.publishedAt)}</span>
                 <div className="ml-auto flex items-center gap-2">
                   {article.aiScore && (
                     <span
