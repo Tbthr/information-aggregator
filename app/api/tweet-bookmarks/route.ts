@@ -37,6 +37,12 @@ export async function GET() {
       isBookmarked: true,
       bookmarkedAt: b.bookmarkedAt.toISOString(),
       media: safeJsonParse(b.tweet.mediaJson),
+      articleImageUrl: (() => {
+        const article = safeJsonParse<{ title: string }>(b.tweet.articleJson);
+        if (!article) return undefined;
+        const media = safeJsonParse<Array<{ type: string; url: string }>>(b.tweet.mediaJson);
+        return media?.find((m) => m.type === "photo")?.url;
+      })(),
       quotedTweet: safeJsonParse(b.tweet.quotedTweetJson),
       thread: safeJsonParse(b.tweet.threadJson),
       parent: safeJsonParse(b.tweet.parentJson),

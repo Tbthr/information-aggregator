@@ -66,7 +66,14 @@ export type Tweet = {
   categories: string[]
   score?: number
   isBookmarked?: boolean
-  media?: Array<{ type: string; url: string; previewUrl?: string }>
+  articleImageUrl?: string
+  media?: Array<{
+    type: "photo" | "video" | "animated_gif"
+    url: string
+    width?: number
+    height?: number
+    previewUrl?: string
+  }>
   quotedTweet?: {
     id: string
     text: string
@@ -75,6 +82,8 @@ export type Tweet = {
     likeCount: number
     replyCount: number
     retweetCount: number
+    article?: { title: string; url?: string; previewText?: string }
+    createdAt?: string
   }
   thread?: Array<{ id?: string; text?: string; author?: string }>
   parent?: { id?: string; text?: string; author?: string }

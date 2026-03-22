@@ -82,6 +82,12 @@ export async function GET(request: NextRequest) {
       score: t.score,
       isBookmarked: bookmarkedIds.has(t.id),
       media: safeJsonParse(t.mediaJson),
+      articleImageUrl: (() => {
+        const article = safeJsonParse<{ title: string }>(t.articleJson);
+        if (!article) return undefined;
+        const media = safeJsonParse<Array<{ type: string; url: string }>>(t.mediaJson);
+        return media?.find((m) => m.type === "photo")?.url;
+      })(),
       quotedTweet: safeJsonParse(t.quotedTweetJson),
       thread: safeJsonParse(t.threadJson),
       parent: safeJsonParse(t.parentJson),
