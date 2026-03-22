@@ -2,6 +2,8 @@
 
 import { useState, useMemo } from "react"
 import { ChevronLeft, ChevronRight, ExternalLink } from "lucide-react"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 import { ArticleListSkeleton } from "@/components/loading-skeletons"
 import { SaveButton } from "@/components/save-button"
 import { Badge } from "@/components/ui/badge"
@@ -262,15 +264,10 @@ export function WeeklyPage({ isSaved, onToggleSave, onOpenArticle }: WeeklyPageP
             className="rounded-2xl px-7 py-6"
             style={{ background: "var(--overview-bg)", color: "var(--overview-foreground)" }}
           >
-            <div className="md:columns-2 gap-8">
-              {editorial.split("\n\n").map((para, i) => (
-                <p
-                  key={i}
-                  className={`font-serif text-base leading-[1.85] mb-5 break-inside-avoid ${i === 0 ? "drop-cap" : ""}`}
-                >
-                  {para}
-                </p>
-              ))}
+            <div className="space-y-4 font-serif text-base leading-[1.85] [&>p]:text-foreground/90 [&>p]:my-0 [&>ul]:my-2 [&>ul]:pl-6 [&>ol]:my-2 [&>ol]:pl-6 [&>li]:my-1 [&>h1]:text-2xl [&>h1]:font-bold [&>h2]:text-xl [&>h2]:font-bold [&>h3]:text-lg [&>h3]:font-bold [&>a]:text-primary [&>a]:underline hover:[&>a]:text-primary/80 [&>strong]:font-bold [&>em]:italic [&>code]:bg-muted [&>code]:px-1 [&>code]:py-0.5 [&>code]:rounded [&>pre]:bg-muted [&>pre]:p-4 [&>pre]:rounded-lg [&>pre]:overflow-x-auto [&>blockquote]:border-l-4 [&>blockquote]:border-primary/50 [&>blockquote]:pl-4 [&>blockquote]:italic">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {editorial}
+              </ReactMarkdown>
             </div>
           </div>
         </section>

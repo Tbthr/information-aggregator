@@ -36,8 +36,8 @@
   --sidebar-ring: oklch(0.52 0.12 195);
   --radius: 0.5rem;
   /* 自定义语义 token */
-  --overview-bg: oklch(0.2 0.015 260);
-  --overview-foreground: oklch(0.96 0.003 94.5);
+  --overview-bg: oklch(0.96 0.003 94.5);
+  --overview-foreground: oklch(0.22 0.012 260);
   --spotlight-accent: oklch(0.52 0.12 195);
   --bullet-bg: oklch(0.945 0.025 195);
   --tldr-border: oklch(0.52 0.12 195);
