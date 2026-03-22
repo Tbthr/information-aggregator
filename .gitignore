@@ -11,6 +11,7 @@ coverage/
 
 # Screenshots
 screenshots/
+tmp/
 
 # Brainstorm mockups
 .superpowers/
