@@ -167,7 +167,16 @@ export async function generateWeeklyReport(
   // Load config
   let config = await prisma.weeklyReportConfig.findUnique({ where: { id: "default" } })
   if (!config) {
-    config = await prisma.weeklyReportConfig.create({ data: { id: "default" } })
+    // Use upsert with all required fields - this should not happen normally since DB has defaults
+    config = await prisma.weeklyReportConfig.upsert({
+      where: { id: "default" },
+      create: {
+        id: "default",
+        editorialPrompt: "",
+        pickReasonPrompt: "",
+      },
+      update: {},
+    })
   }
 
   // Step 1: Collect data

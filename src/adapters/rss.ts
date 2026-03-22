@@ -37,6 +37,8 @@ export function parseRssItems(xml: string, sourceId: string): RawItem[] {
       url,
       publishedAt,
       fetchedAt: new Date().toISOString(),
+      author: extractTag(block, "author") || extractTag(block, "dc:creator") || extractTag(block, "managingEditor"),
+      content: extractTag(block, "content:encoded") || extractTag(block, "description"),
       metadataJson: JSON.stringify({
         provider: "rss",
         sourceType: "rss",

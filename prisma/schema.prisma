@@ -52,7 +52,6 @@ model DailyOverview {
   @@index([topicCount])
 
   topics        DigestTopic[]
-  picks         DailyPick[]
 }
 
 model DigestTopic {
@@ -70,20 +69,6 @@ model DigestTopic {
   @@index([dailyId])
 }
 
-model DailyPick {
-  id          String        @id @default(cuid())
-  dailyId     String
-  daily       DailyOverview @relation(fields: [dailyId], references: [id], onDelete: Cascade)
-
-  order       Int
-  itemId      String?
-  tweetId     String?
-  reason      String
-  createdAt   DateTime      @default(now()) @db.Timestamptz
-
-  @@index([dailyId])
-}
-
 model DailyReportConfig {
   id                 String   @id @default("default")
 
@@ -92,11 +77,10 @@ model DailyReportConfig {
   minScore           Int      @default(0)
 
   keywordBlacklist   String[]
-  filterPrompt       String?
-
-  topicPrompt        String?
-  topicSummaryPrompt String?
-  pickReasonPrompt   String?
+  filterPrompt       String
+  topicPrompt        String
+  topicSummaryPrompt String
+  pickReasonPrompt   String
 
   pickCount          Int      @default(3)
 
@@ -210,8 +194,8 @@ model WeeklyReportConfig {
 
   days               Int      @default(7)
 
-  editorialPrompt    String?
-  pickReasonPrompt   String?
+  editorialPrompt    String
+  pickReasonPrompt   String
 
   pickCount          Int      @default(6)
 

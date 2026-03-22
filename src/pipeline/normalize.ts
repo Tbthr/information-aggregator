@@ -71,6 +71,7 @@ export function normalizeItems(items: RawItem[]): NormalizedItem[] {
       exactDedupKey: canonicalUrl,
       // Raw items stay immutable; normalization is stored separately so dedup rules can evolve safely.
       processedAt: item.fetchedAt,
+      publishedAt: item.publishedAt,
       content: item.content,
     };
   });

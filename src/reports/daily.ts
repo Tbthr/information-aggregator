@@ -7,8 +7,6 @@ import {
   parseTopicClusteringResult,
   buildTopicSummaryPrompt,
   parseTopicSummaryResult,
-  buildPickReasonPrompt,
-  parsePickReasonResult,
   buildFilterPrompt,
   parseFilterResult,
   type TopicClusterItem,
@@ -47,20 +45,34 @@ async function collectData(now: Date) {
   return { items, tweets }
 }
 
-/** Step 2: Filter by keyword blacklist and min score */
-function filterContent(
+/** Step 2: Filter by pack, keyword blacklist and min score */
+async function filterContent(
   items: Item[],
   tweets: Tweet[],
   config: DailyReportConfig
-): { filteredItems: Item[]; filteredTweets: Tweet[] } {
+): Promise<{ filteredItems: Item[]; filteredTweets: Tweet[] }> {
   const { keywordBlacklist, minScore } = config
+
+  // Pack filtering: if packs specified, only include items from enabled sources in those packs
+  let packFilteredItems = items
+  if (config.packs.length > 0) {
+    const packSources = await prisma.source.findMany({
+      where: { packId: { in: config.packs }, enabled: true },
+      select: { id: true },
+    })
+    if (packSources.length === 0) {
+      console.warn(`[daily-report] packs ${config.packs.join(", ")} 下无已启用的数据源，所有条目将被过滤`)
+    }
+    const sourceIdSet = new Set(packSources.map((s) => s.id))
+    packFilteredItems = items.filter((item) => sourceIdSet.has(item.sourceId))
+  }
 
   const matchesBlacklist = (text: string): boolean => {
     if (!keywordBlacklist.length) return false
     return keywordBlacklist.some((keyword) => text.toLowerCase().includes(keyword.toLowerCase()))
   }
 
-  const filteredItems = items.filter(
+  const filteredItems = packFilteredItems.filter(
     (item) => (item.score ?? 0) >= minScore && !matchesBlacklist(item.title + " " + (item.summary ?? ""))
   )
   const filteredTweets = tweets.filter(
@@ -195,43 +207,11 @@ async function generateTopicSummaries(
   return results
 }
 
-/** Step 4b: Generate daily picks */
-async function generateDailyPicks(
-  items: Item[],
-  topicItemIds: Set<string>,
-  aiClient: AiClient,
-  config: DailyReportConfig
-) {
-  const pickCount = config.pickCount ?? 3
-
-  // Sort items by score, take top picks
-  // Deduplicate: skip items already prominently featured in topics
-  const sortedItems = [...items].sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
-  const picks: { itemId: string | null; tweetId: string | null; reason: string }[] = []
-
-  for (const item of sortedItems) {
-    if (picks.length >= pickCount) break
-    if (topicItemIds.has(item.id)) continue // Skip items already in topics
-    try {
-      const prompt = buildPickReasonPrompt(item.title, item.summary ?? "", config.pickReasonPrompt)
-      const result = await aiClient.generateText(prompt)
-      const parsed = parsePickReasonResult(result)
-      picks.push({ itemId: item.id, tweetId: null, reason: parsed.reason })
-    } catch {
-      // Fallback: use item summary as reason
-      picks.push({ itemId: item.id, tweetId: null, reason: item.summary ?? "" })
-    }
-  }
-
-  return picks
-}
-
 /** Step 5: Persist results */
 async function persistResults(
   date: string,
   dayLabel: string,
   topics: { title: string; summary: string; itemIds: string[]; tweetIds: string[] }[],
-  picks: { itemId: string | null; tweetId: string | null; reason: string }[],
   errorMessage?: string,
   errorSteps?: string[]
 ) {
@@ -254,9 +234,8 @@ async function persistResults(
       },
     })
 
-    // Delete old topics and picks
+    // Delete old topics
     await tx.digestTopic.deleteMany({ where: { dailyId: overview.id } })
-    await tx.dailyPick.deleteMany({ where: { dailyId: overview.id } })
 
     // Create new topics
     if (topics.length > 0) {
@@ -268,19 +247,6 @@ async function persistResults(
           summary: topic.summary,
           itemIds: topic.itemIds,
           tweetIds: topic.tweetIds,
-        })),
-      })
-    }
-
-    // Create new picks
-    if (picks.length > 0) {
-      await tx.dailyPick.createMany({
-        data: picks.map((pick, index) => ({
-          dailyId: overview.id,
-          order: index,
-          itemId: pick.itemId,
-          tweetId: pick.tweetId,
-          reason: pick.reason,
         })),
       })
     }
@@ -326,7 +292,18 @@ export async function generateDailyReport(
   // Load config
   let config = await prisma.dailyReportConfig.findUnique({ where: { id: "default" } })
   if (!config) {
-    config = await prisma.dailyReportConfig.create({ data: { id: "default" } })
+    // Use upsert with all required fields - this should not happen normally since DB has defaults
+    config = await prisma.dailyReportConfig.upsert({
+      where: { id: "default" },
+      create: {
+        id: "default",
+        filterPrompt: "",
+        topicPrompt: "",
+        topicSummaryPrompt: "",
+        pickReasonPrompt: "",
+      },
+      update: {},
+    })
   }
 
   // Step 1: Collect data
@@ -338,7 +315,7 @@ export async function generateDailyReport(
     tweets = result.tweets
   } catch {
     errorSteps.push("dataCollection")
-    await persistResults(date, dayLabel, [], [], "数据收集失败", errorSteps)
+    await persistResults(date, dayLabel, [], "数据收集失败", errorSteps)
     return { date, topicCount: 0, errorSteps }
   }
 
@@ -346,7 +323,7 @@ export async function generateDailyReport(
   items = items.slice(0, config.maxItems ?? 50)
 
   // Step 2: Filter
-  const { filteredItems, filteredTweets } = filterContent(items, tweets, config)
+  const { filteredItems, filteredTweets } = await filterContent(items, tweets, config)
 
   // Step 2b: Optional AI filter
   let finalItems = filteredItems
@@ -358,7 +335,7 @@ export async function generateDailyReport(
   }
 
   if (finalItems.length === 0 && finalTweets.length === 0) {
-    await persistResults(date, dayLabel, [], [], "过去24小时无内容", errorSteps)
+    await persistResults(date, dayLabel, [], "过去24小时无内容", errorSteps)
     return { date, topicCount: 0, errorSteps }
   }
 
@@ -390,18 +367,9 @@ export async function generateDailyReport(
     topics = fallbackCategoryGrouping(finalItems)
   }
 
-  // Step 4b: Daily picks
-  let picks: { itemId: string | null; tweetId: string | null; reason: string }[] = []
+  // Step 4b: Persist
   try {
-    const topicItemIds = new Set(topics.flatMap((t) => t.itemIds))
-    picks = await generateDailyPicks(finalItems, topicItemIds, aiClient, config)
-  } catch {
-    errorSteps.push("pickReason")
-  }
-
-  // Step 5: Persist
-  try {
-    await persistResults(date, dayLabel, topics, picks, errorSteps.length > 0 ? "部分步骤失败" : undefined, errorSteps)
+    await persistResults(date, dayLabel, topics, errorSteps.length > 0 ? "部分步骤失败" : undefined, errorSteps)
   } catch {
     errorSteps.push("persist")
   }

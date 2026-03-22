@@ -123,6 +123,7 @@ export interface NormalizedItem {
   normalizedText?: string;
   exactDedupKey?: string;
   processedAt?: string;
+  publishedAt?: string;
   sourceId?: string;
   title?: string;
   url?: string;

@@ -15,7 +15,6 @@ export async function GET(request: NextRequest) {
     orderBy: { date: "desc" },
     include: {
       topics: { orderBy: { order: "asc" } },
-      picks: { orderBy: { order: "asc" } },
     },
   })
 
@@ -25,22 +24,17 @@ export async function GET(request: NextRequest) {
       dayLabel: null,
       topicCount: 0,
       topics: [],
-      picks: [],
       referencedItems: [],
       referencedTweets: [],
     })
   }
 
-  // Collect all referenced IDs from topics and picks
+  // Collect all referenced IDs from topics
   const itemIds = new Set<string>()
   const tweetIds = new Set<string>()
   for (const topic of overview.topics) {
     for (const id of topic.itemIds) itemIds.add(id)
     for (const id of topic.tweetIds) tweetIds.add(id)
-  }
-  for (const pick of overview.picks) {
-    if (pick.itemId) itemIds.add(pick.itemId)
-    if (pick.tweetId) tweetIds.add(pick.tweetId)
   }
 
   // Fetch referenced items and tweets in parallel
@@ -70,13 +64,6 @@ export async function GET(request: NextRequest) {
       summary: t.summary,
       itemIds: t.itemIds,
       tweetIds: t.tweetIds,
-    })),
-    picks: overview.picks.map((p) => ({
-      id: p.id,
-      order: p.order,
-      itemId: p.itemId,
-      tweetId: p.tweetId,
-      reason: p.reason,
     })),
     referencedItems: referencedItems.map((item) => ({
       id: item.id,

@@ -11,6 +11,7 @@ interface JsonFeedItem {
   content_text?: string;
   content_html?: string;
   date_published?: string;
+  author?: { name?: string };
 }
 
 interface JsonFeedPayload {
@@ -31,6 +32,8 @@ export function parseJsonFeedItems(payload: JsonFeedPayload, sourceId: string): 
       url: item.url ?? item.external_url ?? "",
       publishedAt: item.date_published,
       fetchedAt: new Date().toISOString(),
+      author: item.author?.name,
+      content: item.content_html || item.content_text,
       metadataJson: JSON.stringify({
         provider: "json-feed",
         sourceType: "json-feed",

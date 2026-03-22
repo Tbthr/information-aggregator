@@ -103,10 +103,10 @@ playwriter session delete <id>   # 删除 session 并释放资源（session list
 
 | 场景 | 命令 |
 |------|------|
-| 开发迭代 | `pnpm exec prisma db push` |
-| 生产就绪 | `pnpm exec prisma migrate dev --name <migration_name>` |
+| 开发迭代 | `npx prisma db push` |
+| 生产就绪 | `npx prisma migrate dev --name <migration_name>` |
 
-**注意：** 修改 schema 后立即执行相应命令，避免 database drift。使用 `pnpm exec` 而非 `npx`，避免 rtk hook 拦截问题。
+**注意：** 修改 schema 后立即执行相应命令，避免 database drift。
 
 ## Testing & Verification
 
@@ -117,6 +117,114 @@ pnpm build
 ```
 
 Expected: Build succeeds with no errors.
+
+### Reports Pipeline E2E Verification
+
+**适用场景：** 修改了 `src/reports/`、`app/api/cron/`、`app/api/daily/`、`app/api/weekly/`、`app/api/settings/reports/`、`src/pipeline/`、`src/archive/` 或 `prisma/schema.prisma` 中报表相关模型后，必须执行全流程验收。
+
+#### 前置条件
+
+1. `pnpm dev` 运行中（dev server 在 `http://localhost:3000`）
+2. `.env` 中 `DATABASE_URL` / `DIRECT_URL` 已配置
+3. 外部 RSS 源和 X/Twitter 可访问（收集阶段需要）
+
+#### 验收级别
+
+| 级别 | 触发条件 | 命令 | 预期耗时 |
+|------|----------|------|----------|
+| L1 快速 | 仅改前端/类型/UI | `pnpm check && pnpm build` | ~30s |
+| L2 配置 | 改了配置 API/Schema | `npx tsx scripts/verify-reports-pipeline.ts --config-only` | ~10s |
+| L3 日报 | 改了日报生成逻辑 | `npx tsx scripts/verify-reports-pipeline.ts --daily-only --verbose` | ~5min |
+| L4 周报 | 改了周报生成逻辑 | `npx tsx scripts/verify-reports-pipeline.ts --weekly-only --verbose` | ~5min |
+| L5 全量 | 改了收集管道/AI 逻辑 | `npx tsx scripts/verify-reports-pipeline.ts --cleanup --verbose` | ~15min |
+
+#### 验收脚本参数
+
+| 参数 | 说明 |
+|------|------|
+| `--api-url <url>` | API 地址，默认 http://localhost:3000 |
+| `--skip-collection` | 跳过收集阶段（当 items 已存在时使用） |
+| `--collection-only` | 仅执行收集阶段 |
+| `--daily-only` | 仅执行日报阶段 |
+| `--weekly-only` | 仅执行周报阶段 |
+| `--config-only` | 仅测试配置 API |
+| `--cleanup` | 验收前清理日报周报数据 |
+| `--timeout <秒>` | 收集轮询超时，默认 300s |
+| `--poll-interval <秒>` | 收集轮询间隔，默认 3s |
+| `--verbose` | 详细输出 |
+| `--json-output <path>` | JSON 结果输出路径 |
+| `--daily-packs <ids>` | 指定日报使用的 pack（逗号分隔） |
+| `--max-items <n>` | 覆盖配置的 maxItems |
+| `--pick-count <n>` | 覆盖配置的 pickCount |
+
+#### L5 全量验收步骤（逐项通过标准）
+
+**Step 1: 静态检查**
+```bash
+pnpm check
+```
+- 通过：exit 0，无 TypeScript 错误
+
+**Step 2: 构建检查**
+```bash
+pnpm build
+```
+- 通过：构建成功，无错误
+
+**Step 3: 全流程 E2E**
+```bash
+npx tsx scripts/verify-reports-pipeline.ts --cleanup --verbose --json-output /tmp/pipeline-result.json
+```
+- 通过：脚本 exit 0，Summary 中 FAIL 数 = 0
+- 每个测试项通过标准：
+
+| Stage | 测试项 | 通过标准 |
+|-------|--------|----------|
+| 0 | Pre-checks | dev server 200, DB 连通 |
+| 1 | Config | GET/PUT 配置成功 |
+| B-04 | Config validation | maxItems>200 / minScore<0 / pickCount=0 均返回 400 |
+| B-05 | Weekly days validation | days=10 返回 400 |
+| B-06 | Malformed body | 非法 JSON 返回 400 |
+| B-08 | Nullable prompts | filterPrompt 设值、topicPrompt=null 正确 |
+| 2 | Data inventory | 打印 items/tweets/daily/weekly 计数 |
+| 3 | Cleanup | 按 FK 顺序删除，无报错 |
+| 4 | Collection | POST 202, items 增长 > 0 |
+| 5 | Daily report | DailyOverview 创建，topicCount > 0 |
+| 6 | Daily verify | topics 非空、FK 全量通过、picks 不与 topics 重复 |
+| 7 | Weekly report | WeeklyReport 创建，editorial 非空 |
+| 8 | Weekly verify | picks 非空、FK 全量通过 |
+| D-17 | Empty daily API | 不存在的日期返回 200 + 空数组 |
+| E-10 | Empty weekly API | 不存在的周返回 200 + 空数据 |
+| G-05 | Daily latest | GET /api/daily (无参数) 返回最新 |
+| G-06 | Weekly latest | GET /api/weekly (无参数) 返回最新 |
+| F-01 | DigestTopic FK | 无孤儿记录 |
+| F-02 | DailyPick FK | 无孤儿记录 |
+| F-03 | WeeklyPick FK | 无孤儿记录 |
+| F-04 | topicCount accuracy | 所有 overview 的 topicCount === 实际数 |
+| F-05 | Weekly item source | 周报 pick items ⊆ 日报 topic items |
+| F-06 | Item fields | 所有引用 items 的 title/url/sourceId 非空 |
+| F-07 | Tweet fields | 所有引用 tweets 的 text/authorHandle/url 非空 |
+
+**Step 4: 人工抽检（可选）**
+
+打开 `http://localhost:3000/daily` 和 `http://localhost:3000/weekly` 页面：
+- 日报页面：主题分类合理、摘要可读、精选有理由
+- 周报页面：社论连贯、精选覆盖多天内容
+
+#### 变更影响矩阵
+
+| 变更范围 | 最低验收级别 | 额外关注项 |
+|----------|-------------|-----------|
+| `app/api/settings/reports/` | L2 | B-04~08 配置校验 |
+| `src/reports/daily.ts` | L3 | Stage 5/6, F-04, F-06/07 |
+| `src/reports/weekly.ts` | L4 | Stage 7/8, F-05 |
+| `src/ai/prompts-reports.ts` | L3 | 日报/周报内容质量 |
+| `src/pipeline/collect.ts` | L5 | Stage 4, 数据量 |
+| `src/archive/enrich*.ts` | L5 | AI enrichment 质量 |
+| `app/api/daily/` 或 `app/api/weekly/` | L3 | API 响应结构 |
+| `prisma/schema.prisma` (报表模型) | L5 | FK 完整性, 全量测试 |
+| `lib/date-utils.ts` | L4 | 周报 weekNumber 计算 |
+| `lib/types.ts` (报表类型) | L2 | 类型一致性 |
 
 ## API Route Standards
 

@@ -12,14 +12,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { PageSkeleton } from "@/components/loading-skeletons"
-import {
-  DEFAULT_TOPIC_PROMPT,
-  DEFAULT_TOPIC_SUMMARY_PROMPT,
-  DEFAULT_DAILY_PICK_REASON_PROMPT,
-  DEFAULT_FILTER_PROMPT,
-  DEFAULT_EDITORIAL_PROMPT,
-  DEFAULT_WEEKLY_PICK_REASON_PROMPT,
-} from "@/src/ai/prompts-reports"
 
 // ── Types ──
 
@@ -28,17 +20,17 @@ interface DailyConfig {
   maxItems: number
   minScore: number
   keywordBlacklist: string[]
-  filterPrompt: string | null
-  topicPrompt: string | null
-  topicSummaryPrompt: string | null
-  pickReasonPrompt: string | null
+  filterPrompt: string
+  topicPrompt: string
+  topicSummaryPrompt: string
+  pickReasonPrompt: string
   pickCount: number
 }
 
 interface WeeklyConfig {
   days: number
-  editorialPrompt: string | null
-  pickReasonPrompt: string | null
+  editorialPrompt: string
+  pickReasonPrompt: string
   pickCount: number
 }
 
@@ -83,7 +75,7 @@ function PromptField({
         <Textarea
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="留空则使用默认 prompt"
+          placeholder="输入 prompt 内容"
           className={`font-mono text-xs resize-y ${expanded ? "min-h-[240px]" : "min-h-[80px]"}`}
           rows={expanded ? 10 : 3}
         />
@@ -210,17 +202,17 @@ export function ReportSettingsPage() {
     maxItems: 50,
     minScore: 0,
     keywordBlacklist: [],
-    filterPrompt: null,
-    topicPrompt: null,
-    topicSummaryPrompt: null,
-    pickReasonPrompt: null,
+    filterPrompt: "",
+    topicPrompt: "",
+    topicSummaryPrompt: "",
+    pickReasonPrompt: "",
     pickCount: 3,
   })
 
   const [weekly, setWeekly] = useState<WeeklyConfig>({
     days: 7,
-    editorialPrompt: null,
-    pickReasonPrompt: null,
+    editorialPrompt: "",
+    pickReasonPrompt: "",
     pickCount: 6,
   })
 
@@ -236,10 +228,10 @@ export function ReportSettingsPage() {
         maxItems: (d.maxItems as number) ?? prev.maxItems,
         minScore: (d.minScore as number) ?? prev.minScore,
         keywordBlacklist: (d.keywordBlacklist as string[]) ?? prev.keywordBlacklist,
-        filterPrompt: (d.filterPrompt as string | null) ?? prev.filterPrompt,
-        topicPrompt: (d.topicPrompt as string | null) ?? prev.topicPrompt,
-        topicSummaryPrompt: (d.topicSummaryPrompt as string | null) ?? prev.topicSummaryPrompt,
-        pickReasonPrompt: (d.pickReasonPrompt as string | null) ?? prev.pickReasonPrompt,
+        filterPrompt: (d.filterPrompt as string) ?? prev.filterPrompt,
+        topicPrompt: (d.topicPrompt as string) ?? prev.topicPrompt,
+        topicSummaryPrompt: (d.topicSummaryPrompt as string) ?? prev.topicSummaryPrompt,
+        pickReasonPrompt: (d.pickReasonPrompt as string) ?? prev.pickReasonPrompt,
         pickCount: (d.pickCount as number) ?? prev.pickCount,
       }))
     }
@@ -248,8 +240,8 @@ export function ReportSettingsPage() {
       setWeekly((prev) => ({
         ...prev,
         days: (w.days as number) ?? prev.days,
-        editorialPrompt: (w.editorialPrompt as string | null) ?? prev.editorialPrompt,
-        pickReasonPrompt: (w.pickReasonPrompt as string | null) ?? prev.pickReasonPrompt,
+        editorialPrompt: (w.editorialPrompt as string) ?? prev.editorialPrompt,
+        pickReasonPrompt: (w.pickReasonPrompt as string) ?? prev.pickReasonPrompt,
         pickCount: (w.pickCount as number) ?? prev.pickCount,
       }))
     }
@@ -276,16 +268,16 @@ export function ReportSettingsPage() {
             maxItems: daily.maxItems,
             minScore: daily.minScore,
             keywordBlacklist: daily.keywordBlacklist,
-            filterPrompt: daily.filterPrompt || null,
-            topicPrompt: daily.topicPrompt || null,
-            topicSummaryPrompt: daily.topicSummaryPrompt || null,
-            pickReasonPrompt: daily.pickReasonPrompt || null,
+            filterPrompt: daily.filterPrompt,
+            topicPrompt: daily.topicPrompt,
+            topicSummaryPrompt: daily.topicSummaryPrompt,
+            pickReasonPrompt: daily.pickReasonPrompt,
             pickCount: daily.pickCount,
           },
           weekly: {
             days: weekly.days,
-            editorialPrompt: weekly.editorialPrompt || null,
-            pickReasonPrompt: weekly.pickReasonPrompt || null,
+            editorialPrompt: weekly.editorialPrompt,
+            pickReasonPrompt: weekly.pickReasonPrompt,
             pickCount: weekly.pickCount,
           },
         }),
@@ -417,10 +409,10 @@ export function ReportSettingsPage() {
               onChange={(v) =>
                 setDaily((prev) => ({
                   ...prev,
-                  filterPrompt: v || null,
+                  filterPrompt: v,
                 }))
               }
-              defaultValue={DEFAULT_FILTER_PROMPT}
+              defaultValue={""}
             />
 
             <PromptField
@@ -430,10 +422,10 @@ export function ReportSettingsPage() {
               onChange={(v) =>
                 setDaily((prev) => ({
                   ...prev,
-                  topicPrompt: v || null,
+                  topicPrompt: v,
                 }))
               }
-              defaultValue={DEFAULT_TOPIC_PROMPT}
+              defaultValue={""}
             />
 
             <PromptField
@@ -443,10 +435,10 @@ export function ReportSettingsPage() {
               onChange={(v) =>
                 setDaily((prev) => ({
                   ...prev,
-                  topicSummaryPrompt: v || null,
+                  topicSummaryPrompt: v,
                 }))
               }
-              defaultValue={DEFAULT_TOPIC_SUMMARY_PROMPT}
+              defaultValue={""}
             />
 
             <PromptField
@@ -456,10 +448,10 @@ export function ReportSettingsPage() {
               onChange={(v) =>
                 setDaily((prev) => ({
                   ...prev,
-                  pickReasonPrompt: v || null,
+                  pickReasonPrompt: v,
                 }))
               }
-              defaultValue={DEFAULT_DAILY_PICK_REASON_PROMPT}
+              defaultValue={""}
             />
           </div>
         </CardContent>
@@ -511,10 +503,10 @@ export function ReportSettingsPage() {
               onChange={(v) =>
                 setWeekly((prev) => ({
                   ...prev,
-                  editorialPrompt: v || null,
+                  editorialPrompt: v,
                 }))
               }
-              defaultValue={DEFAULT_EDITORIAL_PROMPT}
+              defaultValue={""}
             />
 
             <PromptField
@@ -524,10 +516,10 @@ export function ReportSettingsPage() {
               onChange={(v) =>
                 setWeekly((prev) => ({
                   ...prev,
-                  pickReasonPrompt: v || null,
+                  pickReasonPrompt: v,
                 }))
               }
-              defaultValue={DEFAULT_WEEKLY_PICK_REASON_PROMPT}
+              defaultValue={""}
             />
           </div>
         </CardContent>

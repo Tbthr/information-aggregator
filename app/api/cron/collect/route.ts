@@ -148,7 +148,7 @@ export async function POST(request: Request) {
         url: item.canonicalUrl ?? item.url ?? "",
         fetchedAt: item.processedAt ?? new Date().toISOString(),
         metadataJson: item.metadataJson ?? "{}",
-        publishedAt: item.processedAt,
+        publishedAt: item.publishedAt,
         author: undefined,
         content: item.content,
       }));

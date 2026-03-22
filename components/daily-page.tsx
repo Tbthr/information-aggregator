@@ -10,7 +10,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
-import type { Article, DigestTopic, DailyPick, ReferencedItem, ReferencedTweet } from "@/lib/types"
+import type { Article, DigestTopic, ReferencedItem, ReferencedTweet } from "@/lib/types"
 import { useDaily } from "@/hooks/use-api"
 
 // ── Icons (inline to avoid adding deps) ──
@@ -265,110 +265,6 @@ function TopicCard({
   )
 }
 
-// ── Pick card ──
-
-function PickCard({
-  pick,
-  itemMap,
-  tweetMap,
-  rank,
-}: {
-  pick: DailyPick
-  itemMap: Map<string, ReferencedItem>
-  tweetMap: Map<string, ReferencedTweet>
-  rank: number
-}) {
-  const item = pick.itemId ? itemMap.get(pick.itemId) : undefined
-  const tweet = pick.tweetId ? tweetMap.get(pick.tweetId) : undefined
-  const isDeleted = !item && !tweet
-
-  if (isDeleted) {
-    return (
-      <div
-        className="animate-fade-in-up rounded-2xl border border-border bg-card p-5 opacity-60"
-        style={{ animationDelay: `${Math.min(rank * 50, 300)}ms` }}
-      >
-        <div className="flex items-start gap-3">
-          <span className="text-[10px] font-mono text-muted-foreground/60 mt-1 shrink-0">
-            {String(rank + 1).padStart(2, "0")}
-          </span>
-          <div className="flex-1">
-            <p className="text-sm font-sans text-muted-foreground italic">[内容已删除]</p>
-            {pick.reason && (
-              <p className="text-xs text-muted-foreground/70 mt-2 leading-relaxed">{pick.reason}</p>
-            )}
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div
-      className="animate-fade-in-up rounded-2xl border border-border bg-card p-5"
-      style={{ animationDelay: `${Math.min(rank * 50, 300)}ms` }}
-    >
-      <div className="flex items-start gap-3">
-        <span className="text-[10px] font-mono text-muted-foreground/60 mt-1 shrink-0">
-          {String(rank + 1).padStart(2, "0")}
-        </span>
-        <div className="flex-1 min-w-0">
-          {/* Content title + link */}
-          {item ? (
-            <a
-              href={item.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block group"
-            >
-              <h4 className="text-sm font-sans font-semibold text-foreground leading-snug group-hover:text-primary transition-colors mb-1">
-                {item.title}
-              </h4>
-              {item.summary && (
-                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 mb-2">
-                  {item.summary}
-                </p>
-              )}
-            </a>
-          ) : tweet ? (
-            <a
-              href={tweet.tweetUrl ?? "#"}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block group"
-            >
-              <p className="text-xs font-mono text-primary mb-1">@{tweet.authorHandle}</p>
-              {tweet.text && (
-                <p className="text-sm text-foreground leading-relaxed line-clamp-2 group-hover:text-primary transition-colors">
-                  {tweet.text.length > 120 ? tweet.text.slice(0, 120) + "..." : tweet.text}
-                </p>
-              )}
-            </a>
-          ) : null}
-
-          {/* Recommendation reason */}
-          {pick.reason && (
-            <div
-              className="mt-2 rounded-lg px-3 py-2 text-xs font-sans text-muted-foreground leading-relaxed"
-              style={{ background: "var(--bullet-bg)" }}
-            >
-              <span className="text-primary font-bold shrink-0">&#8250; </span>
-              {pick.reason}
-            </div>
-          )}
-
-          {/* Score badge for item picks */}
-          {item && (
-            <div className="mt-2">
-              <ScoreBadge score={item.score} />
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // ── Main page component ──
 
 interface DailyPageProps {
@@ -382,7 +278,6 @@ export function DailyPage({ isSaved, onToggleSave, onOpenArticle }: DailyPagePro
   const { data, isLoading, error } = useDaily(currentDate)
 
   const topics = data?.topics ?? []
-  const picks = data?.picks ?? []
   const dayLabel = data?.dayLabel ?? ""
   const errorMessage = data?.errorMessage
   const errorSteps = data?.errorSteps
@@ -428,7 +323,7 @@ export function DailyPage({ isSaved, onToggleSave, onOpenArticle }: DailyPagePro
   }
 
   // No data state
-  if (topics.length === 0 && picks.length === 0 && !errorMessage) {
+  if (topics.length === 0 && !errorMessage) {
     return (
       <div className="max-w-2xl mx-auto px-6 py-8 space-y-8">
         {/* Date navigation */}
@@ -523,35 +418,6 @@ export function DailyPage({ isSaved, onToggleSave, onOpenArticle }: DailyPagePro
                 isSaved={isSaved}
                 onToggleSave={onToggleSave}
                 onOpenArticle={onOpenArticle}
-              />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Today's picks */}
-      {picks.length > 0 && (
-        <section>
-          <div className="flex items-baseline justify-between mb-6">
-            <div>
-              <h2 className="font-sans text-[10px] font-semibold tracking-widest uppercase text-primary">
-                Today&apos;s Picks
-              </h2>
-              <p className="text-xl font-serif font-bold mt-0.5 text-foreground">今日推荐</p>
-            </div>
-            <Badge variant="secondary" className="text-[10px]">
-              {picks.length} 条推荐
-            </Badge>
-          </div>
-
-          <div className="space-y-3">
-            {picks.map((pick, i) => (
-              <PickCard
-                key={pick.id}
-                pick={pick}
-                itemMap={itemMap}
-                tweetMap={tweetMap}
-                rank={i}
               />
             ))}
           </div>

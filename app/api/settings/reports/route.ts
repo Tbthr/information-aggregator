@@ -11,10 +11,10 @@ const dailyConfigSchema = z.object({
   maxItems: z.number().int().min(1).max(200).optional(),
   minScore: z.number().int().min(0).max(10).optional(),
   keywordBlacklist: z.array(z.string()).optional(),
-  filterPrompt: z.string().nullable().optional(),
-  topicPrompt: z.string().nullable().optional(),
-  topicSummaryPrompt: z.string().nullable().optional(),
-  pickReasonPrompt: z.string().nullable().optional(),
+  filterPrompt: z.string().optional(),
+  topicPrompt: z.string().optional(),
+  topicSummaryPrompt: z.string().optional(),
+  pickReasonPrompt: z.string().optional(),
   pickCount: z.number().int().min(1).max(10).optional(),
 })
 
@@ -26,8 +26,8 @@ const weeklyConfigSchema = z.object({
     .max(28)
     .refine((v) => v % 7 === 0, { message: "必须为 7 的倍数" })
     .optional(),
-  editorialPrompt: z.string().nullable().optional(),
-  pickReasonPrompt: z.string().nullable().optional(),
+  editorialPrompt: z.string().optional(),
+  pickReasonPrompt: z.string().optional(),
   pickCount: z.number().int().min(1).max(20).optional(),
 })
 
@@ -37,18 +37,8 @@ const updateSchema = z.object({
 })
 
 async function ensureDefaultConfigs() {
-  await Promise.all([
-    prisma.dailyReportConfig.upsert({
-      where: { id: "default" },
-      create: { id: "default" },
-      update: {},
-    }),
-    prisma.weeklyReportConfig.upsert({
-      where: { id: "default" },
-      create: { id: "default" },
-      update: {},
-    }),
-  ])
+  // Note: Since prompts are now required in schema and stored in DB,
+  // we don't auto-create configs here - they should already exist from migration
 }
 
 export async function GET() {
@@ -80,18 +70,53 @@ export async function PUT(request: NextRequest) {
   const { daily: dailyUpdate, weekly: weeklyUpdate } = validation.data
 
   if (dailyUpdate) {
+    // Get existing config to fill in required prompt fields if not provided
+    const existing = await prisma.dailyReportConfig.findUnique({ where: { id: "default" } })
     await prisma.dailyReportConfig.upsert({
       where: { id: "default" },
-      create: { id: "default", ...dailyUpdate },
-      update: dailyUpdate,
+      create: {
+        id: "default",
+        filterPrompt: dailyUpdate.filterPrompt ?? existing?.filterPrompt ?? "",
+        topicPrompt: dailyUpdate.topicPrompt ?? existing?.topicPrompt ?? "",
+        topicSummaryPrompt: dailyUpdate.topicSummaryPrompt ?? existing?.topicSummaryPrompt ?? "",
+        pickReasonPrompt: dailyUpdate.pickReasonPrompt ?? existing?.pickReasonPrompt ?? "",
+        packs: dailyUpdate.packs ?? existing?.packs ?? [],
+        maxItems: dailyUpdate.maxItems ?? existing?.maxItems ?? 50,
+        minScore: dailyUpdate.minScore ?? existing?.minScore ?? 0,
+        keywordBlacklist: dailyUpdate.keywordBlacklist ?? existing?.keywordBlacklist ?? [],
+        pickCount: dailyUpdate.pickCount ?? existing?.pickCount ?? 3,
+      },
+      update: {
+        filterPrompt: dailyUpdate.filterPrompt,
+        topicPrompt: dailyUpdate.topicPrompt,
+        topicSummaryPrompt: dailyUpdate.topicSummaryPrompt,
+        pickReasonPrompt: dailyUpdate.pickReasonPrompt,
+        packs: dailyUpdate.packs,
+        maxItems: dailyUpdate.maxItems,
+        minScore: dailyUpdate.minScore,
+        keywordBlacklist: dailyUpdate.keywordBlacklist,
+        pickCount: dailyUpdate.pickCount,
+      },
     })
   }
 
   if (weeklyUpdate) {
+    const existing = await prisma.weeklyReportConfig.findUnique({ where: { id: "default" } })
     await prisma.weeklyReportConfig.upsert({
       where: { id: "default" },
-      create: { id: "default", ...weeklyUpdate },
-      update: weeklyUpdate,
+      create: {
+        id: "default",
+        editorialPrompt: weeklyUpdate.editorialPrompt ?? existing?.editorialPrompt ?? "",
+        pickReasonPrompt: weeklyUpdate.pickReasonPrompt ?? existing?.pickReasonPrompt ?? "",
+        days: weeklyUpdate.days ?? existing?.days ?? 7,
+        pickCount: weeklyUpdate.pickCount ?? existing?.pickCount ?? 6,
+      },
+      update: {
+        editorialPrompt: weeklyUpdate.editorialPrompt,
+        pickReasonPrompt: weeklyUpdate.pickReasonPrompt,
+        days: weeklyUpdate.days,
+        pickCount: weeklyUpdate.pickCount,
+      },
     })
   }
 
