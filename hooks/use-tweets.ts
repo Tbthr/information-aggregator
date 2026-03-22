@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback } from "react";
 import { fetchTweets, addTweetBookmark, removeTweetBookmark } from "@/lib/api-client";
 import type { Tweet } from "@/lib/types";
 

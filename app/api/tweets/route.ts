@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     const window = searchParams.get("window") || "week";
     const sort = searchParams.get("sort") || "ranked";
     const page = parseInt(searchParams.get("page") || "1", 10);
-    const pageSize = parseInt(searchParams.get("pageSize") || "20", 10);
+    const pageSize = Math.min(parseInt(searchParams.get("pageSize") || "20", 10), 100);
     const search = searchParams.get("search") || "";
 
     const now = new Date();
@@ -55,8 +55,12 @@ export async function GET(request: NextRequest) {
       prisma.tweet.count({ where }),
     ]);
 
-    const allBookmarks = await prisma.tweetBookmark.findMany({ select: { tweetId: true } });
-    const bookmarkedIds = new Set(allBookmarks.map((b) => b.tweetId));
+    const tweetIds = tweets.map((t) => t.id);
+    const bookmarks = await prisma.tweetBookmark.findMany({
+      where: { tweetId: { in: tweetIds } },
+      select: { tweetId: true },
+    });
+    const bookmarkedIds = new Set(bookmarks.map((b) => b.tweetId));
 
     const items = tweets.map((t) => ({
       id: t.id,

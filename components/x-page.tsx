@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Search, ArrowUpDown, Settings, ChevronLeft, ChevronRight } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
+import { Search, Settings, ChevronLeft, ChevronRight } from "lucide-react"
 import { TweetCard } from "@/components/tweet-card"
 import { useTweets } from "@/hooks/use-tweets"
 import { useXConfig } from "@/hooks/use-x-config"
@@ -18,7 +18,18 @@ const TABS: Array<{ id: XTab; label: string }> = [
 
 export function XPage() {
   const [activeTab, setActiveTab] = useState<XTab>("bookmarks")
-  const [searchQuery, setSearchQuery] = useState("")
+  const [searchInput, setSearchInput] = useState("")
+  const searchQueryRef = useRef<NodeJS.Timeout>(undefined);
+  const [debouncedQuery, setDebouncedQuery] = useState("")
+
+  // Debounce search input (300ms)
+  useEffect(() => {
+    if (searchQueryRef.current) clearTimeout(searchQueryRef.current);
+    searchQueryRef.current = setTimeout(() => setDebouncedQuery(searchInput), 300);
+    return () => {
+      if (searchQueryRef.current) clearTimeout(searchQueryRef.current);
+    };
+  }, [searchInput]);
   const [sortOrder, setSortOrder] = useState<"ranked" | "recent" | "engagement">("ranked")
   const [timeWindow, setTimeWindow] = useState<"today" | "week" | "month">("week")
   const [page, setPage] = useState(1)
@@ -31,7 +42,7 @@ export function XPage() {
     window: timeWindow,
     page,
     pageSize: 20,
-    searchQuery: searchQuery || undefined,
+    searchQuery: debouncedQuery || undefined,
   })
 
   const totalPages = Math.ceil(total / 20)
@@ -44,7 +55,7 @@ export function XPage() {
   // Refetch when params change
   useEffect(() => {
     refetch()
-  }, [refetch, activeTab, sortOrder, timeWindow, page, searchQuery])
+  }, [refetch, activeTab, sortOrder, timeWindow, page, debouncedQuery])
 
   const currentConfig = configs.find((c) => c.tab === activeTab)
   const effectiveWindow = currentConfig?.timeWindow === "today" || currentConfig?.timeWindow === "month"
@@ -83,8 +94,8 @@ export function XPage() {
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
             <Input
               placeholder="搜索推文..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               className="h-7 pl-7 w-40 text-xs"
             />
           </div>
