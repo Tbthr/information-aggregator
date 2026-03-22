@@ -204,7 +204,10 @@ model WeeklyPick {
 
 ### Step 4a: 话题总结（可并行）
 
-- 对每个 `TopicCluster`，获取关联 Item/Tweet 的 title + summary（截断控制 token，不传完整 content）
+- 对每个 `TopicCluster`，获取关联内容的摘要信息：
+  - Item: 使用已有的 `summary` 字段（enrichment 阶段生成，约 150 字）+ `title`
+  - Tweet: 使用 `text` 原文（推文本身足够短）+ `authorHandle`
+- 对每条摘要做硬截断（上限 500 字符），防止个别异常长内容挤占 token 空间
 - 构建总结 prompt（可通过 `topicSummaryPrompt` 自定义）
 - AI 为每个话题生成综合总结
 - 各话题可并行处理，并发限制为 3
