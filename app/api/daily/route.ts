@@ -26,8 +26,36 @@ export async function GET(request: NextRequest) {
       topicCount: 0,
       topics: [],
       picks: [],
+      referencedItems: [],
+      referencedTweets: [],
     })
   }
+
+  // Collect all referenced IDs from topics and picks
+  const itemIds = new Set<string>()
+  const tweetIds = new Set<string>()
+  for (const topic of overview.topics) {
+    for (const id of topic.itemIds) itemIds.add(id)
+    for (const id of topic.tweetIds) tweetIds.add(id)
+  }
+  for (const pick of overview.picks) {
+    if (pick.itemId) itemIds.add(pick.itemId)
+    if (pick.tweetId) tweetIds.add(pick.tweetId)
+  }
+
+  // Fetch referenced items and tweets in parallel
+  const [referencedItems, referencedTweets] = await Promise.all([
+    itemIds.size > 0
+      ? prisma.item.findMany({
+          where: { id: { in: Array.from(itemIds) } },
+        })
+      : [],
+    tweetIds.size > 0
+      ? prisma.tweet.findMany({
+          where: { id: { in: Array.from(tweetIds) } },
+        })
+      : [],
+  ])
 
   return success({
     date: overview.date,
@@ -49,6 +77,19 @@ export async function GET(request: NextRequest) {
       itemId: p.itemId,
       tweetId: p.tweetId,
       reason: p.reason,
+    })),
+    referencedItems: referencedItems.map((item) => ({
+      id: item.id,
+      title: item.title,
+      url: item.url,
+      score: item.score,
+      summary: item.summary,
+    })),
+    referencedTweets: referencedTweets.map((tweet) => ({
+      id: tweet.id,
+      text: tweet.text,
+      authorHandle: tweet.authorHandle,
+      tweetUrl: tweet.url,
     })),
   })
 }

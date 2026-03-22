@@ -70,6 +70,8 @@ export type DailyReportData = {
   errorSteps?: string[] | null
   topics: DigestTopic[]
   picks: DailyPick[]
+  referencedItems: ReferencedItem[]
+  referencedTweets: ReferencedTweet[]
 }
 
 export type WeeklyPick = {
@@ -79,12 +81,28 @@ export type WeeklyPick = {
   reason: string
 }
 
+export type ReferencedItem = {
+  id: string
+  title: string
+  url: string
+  score: number
+  summary: string | null
+}
+
+export type ReferencedTweet = {
+  id: string
+  text: string | null
+  authorHandle: string
+  tweetUrl: string | null
+}
+
 export type WeeklyReportData = {
-  weekNumber: string
+  weekNumber: string | null
   editorial: string | null
   errorMessage?: string | null
   errorSteps?: string[] | null
   picks: WeeklyPick[]
+  referencedItems: ReferencedItem[]
 }
 
 export type Tweet = {
