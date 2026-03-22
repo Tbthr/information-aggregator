@@ -48,7 +48,7 @@ model DailyOverview {
 model WeeklyReport {
   id            String   @id @default(cuid())
   weekNumber    String   @unique              // "2026-W12"
-  editorial     String                        // AI 深度周总结（500-1000字）
+  editorial     String?                       // AI 深度周总结（500-1000字），null 表示生成失败
   createdAt     DateTime @default(now()) @db.Timestamptz
   updatedAt     DateTime @updatedAt @db.Timestamptz
 
@@ -68,10 +68,10 @@ model WeeklyReport {
 
 ```prisma
 model DailyReportConfig {
-  id                 String   @id @default(cuid())
+  id                 String   @id @default("default")  // 保持单例模式
 
   // 数据源配置
-  packs              String[]                // 数据源 Pack
+  packs              String[]                // 数据源 Pack（空数组表示所有 pack）
   maxItems           Int      @default(50)   // 最大收集条目数
   minScore           Int      @default(0)    // 最低分数阈值
 
@@ -90,12 +90,13 @@ model DailyReportConfig {
 ```
 
 **移除字段**: `sort`、`enableOverview`、`newsFlashesEnabled`、`newsFlashesMaxCount`
+**类型变更**: `packs` 从 `String`（逗号分隔）改为 `String[]`，迁移时需要解析现有值
 
 #### WeeklyReportConfig
 
 ```prisma
 model WeeklyReportConfig {
-  id                 String   @id @default(cuid())
+  id                 String   @id @default("default")  // 保持单例模式
 
   // 数据源配置
   days               Int      @default(7)    // 覆盖天数
@@ -167,12 +168,14 @@ model WeeklyPick {
 
 ## 日报生成 Pipeline
 
-**触发时间**: 每天 23:00 UTC（北京时间 07:00），覆盖过去 24 小时数据。
+**触发时间**: 每天 23:00 UTC（北京时间 07:00），覆盖过去 24 小时的滑动窗口。
+
+> **注意**: 时间范围使用 `now - 24h` 滑动窗口（而非北京时间日历天），与当前代码的 `beijingDayRange()` 不同。这是有意为之 — 滑动窗口确保每次执行覆盖完整 24 小时，不受时区边界问题影响。
 
 ### Step 1: 数据收集
 
-- 查询 `Item` 表中 `publishedAt` 在过去 24 小时内的记录
-- 查询 `Tweet` 表中 `publishedAt` 在过去 24 小时内且 `tab` ∈ ('home', 'lists') 的记录
+- 查询 `Item` 表中 `publishedAt` 在 `[now - 24h, now]` 范围内的记录
+- 查询 `Tweet` 表中 `publishedAt` 在 `[now - 24h, now]` 范围内且 `tab` ∈ ('home', 'lists') 的记录
 - 合并为统一数据流
 - 输出: `RawItem[]` + `RawTweet[]`
 
@@ -194,19 +197,27 @@ model WeeklyPick {
 
 ### Step 4a: 话题总结（可并行）
 
-- 对每个 `TopicCluster`，获取关联 Item/Tweet 的完整内容
+- 对每个 `TopicCluster`，获取关联 Item/Tweet 的 title + summary（截断控制 token，不传完整 content）
 - 构建总结 prompt（可通过 `topicSummaryPrompt` 自定义）
 - AI 为每个话题生成综合总结
-- 各话题可并行处理（并发控制）
+- 各话题可并行处理，并发限制为 3
 - 输出: `DigestTopic[]`（title + summary + itemIds + tweetIds）
 
 ### Step 4b: 今日精选
 
-- 从未被话题覆盖的高分 Item 中选取
+- 从过滤后的高分 Item 中选取（不限制是否被话题覆盖，但确保精选内容与话题条目不重复）
+- 如果高分内容主要为 Tweet，优先选择有完整内容的 Item；若 Item 不足 pickCount，允许从 Tweet 中选取（此时 reason 说明为什么这条推文值得读）
+- 按 score 排序，取 top `pickCount`（默认 3）
 - 按 score 排序，取 top `pickCount`（默认 3）
 - AI 为每篇生成推荐理由（可通过 `pickReasonPrompt` 自定义）
 - 确保精选与话题条目内容不重复
 - 输出: `DailyPick[]`（itemId + reason）
+
+### DigestTopic 引用完整性
+
+- `itemIds` 和 `tweetIds` 仅引用 ID，不存储内容快照
+- 前端展示时通过 ID 查询 Item/Tweet 的 title、url 等字段
+- 若引用的 Item/Tweet 被删除，前端展示时标记为"[内容已删除]"并跳过
 
 ### Step 5: 持久化
 
@@ -289,7 +300,7 @@ model WeeklyPick {
   - AI 概要
   - AI 推荐理由
 
-**数据 Hook**: 扩展 `useDaily()` 返回 `{ topics: DigestTopic[], picks: DailyPick[], errorMessage?, errorSteps? }`
+**数据 Hook**: 重写 `useDaily(date)` 接受日期参数，SWR key 为 `/api/daily?date=${date}`，返回 `{ topics: DigestTopic[], picks: DailyPick[], errorMessage?, errorSteps? }`。需要同步更新 `lib/types.ts` 中的类型定义，移除旧的 `DailyOverview`、`NewsFlash` 类型，新增 `DigestTopic`、`DailyPick` 类型。
 
 ### 周报页面 (`components/weekly-page.tsx`)
 
@@ -356,3 +367,46 @@ model WeeklyPick {
 - `DailyOverview.topicCount`、`DailyOverview.errorMessage`、`DailyOverview.errorSteps` 列
 - `WeeklyReport.errorMessage`、`WeeklyReport.errorSteps` 列
 - 配置表中的 prompt 字段
+
+**类型变更**:
+- `DailyReportConfig.packs`: `String` → `String[]`（迁移时解析现有逗号分隔值）
+- `WeeklyReport.editorial`: `String?`（保持可选，兼容现有 null 值）
+
+**代码清理（NewsFlash 相关）**:
+- 删除 `NewsFlash` model 及其关联的 `Item.newsFlashes` relation
+- 删除 `/api/news-flashes/route.ts` 路由
+- 删除 `lib/api-client.ts` 中的 `fetchNewsFlashes()` 函数
+- 删除 `components/daily-page.tsx` 中快讯相关代码
+- 删除 `src/reports/` 中任何 NewsFlash 生成逻辑
+
+## 类型定义更新（`lib/types.ts`）
+
+**移除类型**:
+- `DailyOverview`（旧的 `{ date, summary }` 结构）
+- `NewsFlash`（`{ id, time, text }`）
+- `TimelineEvent`（旧的时间线事件类型）
+
+**新增类型**:
+- `DigestTopic` — `{ id, order, title, summary, itemIds, tweetIds }`
+- `DailyPick` — `{ id, order, itemId, reason }`
+- `WeeklyPick` — `{ id, order, itemId, reason }`
+- `DailyReportConfig` — 完整的配置类型
+- `WeeklyReportConfig` — 完整的配置类型
+
+**修改类型**:
+- `WeeklyReport` — 移除 `headline`、`subheadline`，`editorial` 保持可选
+
+## 注意事项
+
+### Cron 竞态条件
+
+日报和周报 cron 同时在 23:00 UTC 执行（周日）。为避免资源竞争：
+- 周报 cron 延迟 5 分钟执行（23:05 UTC），确保当天日报先生成完毕
+- 或在周报 cron 中添加检查：如果当天日报尚未生成则等待/跳过
+
+### `filterPrompt` 的输入输出格式
+
+当配置了 `filterPrompt` 时，在 Step 2 关键词过滤之后额外执行一次 AI 调用：
+- 输入：过滤后的 Item/Tweet 列表（title + summary）
+- 输出：JSON `{ keep: [index], discard: [index] }`
+- AI 根据用户自定义 prompt 判断哪些内容值得保留
