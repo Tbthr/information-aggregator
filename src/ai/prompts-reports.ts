@@ -74,22 +74,6 @@ export function parseTopicSummaryResult(text: string): TopicSummaryResult {
 }
 
 // ============================================================
-// Pick Reason (Step 4b)
-// ============================================================
-
-export function buildPickReasonPrompt(
-  title: string,
-  summary: string,
-  prompt: string
-): string {
-  return `${prompt}\n\n---\n\n文章标题：${title}\n文章摘要：${summary}`
-}
-
-export function parsePickReasonResult(text: string): PickReasonResult {
-  return { reason: text.trim() }
-}
-
-// ============================================================
 // AI Filter (Step 2, optional)
 // ============================================================
 
@@ -108,6 +92,22 @@ export function parseFilterResult(text: string): { keep: number[]; discard: numb
   const jsonMatch = text.match(/\{[\s\S]*\}/)
   if (!jsonMatch) throw new Error("AI response does not contain valid JSON for filtering")
   return JSON.parse(jsonMatch[0])
+}
+
+// ============================================================
+// Pick Reason (weekly picks)
+// ============================================================
+
+export function buildPickReasonPrompt(
+  title: string,
+  summary: string,
+  prompt: string
+): string {
+  return `${prompt}\n\n---\n\n文章标题：${title}\n文章摘要：${summary}`
+}
+
+export function parsePickReasonResult(text: string): PickReasonResult {
+  return { reason: text.trim() }
 }
 
 // ============================================================

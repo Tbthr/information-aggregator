@@ -300,7 +300,6 @@ export async function generateDailyReport(
         filterPrompt: "",
         topicPrompt: "",
         topicSummaryPrompt: "",
-        pickReasonPrompt: "",
       },
       update: {},
     })

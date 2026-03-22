@@ -198,7 +198,6 @@ npx tsx scripts/verify-reports-pipeline.ts --cleanup --verbose --json-output /tm
 | G-05 | Daily latest | GET /api/daily (无参数) 返回最新 |
 | G-06 | Weekly latest | GET /api/weekly (无参数) 返回最新 |
 | F-01 | DigestTopic FK | 无孤儿记录 |
-| F-02 | DailyPick FK | 无孤儿记录 |
 | F-03 | WeeklyPick FK | 无孤儿记录 |
 | F-04 | topicCount accuracy | 所有 overview 的 topicCount === 实际数 |
 | F-05 | Weekly item source | 周报 pick items ⊆ 日报 topic items |

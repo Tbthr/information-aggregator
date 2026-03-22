@@ -54,14 +54,6 @@ export type DigestTopic = {
   tweetIds: string[]
 }
 
-export type DailyPick = {
-  id: string
-  order: number
-  itemId: string | null
-  tweetId: string | null
-  reason: string
-}
-
 export type DailyReportData = {
   date: string
   dayLabel: string
@@ -69,7 +61,6 @@ export type DailyReportData = {
   errorMessage?: string | null
   errorSteps?: string[] | null
   topics: DigestTopic[]
-  picks: DailyPick[]
   referencedItems: ReferencedItem[]
   referencedTweets: ReferencedTweet[]
 }

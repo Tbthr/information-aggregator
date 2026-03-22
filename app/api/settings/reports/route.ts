@@ -14,8 +14,6 @@ const dailyConfigSchema = z.object({
   filterPrompt: z.string().optional(),
   topicPrompt: z.string().optional(),
   topicSummaryPrompt: z.string().optional(),
-  pickReasonPrompt: z.string().optional(),
-  pickCount: z.number().int().min(1).max(10).optional(),
 })
 
 const weeklyConfigSchema = z.object({
@@ -79,23 +77,19 @@ export async function PUT(request: NextRequest) {
         filterPrompt: dailyUpdate.filterPrompt ?? existing?.filterPrompt ?? "",
         topicPrompt: dailyUpdate.topicPrompt ?? existing?.topicPrompt ?? "",
         topicSummaryPrompt: dailyUpdate.topicSummaryPrompt ?? existing?.topicSummaryPrompt ?? "",
-        pickReasonPrompt: dailyUpdate.pickReasonPrompt ?? existing?.pickReasonPrompt ?? "",
         packs: dailyUpdate.packs ?? existing?.packs ?? [],
         maxItems: dailyUpdate.maxItems ?? existing?.maxItems ?? 50,
         minScore: dailyUpdate.minScore ?? existing?.minScore ?? 0,
         keywordBlacklist: dailyUpdate.keywordBlacklist ?? existing?.keywordBlacklist ?? [],
-        pickCount: dailyUpdate.pickCount ?? existing?.pickCount ?? 3,
       },
       update: {
         filterPrompt: dailyUpdate.filterPrompt,
         topicPrompt: dailyUpdate.topicPrompt,
         topicSummaryPrompt: dailyUpdate.topicSummaryPrompt,
-        pickReasonPrompt: dailyUpdate.pickReasonPrompt,
         packs: dailyUpdate.packs,
         maxItems: dailyUpdate.maxItems,
         minScore: dailyUpdate.minScore,
         keywordBlacklist: dailyUpdate.keywordBlacklist,
-        pickCount: dailyUpdate.pickCount,
       },
     })
   }

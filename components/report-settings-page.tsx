@@ -23,8 +23,6 @@ interface DailyConfig {
   filterPrompt: string
   topicPrompt: string
   topicSummaryPrompt: string
-  pickReasonPrompt: string
-  pickCount: number
 }
 
 interface WeeklyConfig {
@@ -205,8 +203,6 @@ export function ReportSettingsPage() {
     filterPrompt: "",
     topicPrompt: "",
     topicSummaryPrompt: "",
-    pickReasonPrompt: "",
-    pickCount: 3,
   })
 
   const [weekly, setWeekly] = useState<WeeklyConfig>({
@@ -231,8 +227,6 @@ export function ReportSettingsPage() {
         filterPrompt: (d.filterPrompt as string) ?? prev.filterPrompt,
         topicPrompt: (d.topicPrompt as string) ?? prev.topicPrompt,
         topicSummaryPrompt: (d.topicSummaryPrompt as string) ?? prev.topicSummaryPrompt,
-        pickReasonPrompt: (d.pickReasonPrompt as string) ?? prev.pickReasonPrompt,
-        pickCount: (d.pickCount as number) ?? prev.pickCount,
       }))
     }
     if (settings?.weekly) {
@@ -271,8 +265,6 @@ export function ReportSettingsPage() {
             filterPrompt: daily.filterPrompt,
             topicPrompt: daily.topicPrompt,
             topicSummaryPrompt: daily.topicSummaryPrompt,
-            pickReasonPrompt: daily.pickReasonPrompt,
-            pickCount: daily.pickCount,
           },
           weekly: {
             days: weekly.days,
@@ -375,13 +367,6 @@ export function ReportSettingsPage() {
               value={daily.minScore}
               onChange={(v) => setDaily((prev) => ({ ...prev, minScore: v }))}
             />
-            <NumberField
-              label="今日精选数量"
-              min={1}
-              max={10}
-              value={daily.pickCount}
-              onChange={(v) => setDaily((prev) => ({ ...prev, pickCount: v }))}
-            />
           </div>
 
           {/* 关键词黑名单 */}
@@ -441,18 +426,6 @@ export function ReportSettingsPage() {
               defaultValue={""}
             />
 
-            <PromptField
-              label="精选理由 Prompt"
-              description="为精选内容生成推荐理由"
-              value={daily.pickReasonPrompt || ""}
-              onChange={(v) =>
-                setDaily((prev) => ({
-                  ...prev,
-                  pickReasonPrompt: v,
-                }))
-              }
-              defaultValue={""}
-            />
           </div>
         </CardContent>
       </Card>
