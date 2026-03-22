@@ -37,20 +37,6 @@ export type Article = {
   isBookmarked?: boolean
 }
 
-export type NewsFlash = {
-  id: string
-  time: string
-  text: string
-}
-
-export type TimelineEvent = {
-  id: string
-  date: string
-  dayLabel: string
-  title: string
-  summary: string
-}
-
 export type CustomView = {
   id: string
   name: string
@@ -59,16 +45,46 @@ export type CustomView = {
   articles: Article[]
 }
 
-export type DailyOverview = {
-  date: string
+export type DigestTopic = {
+  id: string
+  order: number
+  title: string
   summary: string
+  itemIds: string[]
+  tweetIds: string[]
 }
 
-export type WeeklyReport = {
+export type DailyPick = {
+  id: string
+  order: number
+  itemId: string | null
+  tweetId: string | null
+  reason: string
+}
+
+export type DailyReportData = {
+  date: string
+  dayLabel: string
+  topicCount: number
+  errorMessage?: string | null
+  errorSteps?: string[] | null
+  topics: DigestTopic[]
+  picks: DailyPick[]
+}
+
+export type WeeklyPick = {
+  id: string
+  order: number
+  itemId: string
+  reason: string
+}
+
+export type WeeklyReportData = {
   weekNumber: string
-  headline: string
-  subheadline: string
-  editorial: string
+  editorial: string | null
+  errorMessage?: string | null
+  errorSteps?: string[] | null
+  picks: WeeklyPick[]
 }
 
 export type Tweet = {

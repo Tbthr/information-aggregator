@@ -1,4 +1,4 @@
-import type { Article, NewsFlash, TimelineEvent, CustomView, DailyOverview, WeeklyReport, Tweet, XPageConfigData, ApiResponse } from "./types"
+import type { Article, CustomView, DailyReportData, WeeklyReportData, Tweet, XPageConfigData, ApiResponse } from "./types"
 
 // Item data from API
 interface ItemData {
@@ -57,25 +57,6 @@ export interface FetchItemsResult {
     pageSize: number
     totalPages: number
   }
-}
-
-// Daily API response type
-interface DailyData {
-  overview: DailyOverview | null
-  articles: Article[]
-  newsFlashes: NewsFlash[]
-}
-
-// Weekly API response type
-interface WeeklyData {
-  hero: WeeklyReport
-  timelineEvents: TimelineEvent[]
-  deepDives: Article[]
-}
-
-// News flashes API response type
-interface NewsFlashesData {
-  newsFlashes: Array<NewsFlash & { itemId?: string }>
 }
 
 // Custom views API response type
@@ -232,8 +213,8 @@ export async function removeBookmark(id: string): Promise<{ success: boolean }> 
 /**
  * Fetch daily overview data
  */
-export async function fetchDailyOverview(): Promise<DailyData | null> {
-  const response = await fetchApi<DailyData>("/api/daily")
+export async function fetchDailyOverview(): Promise<DailyReportData | null> {
+  const response = await fetchApi<DailyReportData>("/api/daily")
 
   if (!response.success || !response.data) {
     return null
@@ -245,27 +226,14 @@ export async function fetchDailyOverview(): Promise<DailyData | null> {
 /**
  * Fetch weekly report data
  */
-export async function fetchWeeklyReport(): Promise<WeeklyData | null> {
-  const response = await fetchApi<WeeklyData>("/api/weekly")
+export async function fetchWeeklyReport(): Promise<WeeklyReportData | null> {
+  const response = await fetchApi<WeeklyReportData>("/api/weekly")
 
   if (!response.success || !response.data) {
     return null
   }
 
   return response.data
-}
-
-/**
- * Fetch news flashes
- */
-export async function fetchNewsFlashes(): Promise<Array<NewsFlash & { itemId?: string }>> {
-  const response = await fetchApi<NewsFlashesData>("/api/news-flashes")
-
-  if (!response.success || !response.data) {
-    return []
-  }
-
-  return response.data.newsFlashes
 }
 
 /**
