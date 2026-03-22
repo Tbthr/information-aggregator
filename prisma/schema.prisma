@@ -175,3 +175,66 @@ model WeeklyReportConfig {
   enableEditorial   Boolean  @default(true)
   updatedAt         DateTime @db.Timestamptz
 }
+
+model Tweet {
+  id               String          @id @default(cuid())
+  tweetId          String          @unique
+  tab              String
+  text             String          @db.Text
+  url              String
+  expandedUrl      String?
+  publishedAt      DateTime?       @db.Timestamptz
+  fetchedAt        DateTime        @default(now()) @db.Timestamptz
+  authorHandle     String
+  authorName       String?
+  authorId         String?
+  conversationId   String?
+  likeCount        Int             @default(0)
+  replyCount       Int             @default(0)
+  retweetCount     Int             @default(0)
+  summary          String?         @db.Text
+  bullets          String[]
+  categories       String[]
+  score            Float           @default(5.0)
+  mediaJson        String?         @db.Text
+  quotedTweetJson  String?         @db.Text
+  threadJson       String?         @db.Text
+  parentJson       String?         @db.Text
+  articleJson      String?         @db.Text
+  bookmarks        TweetBookmark[]
+  createdAt        DateTime        @default(now()) @db.Timestamptz
+  updatedAt        DateTime        @updatedAt @db.Timestamptz
+
+  @@index([tab])
+  @@index([fetchedAt])
+  @@index([score])
+}
+
+model TweetBookmark {
+  id           String   @id @default(cuid())
+  tweetId      String   @unique
+  bookmarkedAt DateTime @default(now()) @db.Timestamptz
+  tweet        Tweet    @relation(fields: [tweetId], references: [id], onDelete: Cascade)
+
+  @@index([bookmarkedAt])
+}
+
+model XPageConfig {
+  tab             String   @unique
+  enabled         Boolean  @default(true)
+  birdMode        String
+  count           Int      @default(20)
+  fetchAll        Boolean  @default(false)
+  maxPages        Int?
+  authTokenEnv    String?
+  ct0Env          String?
+  listsJson       String?  @db.Text
+  filterPrompt    String?  @db.Text
+  enrichEnabled   Boolean  @default(true)
+  enrichScoring   Boolean  @default(true)
+  enrichKeyPoints Boolean  @default(true)
+  enrichTagging   Boolean  @default(true)
+  timeWindow      String   @default("week")
+  sortOrder       String   @default("ranked")
+  updatedAt       DateTime @updatedAt @db.Timestamptz
+}
