@@ -9,6 +9,57 @@ import { createLogger } from "../utils/logger";
 
 const logger = createLogger("archive:enrich-tweet-prisma");
 
+/**
+ * 构建推文的完整内容上下文用于 AI 增强
+ * - text 是纯 URL → 返回 articleJson 中的 title + previewText
+ * - text 是正常文本 → 返回 text + 引用推文全文 + 引用文章摘要
+ */
+function buildEnrichmentContent(tweet: {
+  text: string;
+  articleJson: string | null;
+  quotedTweetJson: string | null;
+}): string {
+  // text 是纯 URL 的情况（如用户只发了一个链接）
+  if (/^https?:\/\/\S+$/.test(tweet.text.trim())) {
+    if (tweet.articleJson) {
+      try {
+        const article = JSON.parse(tweet.articleJson) as { title?: string; previewText?: string };
+        const parts: string[] = [];
+        if (article.title) parts.push(article.title);
+        if (article.previewText) parts.push(article.previewText);
+        return parts.join("\n\n") || tweet.text;
+      } catch {
+        return tweet.text;
+      }
+    }
+    return tweet.text;
+  }
+
+  // 正常文本：附加引用推文和引用文章内容
+  const parts: string[] = [tweet.text];
+
+  if (tweet.quotedTweetJson) {
+    try {
+      const quoted = JSON.parse(tweet.quotedTweetJson) as { text?: string; article?: { title?: string; previewText?: string } };
+      if (quoted.text) {
+        parts.push(`[引用推文]\n${quoted.text}`);
+      }
+      if (quoted.article?.title || quoted.article?.previewText) {
+        const articleParts: string[] = [];
+        if (quoted.article.title) articleParts.push(quoted.article.title);
+        if (quoted.article.previewText) articleParts.push(quoted.article.previewText);
+        if (articleParts.length > 0) {
+          parts.push(`[引用文章]\n${articleParts.join("\n")}`);
+        }
+      }
+    } catch {
+      // JSON 解析失败，忽略
+    }
+  }
+
+  return parts.join("\n\n");
+}
+
 export interface TweetEnrichResult {
   successCount: number;
   failCount: number;
@@ -26,7 +77,7 @@ export interface TweetEnrichConfig {
  * 对单条 Tweet 执行 AI 增强
  */
 async function aiEnrichTweet(
-  tweet: { id: string; text: string; url: string; authorHandle: string },
+  tweet: { id: string; text: string; url: string; authorHandle: string; articleJson: string | null; quotedTweetJson: string | null; expandedUrl: string | null },
   aiClient: AiClient,
   config: TweetEnrichConfig,
 ): Promise<{
@@ -36,13 +87,14 @@ async function aiEnrichTweet(
   score?: number;
 } | null> {
   const title = `@${tweet.authorHandle}`;
+  const content = buildEnrichmentContent(tweet);
 
   try {
     const tasks: Promise<unknown>[] = [];
 
     if (config.scoring) {
       tasks.push(
-        aiClient.scoreWithContent(title, tweet.text, tweet.url).catch(() => null),
+        aiClient.scoreWithContent(title, content, tweet.url).catch(() => null),
       );
     } else {
       tasks.push(Promise.resolve(null));
@@ -51,12 +103,12 @@ async function aiEnrichTweet(
     if (config.keyPoints) {
       tasks.push(
         aiClient
-          .summarizeContent(title, tweet.text, 150)
+          .summarizeContent(title, content, 150)
           .catch(() => null),
       );
       tasks.push(
         aiClient
-          .extractKeyPoints(title, tweet.text, 5)
+          .extractKeyPoints(title, content, 5)
           .catch(() => null),
       );
     } else {
@@ -66,7 +118,7 @@ async function aiEnrichTweet(
 
     if (config.tagging) {
       tasks.push(
-        aiClient.generateTags(title, tweet.text, 3).catch(() => null),
+        aiClient.generateTags(title, content, 3).catch(() => null),
       );
     } else {
       tasks.push(Promise.resolve(null));
@@ -110,7 +162,7 @@ export async function enrichTweets(
   // 获取 Tweet 详情
   const tweets = await prisma.tweet.findMany({
     where: { id: { in: tweetIds } },
-    select: { id: true, text: true, url: true, authorHandle: true },
+    select: { id: true, text: true, url: true, authorHandle: true, articleJson: true, quotedTweetJson: true, expandedUrl: true },
   });
 
   if (tweets.length === 0) {

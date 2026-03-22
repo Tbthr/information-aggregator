@@ -46,22 +46,16 @@ interface ExistingQuotedTweet {
  */
 async function fetchTweetById(
   tweetId: string,
-  authTokenEnv?: string | null,
-  ct0Env?: string | null,
+  authToken?: string | null,
+  ct0?: string | null,
 ): Promise<BirdReadResult | null> {
   const args: string[] = ["bird", "--plain"];
 
-  if (authTokenEnv) {
-    const authToken = process.env[authTokenEnv];
-    if (authToken) {
-      args.push("--auth-token", authToken);
-    }
+  if (authToken) {
+    args.push("--auth-token", authToken);
   }
-  if (ct0Env) {
-    const ct0 = process.env[ct0Env];
-    if (ct0) {
-      args.push("--ct0", ct0);
-    }
+  if (ct0) {
+    args.push("--ct0", ct0);
   }
 
   args.push("read", tweetId, "--json");
@@ -134,7 +128,7 @@ async function runWithConcurrency<T>(
  */
 export async function enrichTweetDetails(
   tweetIds: string[],
-  config?: { authTokenEnv?: string | null; ct0Env?: string | null; concurrency?: number },
+  config?: { authToken?: string | null; ct0?: string | null; concurrency?: number },
 ): Promise<EnrichTweetDetailsResult> {
   if (tweetIds.length === 0) {
     return { enriched: 0, skipped: 0, failed: 0 };
@@ -198,8 +192,8 @@ export async function enrichTweetDetails(
       try {
         const fullTweet = await fetchTweetById(
           item.quotedTweetId,
-          config?.authTokenEnv,
-          config?.ct0Env,
+          config?.authToken,
+          config?.ct0,
         );
 
         if (!fullTweet) {
@@ -246,8 +240,8 @@ export async function enrichTweetDetails(
 
         const fullTweet = await fetchTweetById(
           item.tweetId,
-          config?.authTokenEnv,
-          config?.ct0Env,
+          config?.authToken,
+          config?.ct0,
         );
 
         if (!fullTweet || !fullTweet.article) {

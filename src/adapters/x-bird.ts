@@ -34,8 +34,6 @@ interface BirdSourceConfig {
   maxPages?: number;
   authToken?: string;
   ct0?: string;
-  authTokenEnv?: string;
-  ct0Env?: string;
   chromeProfile?: string;
   chromeProfileDir?: string;
   cookieSource?: string[];
@@ -129,18 +127,9 @@ function getBirdConfig(source: Pick<Source, "configJson">): BirdSourceConfig {
   return JSON.parse(source.configJson ?? "{}") as BirdSourceConfig;
 }
 
-function getTokenFromEnv(name: string | undefined): string | undefined {
-  if (!name) {
-    return undefined;
-  }
-
-  const value = process.env[name];
-  return typeof value === "string" && value.trim() !== "" ? value : undefined;
-}
-
 function getBirdAuthArgs(config: BirdSourceConfig): string[] {
-  const authToken = config.authToken ?? getTokenFromEnv(config.authTokenEnv);
-  const ct0 = config.ct0 ?? getTokenFromEnv(config.ct0Env);
+  const authToken = config.authToken;
+  const ct0 = config.ct0;
   const args: string[] = [];
 
   if (authToken && ct0) {

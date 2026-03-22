@@ -269,8 +269,6 @@ model XPageConfig {
   count           Int      @default(20)
   fetchAll        Boolean  @default(false)
   maxPages        Int?
-  authTokenEnv    String?
-  ct0Env          String?
   listsJson       String?  @db.Text
   filterPrompt    String?  @db.Text
   enrichEnabled   Boolean  @default(true)

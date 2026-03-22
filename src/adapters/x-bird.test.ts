@@ -152,21 +152,18 @@ describe("x bird integration", () => {
   });
 
   test("prefers explicit auth token config over browser profile settings", () => {
-    process.env.BIRD_AUTH_TOKEN_TEST = "auth-token-from-env";
-    process.env.BIRD_CT0_TEST = "ct0-from-env";
-
     expect(
       buildBirdCommand({
         type: "x-home",
         configJson: JSON.stringify({
           birdMode: "home",
-          authTokenEnv: "BIRD_AUTH_TOKEN_TEST",
-          ct0Env: "BIRD_CT0_TEST",
+          authToken: "auth-token-value",
+          ct0: "ct0-value",
           chromeProfile: "Default",
           cookieSource: ["chrome"],
         }),
       }),
-    ).toEqual(["bird", "--auth-token", "auth-token-from-env", "--ct0", "ct0-from-env", "home", "--json"]);
+    ).toEqual(["bird", "--auth-token", "auth-token-value", "--ct0", "ct0-value", "home", "--json"]);
 
     // 带 count 参数
     expect(
@@ -175,14 +172,11 @@ describe("x bird integration", () => {
         configJson: JSON.stringify({
           birdMode: "home",
           count: 100,
-          authTokenEnv: "BIRD_AUTH_TOKEN_TEST",
-          ct0Env: "BIRD_CT0_TEST",
+          authToken: "auth-token-value",
+          ct0: "ct0-value",
         }),
       }),
-    ).toEqual(["bird", "--auth-token", "auth-token-from-env", "--ct0", "ct0-from-env", "home", "-n", "100", "--json"]);
-
-    delete process.env.BIRD_AUTH_TOKEN_TEST;
-    delete process.env.BIRD_CT0_TEST;
+    ).toEqual(["bird", "--auth-token", "auth-token-value", "--ct0", "ct0-value", "home", "-n", "100", "--json"]);
   });
 
   test("parses article with url into metadataJson", async () => {

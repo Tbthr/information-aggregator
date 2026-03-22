@@ -164,8 +164,6 @@ export type XPageConfigData = {
   count: number
   fetchAll: boolean
   maxPages?: number
-  authTokenEnv?: string
-  ct0Env?: string
   listsJson?: string
   filterPrompt?: string
   enrichEnabled: boolean

@@ -107,7 +107,7 @@ export function parseRawItemsToTweetData(
       expandedUrl: metadata.expandedUrl ?? null,
       publishedAt: item.publishedAt ? new Date(item.publishedAt) : null,
       fetchedAt: item.fetchedAt ? new Date(item.fetchedAt) : now,
-      authorHandle: metadata.authorName ?? item.author ?? "",
+      authorHandle: item.author ?? "",
       authorName: metadata.authorName ?? null,
       authorId: metadata.authorId ?? null,
       conversationId: metadata.conversationId ?? null,
