@@ -32,7 +32,7 @@ function rawItemToCreateData(
   item: RawItem,
   fetchedAt: string,
   sourceNameMap: Record<string, string>,
-): Omit<Item, "source" | "bookmarks" | "newsFlashes" | "createdAt" | "updatedAt" | "id"> {
+): Omit<Item, "source" | "bookmarks" | "createdAt" | "updatedAt" | "id"> {
   const sourceType = parseSourceType(item.metadataJson);
   const sourceName = sourceNameMap[item.sourceId] ?? item.sourceId;
 

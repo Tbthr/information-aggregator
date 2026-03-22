@@ -2,13 +2,11 @@
 
 import { useRouter } from "next/navigation"
 import { AppLayout } from "@/components/app-layout"
-import { SavedPage } from "@/components/saved-page"
-import { useSaved } from "@/hooks/use-saved"
+import { ReportSettingsPage } from "@/components/report-settings-page"
 import type { NavId } from "@/components/sidebar"
 
-export default function SavedRoute() {
+export default function ReportSettingsRoute() {
   const router = useRouter()
-  const { savedIds, isSaved, toggleSave } = useSaved()
 
   const handleNav = (navId: NavId) => {
     switch (navId) {
@@ -36,15 +34,8 @@ export default function SavedRoute() {
   }
 
   return (
-    <AppLayout activeNav="saved" onNav={handleNav}>
-      {({ onOpenArticle }) => (
-        <SavedPage
-          savedIds={savedIds}
-          isSaved={isSaved}
-          onToggleSave={toggleSave}
-          onOpenArticle={onOpenArticle}
-        />
-      )}
+    <AppLayout activeNav="settings/reports" onNav={handleNav}>
+      <ReportSettingsPage />
     </AppLayout>
   )
 }

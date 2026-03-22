@@ -1,4 +1,4 @@
-import type { Article, CustomView, DailyReportData, WeeklyReportData, Tweet, XPageConfigData, ApiResponse } from "./types"
+import type { Article, CustomView, Tweet, XPageConfigData, ApiResponse } from "./types"
 
 // Item data from API
 interface ItemData {
@@ -208,32 +208,6 @@ export async function removeBookmark(id: string): Promise<{ success: boolean }> 
   return {
     success: response.success,
   }
-}
-
-/**
- * Fetch daily overview data
- */
-export async function fetchDailyOverview(): Promise<DailyReportData | null> {
-  const response = await fetchApi<DailyReportData>("/api/daily")
-
-  if (!response.success || !response.data) {
-    return null
-  }
-
-  return response.data
-}
-
-/**
- * Fetch weekly report data
- */
-export async function fetchWeeklyReport(): Promise<WeeklyReportData | null> {
-  const response = await fetchApi<WeeklyReportData>("/api/weekly")
-
-  if (!response.success || !response.data) {
-    return null
-  }
-
-  return response.data
 }
 
 /**

@@ -27,6 +27,9 @@ export default function ViewRoute() {
       case "x":
         router.push("/x")
         break
+      case "settings/reports":
+        router.push("/settings/reports")
+        break
       default:
         // For custom views, navigate to /view/[id]
         router.push(`/view/${navId}`)

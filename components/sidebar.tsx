@@ -14,6 +14,7 @@ import {
   PanelLeftClose,
   PanelLeft,
   AtSign,
+  FileText,
 } from "lucide-react"
 import {
   DndContext,
@@ -413,6 +414,13 @@ export function Sidebar({ activeNav, onNav, savedCount, collapsed, onToggleColla
           icon={<Bookmark className="w-4 h-4 shrink-0" />}
           label="我的收藏夹"
           badge={savedCount > 0 ? savedCount : undefined}
+        />
+        <NavButton
+          active={activeNav === "settings/reports"}
+          collapsed={collapsed}
+          onClick={() => onNav("settings/reports")}
+          icon={<FileText className="w-4 h-4 shrink-0" />}
+          label="报告设置"
         />
         <NavButton
           active={activeNav === "config"}

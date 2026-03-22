@@ -23,8 +23,19 @@ export async function GET(request: NextRequest) {
       weekNumber: week ?? null,
       editorial: null,
       picks: [],
+      referencedItems: [],
     })
   }
+
+  // Collect item IDs from picks and fetch referenced items
+  const itemIdSet = new Set(report.picks.map((p) => p.itemId))
+  const referencedItems =
+    itemIdSet.size > 0
+      ? await prisma.item.findMany({
+          where: { id: { in: Array.from(itemIdSet) } },
+          select: { id: true, title: true, url: true, score: true, summary: true },
+        })
+      : []
 
   return success({
     weekNumber: report.weekNumber,
@@ -36,6 +47,13 @@ export async function GET(request: NextRequest) {
       order: p.order,
       itemId: p.itemId,
       reason: p.reason,
+    })),
+    referencedItems: referencedItems.map((item) => ({
+      id: item.id,
+      title: item.title,
+      url: item.url,
+      score: item.score,
+      summary: item.summary,
     })),
   })
 }

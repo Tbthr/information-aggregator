@@ -25,6 +25,9 @@ export default function ConfigRoute() {
       case "x":
         router.push("/x")
         break
+      case "settings/reports":
+        router.push("/settings/reports")
+        break
       default:
         router.push("/")
     }
