@@ -89,7 +89,7 @@ export async function GET(request: Request) {
 
       if (allNewTweetIds.length > 0) {
         // 增强引用推文数据（获取被引用推文的 article 等完整信息）
-        const authConfig = configs[0] ?? configs.find((c: { authTokenEnv?: string | null }) => c.authTokenEnv);
+        const authConfig = configs.find((c: { authTokenEnv?: string | null }) => c.authTokenEnv);
         if (authConfig) {
           const quotedResult = await enrichQuotedTweets(allNewTweetIds, {
             authTokenEnv: authConfig.authTokenEnv,

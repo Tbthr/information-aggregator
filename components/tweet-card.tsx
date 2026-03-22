@@ -52,7 +52,7 @@ export function TweetCard({ tweet, isSaved, onToggleSave }: TweetCardProps) {
 
       {/* Media Gallery */}
       {tweet.media && tweet.media.length > 0 && (
-        <TweetMediaGallery media={tweet.media} />
+        <TweetMediaGallery media={tweet.media} tweetUrl={tweet.url} />
       )}
 
       {/* Quoted Tweet */}
@@ -77,32 +77,36 @@ export function TweetCard({ tweet, isSaved, onToggleSave }: TweetCardProps) {
           <div className="text-xs leading-relaxed line-clamp-3 ml-[26px]">
             {tweet.quotedTweet.text}
           </div>
-          {tweet.quotedTweet.article && (
-            <div className="ml-[26px] mt-2 border rounded-md overflow-hidden flex">
-              {tweet.articleImageUrl && (
-                <div className="w-20 h-20 shrink-0 relative">
-                  <Image
-                    src={tweet.articleImageUrl}
-                    alt=""
-                    fill
-                    className="object-cover"
-                    sizes="80px"
-                    loading="lazy"
-                  />
-                </div>
-              )}
-              <div className="p-2 min-w-0">
-                <div className="text-xs font-medium line-clamp-2">
-                  {tweet.quotedTweet.article.title}
-                </div>
-                {tweet.quotedTweet.article.previewText && (
-                  <div className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
-                    {tweet.quotedTweet.article.previewText}
+          {tweet.quotedTweet.article && (() => {
+            const quotedMedia = tweet.quotedTweet.media;
+            const quotedImageUrl = quotedMedia?.find((m) => m.type === "photo")?.url;
+            return (
+              <div className="ml-[26px] mt-2 border rounded-md overflow-hidden flex">
+                {quotedImageUrl && (
+                  <div className="w-20 h-20 shrink-0 relative">
+                    <Image
+                      src={quotedImageUrl}
+                      alt=""
+                      fill
+                      className="object-cover"
+                      sizes="80px"
+                      loading="lazy"
+                    />
                   </div>
                 )}
+                <div className="p-2 min-w-0">
+                  <div className="text-xs font-medium line-clamp-2">
+                    {tweet.quotedTweet.article.title}
+                  </div>
+                  {tweet.quotedTweet.article.previewText && (
+                    <div className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
+                      {tweet.quotedTweet.article.previewText}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
           <div className="flex gap-3 mt-1.5 ml-[26px] text-[11px] text-muted-foreground">
             <span className="flex items-center gap-0.5">
               <Heart className="w-3 h-3" />

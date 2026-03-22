@@ -254,14 +254,16 @@ function buildArticleMetadata(article: BirdArticle | undefined): { title: string
   };
 }
 
-function buildMediaMetadata(media: BirdMedia[] | undefined): { type: string; url: string; width?: number; height?: number; previewUrl?: string }[] | undefined {
+type MediaType = "photo" | "video" | "animated_gif";
+
+function buildMediaMetadata(media: BirdMedia[] | undefined): { type: MediaType; url: string; width?: number; height?: number; previewUrl?: string }[] | undefined {
   if (!media || media.length === 0) {
     return undefined;
   }
   return media
     .filter((m) => m.type && m.url)
     .map((m) => ({
-      type: m.type as string,
+      type: m.type as MediaType,
       url: m.url as string,
       width: m.width,
       height: m.height,

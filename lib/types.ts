@@ -84,6 +84,13 @@ export type Tweet = {
     retweetCount: number
     article?: { title: string; url?: string; previewText?: string }
     createdAt?: string
+    media?: Array<{
+      type: "photo" | "video" | "animated_gif"
+      url: string
+      width?: number
+      height?: number
+      previewUrl?: string
+    }>
   }
   thread?: Array<{ id?: string; text?: string; author?: string }>
   parent?: { id?: string; text?: string; author?: string }

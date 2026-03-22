@@ -13,6 +13,7 @@ interface MediaItem {
 
 interface TweetMediaGalleryProps {
   media: MediaItem[]
+  tweetUrl?: string
 }
 
 const MAX_DISPLAY = 4
@@ -25,10 +26,7 @@ function getImageUrl(item: MediaItem): string {
 }
 
 function getGridClass(count: number): string {
-  switch (count) {
-    case 1: return "grid-cols-1"
-    default: return "grid-cols-2"
-  }
+  return count === 1 ? "grid-cols-1" : "grid-cols-2"
 }
 
 function getSpanClass(index: number, total: number): string {
@@ -43,7 +41,7 @@ function getAspectRatio(item: MediaItem): number {
   return 16 / 9
 }
 
-export function TweetMediaGallery({ media }: TweetMediaGalleryProps) {
+export function TweetMediaGallery({ media, tweetUrl }: TweetMediaGalleryProps) {
   if (!media || media.length === 0) return null
 
   const photos = media.filter((m) => m.type === "photo" || m.type === "animated_gif")
@@ -57,11 +55,11 @@ export function TweetMediaGallery({ media }: TweetMediaGalleryProps) {
     <div className={`grid ${getGridClass(displayItems.length)} gap-0.5 mb-3 rounded-lg overflow-hidden`}>
       {displayItems.map((item, index) => {
         const isVideo = item.type === "video"
+        const isGif = item.type === "animated_gif"
         const imgUrl = getImageUrl(item)
         const aspectRatio = getAspectRatio(item)
-        const containerHeight = displayItems.length === 1
-          ? Math.min(400, Math.max(200, 300))
-          : 180
+        const isSingle = displayItems.length === 1
+        const containerHeight = isSingle ? 300 : 180
 
         return (
           <div
@@ -69,11 +67,11 @@ export function TweetMediaGallery({ media }: TweetMediaGalleryProps) {
             className={`relative ${getSpanClass(index, displayItems.length)}`}
             style={{
               maxHeight: containerHeight,
-              aspectRatio: displayItems.length === 1 ? aspectRatio : "1",
+              aspectRatio: isSingle ? aspectRatio : "1",
             }}
           >
             <a
-              href={item.url}
+              href={tweetUrl || item.url}
               target="_blank"
               rel="noopener noreferrer"
               className="block w-full h-full"
@@ -91,6 +89,11 @@ export function TweetMediaGallery({ media }: TweetMediaGalleryProps) {
                   <div className="w-10 h-10 rounded-full bg-black/60 flex items-center justify-center">
                     <Play className="w-5 h-5 text-white fill-white ml-0.5" />
                   </div>
+                </div>
+              )}
+              {isGif && (
+                <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-black/60 text-white text-[10px] font-medium">
+                  GIF
                 </div>
               )}
               {overflow > 0 && index === displayItems.length - 1 && (
