@@ -10,6 +10,7 @@ const PAGE_TITLES: Record<string, { title: string; subtitle?: string }> = {
   saved: { title: "我的收藏夹", subtitle: "已保存的文章" },
   config: { title: "引擎配置", subtitle: "数据源与处理规则" },
   x: { title: "X / Twitter", subtitle: "Social Feed" },
+  "settings/reports": { title: "报告设置", subtitle: "日报和周报生成参数" },
 }
 
 interface ViewInfo {

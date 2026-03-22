@@ -1,9 +1,9 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Save, RotateCcw, X, Loader2, Newspaper, CalendarDays } from "lucide-react"
+import { Save, X, Loader2, Newspaper, CalendarDays } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
-import { useReportSettings, usePacks } from "@/hooks/use-api"
+import { useReportSettings, usePacks, escapePrompts } from "@/hooks/use-api"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -39,13 +39,11 @@ function PromptField({
   description,
   value,
   onChange,
-  defaultValue,
 }: {
   label: string
   description?: string
   value: string
   onChange: (value: string) => void
-  defaultValue: string
 }) {
   const [expanded, setExpanded] = useState(false)
 
@@ -58,16 +56,6 @@ function PromptField({
             <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
           )}
         </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => onChange(defaultValue)}
-          className="text-xs text-muted-foreground hover:text-foreground shrink-0"
-        >
-          <RotateCcw className="w-3 h-3 mr-1" />
-          恢复默认
-        </Button>
       </div>
       <div className="relative">
         <Textarea
@@ -257,7 +245,7 @@ export function ReportSettingsPage() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          daily: {
+          daily: escapePrompts({
             packs: daily.packs,
             maxItems: daily.maxItems,
             minScore: daily.minScore,
@@ -265,13 +253,13 @@ export function ReportSettingsPage() {
             filterPrompt: daily.filterPrompt,
             topicPrompt: daily.topicPrompt,
             topicSummaryPrompt: daily.topicSummaryPrompt,
-          },
-          weekly: {
+          }),
+          weekly: escapePrompts({
             days: weekly.days,
             editorialPrompt: weekly.editorialPrompt,
             pickReasonPrompt: weekly.pickReasonPrompt,
             pickCount: weekly.pickCount,
-          },
+          }),
         }),
       })
 
@@ -397,7 +385,6 @@ export function ReportSettingsPage() {
                   filterPrompt: v,
                 }))
               }
-              defaultValue={""}
             />
 
             <PromptField
@@ -410,7 +397,6 @@ export function ReportSettingsPage() {
                   topicPrompt: v,
                 }))
               }
-              defaultValue={""}
             />
 
             <PromptField
@@ -423,7 +409,6 @@ export function ReportSettingsPage() {
                   topicSummaryPrompt: v,
                 }))
               }
-              defaultValue={""}
             />
 
           </div>
@@ -479,7 +464,6 @@ export function ReportSettingsPage() {
                   editorialPrompt: v,
                 }))
               }
-              defaultValue={""}
             />
 
             <PromptField
@@ -492,7 +476,6 @@ export function ReportSettingsPage() {
                   pickReasonPrompt: v,
                 }))
               }
-              defaultValue={""}
             />
           </div>
         </CardContent>

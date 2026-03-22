@@ -16,6 +16,8 @@ interface SavedPageProps {
 
 export function SavedPage({ savedIds, isSaved, onToggleSave, onOpenArticle }: SavedPageProps) {
   const { data: savedArticles = [], isLoading, error } = useBookmarks()
+  // Ensure savedArticles is always an array (defensive against SWR cache issues)
+  const articles: typeof savedArticles = Array.isArray(savedArticles) ? savedArticles : []
 
   if (isLoading) {
     return (
@@ -44,17 +46,17 @@ export function SavedPage({ savedIds, isSaved, onToggleSave, onOpenArticle }: Sa
           <Bookmark className="w-5 h-5 text-primary" />
           <h1 className="font-serif text-2xl font-bold text-foreground">我的收藏夹</h1>
         </div>
-        <p className="text-xs text-muted-foreground font-sans">{savedArticles.length} 篇已保存</p>
+        <p className="text-xs text-muted-foreground font-sans">{articles.length} 篇已保存</p>
       </div>
 
-      {savedArticles.length === 0 ? (
+      {articles.length === 0 ? (
         <div className="text-center py-24 space-y-3">
           <Bookmark className="w-10 h-10 text-border mx-auto" />
           <p className="text-muted-foreground font-sans text-sm">还没有收藏，点击文章旁的书签图标开始收藏</p>
         </div>
       ) : (
         <div className="space-y-3">
-          {savedArticles.map((article, i) => (
+          {articles.map((article, i) => (
             <div
               key={article.id}
               role="button"

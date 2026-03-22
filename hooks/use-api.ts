@@ -1,5 +1,6 @@
 "use client"
 
+import { useMemo } from "react"
 import useSWR, { SWRConfiguration } from "swr"
 import type { Article, ApiResponse, DailyReportData, WeeklyReportData } from "@/lib/types"
 import type { Pack } from "@/components/sidebar/types"
@@ -33,6 +34,37 @@ const defaultConfig: SWRConfiguration = {
   revalidateOnFocus: false,    // 窗口聚焦不重新验证
   revalidateOnReconnect: true, // 网络重连时重新验证
   dedupingInterval: 5000,      // 5秒内相同请求去重
+}
+
+// ============ Prompt Normalization ============
+
+const PROMPT_FIELDS = [
+  "filterPrompt",
+  "topicPrompt",
+  "topicSummaryPrompt",
+  "editorialPrompt",
+  "pickReasonPrompt",
+] as const
+
+function normalizePrompts(obj: Record<string, unknown> | null): Record<string, unknown> | null {
+  if (!obj) return obj
+  const result: Record<string, unknown> = { ...obj }
+  for (const key of PROMPT_FIELDS) {
+    if (typeof result[key] === "string") {
+      result[key] = (result[key] as string).replace(/\\n/g, "\n")
+    }
+  }
+  return result
+}
+
+function escapePrompts(obj: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = { ...obj }
+  for (const key of PROMPT_FIELDS) {
+    if (typeof result[key] === "string") {
+      result[key] = (result[key] as string).replace(/\n/g, "\\n")
+    }
+  }
+  return result
 }
 
 // ============ Hooks ============
@@ -73,9 +105,26 @@ export function useWeekly(week?: string) {
 }
 
 export function useReportSettings() {
-  return useSWR<{ daily: Record<string, unknown>; weekly: Record<string, unknown> }>(
-    "/api/settings/reports",
-    fetcher,
-    defaultConfig,
+  const { data, isLoading, error, mutate } = useSWR<{
+    daily: Record<string, unknown>
+    weekly: Record<string, unknown>
+  }>("/api/settings/reports", fetcher, defaultConfig)
+
+  // Normalize prompts: convert \\n to \n for display/edit
+  const normalizedData = useMemo(
+    () => ({
+      daily: normalizePrompts(data?.daily ?? null),
+      weekly: normalizePrompts(data?.weekly ?? null),
+    }),
+    [data],
   )
+
+  return {
+    data: normalizedData,
+    isLoading,
+    error,
+    mutate,
+  }
 }
+
+export { escapePrompts }

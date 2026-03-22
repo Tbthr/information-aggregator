@@ -47,7 +47,11 @@ export async function GET() {
     prisma.weeklyReportConfig.findUnique({ where: { id: "default" } }),
   ])
 
-  return success({ daily, weekly })
+  // Handle null packs array (null means no filter, treat as empty for API consistency)
+  return success({
+    daily: daily ? { ...daily, packs: daily.packs ?? [] } : null,
+    weekly,
+  })
 }
 
 export async function PUT(request: NextRequest) {
