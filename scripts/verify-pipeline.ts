@@ -68,10 +68,8 @@ async function cleanData() {
 
   // 按外键依赖顺序删除
   const tables = [
-    { name: "TimelineEvent", count: await prisma.timelineEvent.count() },
     { name: "WeeklyReport", count: await prisma.weeklyReport.count() },
     { name: "Bookmark", count: await prisma.bookmark.count() },
-    { name: "NewsFlash", count: await prisma.newsFlash.count() },
     { name: "DailyOverview", count: await prisma.dailyOverview.count() },
     { name: "Item", count: await prisma.item.count() },
     { name: "SourceHealth", count: await prisma.sourceHealth.count() },
