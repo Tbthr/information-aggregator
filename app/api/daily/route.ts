@@ -1,86 +1,54 @@
-import { NextResponse } from "next/server"
-
+import { NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { toArticle } from "../_lib/mappers"
+import { success } from "@/lib/api-response"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-export async function GET() {
-  try {
-    const startTime = Date.now()
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url)
+  const date = searchParams.get("date")
 
-    const overview = await prisma.dailyOverview.findFirst({
-      orderBy: { date: "desc" },
+  // Find daily overview by date or latest
+  const overview = await prisma.dailyOverview.findFirst({
+    where: date ? { date } : undefined,
+    orderBy: { date: "desc" },
+    include: {
+      topics: { orderBy: { order: "asc" } },
+      picks: { orderBy: { order: "asc" } },
+    },
+  })
+
+  if (!overview) {
+    return success({
+      date: date ?? null,
+      dayLabel: null,
+      topicCount: 0,
+      topics: [],
+      picks: [],
     })
-
-    if (!overview) {
-      // 无日报数据时，返回空数据（不是 mock）
-      const items = await prisma.item.findMany({
-        orderBy: [{ score: "desc" }, { fetchedAt: "desc" }],
-        take: 6,
-      })
-
-      return NextResponse.json({
-        success: true,
-        data: {
-          overview: null,
-          articles: items.map(toArticle),
-          newsFlashes: [],
-        },
-        meta: {
-          timing: {
-            generatedAt: new Date().toISOString(),
-            latencyMs: Date.now() - startTime,
-          },
-        },
-      })
-    }
-
-    // 优化后：并行查询 items 和 newsFlashes
-    const [items, newsFlashes] = await Promise.all([
-      prisma.item.findMany({
-        where: { id: { in: overview.itemIds } },
-      }),
-      prisma.newsFlash.findMany({
-        where: { dailyDate: overview.date },
-        orderBy: [{ createdAt: "desc" }, { time: "desc" }],
-        take: 12,
-      }),
-    ])
-
-    const itemMap = new Map(items.map((i) => [i.id, i]))
-    const articles = overview.itemIds
-      .map((id) => itemMap.get(id))
-      .filter((item): item is NonNullable<typeof item> => item !== undefined)
-      .map(toArticle)
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        overview: {
-          date: overview.date,
-          summary: overview.summary,
-        },
-        articles,
-        newsFlashes: newsFlashes.map((f) => ({
-          id: f.id,
-          time: f.time,
-          text: f.text,
-        })),
-      },
-      meta: {
-        timing: {
-          generatedAt: new Date().toISOString(),
-          latencyMs: Date.now() - startTime,
-        },
-      },
-    })
-  } catch (error) {
-    console.error("Error in /api/daily:", error)
-    return NextResponse.json(
-      { success: false, error: "Failed to load daily data" },
-      { status: 500 }
-    )
   }
+
+  return success({
+    date: overview.date,
+    dayLabel: overview.dayLabel,
+    topicCount: overview.topicCount,
+    errorMessage: overview.errorMessage,
+    errorSteps: overview.errorSteps,
+    topics: overview.topics.map((t) => ({
+      id: t.id,
+      order: t.order,
+      title: t.title,
+      summary: t.summary,
+      itemIds: t.itemIds,
+      tweetIds: t.tweetIds,
+    })),
+    picks: overview.picks.map((p) => ({
+      id: p.id,
+      order: p.order,
+      itemId: p.itemId,
+      tweetId: p.tweetId,
+      reason: p.reason,
+    })),
+  })
 }

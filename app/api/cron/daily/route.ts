@@ -1,38 +1,26 @@
-import { NextResponse } from "next/server";
-import { verifyCronRequest, unauthorizedResponse, runAfterJob } from "../_lib";
-import { createAiClient } from "../../../../src/ai/providers";
-import { generateDailyReport } from "../../../../src/reports/daily";
-import { createLogger } from "../../../../src/utils/logger";
-import { formatUtcDate } from "@/lib/date-utils";
+import { NextRequest, NextResponse } from "next/server"
+import { verifyCronRequest, unauthorizedResponse, runAfterJob } from "../_lib"
+import { createAiClient } from "../../../../src/ai/providers"
+import { generateDailyReport } from "../../../../src/reports/daily"
 
-const logger = createLogger("cron:daily");
+export const runtime = "nodejs"
+export const maxDuration = 300
 
-export const runtime = "nodejs";
-export const maxDuration = 300;
-
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   if (!verifyCronRequest(request)) {
-    return unauthorizedResponse();
+    return unauthorizedResponse()
   }
 
-  const date = formatUtcDate(new Date());
-
   runAfterJob("daily", async () => {
-    try {
-      logger.info("Starting daily report generation", { date });
-
-      const aiClient = createAiClient();
-      if (!aiClient) {
-        logger.warn("Failed to create AI client, skipping daily report");
-        return;
-      }
-
-      const result = await generateDailyReport(date, aiClient);
-      logger.info("Daily report generated", { date, itemCount: result.itemCount });
-    } catch (error) {
-      logger.error("Daily report generation failed", { error: error instanceof Error ? error.message : String(error) });
+    const aiClient = createAiClient()
+    if (!aiClient) {
+      console.error("[daily-cron] No AI client available")
+      return
     }
-  });
 
-  return NextResponse.json({ success: true, message: "Daily report job started", date }, { status: 202 });
+    const result = await generateDailyReport(new Date(), aiClient)
+    console.log(`[daily-cron] Generated report for ${result.date}: ${result.topicCount} topics, errors: ${result.errorSteps.join(",") || "none"}`)
+  })
+
+  return NextResponse.json({ success: true, message: "Daily report generation started" })
 }

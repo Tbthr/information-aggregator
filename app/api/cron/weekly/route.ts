@@ -1,37 +1,26 @@
-import { NextResponse } from "next/server";
-import { verifyCronRequest, unauthorizedResponse, runAfterJob } from "../_lib";
-import { createAiClient } from "../../../../src/ai/providers";
-import { generateWeeklyReport } from "../../../../src/reports/weekly";
-import { createLogger } from "../../../../src/utils/logger";
+import { NextRequest, NextResponse } from "next/server"
+import { verifyCronRequest, unauthorizedResponse, runAfterJob } from "../_lib"
+import { createAiClient } from "../../../../src/ai/providers"
+import { generateWeeklyReport } from "../../../../src/reports/weekly"
 
-const logger = createLogger("cron:weekly");
+export const runtime = "nodejs"
+export const maxDuration = 300
 
-export const runtime = "nodejs";
-export const maxDuration = 300;
-
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   if (!verifyCronRequest(request)) {
-    return unauthorizedResponse();
+    return unauthorizedResponse()
   }
 
-  const date = new Date();
-
   runAfterJob("weekly", async () => {
-    try {
-      logger.info("Starting weekly report generation");
-
-      const aiClient = createAiClient();
-      if (!aiClient) {
-        logger.warn("Failed to create AI client, skipping weekly report");
-        return;
-      }
-
-      const result = await generateWeeklyReport(date, aiClient);
-      logger.info("Weekly report generated", { weekNumber: result.weekNumber, timelineEventCount: result.timelineEventCount });
-    } catch (error) {
-      logger.error("Weekly report generation failed", { error: error instanceof Error ? error.message : String(error) });
+    const aiClient = createAiClient()
+    if (!aiClient) {
+      console.error("[weekly-cron] No AI client available")
+      return
     }
-  });
 
-  return NextResponse.json({ success: true, message: "Weekly report job started" }, { status: 202 });
+    const result = await generateWeeklyReport(new Date(), aiClient)
+    console.log(`[weekly-cron] Generated report for ${result.weekNumber}: ${result.pickCount} picks, errors: ${result.errorSteps.join(",") || "none"}`)
+  })
+
+  return NextResponse.json({ success: true, message: "Weekly report generation started" })
 }
