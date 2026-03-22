@@ -1,172 +1,216 @@
-/**
- * 日报和周报相关的 AI Prompts
- */
+import type { Item, Tweet } from "@prisma/client"
 
-// ============ 日报 Prompts ============
+// ============================================================
+// Types
+// ============================================================
 
-/**
- * 构建日报概览 prompt
- */
-export function buildDailyOverviewPrompt(items: Array<{ title: string; summary?: string | null }>): string {
-  const itemList = items
-    .map((item, i) => `${i + 1}. ${item.title}${item.summary ? `: ${item.summary.slice(0, 100)}` : ""}`)
-    .join("\n");
+export interface TopicClusterItem {
+  title: string
+  summary: string
+  type: "item" | "tweet"
+  index: number
+}
 
-  return `你是技术新闻编辑。请基于以下今日热门文章，生成日报概览。
+export interface TopicCluster {
+  title: string
+  itemIndexes: number[]
+  tweetIndexes: number[]
+}
 
-今日文章列表：
-${itemList}
+export interface TopicClusteringResult {
+  topics: TopicCluster[]
+}
 
-请提供：
-1. 整体摘要（2-3句话，概括今日技术社区的主要动态）
-2. 今日看点（3-5个看点，每个看点一句话）
+export interface TopicSummaryResult {
+  summary: string
+}
 
-请严格按以下 JSON 格式返回（不要添加其他文字）：
+export interface PickReasonResult {
+  reason: string
+}
+
+export interface EditorialResult {
+  editorial: string
+}
+
+// ============================================================
+// Default Prompts
+// ============================================================
+
+export const DEFAULT_TOPIC_PROMPT = `你是一位专业的信息分析师。请将以下内容列表按照话题进行聚类分组。
+
+要求：
+1. 分成 5-10 个话题
+2. 每个话题内的内容应该高度相关
+3. 每条内容只能属于一个话题
+4. 不要遗漏重要内容
+5. 话题标题简洁有力（中文，10字以内）
+
+请以 JSON 格式输出：
 {
-  "summary": "<整体摘要>",
-  "highlights": ["<看点1>", "<看点2>", "<看点3>"]
-}`;
-}
-
-/**
- * 解析日报概览结果
- */
-export function parseDailyOverviewResult(text: string): {
-  summary: string;
-  highlights: string[];
-} | null {
-  try {
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return null;
-
-    const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
-
-    if (typeof parsed.summary !== "string" || !Array.isArray(parsed.highlights)) {
-      return null;
+  "topics": [
+    {
+      "title": "话题标题",
+      "itemIndexes": [0, 1, 2],
+      "tweetIndexes": []
     }
+  ]
+}`
 
-    return {
-      summary: parsed.summary,
-      highlights: (parsed.highlights as string[]).filter((h): h is string => typeof h === "string"),
-    };
-  } catch {
-    return null;
-  }
+export const DEFAULT_TOPIC_SUMMARY_PROMPT = `你是一位专业的信息分析师。请为以下话题下的内容生成一段综合总结。
+
+要求：
+1. 总结应该提炼核心信息和关键趋势
+2. 200-400字
+3. 用中文撰写
+4. 不要简单罗列，要综合分析
+
+请直接输出总结文本，不要包含 JSON 格式或额外标记。`
+
+export const DEFAULT_PICK_REASON_PROMPT = `你是一位专业的内容策展人。请说明为什么这篇文章值得阅读。
+
+要求：
+1. 50-100字
+2. 突出文章的独特价值或重要信息
+3. 用中文撰写
+
+请直接输出推荐理由，不要包含 JSON 格式。`
+
+export const DEFAULT_FILTER_PROMPT = `你是一位信息过滤专家。请根据以下规则判断哪些内容值得保留。
+
+请以 JSON 格式输出：
+{
+  "keep": [0, 2, 5],
+  "discard": [1, 3, 4]
 }
 
-// ============ 周报 Prompts ============
+keep 和 discard 中的数字是原始内容列表的索引。`
 
-/**
- * 构建周报编辑评述 prompt
- */
-export function buildWeeklyEditorialPrompt(
-  timelineEvents: Array<{ date: string; dayLabel: string; title: string }>,
+export const DEFAULT_EDITORIAL_PROMPT = `你是一位资深的行业分析师。请基于本周各日的话题摘要和重点文章，撰写一篇有深度的周总结。
+
+要求：
+1. 500-1000字
+2. 识别跨日趋势和关键转折点
+3. 分析本周最重要的事件及其影响
+4. 用中文撰写
+5. 使用编辑语调，避免过于技术化
+
+请直接输出周总结文本。`
+
+export const DEFAULT_WEEKLY_PICK_REASON_PROMPT = `你是一位资深的内容策展人。请说明为什么这篇文章值得在本周深入阅读。
+
+要求：
+1. 80-150字
+2. 说明文章的深度价值和对读者的意义
+3. 用中文撰写
+
+请直接输出推荐理由。`
+
+export const DEFAULT_DAILY_PICK_REASON_PROMPT = DEFAULT_PICK_REASON_PROMPT
+
+// ============================================================
+// Topic Clustering (Step 3)
+// ============================================================
+
+export function buildTopicClusteringPrompt(
+  items: TopicClusterItem[],
+  customPrompt?: string | null
 ): string {
-  const eventList = timelineEvents
-    .map((e) => `- ${e.dayLabel} (${e.date}): ${e.title}`)
-    .join("\n");
+  const systemPrompt = customPrompt || DEFAULT_TOPIC_PROMPT
+  const contentList = items
+    .map((item, i) => `[${i}] [${item.type === "item" ? "文章" : "推文"}] ${item.title}\n    ${item.summary}`)
+    .join("\n\n")
 
-  return `你是技术新闻主编。请基于本周技术动态，撰写周报编辑评述。
-
-本周技术动态：
-${eventList}
-
-请提供：
-1. 周标题（一句话概括本周核心主题，不超过20字）
-2. 周副标题（补充说明，不超过50字）
-3. 编辑评述（200字以内，分析本周技术趋势和重要事件）
-
-请严格按以下 JSON 格式返回（不要添加其他文字）：
-{
-  "headline": "<周标题>",
-  "subheadline": "<周副标题>",
-  "editorial": "<编辑评述>"
-}`;
+  return `${systemPrompt}\n\n---\n\n以下是需要分类的内容列表：\n\n${contentList}`
 }
 
-/**
- * 解析周报编辑评述结果
- */
-export function parseWeeklyEditorialResult(text: string): {
-  headline: string;
-  subheadline: string;
-  editorial: string;
-} | null {
-  try {
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return null;
-
-    const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
-
-    if (
-      typeof parsed.headline !== "string" ||
-      typeof parsed.subheadline !== "string" ||
-      typeof parsed.editorial !== "string"
-    ) {
-      return null;
-    }
-
-    return {
-      headline: parsed.headline,
-      subheadline: parsed.subheadline,
-      editorial: parsed.editorial,
-    };
-  } catch {
-    return null;
-  }
+export function parseTopicClusteringResult(text: string): TopicClusteringResult {
+  const jsonMatch = text.match(/\{[\s\S]*\}/)
+  if (!jsonMatch) throw new Error("AI response does not contain valid JSON for topic clustering")
+  const parsed = JSON.parse(jsonMatch[0])
+  return parsed as TopicClusteringResult
 }
 
-/**
- * 构建时间线事件标题 prompt
- */
-export function buildTimelineEventPrompt(
-  items: Array<{ title: string; summary?: string | null }>,
-  dayLabel: string,
+// ============================================================
+// Topic Summary (Step 4a)
+// ============================================================
+
+export function buildTopicSummaryPrompt(
+  topicTitle: string,
+  contents: { title: string; summary: string; type: string }[],
+  customPrompt?: string | null
 ): string {
-  const itemList = items
-    .map((item, i) => `${i + 1}. ${item.title}`)
-    .join("\n");
+  const systemPrompt = customPrompt || DEFAULT_TOPIC_SUMMARY_PROMPT
+  const contentList = contents
+    .map((c) => `- [${c.type === "item" ? "文章" : "推文"}] ${c.title}: ${c.summary}`)
+    .join("\n")
 
-  return `你是技术新闻编辑。请为以下今日技术动态生成一个简洁的标题和摘要。
-
-日期：${dayLabel}
-
-今日动态：
-${itemList}
-
-请提供：
-1. 今日标题（一句话概括今日核心主题，不超过15字）
-2. 今日摘要（100字以内）
-
-请严格按以下 JSON 格式返回（不要添加其他文字）：
-{
-  "title": "<今日标题>",
-  "summary": "<今日摘要>"
-}`;
+  return `${systemPrompt}\n\n---\n\n话题：${topicTitle}\n\n该话题下的内容：\n${contentList}`
 }
 
-/**
- * 解析时间线事件结果
- */
-export function parseTimelineEventResult(text: string): {
-  title: string;
-  summary: string;
-} | null {
-  try {
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return null;
+export function parseTopicSummaryResult(text: string): TopicSummaryResult {
+  return { summary: text.trim() }
+}
 
-    const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
+// ============================================================
+// Pick Reason (Step 4b)
+// ============================================================
 
-    if (typeof parsed.title !== "string" || typeof parsed.summary !== "string") {
-      return null;
-    }
+export function buildPickReasonPrompt(
+  title: string,
+  summary: string,
+  customPrompt?: string | null
+): string {
+  const systemPrompt = customPrompt || DEFAULT_DAILY_PICK_REASON_PROMPT
+  return `${systemPrompt}\n\n---\n\n文章标题：${title}\n文章摘要：${summary}`
+}
 
-    return {
-      title: parsed.title,
-      summary: parsed.summary,
-    };
-  } catch {
-    return null;
-  }
+export function parsePickReasonResult(text: string): PickReasonResult {
+  return { reason: text.trim() }
+}
+
+// ============================================================
+// AI Filter (Step 2, optional)
+// ============================================================
+
+export function buildFilterPrompt(
+  items: TopicClusterItem[],
+  customPrompt?: string | null
+): string {
+  const systemPrompt = customPrompt || DEFAULT_FILTER_PROMPT
+  const contentList = items
+    .map((item, i) => `[${i}] [${item.type === "item" ? "文章" : "推文"}] ${item.title}\n    ${item.summary}`)
+    .join("\n\n")
+
+  return `${systemPrompt}\n\n---\n\n以下是需要过滤的内容列表：\n\n${contentList}`
+}
+
+export function parseFilterResult(text: string): { keep: number[]; discard: number[] } {
+  const jsonMatch = text.match(/\{[\s\S]*\}/)
+  if (!jsonMatch) throw new Error("AI response does not contain valid JSON for filtering")
+  return JSON.parse(jsonMatch[0])
+}
+
+// ============================================================
+// Weekly Editorial (Step 2)
+// ============================================================
+
+export function buildEditorialPrompt(
+  topicSummaries: { date: string; dayLabel: string; title: string; summary: string }[],
+  topItems: { title: string; summary: string; score: number }[],
+  customPrompt?: string | null
+): string {
+  const systemPrompt = customPrompt || DEFAULT_EDITORIAL_PROMPT
+  const topicSection = topicSummaries
+    .map((t) => `【${t.date} ${t.dayLabel}】${t.title}: ${t.summary}`)
+    .join("\n\n")
+  const itemSection = topItems
+    .map((item) => `- [${item.score}分] ${item.title}: ${item.summary}`)
+    .join("\n")
+
+  return `${systemPrompt}\n\n---\n\n本周话题摘要：\n\n${topicSection}\n\n本周高分文章：\n${itemSection}`
+}
+
+export function parseEditorialResult(text: string): EditorialResult {
+  return { editorial: text.trim() }
 }
