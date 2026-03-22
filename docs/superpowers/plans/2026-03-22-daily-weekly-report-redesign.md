@@ -199,6 +199,12 @@ Run: `pnpm exec prisma db push`
 
 > **重要**: 如果 `db push` 失败（数据冲突），使用 `prisma migrate dev --name report-redesign` 代替。`packs` 字段类型从 `String` 变为 `String[]` 可能需要手动迁移。
 
+- [ ] **Step 7b: 执行 `pnpm exec prisma generate` 重新生成 Prisma Client**
+
+Run: `pnpm exec prisma generate`
+
+> **重要**: `db push` 后必须重新生成 Prisma Client，否则后续 `pnpm check` 会使用旧的类型。
+
 - [ ] **Step 8: 运行 `pnpm check` 确认无类型错误**
 
 Run: `pnpm check`
@@ -284,8 +290,10 @@ export type WeeklyReportData = {
 
 读取 `lib/api-client.ts`。执行以下变更：
 1. 删除 `fetchNewsFlashes()` 函数（约 lines 261-269）
-2. 更新 `fetchDailyOverview()` 的返回类型为 `DailyReportData | null`
-3. 更新 `fetchWeeklyReport()` 的返回类型为 `WeeklyReportData | null`
+2. 删除或更新内部的 `DailyData` 接口（引用了旧的 `DailyOverview`、`NewsFlash` 类型），改为引用新的 `DailyReportData`
+3. 删除或更新内部的 `WeeklyData` 接口（引用了旧的 `TimelineEvent` 类型），改为引用新的 `WeeklyReportData`
+4. 更新 `fetchDailyOverview()` 的返回类型为 `DailyReportData | null`
+5. 更新 `fetchWeeklyReport()` 的返回类型为 `WeeklyReportData | null`
 
 - [ ] **Step 4: 运行 `pnpm check` 确认类型**
 
@@ -760,6 +768,9 @@ async function generateTopicSummaries(
 async function generateDailyPicks(
   items: Item[],
   tweets: Tweet[],
+  topicItemIds: Set<string>,
+  items: Item[],
+  tweets: Tweet[],
   topicCount: number,
   aiClient: AiClient,
   config: DailyReportConfig
@@ -767,10 +778,13 @@ async function generateDailyPicks(
   const pickCount = config.pickCount ?? 3
 
   // Sort items by score, take top picks
+  // Deduplicate: skip items already prominently featured in topics
   const sortedItems = [...items].sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
   const picks: { itemId: string | null; tweetId: string | null; reason: string }[] = []
 
-  for (const item of sortedItems.slice(0, pickCount)) {
+  for (const item of sortedItems) {
+    if (picks.length >= pickCount) break
+    if (topicItemIds.has(item.id)) continue // Skip items already in topics
     try {
       const prompt = buildPickReasonPrompt(item.title, item.summary ?? "", config.pickReasonPrompt)
       const result = await aiClient.generateText(prompt)
@@ -950,7 +964,8 @@ export async function generateDailyReport(
   // Step 4b: Daily picks
   let picks: { itemId: string | null; tweetId: string | null; reason: string }[] = []
   try {
-    picks = await generateDailyPicks(finalItems, finalTweets, topics.length, aiClient, config)
+    const topicItemIds = new Set(topics.flatMap((t) => t.itemIds))
+    picks = await generateDailyPicks(finalItems, finalTweets, topicItemIds, aiClient, config)
   } catch {
     errorSteps.push("pickReason")
   }
@@ -966,13 +981,7 @@ export async function generateDailyReport(
 }
 ```
 
-> **注意**: `AiClient` 接口（`src/ai/types.ts`）中需要确认是否有 `generateText(prompt: string): Promise<string>` 方法。如果没有，需要在 Task 5 中处理。检查现有 `AiClient` 接口中是否有类似方法（如 `chat()` 或 `complete()`）可以复用。
-
-- [ ] **Step 2: 检查 AiClient 接口是否有 generateText 方法**
-
-读取 `src/ai/types.ts`，确认 `AiClient` 接口的方法签名。如果不存在 `generateText`，需要调整为现有方法（如 `chat`）或新增接口方法。
-
-- [ ] **Step 3: 运行 `pnpm check`**
+- [ ] **Step 2: 运行 `pnpm check`**
 
 Run: `pnpm check`
 
@@ -988,28 +997,44 @@ git commit -m "feat: rewrite daily report generation as 5-step pipeline"
 ## Task 5: 确保 AiClient 接口兼容
 
 **Files:**
-- Modify: `src/ai/types.ts`（如需要）
-- Modify: `src/ai/providers/` 下的具体实现（如需要）
+- Modify: `src/ai/types.ts`
+- Modify: `src/ai/providers/` 下的具体实现
 
-- [ ] **Step 1: 读取 AiClient 接口**
+> **重要**: 此 Task 必须在 Task 4（日报 pipeline）之前完成，因为 pipeline 依赖 AiClient 的文本生成方法。
 
-读取 `src/ai/types.ts`，找到 `AiClient` 接口定义。确认是否有 `generateText(prompt: string): Promise<string>` 方法或等价方法。
+- [ ] **Step 1: 读取 AiClient 接口，确认可用的文本生成方法**
 
-- [ ] **Step 2: 如需新增方法，添加到接口和所有实现**
+读取 `src/ai/types.ts`，找到 `AiClient` 接口定义。当前接口没有 `generateText` 方法，但有语义等价的方法：
+- `narrateDigest(prompt: string): Promise<string>` — 接收 prompt，返回文本
 
-如果 `generateText` 不存在，在 `AiClient` 接口中新增：
+- [ ] **Step 2: 在 AiClient 接口中新增 `generateText` 方法**
+
+在 `AiClient` 接口中新增：
 
 ```typescript
 generateText(prompt: string): Promise<string>
 ```
 
-然后在 `src/ai/providers/` 下的每个 client 实现（Anthropic、Gemini、OpenAI）中实现该方法。如果已有类似方法（如 `chat`），可以直接映射。
+> **说明**: 新增独立方法而非复用 `narrateDigest`，因为语义不同 — `generateText` 是通用的文本生成，`narrateDigest` 是特定于日报叙述的。保持接口语义清晰。
 
-- [ ] **Step 3: 运行 `pnpm check`**
+- [ ] **Step 3: 在所有 AiClient 实现中添加 `generateText` 方法**
+
+在 `src/ai/providers/` 下的每个 client 实现（检查 `BaseAiClient`、`FallbackAiClient`、`GeminiClient` 等）中：
+
+```typescript
+async generateText(prompt: string): Promise<string> {
+  // 复用现有的文本生成逻辑（与 narrateDigest 相同的实现）
+  return this.narrateDigest(prompt)
+}
+```
+
+> **实施注意**: 读取现有 `narrateDigest` 的实现，确认其内部逻辑。如果各 provider 的 `narrateDigest` 实现一致，可以直接委托调用。如果实现不同，需要为每个 provider 单独实现 `generateText`。
+
+- [ ] **Step 4: 运行 `pnpm check`**
 
 Run: `pnpm check`
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add src/ai/types.ts src/ai/providers/
@@ -1276,55 +1301,63 @@ git commit -m "feat: rewrite weekly report generation as 3-step pipeline"
 
 - [ ] **Step 1: 更新日报 cron 路由**
 
-读取 `app/api/cron/daily/route.ts`。修改 POST handler：
+读取 `app/api/cron/daily/route.ts`。修改 POST handler，保持 `runAfterJob` 模式（pipeline 有多次 AI 调用，必须异步执行避免超时）：
 
 ```typescript
 import { NextRequest, NextResponse } from "next/server"
-import { verifyCronRequest, unauthorizedResponse } from "../_lib"
-import { createAiClient } from "@/src/ai/providers"
-import { generateDailyReport } from "@/src/reports/daily"
+import { verifyCronRequest, unauthorizedResponse, runAfterJob } from "../_lib"
+import { createAiClient } from "../../../../src/ai/providers"
+import { generateDailyReport } from "../../../../src/reports/daily"
 
 export async function POST(request: NextRequest) {
   if (!verifyCronRequest(request)) {
     return unauthorizedResponse()
   }
 
-  const aiClient = createAiClient()
-  if (!aiClient) {
-    return NextResponse.json({ error: "No AI client available" }, { status: 500 })
-  }
+  runAfterJob("daily", async () => {
+    const aiClient = createAiClient()
+    if (!aiClient) {
+      console.error("[daily-cron] No AI client available")
+      return
+    }
 
-  const result = await generateDailyReport(new Date(), aiClient)
-  console.log(`[daily-cron] Generated report for ${result.date}: ${result.topicCount} topics, errors: ${result.errorSteps.join(",") || "none"}`)
+    const result = await generateDailyReport(new Date(), aiClient)
+    console.log(`[daily-cron] Generated report for ${result.date}: ${result.topicCount} topics, errors: ${result.errorSteps.join(",") || "none"}`)
+  })
 
-  return NextResponse.json({ success: true, ...result })
+  return NextResponse.json({ success: true, message: "Daily report generation started" })
 }
 ```
 
+> **重要**: 保持使用 `runAfterJob` 而非直接 `await`。日报 pipeline 有 5+ 次 AI 调用（聚类 + 7 个话题总结 + 3 个精选理由），同步执行会超过 Vercel Serverless Function 的 300s 超时限制。import 路径使用现有 cron 路由的相对路径风格（`../../../../src/...`），而非 `@/src/...`。
+
 - [ ] **Step 2: 更新周报 cron 路由**
 
-读取 `app/api/cron/weekly/route.ts`。修改 POST handler：
+读取 `app/api/cron/weekly/route.ts`。修改 POST handler，同样保持 `runAfterJob` 模式：
 
 ```typescript
 import { NextRequest, NextResponse } from "next/server"
-import { verifyCronRequest, unauthorizedResponse } from "../_lib"
-import { createAiClient } from "@/src/ai/providers"
-import { generateWeeklyReport } from "@/src/reports/weekly"
+import { verifyCronRequest, unauthorizedResponse, runAfterJob } from "../_lib"
+import { createAiClient } from "../../../../src/ai/providers"
+import { generateWeeklyReport } from "../../../../src/reports/weekly"
 
 export async function POST(request: NextRequest) {
   if (!verifyCronRequest(request)) {
     return unauthorizedResponse()
   }
 
-  const aiClient = createAiClient()
-  if (!aiClient) {
-    return NextResponse.json({ error: "No AI client available" }, { status: 500 })
-  }
+  runAfterJob("weekly", async () => {
+    const aiClient = createAiClient()
+    if (!aiClient) {
+      console.error("[weekly-cron] No AI client available")
+      return
+    }
 
-  const result = await generateWeeklyReport(new Date(), aiClient)
-  console.log(`[weekly-cron] Generated report for ${result.weekNumber}: ${result.pickCount} picks, errors: ${result.errorSteps.join(",") || "none"}`)
+    const result = await generateWeeklyReport(new Date(), aiClient)
+    console.log(`[weekly-cron] Generated report for ${result.weekNumber}: ${result.pickCount} picks, errors: ${result.errorSteps.join(",") || "none"}`)
+  })
 
-  return NextResponse.json({ success: true, ...result })
+  return NextResponse.json({ success: true, message: "Weekly report generation started" })
 }
 ```
 
@@ -1356,9 +1389,9 @@ git commit -m "refactor: update cron routes for new pipeline"
 读取 `app/api/daily/route.ts`。重写为返回 `DigestTopic[]` + `DailyPick[]`：
 
 ```typescript
-import { NextRequest, NextResponse } from "next/server"
+import { NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { success, error } from "@/lib/api-response"
+import { success } from "@/lib/api-response"
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -1414,9 +1447,9 @@ export async function GET(request: NextRequest) {
 读取 `app/api/weekly/route.ts`。重写为返回 `editorial` + `WeeklyPick[]`：
 
 ```typescript
-import { NextRequest, NextResponse } from "next/server"
+import { NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { success, error } from "@/lib/api-response"
+import { success } from "@/lib/api-response"
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -1532,7 +1565,13 @@ export async function GET() {
 }
 
 export async function PUT(request: NextRequest) {
-  const body = await parseBody(request)
+  let body
+  try {
+    body = await parseBody(request)
+  } catch {
+    return error("请求体格式错误", 400)
+  }
+
   const validation = updateSchema.safeParse(body)
 
   if (!validation.success) {
@@ -1596,9 +1635,16 @@ git commit -m "feat: add report settings API (GET/PUT)"
 
 ```typescript
 import useSWR from "swr"
-import type { DailyReportData, WeeklyReportData } from "@/lib/types"
+import type { ApiResponse, DailyReportData, WeeklyReportData } from "@/lib/types"
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json())
+// 保持与现有 fetcher 一致的 ApiResponse 解包模式
+const fetcher = <T>(url: string): Promise<T> =>
+  fetch(url)
+    .then((res) => res.json())
+    .then((res: ApiResponse<T>) => {
+      if (!res.success) throw new Error(res.error ?? "Request failed")
+      return res.data
+    })
 
 const swrOptions = {
   revalidateOnFocus: false as const,
@@ -1608,23 +1654,26 @@ const swrOptions = {
 
 export function useDaily(date?: string) {
   const key = date ? `/api/daily?date=${date}` : "/api/daily"
-  return useSWR<{ success: boolean; data: DailyReportData }>(key, fetcher, swrOptions)
+  return useSWR<DailyReportData>(key, fetcher, swrOptions)
 }
 
 export function useWeekly(week?: string) {
   const key = week ? `/api/weekly?week=${week}` : "/api/weekly"
-  return useSWR<{ success: boolean; data: WeeklyReportData }>(key, fetcher, swrOptions)
+  return useSWR<WeeklyReportData>(key, fetcher, swrOptions)
 }
 
 export function useReportSettings() {
-  return useSWR<{
-    success: boolean
-    data: { daily: Record<string, unknown>; weekly: Record<string, unknown> }
-  }>("/api/settings/reports", fetcher, swrOptions)
+  return useSWR<{ daily: Record<string, unknown>; weekly: Record<string, unknown> }>(
+    "/api/settings/reports",
+    fetcher,
+    swrOptions
+  )
 }
 
 // ... 保留现有的 usePacks, useCustomViews, useBookmarks
 ```
+
+> **重要**: fetcher 使用与现有代码一致的 `ApiResponse<T>` 解包模式，消费者直接使用 `data.topics`、`data.picks` 而非 `data.data.topics`。这与现有 `usePacks` 等 hook 保持一致。
 
 - [ ] **Step 2: 运行 `pnpm check`**
 
