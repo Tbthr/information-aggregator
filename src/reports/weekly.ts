@@ -1,235 +1,217 @@
-/**
- * 周报生成模块
- */
-
-import { prisma } from "../../lib/prisma";
-import { beijingWeekRange, formatUtcDate, formatUtcDayLabel, utcWeekNumber } from "../../lib/date-utils";
-import type { AiClient } from "../ai/types";
+import { prisma } from "@/lib/prisma"
+import type { Item, WeeklyReportConfig } from "@prisma/client"
+import type { AiClient } from "@/src/ai/types"
+import { utcWeekNumber, beijingWeekRange } from "@/lib/date-utils"
 import {
-  buildWeeklyEditorialPrompt,
-  parseWeeklyEditorialResult,
-  buildTimelineEventPrompt,
-  parseTimelineEventResult,
-} from "../ai/prompts-reports";
-import { createLogger } from "../utils/logger";
-
-const logger = createLogger("reports:weekly");
-
-export interface WeeklyGenerateConfig {
-  days: number;
-  maxItemsPerDay: number;
-}
-
-const DEFAULT_CONFIG: WeeklyGenerateConfig = {
-  days: 7,
-  maxItemsPerDay: 5,
-};
+  buildEditorialPrompt,
+  parseEditorialResult,
+  buildPickReasonPrompt,
+  parsePickReasonResult,
+} from "@/src/ai/prompts-reports"
 
 export interface WeeklyGenerateResult {
-  weekNumber: string;
-  timelineEventCount: number;
+  weekNumber: string
+  pickCount: number
+  errorSteps: string[]
 }
 
-/**
- * 计算周范围（按北京时间界定周一~周日）
- */
-function getWeekRange(date: Date): { start: Date; end: Date; weekNumber: string } {
-  const { start, end } = beijingWeekRange(date);
-  const weekNumber = utcWeekNumber(start);
-  return { start, end, weekNumber };
+// ============================================================
+// Pipeline Steps
+// ============================================================
+
+/** Step 1: Collect data from daily reports */
+async function collectData(config: WeeklyReportConfig) {
+  const days = config.days ?? 7
+  const dailyOverviews = await prisma.dailyOverview.findMany({
+    orderBy: { date: "desc" },
+    take: days,
+    include: {
+      topics: {
+        orderBy: { order: "asc" },
+      },
+    },
+  })
+
+  if (dailyOverviews.length < 3) return null
+
+  // Collect all referenced item IDs and tweet IDs
+  const itemIdSet = new Set<string>()
+  const topicSummaries: { date: string; dayLabel: string; title: string; summary: string }[] = []
+
+  for (const daily of dailyOverviews) {
+    for (const topic of daily.topics) {
+      for (const id of topic.itemIds) itemIdSet.add(id)
+      topicSummaries.push({
+        date: daily.date,
+        dayLabel: daily.dayLabel,
+        title: topic.title,
+        summary: topic.summary,
+      })
+    }
+  }
+
+  const items = itemIdSet.size > 0
+    ? await prisma.item.findMany({ where: { id: { in: Array.from(itemIdSet) } } })
+    : []
+
+  return { items, topicSummaries }
 }
 
-/**
- * 生成周报
- */
-export async function generateWeeklyReport(
-  date: Date,
+/** Step 2: AI deep editorial */
+async function generateEditorial(
+  topicSummaries: { date: string; dayLabel: string; title: string; summary: string }[],
+  items: Item[],
   aiClient: AiClient,
-  config: Partial<WeeklyGenerateConfig> = {},
-): Promise<WeeklyGenerateResult> {
-  const mergedConfig = { ...DEFAULT_CONFIG, ...config };
-  const { maxItemsPerDay } = mergedConfig;
+  config: WeeklyReportConfig
+): Promise<string> {
+  // Sort topic summaries by date ascending
+  const sortedSummaries = [...topicSummaries].sort((a, b) => a.date.localeCompare(b.date))
 
-  const weekRange = getWeekRange(date);
-  const { start, end, weekNumber } = weekRange;
+  // Get top items by score for context
+  const topItems = [...items]
+    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+    .slice(0, 10)
+    .map((item) => ({
+      title: item.title,
+      summary: (item.summary ?? "").slice(0, 500),
+      score: item.score ?? 0,
+    }))
 
-  logger.info("Generating weekly report", { weekNumber, start, end });
-
-  // 1. 查询本周 DailyOverview（或直接查 Item）
-  let dailyOverviews: Array<{
-    id: string;
-    createdAt: Date;
-    date: string;
-    dayLabel: string;
-    summary: string;
-    itemIds: string[];
-  }> = await prisma.dailyOverview.findMany({
-    where: {
-      date: {
-        gte: formatUtcDate(start),
-        lte: formatUtcDate(end),
-      },
-    },
-    orderBy: { date: "asc" },
-  });
-
-  // 如果没有 DailyOverview，直接查询 Item
-  if (dailyOverviews.length === 0) {
-    logger.info("No DailyOverview found, querying items directly");
-
-    const items = await prisma.item.findMany({
-      where: {
-        publishedAt: {
-          gte: start,
-          lte: end,
-        },
-      },
-      orderBy: { score: "desc" },
-      select: {
-        id: true,
-        title: true,
-        summary: true,
-        publishedAt: true,
-      },
-    });
-
-    // 按日期分组
-    const itemsByDate = new Map<string, typeof items>();
-    for (const item of items) {
-      const dateStr = item.publishedAt ? formatUtcDate(item.publishedAt) : formatUtcDate(new Date());
-      if (!itemsByDate.has(dateStr)) {
-        itemsByDate.set(dateStr, []);
-      }
-      itemsByDate.get(dateStr)!.push(item);
-    }
-
-    // 创建临时的 DailyOverview 数据（用于后续处理，不写入数据库）
-    dailyOverviews = Array.from(itemsByDate.entries()).map(([d, items]) => ({
-      id: `temp-${d}`,
-      createdAt: new Date(),
-      date: d,
-      dayLabel: formatUtcDayLabel(new Date(d)),
-      summary: "",
-      itemIds: items.slice(0, maxItemsPerDay).map((i) => i.id),
-    }));
-  }
-
-  if (dailyOverviews.length === 0) {
-    logger.warn("No data found for week", { weekNumber });
-    return { weekNumber, timelineEventCount: 0 };
-  }
-
-  // 2. 生成 TimelineEvent
-  const timelineEvents: Array<{
-    date: string;
-    dayLabel: string;
-    title: string;
-    summary: string;
-    itemIds: string[];
-  }> = [];
-
-  for (const overview of dailyOverviews) {
-    // 获取 Item 详情
-    const items = await prisma.item.findMany({
-      where: { id: { in: overview.itemIds } },
-      select: { id: true, title: true, summary: true },
-    });
-
-    // AI 生成时间线事件标题
-    const prompt = buildTimelineEventPrompt(items, overview.dayLabel);
-    let title = `${overview.dayLabel}动态`;
-    let summary = `共 ${items.length} 篇文章`;
-
-    try {
-      const aiResponse = await (aiClient as unknown as { request?: (p: string) => Promise<unknown> }).request?.(prompt);
-      if (aiResponse) {
-        const text = typeof aiResponse === "string" ? aiResponse : JSON.stringify(aiResponse);
-        const result = parseTimelineEventResult(text);
-        if (result) {
-          title = result.title;
-          summary = result.summary;
-        }
-      }
-    } catch (error) {
-      logger.warn("Failed to generate timeline event", { date: overview.date });
-    }
-
-    timelineEvents.push({
-      date: overview.date,
-      dayLabel: overview.dayLabel,
-      title,
-      summary,
-      itemIds: overview.itemIds,
-    });
-  }
-
-  // 3. AI 生成周报编辑评述
-  const editorialPrompt = buildWeeklyEditorialPrompt(timelineEvents);
-  let headline = `第${weekNumber.split("-W")[1]}周技术动态`;
-  let subheadline = `本周共 ${dailyOverviews.length} 天更新`;
-  let editorial = "";
-
-  try {
-    const aiResponse = await (aiClient as unknown as { request?: (p: string) => Promise<unknown> }).request?.(editorialPrompt);
-    if (aiResponse) {
-      const text = typeof aiResponse === "string" ? aiResponse : JSON.stringify(aiResponse);
-      const result = parseWeeklyEditorialResult(text);
-      if (result) {
-        headline = result.headline;
-        subheadline = result.subheadline;
-        editorial = result.editorial;
-      }
-    }
-  } catch (error) {
-    logger.warn("Failed to generate weekly editorial");
-  }
-
-  // 4. 写入 WeeklyReport + TimelineEvent
-  const weeklyReport = await prisma.weeklyReport.upsert({
-    where: { weekNumber },
-    create: {
-      weekNumber,
-      headline,
-      subheadline,
-      editorial,
-    },
-    update: {
-      headline,
-      subheadline,
-      editorial,
-    },
-  });
-
-  // 删除旧的 TimelineEvent
-  await prisma.timelineEvent.deleteMany({
-    where: { weeklyReportId: weeklyReport.id },
-  });
-
-  // 创建新的 TimelineEvent
-  for (let i = 0; i < timelineEvents.length; i++) {
-    const event = timelineEvents[i];
-    await prisma.timelineEvent.create({
-      data: {
-        weeklyReportId: weeklyReport.id,
-        date: event.date,
-        dayLabel: event.dayLabel,
-        title: event.title,
-        summary: event.summary,
-        itemIds: event.itemIds,
-        order: i,
-      },
-    });
-  }
-
-  logger.info("Weekly report generated", {
-    weekNumber,
-    timelineEventCount: timelineEvents.length,
-  });
-
-  return {
-    weekNumber,
-    timelineEventCount: timelineEvents.length,
-  };
+  const prompt = buildEditorialPrompt(sortedSummaries, topItems, config.editorialPrompt)
+  const result = await aiClient.generateText(prompt)
+  const parsed = parseEditorialResult(result)
+  return parsed.editorial
 }
 
+/** Step 3: Weekly picks + persist */
+async function generateWeeklyPicks(
+  items: Item[],
+  aiClient: AiClient,
+  config: WeeklyReportConfig
+) {
+  const pickCount = config.pickCount ?? 6
+  const sortedItems = [...items].sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+  const picks: { itemId: string; reason: string }[] = []
 
+  for (const item of sortedItems.slice(0, pickCount)) {
+    try {
+      const prompt = buildPickReasonPrompt(item.title, item.summary ?? "", config.pickReasonPrompt)
+      const result = await aiClient.generateText(prompt)
+      const parsed = parsePickReasonResult(result)
+      picks.push({ itemId: item.id, reason: parsed.reason })
+    } catch {
+      picks.push({ itemId: item.id, reason: item.summary ?? "" })
+    }
+  }
+
+  return picks
+}
+
+async function persistResults(
+  weekNumber: string,
+  editorial: string | null,
+  picks: { itemId: string; reason: string }[],
+  errorMessage?: string,
+  errorSteps?: string[]
+) {
+  return prisma.$transaction(async (tx) => {
+    const report = await tx.weeklyReport.upsert({
+      where: { weekNumber },
+      create: {
+        weekNumber,
+        editorial,
+        errorMessage,
+        errorSteps: errorSteps ?? [],
+      },
+      update: {
+        editorial,
+        errorMessage,
+        errorSteps: errorSteps ?? [],
+      },
+    })
+
+    // Delete old picks
+    await tx.weeklyPick.deleteMany({ where: { weeklyId: report.id } })
+
+    // Create new picks
+    if (picks.length > 0) {
+      await tx.weeklyPick.createMany({
+        data: picks.map((pick, index) => ({
+          weeklyId: report.id,
+          order: index,
+          itemId: pick.itemId,
+          reason: pick.reason,
+        })),
+      })
+    }
+
+    return report
+  })
+}
+
+// ============================================================
+// Main Pipeline
+// ============================================================
+
+export async function generateWeeklyReport(
+  now: Date,
+  aiClient: AiClient
+): Promise<WeeklyGenerateResult> {
+  const errorSteps: string[] = []
+
+  // Calculate week number
+  const weekRange = beijingWeekRange(now)
+  const monday = weekRange.start
+  const weekNumber = utcWeekNumber(monday)
+
+  // Load config
+  let config = await prisma.weeklyReportConfig.findUnique({ where: { id: "default" } })
+  if (!config) {
+    config = await prisma.weeklyReportConfig.create({ data: { id: "default" } })
+  }
+
+  // Step 1: Collect data
+  const data = await collectData(config)
+  if (!data) {
+    return { weekNumber, pickCount: 0, errorSteps: ["insufficientDailyReports"] }
+  }
+  const { items, topicSummaries } = data
+
+  if (items.length === 0) {
+    await persistResults(weekNumber, "本周无引用文章", [], "无数据")
+    return { weekNumber, pickCount: 0, errorSteps: [] }
+  }
+
+  // Step 2: Editorial
+  let editorial: string | null = null
+  try {
+    editorial = await generateEditorial(topicSummaries, items, aiClient, config)
+  } catch {
+    errorSteps.push("editorial")
+    // Fallback: concatenate topic summaries
+    editorial = topicSummaries.map((t) => `【${t.title}】${t.summary}`).join("\n\n")
+  }
+
+  // Step 3: Weekly picks
+  let picks: { itemId: string; reason: string }[] = []
+  try {
+    picks = await generateWeeklyPicks(items, aiClient, config)
+  } catch {
+    errorSteps.push("pickReason")
+  }
+
+  // Persist
+  try {
+    await persistResults(
+      weekNumber,
+      editorial,
+      picks,
+      errorSteps.length > 0 ? "部分步骤失败" : undefined,
+      errorSteps
+    )
+  } catch {
+    errorSteps.push("persist")
+  }
+
+  return { weekNumber, pickCount: picks.length, errorSteps }
+}
