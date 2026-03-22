@@ -1,17 +1,10 @@
 import type { AdapterFn, Source } from "../types/index";
 import { mergeAuthConfig } from "../config/load-auth";
-import { collectXBirdSource } from "./x-bird";
 
 /**
  * 项目级适配器家族定义
  */
-export const ADAPTER_FAMILIES: AdapterFamily[] = [
-  {
-    names: ["x-bookmarks", "x-home", "x-likes", "x-list"],
-    collect: collectXBirdSource,
-    authKey: "x-family",
-  },
-];
+export const ADAPTER_FAMILIES: AdapterFamily[] = [];
 
 /**
  * 适配器家族定义
