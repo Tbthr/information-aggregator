@@ -1,118 +1,408 @@
-/**
- * 日报生成模块
- */
-
-import { prisma } from "../../lib/prisma";
-import { beijingDayRange, formatUtcDayLabel } from "../../lib/date-utils";
-import type { AiClient } from "../ai/types";
+import { prisma } from "@/lib/prisma"
+import type { Item, Tweet, DailyReportConfig } from "@prisma/client"
+import type { AiClient } from "@/src/ai/types"
+import { formatUtcDate, formatUtcDayLabel } from "@/lib/date-utils"
 import {
-  buildDailyOverviewPrompt,
-  parseDailyOverviewResult,
-} from "../ai/prompts-reports";
-import { createLogger } from "../utils/logger";
+  buildTopicClusteringPrompt,
+  parseTopicClusteringResult,
+  buildTopicSummaryPrompt,
+  parseTopicSummaryResult,
+  buildPickReasonPrompt,
+  parsePickReasonResult,
+  buildFilterPrompt,
+  parseFilterResult,
+  type TopicClusterItem,
+} from "@/src/ai/prompts-reports"
 
-const logger = createLogger("reports:daily");
-
-export interface DailyGenerateConfig {
-  maxItems: number;
-}
-
-const DEFAULT_CONFIG: DailyGenerateConfig = {
-  maxItems: 20,
-};
+const SUMMARY_TRUNCATE_LENGTH = 500
+const PARALLEL_CONCURRENCY = 3
 
 export interface DailyGenerateResult {
-  date: string;
-  itemCount: number;
+  date: string
+  topicCount: number
+  errorSteps: string[]
 }
 
-/**
- * 生成日报
- */
-export async function generateDailyReport(
-  date: string, // YYYY-MM-DD
-  aiClient: AiClient,
-  config: Partial<DailyGenerateConfig> = {},
-): Promise<DailyGenerateResult> {
-  const mergedConfig = { ...DEFAULT_CONFIG, ...config };
-  const { maxItems } = mergedConfig;
+// ============================================================
+// Pipeline Steps
+// ============================================================
 
-  logger.info("Generating daily report", { date, maxItems });
+/** Step 1: Collect items and tweets from the past 24 hours */
+async function collectData(now: Date) {
+  const start = new Date(now.getTime() - 24 * 60 * 60 * 1000)
 
-  // 1. 查询当日 Item（按 publishedAt 过滤，使用北京时间界定一天）
-  const { start: startOfDay, end: endOfDay } = beijingDayRange(date);
-
-  const items = await prisma.item.findMany({
-    where: {
-      publishedAt: {
-        gte: startOfDay,
-        lte: endOfDay,
+  const [items, tweets] = await Promise.all([
+    prisma.item.findMany({
+      where: { publishedAt: { gte: start, lte: now } },
+      orderBy: { score: "desc" },
+    }),
+    prisma.tweet.findMany({
+      where: {
+        publishedAt: { gte: start, lte: now },
+        tab: { in: ["home", "lists"] },
       },
-    },
-    orderBy: { score: "desc" },
-    take: maxItems,
-    select: {
-      id: true,
-      title: true,
-      summary: true,
-      score: true,
-    },
-  });
+    }),
+  ])
 
-  if (items.length === 0) {
-    logger.warn("No items found for date", { date });
-    return { date, itemCount: 0 };
+  return { items, tweets }
+}
+
+/** Step 2: Filter by keyword blacklist and min score */
+function filterContent(
+  items: Item[],
+  tweets: Tweet[],
+  config: DailyReportConfig
+): { filteredItems: Item[]; filteredTweets: Tweet[] } {
+  const { keywordBlacklist, minScore } = config
+
+  const matchesBlacklist = (text: string): boolean => {
+    if (!keywordBlacklist.length) return false
+    return keywordBlacklist.some((keyword) => text.toLowerCase().includes(keyword.toLowerCase()))
   }
 
-  const itemIds = items.map((i) => i.id);
+  const filteredItems = items.filter(
+    (item) => (item.score ?? 0) >= minScore && !matchesBlacklist(item.title + " " + (item.summary ?? ""))
+  )
+  const filteredTweets = tweets.filter(
+    (tweet) => !matchesBlacklist((tweet.text ?? "") + " " + (tweet.authorHandle ?? ""))
+  )
 
-  // 3. AI 生成日报概览
-  const prompt = buildDailyOverviewPrompt(items);
+  return { filteredItems, filteredTweets }
+}
 
-  let summary = `${date} 技术日报：共 ${items.length} 篇文章`;
+/** Step 2b: Optional AI pre-filter */
+async function aiFilter(
+  filteredItems: Item[],
+  filteredTweets: Tweet[],
+  config: DailyReportConfig,
+  aiClient: AiClient
+): Promise<{ items: Item[]; tweets: Tweet[] }> {
+  if (!config.filterPrompt) return { items: filteredItems, tweets: filteredTweets }
 
   try {
-    // 尝试调用 AI（如果客户端支持）
-    const aiResponse = await (aiClient as unknown as { request?: (p: string) => Promise<unknown> }).request?.(prompt);
-    if (aiResponse) {
-      const text = typeof aiResponse === "string" ? aiResponse : JSON.stringify(aiResponse);
-      const result = parseDailyOverviewResult(text);
-      if (result) {
-        summary = result.summary;
+    const allContent: TopicClusterItem[] = [
+      ...filteredItems.map((item, i) => ({
+        title: item.title,
+        summary: (item.summary ?? "").slice(0, SUMMARY_TRUNCATE_LENGTH),
+        type: "item" as const,
+        index: i,
+      })),
+      ...filteredTweets.map((tweet, i) => ({
+        title: `@${tweet.authorHandle}`,
+        summary: (tweet.text ?? "").slice(0, SUMMARY_TRUNCATE_LENGTH),
+        type: "tweet" as const,
+        index: filteredItems.length + i,
+      })),
+    ]
+
+    const prompt = buildFilterPrompt(allContent, config.filterPrompt)
+    const result = await aiClient.generateText(prompt)
+    const { keep } = parseFilterResult(result)
+
+    const keptItems = filteredItems.filter((_, i) => keep.includes(i))
+    const keptTweets = filteredTweets.filter((_, i) => keep.includes(filteredItems.length + i))
+    return { items: keptItems, tweets: keptTweets }
+  } catch {
+    // AI filter failure → pass all through
+    return { items: filteredItems, tweets: filteredTweets }
+  }
+}
+
+/** Step 3: AI topic clustering */
+async function topicClustering(
+  items: Item[],
+  tweets: Tweet[],
+  aiClient: AiClient,
+  config: DailyReportConfig
+) {
+  const contentList: TopicClusterItem[] = [
+    ...items.map((item, i) => ({
+      title: item.title,
+      summary: (item.summary ?? "").slice(0, SUMMARY_TRUNCATE_LENGTH),
+      type: "item" as const,
+      index: i,
+    })),
+    ...tweets.map((tweet, i) => ({
+      title: `@${tweet.authorHandle}`,
+      summary: (tweet.text ?? "").slice(0, SUMMARY_TRUNCATE_LENGTH),
+      type: "tweet" as const,
+      index: items.length + i,
+    })),
+  ]
+
+  const prompt = buildTopicClusteringPrompt(contentList, config.topicPrompt)
+  const result = await aiClient.generateText(prompt)
+  return parseTopicClusteringResult(result)
+}
+
+/** Step 4a: Generate summary for each topic (parallel) */
+async function generateTopicSummaries(
+  clusteringResult: ReturnType<typeof parseTopicClusteringResult>,
+  items: Item[],
+  tweets: Tweet[],
+  aiClient: AiClient,
+  config: DailyReportConfig
+) {
+  const { topics } = clusteringResult
+
+  const results: { title: string; summary: string; itemIds: string[]; tweetIds: string[] }[] = []
+  for (let i = 0; i < topics.length; i += PARALLEL_CONCURRENCY) {
+    const batch = topics.slice(i, i + PARALLEL_CONCURRENCY)
+    const batchResults = await Promise.allSettled(
+      batch.map(async (topic) => {
+        const topicItems = topic.itemIndexes
+          .filter((idx) => idx < items.length)
+          .map((idx) => items[idx])
+        const topicTweets = topic.tweetIndexes
+          .filter((idx) => idx >= items.length)
+          .map((idx) => tweets[idx - items.length])
+
+        const contents = [
+          ...topicItems.map((item) => ({
+            title: item.title,
+            summary: (item.summary ?? "").slice(0, SUMMARY_TRUNCATE_LENGTH),
+            type: "item" as const,
+          })),
+          ...topicTweets.map((tweet) => ({
+            title: `@${tweet.authorHandle}`,
+            summary: (tweet.text ?? "").slice(0, SUMMARY_TRUNCATE_LENGTH),
+            type: "tweet" as const,
+          })),
+        ]
+
+        if (contents.length === 0) return null
+
+        const prompt = buildTopicSummaryPrompt(topic.title, contents, config.topicSummaryPrompt)
+        const result = await aiClient.generateText(prompt)
+        const parsed = parseTopicSummaryResult(result)
+
+        return {
+          title: topic.title,
+          summary: parsed.summary,
+          itemIds: topicItems.map((item) => item.id),
+          tweetIds: topicTweets.map((tweet) => tweet.id),
+        }
+      })
+    )
+
+    for (const r of batchResults) {
+      if (r.status === "fulfilled" && r.value) {
+        results.push(r.value)
       }
     }
-  } catch (error) {
-    logger.warn("AI summary generation failed, using default", { date });
   }
 
-  // 4. 生成 dayLabel
-  const dayLabel = formatUtcDayLabel(new Date(date));
+  return results
+}
 
-  // 5. 写入 DailyOverview（upsert）
-  await prisma.dailyOverview.upsert({
+/** Step 4b: Generate daily picks */
+async function generateDailyPicks(
+  items: Item[],
+  topicItemIds: Set<string>,
+  aiClient: AiClient,
+  config: DailyReportConfig
+) {
+  const pickCount = config.pickCount ?? 3
+
+  // Sort items by score, take top picks
+  // Deduplicate: skip items already prominently featured in topics
+  const sortedItems = [...items].sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+  const picks: { itemId: string | null; tweetId: string | null; reason: string }[] = []
+
+  for (const item of sortedItems) {
+    if (picks.length >= pickCount) break
+    if (topicItemIds.has(item.id)) continue // Skip items already in topics
+    try {
+      const prompt = buildPickReasonPrompt(item.title, item.summary ?? "", config.pickReasonPrompt)
+      const result = await aiClient.generateText(prompt)
+      const parsed = parsePickReasonResult(result)
+      picks.push({ itemId: item.id, tweetId: null, reason: parsed.reason })
+    } catch {
+      // Fallback: use item summary as reason
+      picks.push({ itemId: item.id, tweetId: null, reason: item.summary ?? "" })
+    }
+  }
+
+  return picks
+}
+
+/** Step 5: Persist results */
+async function persistResults(
+  date: string,
+  dayLabel: string,
+  topics: { title: string; summary: string; itemIds: string[]; tweetIds: string[] }[],
+  picks: { itemId: string | null; tweetId: string | null; reason: string }[],
+  errorMessage?: string,
+  errorSteps?: string[]
+) {
+  // Upsert DailyOverview
+  const overview = await prisma.dailyOverview.upsert({
     where: { date },
     create: {
       date,
       dayLabel,
-      summary,
-      itemIds,
+      topicCount: topics.length,
+      errorMessage,
+      errorSteps: errorSteps ?? [],
     },
     update: {
       dayLabel,
-      summary,
-      itemIds,
+      topicCount: topics.length,
+      errorMessage,
+      errorSteps: errorSteps ?? [],
     },
-  });
+  })
 
-  logger.info("Daily report generated", {
-    date,
-    itemCount: items.length,
-  });
+  // Delete old topics and picks
+  await prisma.digestTopic.deleteMany({ where: { dailyId: overview.id } })
+  await prisma.dailyPick.deleteMany({ where: { dailyId: overview.id } })
 
-  return {
-    date,
-    itemCount: items.length,
-  };
+  // Create new topics
+  if (topics.length > 0) {
+    await prisma.digestTopic.createMany({
+      data: topics.map((topic, index) => ({
+        dailyId: overview.id,
+        order: index,
+        title: topic.title,
+        summary: topic.summary,
+        itemIds: topic.itemIds,
+        tweetIds: topic.tweetIds,
+      })),
+    })
+  }
+
+  // Create new picks
+  if (picks.length > 0) {
+    await prisma.dailyPick.createMany({
+      data: picks.map((pick, index) => ({
+        dailyId: overview.id,
+        order: index,
+        itemId: pick.itemId,
+        tweetId: pick.tweetId,
+        reason: pick.reason,
+      })),
+    })
+  }
+
+  return overview
 }
 
+// ============================================================
+// Fallback: Category-based grouping when AI clustering fails
+// ============================================================
 
+function fallbackCategoryGrouping(items: Item[]): { title: string; summary: string; itemIds: string[]; tweetIds: string[] }[] {
+  const groups = new Map<string, Item[]>()
+
+  for (const item of items) {
+    const categories = item.categories ?? []
+    const category = categories[0] ?? "其他"
+    if (!groups.has(category)) groups.set(category, [])
+    groups.get(category)!.push(item)
+  }
+
+  return Array.from(groups.entries()).map(([category, groupItems]) => ({
+    title: category,
+    summary: groupItems[0].summary ?? "",
+    itemIds: groupItems.map((item) => item.id),
+    tweetIds: [],
+  }))
+}
+
+// ============================================================
+// Main Pipeline
+// ============================================================
+
+export async function generateDailyReport(
+  now: Date,
+  aiClient: AiClient
+): Promise<DailyGenerateResult> {
+  const date = formatUtcDate(now)
+  const dayLabel = formatUtcDayLabel(now)
+  const errorSteps: string[] = []
+
+  // Load config
+  let config = await prisma.dailyReportConfig.findUnique({ where: { id: "default" } })
+  if (!config) {
+    config = await prisma.dailyReportConfig.create({ data: { id: "default" } })
+  }
+
+  // Step 1: Collect data
+  let items: Item[]
+  let tweets: Tweet[]
+  try {
+    const result = await collectData(now)
+    items = result.items
+    tweets = result.tweets
+  } catch {
+    errorSteps.push("dataCollection")
+    await persistResults(date, dayLabel, [], [], "数据收集失败", errorSteps)
+    return { date, topicCount: 0, errorSteps }
+  }
+
+  // Apply maxItems limit
+  items = items.slice(0, config.maxItems ?? 50)
+
+  // Step 2: Filter
+  const { filteredItems, filteredTweets } = filterContent(items, tweets, config)
+
+  // Step 2b: Optional AI filter
+  let finalItems = filteredItems
+  let finalTweets = filteredTweets
+  if (config.filterPrompt) {
+    const aiResult = await aiFilter(filteredItems, filteredTweets, config, aiClient)
+    finalItems = aiResult.items
+    finalTweets = aiResult.tweets
+  }
+
+  if (finalItems.length === 0 && finalTweets.length === 0) {
+    await persistResults(date, dayLabel, [], [], "过去24小时无内容", errorSteps)
+    return { date, topicCount: 0, errorSteps }
+  }
+
+  // Step 3: Topic clustering
+  let topics: { title: string; summary: string; itemIds: string[]; tweetIds: string[] }[] = []
+  try {
+    const clusteringResult = await topicClustering(finalItems, finalTweets, aiClient, config)
+
+    // Step 4a: Topic summaries
+    try {
+      topics = await generateTopicSummaries(clusteringResult, finalItems, finalTweets, aiClient, config)
+    } catch {
+      errorSteps.push("topicSummary")
+      // Fallback: use clustering titles with first item summary
+      topics = clusteringResult.topics.map((topic) => ({
+        title: topic.title,
+        summary: topic.itemIndexes[0] !== undefined
+          ? (finalItems[topic.itemIndexes[0]]?.summary ?? "")
+          : "",
+        itemIds: topic.itemIndexes.filter((i) => i < finalItems.length).map((i) => finalItems[i].id),
+        tweetIds: topic.tweetIndexes
+          .filter((i) => i >= finalItems.length)
+          .map((i) => finalTweets[i - finalItems.length].id),
+      }))
+    }
+  } catch {
+    errorSteps.push("topicClustering")
+    // Fallback: group by categories
+    topics = fallbackCategoryGrouping(finalItems)
+  }
+
+  // Step 4b: Daily picks
+  let picks: { itemId: string | null; tweetId: string | null; reason: string }[] = []
+  try {
+    const topicItemIds = new Set(topics.flatMap((t) => t.itemIds))
+    picks = await generateDailyPicks(finalItems, topicItemIds, aiClient, config)
+  } catch {
+    errorSteps.push("pickReason")
+  }
+
+  // Step 5: Persist
+  try {
+    await persistResults(date, dayLabel, topics, picks, errorSteps.length > 0 ? "部分步骤失败" : undefined, errorSteps)
+  } catch {
+    errorSteps.push("persist")
+  }
+
+  return { date, topicCount: topics.length, errorSteps }
+}
