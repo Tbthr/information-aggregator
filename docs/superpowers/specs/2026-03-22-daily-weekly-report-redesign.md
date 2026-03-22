@@ -86,6 +86,9 @@ model DailyReportConfig {
 
   // 精选配置
   pickCount          Int      @default(3)    // 今日精选数量
+
+  createdAt          DateTime @default(now()) @db.Timestamptz
+  updatedAt          DateTime @updatedAt @db.Timestamptz
 }
 ```
 
@@ -99,7 +102,7 @@ model WeeklyReportConfig {
   id                 String   @id @default("default")  // 保持单例模式
 
   // 数据源配置
-  days               Int      @default(7)    // 覆盖天数
+  days               Int      @default(7)    // 覆盖天数（必须为 7 的倍数，前端校验）
 
   // AI Prompt 配置（null 时使用系统默认值）
   editorialPrompt    String?                 // 深度周总结 prompt
@@ -107,6 +110,9 @@ model WeeklyReportConfig {
 
   // 精选配置
   pickCount          Int      @default(6)    // 周报精选数量
+
+  createdAt          DateTime @default(now()) @db.Timestamptz
+  updatedAt          DateTime @updatedAt @db.Timestamptz
 }
 ```
 
@@ -140,7 +146,8 @@ model DailyPick {
   daily       DailyOverview @relation(fields: [dailyId], references: [id], onDelete: Cascade)
 
   order       Int                           // 展示顺序
-  itemId      String                        // 引用的 Item ID（仅 Item，不含 Tweet）
+  itemId      String?                       // 引用的 Item ID
+  tweetId     String?                       // 引用的 Tweet ID（当高分内容不足时从 Tweet 选取）
   reason      String                        // AI 推荐理由
   createdAt   DateTime      @default(now()) @db.Timestamptz
 }
@@ -403,6 +410,10 @@ model WeeklyPick {
 日报和周报 cron 同时在 23:00 UTC 执行（周日）。为避免资源竞争：
 - 周报 cron 延迟 5 分钟执行（23:05 UTC），确保当天日报先生成完毕
 - 或在周报 cron 中添加检查：如果当天日报尚未生成则等待/跳过
+
+### WeeklyReportConfig.days 约束
+
+`days` 字段必须为 7 的倍数（默认 7、可选 14、21 等）。周报 cron 固定每周日触发，Step 1 查询最近 `days` 篇 DailyOverview。前端设置页面需校验此约束，API 层也需要校验。非 7 的倍数值会导致跨周数据重叠或遗漏。
 
 ### `filterPrompt` 的输入输出格式
 
