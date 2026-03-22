@@ -54,7 +54,7 @@ export type Tweet = {
   text: string
   url: string
   expandedUrl?: string
-  publishedAt: string
+  publishedAt?: string
   fetchedAt: string
   authorHandle: string
   authorName?: string
