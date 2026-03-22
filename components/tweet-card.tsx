@@ -121,7 +121,7 @@ export function TweetCard({ tweet, isSaved, onToggleSave }: TweetCardProps) {
       {/* Article Preview */}
       {tweet.article && (
         <a
-          href={tweet.article.url || tweet.expandedUrl}
+          href={tweet.article.url || tweet.expandedUrl || tweet.url}
           target="_blank"
           rel="noopener noreferrer"
           className="block border rounded-lg overflow-hidden mb-3 hover:bg-muted/50 transition-colors"

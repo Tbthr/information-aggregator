@@ -3,7 +3,7 @@ import { verifyCronRequest, unauthorizedResponse, runAfterJob } from "../_lib";
 import { collectXBirdSource } from "../../../../src/adapters/x-bird";
 import { archiveTweets } from "../../../../src/archive/upsert-tweet-prisma";
 import { enrichTweets } from "../../../../src/archive/enrich-tweet-prisma";
-import { enrichQuotedTweets } from "../../../../src/archive/enrich-quoted-tweets";
+import { enrichTweetDetails } from "../../../../src/archive/enrich-tweet-details";
 import { createAiClient } from "../../../../src/ai/providers";
 import { prisma } from "../../../../lib/prisma";
 import { createLogger } from "../../../../src/utils/logger";
@@ -88,14 +88,14 @@ export async function GET(request: Request) {
       }
 
       if (allNewTweetIds.length > 0) {
-        // 增强引用推文数据（获取被引用推文的 article 等完整信息）
+        // 增强推文数据（引用推文 article + X Articles 元数据）
         const authConfig = configs.find((c: { authTokenEnv?: string | null }) => c.authTokenEnv);
         if (authConfig) {
-          const quotedResult = await enrichQuotedTweets(allNewTweetIds, {
+          const enrichResult = await enrichTweetDetails(allNewTweetIds, {
             authTokenEnv: authConfig.authTokenEnv,
             ct0Env: authConfig.ct0Env,
           });
-          logger.info(`Enriched ${quotedResult.enriched} quoted tweets (${quotedResult.skipped} skipped, ${quotedResult.failed} failed)`);
+          logger.info(`Enriched ${enrichResult.enriched} tweet details (${enrichResult.skipped} skipped, ${enrichResult.failed} failed)`);
         }
       }
 
