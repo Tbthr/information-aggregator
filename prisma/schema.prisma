@@ -39,23 +39,67 @@ model CustomViewPack {
 }
 
 model DailyOverview {
-  id        String   @id @default(cuid())
-  date      String   @unique
-  dayLabel  String
-  summary   String
-  itemIds   String[]
-  createdAt DateTime @default(now()) @db.Timestamptz
+  id            String   @id @default(cuid())
+  date          String   @unique
+  dayLabel      String
+  topicCount    Int      @default(0)
+  createdAt     DateTime @default(now()) @db.Timestamptz
+  updatedAt     DateTime @updatedAt @db.Timestamptz
+
+  errorMessage  String?
+  errorSteps    String[]
+
+  topics        DigestTopic[]
+  picks         DailyPick[]
+}
+
+model DigestTopic {
+  id          String        @id @default(cuid())
+  dailyId     String
+  daily       DailyOverview @relation(fields: [dailyId], references: [id], onDelete: Cascade)
+
+  order       Int
+  title       String
+  summary     String
+  itemIds     String[]
+  tweetIds    String[]
+  createdAt   DateTime      @default(now()) @db.Timestamptz
+
+  @@index([dailyId])
+}
+
+model DailyPick {
+  id          String        @id @default(cuid())
+  dailyId     String
+  daily       DailyOverview @relation(fields: [dailyId], references: [id], onDelete: Cascade)
+
+  order       Int
+  itemId      String?
+  tweetId     String?
+  reason      String
+  createdAt   DateTime      @default(now()) @db.Timestamptz
+
+  @@index([dailyId])
 }
 
 model DailyReportConfig {
-  id                  String   @id @default("default")
-  packs               String   @default("all")
-  maxItems            Int      @default(20)
-  sort                String   @default("ranked")
-  enableOverview      Boolean  @default(true)
-  newsFlashesEnabled  Boolean  @default(true)
-  newsFlashesMaxCount Int      @default(12)
-  updatedAt           DateTime @db.Timestamptz
+  id                 String   @id @default("default")
+
+  packs              String[]
+  maxItems           Int      @default(50)
+  minScore           Int      @default(0)
+
+  keywordBlacklist   String[]
+  filterPrompt       String?
+
+  topicPrompt        String?
+  topicSummaryPrompt String?
+  pickReasonPrompt   String?
+
+  pickCount          Int      @default(3)
+
+  createdAt          DateTime @default(now()) @db.Timestamptz
+  updatedAt          DateTime @updatedAt @db.Timestamptz
 }
 
 model Item {
@@ -78,7 +122,6 @@ model Item {
 
   source       Source        @relation(fields: [sourceId], references: [id])
   bookmarks    Bookmark[]
-  newsFlashes  NewsFlash[]
 
   createdAt    DateTime @default(now()) @db.Timestamptz
   updatedAt    DateTime @updatedAt    @db.Timestamptz
@@ -88,16 +131,6 @@ model Item {
   @@index([fetchedAt])
   @@index([score])
   @@index([publishedAt])
-}
-
-model NewsFlash {
-  id        String   @id @default(cuid())
-  time      String
-  text      String
-  itemId    String?
-  dailyDate String?
-  createdAt DateTime @default(now()) @db.Timestamptz
-  item      Item?    @relation(fields: [itemId], references: [id])
 }
 
 model Pack {
@@ -144,37 +177,44 @@ model SourceHealth {
   source              Source    @relation(fields: [sourceId], references: [id])
 }
 
-model TimelineEvent {
-  id             String       @id @default(cuid())
-  weeklyReportId String
-  date           String
-  dayLabel       String
-  title          String
-  summary        String
-  order          Int          @default(0)
-  itemIds        String[]
-  weeklyReport   WeeklyReport @relation(fields: [weeklyReportId], references: [id], onDelete: Cascade)
+model WeeklyReport {
+  id            String   @id @default(cuid())
+  weekNumber    String   @unique
+  editorial     String?
+  createdAt     DateTime @default(now()) @db.Timestamptz
+  updatedAt     DateTime @updatedAt @db.Timestamptz
 
-  @@index([weeklyReportId])
+  errorMessage  String?
+  errorSteps    String[]
+
+  picks         WeeklyPick[]
 }
 
-model WeeklyReport {
-  id            String          @id @default(cuid())
-  weekNumber    String          @unique
-  headline      String
-  subheadline   String?
-  editorial     String?
-  createdAt     DateTime        @default(now()) @db.Timestamptz
-  timelineEvents TimelineEvent[]
+model WeeklyPick {
+  id          String        @id @default(cuid())
+  weeklyId    String
+  weekly      WeeklyReport  @relation(fields: [weeklyId], references: [id], onDelete: Cascade)
+
+  order       Int
+  itemId      String
+  reason      String
+  createdAt   DateTime      @default(now()) @db.Timestamptz
+
+  @@index([weeklyId])
 }
 
 model WeeklyReportConfig {
-  id                String   @id @default("default")
-  days              Int      @default(7)
-  maxTimelineEvents Int      @default(10)
-  maxDeepDives      Int      @default(5)
-  enableEditorial   Boolean  @default(true)
-  updatedAt         DateTime @db.Timestamptz
+  id                 String   @id @default("default")
+
+  days               Int      @default(7)
+
+  editorialPrompt    String?
+  pickReasonPrompt   String?
+
+  pickCount          Int      @default(6)
+
+  createdAt          DateTime @default(now()) @db.Timestamptz
+  updatedAt          DateTime @updatedAt @db.Timestamptz
 }
 
 model Tweet {
