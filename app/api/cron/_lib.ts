@@ -1,6 +1,5 @@
 import { after } from "next/server";
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { createLogger } from "../../../src/utils/logger";
 
 const logger = createLogger("cron");
@@ -30,18 +29,13 @@ export function unauthorizedResponse() {
 }
 
 /**
- * 安全包装 after() 回调，记录执行状态到 SchedulerJob 表
+ * 安全包装 after() 回调，记录执行日志
  */
 export function runAfterJob(jobName: string, fn: () => Promise<void>): void {
   after(async () => {
     try {
       await fn();
       logger.info(`Cron job completed`, { job: jobName });
-      await prisma.schedulerJob.upsert({
-        where: { id: jobName },
-        create: { id: jobName, name: jobName, cron: "", lastRunAt: new Date(), updatedAt: new Date() },
-        update: { lastRunAt: new Date(), updatedAt: new Date() },
-      }).catch(() => {});
     } catch (error) {
       logger.error(`Cron job failed`, {
         job: jobName,
