@@ -211,6 +211,10 @@ export abstract class BaseAiClient<TConfig> implements AiClient {
     return this.getText(await this.request(prompt));
   }
 
+  async generateText(prompt: string): Promise<string> {
+    return this.narrateDigest(prompt);
+  }
+
   async suggestTopics(prompt: string): Promise<TopicSuggestion[]> {
     const text = this.getText(await this.request(prompt));
     return parseTopicSuggestions(text);

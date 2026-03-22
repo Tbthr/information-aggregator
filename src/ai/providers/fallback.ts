@@ -50,6 +50,10 @@ export class FallbackAiClient implements AiClient {
     return this.withFallback(c => c.narrateDigest(prompt));
   }
 
+  async generateText(prompt: string) {
+    return this.withFallback(c => c.generateText(prompt));
+  }
+
   async suggestTopics(prompt: string) {
     return this.withFallback(c => c.suggestTopics(prompt));
   }
