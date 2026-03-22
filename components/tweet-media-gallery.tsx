@@ -101,7 +101,7 @@ export function TweetMediaGallery({ media, tweetUrl }: TweetMediaGalleryProps) {
                   href={tweetUrl || item.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block w-full h-full"
+                  className="block w-full h-full relative"
                 >
                   <Image
                     src={imgUrl}
@@ -121,7 +121,7 @@ export function TweetMediaGallery({ media, tweetUrl }: TweetMediaGalleryProps) {
                 <button
                   type="button"
                   onClick={() => openLightbox(index)}
-                  className="block w-full h-full cursor-pointer"
+                  className="block w-full h-full cursor-pointer relative"
                 >
                   <Image
                     src={imgUrl}
