@@ -47,7 +47,9 @@ model DailyOverview {
   updatedAt     DateTime @updatedAt @db.Timestamptz
 
   errorMessage  String?
-  errorSteps    String[]
+  errorSteps    Json?
+
+  @@index([topicCount])
 
   topics        DigestTopic[]
   picks         DailyPick[]
@@ -185,7 +187,7 @@ model WeeklyReport {
   updatedAt     DateTime @updatedAt @db.Timestamptz
 
   errorMessage  String?
-  errorSteps    String[]
+  errorSteps    Json?
 
   picks         WeeklyPick[]
 }
