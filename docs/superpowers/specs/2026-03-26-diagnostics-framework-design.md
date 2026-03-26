@@ -145,7 +145,6 @@ npx tsx scripts/diagnostics.ts reports \
   [--config-only] \
   [--daily-only] \
   [--weekly-only] \
-  [--skip-collection] \
   [--cleanup] \
   [--api-url http://localhost:3000] \
   [--timeout 300] \
@@ -523,7 +522,7 @@ DIAGNOSTICS_ENV=test|production
 
 - `collection --run-collection`
 - 触发日报/周报生成
-- `full`
+- `full --run-collection`
 
 #### 高风险写入
 
