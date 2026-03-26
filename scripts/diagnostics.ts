@@ -30,7 +30,7 @@
 
 import { parseArgs } from "util";
 import { writeFile } from "fs/promises";
-import { inferEnvFromDatabaseUrl, redactDatabaseHost, normalizeAndValidateArgs, deriveRiskLevel } from "../src/diagnostics/core/guards";
+import { inferEnvFromDatabaseUrl, redactDatabaseHost, normalizeAndValidateArgs, deriveRiskLevel, shouldBlockDueToEnvMismatch } from "../src/diagnostics/core/guards";
 import { formatDiagnosticsRun, serializeDiagnosticsRun } from "../src/diagnostics/core/format";
 import { runCollectionDiagnostics } from "../src/diagnostics/runners/collection";
 import { runReportsDiagnostics } from "../src/diagnostics/runners/reports";
@@ -251,6 +251,14 @@ async function main() {
 
   if (verbose) {
     console.log(`[CLI] effectiveEnv=${effectiveEnv}, inferredEnv=${inferredEnv}, dbHost=${dbHost}`);
+  }
+
+  // ── Step 2b: Block on env mismatch ───────────────────────────────────────
+  if (shouldBlockDueToEnvMismatch(effectiveEnv, inferredEnv)) {
+    console.error(`${RED}Error: environment mismatch detected${RESET}`);
+    console.error(`${RED}  effectiveEnv=${effectiveEnv}, inferredEnv=${inferredEnv}${RESET}`);
+    console.error(`${RED}  Aborting to prevent running diagnostics against wrong environment${RESET}`);
+    process.exit(1);
   }
 
   // ── Step 3: Derive risk level ────────────────────────────────────────────

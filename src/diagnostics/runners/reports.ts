@@ -7,7 +7,7 @@ import { runDailyAssertions } from "../reports/verify-daily";
 import { runWeeklyAssertions } from "../reports/verify-weekly";
 import { runIntegrityAssertions } from "../reports/verify-integrity";
 import type { DiagnosticsMode, DiagnosticsArgs, DiagnosticsStageResult, DiagnosticsAssertion } from "../core/types";
-import type { ReportsDiagnosticsSection, ReportsRunOptions } from "../reports/types";
+import type { ReportsDiagnosticsSection } from "../reports/types";
 
 export interface ReportsRunnerOptions {
   args: DiagnosticsArgs;
@@ -201,7 +201,7 @@ export async function runReportsDiagnostics(
       assertions.push(...dailyAssertions);
 
       // Update section with daily info
-      const targets = reportsSection.resolvedTargets ?? resolveReportsTargets();
+      const targets = reportsSection.resolvedTargets!;
       reportsSection.daily = { date: targets.dailyDate };
 
       log(`daily stage complete: ${dailyAssertions.length} assertions`);
