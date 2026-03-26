@@ -51,11 +51,28 @@ export interface PipelineCounts {
   archivedUpdated: number;
 }
 
+/**
+ * Candidate item from the orchestrator, after near-dedup stage.
+ * Used by diagnostics to build candidate summaries.
+ */
+export interface CandidateItem {
+  id: string;
+  title: string;
+  sourceId: string;
+  sourceName: string;
+  canonicalUrl: string;
+}
+
 export interface RunCollectJobResult {
   sourceEvents: CollectSourceEvent[];
   counts: PipelineCounts;
   archived: ArchiveCounts;
   failures: SourceFailure[];
+  /**
+   * Candidate items after near-dedup, before archival.
+   * Used by diagnostics to build candidate summaries.
+   */
+  candidates: CandidateItem[];
 }
 
 export interface RunCollectJobOptions {
@@ -233,6 +250,16 @@ export async function runCollectJob(options: RunCollectJobOptions = {}): Promise
   // ── 9. Archive ─────────────────────────────────────────────────
   const now = new Date().toISOString();
   const sourceNameMap = Object.fromEntries(sources.map((s) => [s.id, s.description ?? s.id]));
+
+  // Build candidate items from afterNear dedup stage for diagnostics
+  const candidates: CandidateItem[] = afterNear.map((item) => ({
+    id: item.id,
+    title: item.title ?? "",
+    sourceId: item.sourceId ?? "",
+    sourceName: sourceNameMap[item.sourceId ?? ""] ?? item.sourceId ?? "",
+    canonicalUrl: item.canonicalUrl ?? item.url ?? "",
+  }));
+
   const archiveResult = await archiveRawItems(dedupedRawItems, now, sourceNameMap);
   log("Archived items", { newCount: archiveResult.newCount, updateCount: archiveResult.updateCount });
 
@@ -287,5 +314,6 @@ export async function runCollectJob(options: RunCollectJobOptions = {}): Promise
       updateCount: archiveResult.updateCount,
     },
     failures: failedSources,
+    candidates,
   };
 }
