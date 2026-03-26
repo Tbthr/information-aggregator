@@ -1,150 +1,146 @@
 import { describe, expect, test } from "bun:test";
-import type { RunCandidateSummary, RunCandidateItem } from "./types";
+import type { RunCollectJobResult } from "../../pipeline/run-collect-job";
+import { buildRunCandidateSummary } from "./summarize-candidates";
+import type { RunCandidateSummary } from "./types";
 
-// Unit tests for candidate summary building logic
+// Unit tests for buildRunCandidateSummary
 
-describe("RunCandidateSummary type structure", () => {
-  test("has correct shape with default level", () => {
-    const summary: RunCandidateSummary = {
-      level: "afterNearDedup",
-      topItems: [
+describe("buildRunCandidateSummary", () => {
+  test("returns empty summary when topN is 0", () => {
+    const result: RunCollectJobResult = {
+      sourceEvents: [],
+      counts: { raw: 0, normalized: 0, afterExactDedup: 0, afterNearDedup: 0, archivedNew: 0, archivedUpdated: 0 },
+      archived: { newCount: 0, updateCount: 0 },
+      failures: [],
+      candidates: [
+        { id: "1", title: "Test", sourceId: "src-1", sourceName: "Source", canonicalUrl: "https://example.com", score: 8.0 },
+      ],
+    };
+
+    const summary = buildRunCandidateSummary(result, "afterNearDedup", 0);
+    expect(summary.topItems.length).toBe(0);
+  });
+
+  test("returns empty summary when candidates array is empty", () => {
+    const result: RunCollectJobResult = {
+      sourceEvents: [],
+      counts: { raw: 0, normalized: 0, afterExactDedup: 0, afterNearDedup: 0, archivedNew: 0, archivedUpdated: 0 },
+      archived: { newCount: 0, updateCount: 0 },
+      failures: [],
+      candidates: [],
+    };
+
+    const summary = buildRunCandidateSummary(result, "afterNearDedup", 10);
+    expect(summary.topItems.length).toBe(0);
+  });
+
+  test("selects top N by score descending", () => {
+    const result: RunCollectJobResult = {
+      sourceEvents: [],
+      counts: { raw: 0, normalized: 0, afterExactDedup: 0, afterNearDedup: 0, archivedNew: 0, archivedUpdated: 0 },
+      archived: { newCount: 0, updateCount: 0 },
+      failures: [],
+      candidates: [
+        { id: "1", title: "Low", sourceId: "src-1", sourceName: "Source", canonicalUrl: "https://example.com/1", score: 3.0 },
+        { id: "2", title: "High", sourceId: "src-2", sourceName: "Source", canonicalUrl: "https://example.com/2", score: 9.0 },
+        { id: "3", title: "Mid", sourceId: "src-3", sourceName: "Source", canonicalUrl: "https://example.com/3", score: 6.0 },
+      ],
+    };
+
+    const summary = buildRunCandidateSummary(result, "afterNearDedup", 2);
+    expect(summary.topItems.length).toBe(2);
+    expect(summary.topItems[0].title).toBe("High");
+    expect(summary.topItems[1].title).toBe("Mid");
+  });
+
+  test("returns all candidates when topN exceeds candidates length", () => {
+    const result: RunCollectJobResult = {
+      sourceEvents: [],
+      counts: { raw: 0, normalized: 0, afterExactDedup: 0, afterNearDedup: 0, archivedNew: 0, archivedUpdated: 0 },
+      archived: { newCount: 0, updateCount: 0 },
+      failures: [],
+      candidates: [
+        { id: "1", title: "A", sourceId: "src-1", sourceName: "Source", canonicalUrl: "https://example.com/1", score: 5.0 },
+        { id: "2", title: "B", sourceId: "src-2", sourceName: "Source", canonicalUrl: "https://example.com/2", score: 4.0 },
+      ],
+    };
+
+    const summary = buildRunCandidateSummary(result, "afterNearDedup", 10);
+    expect(summary.topItems.length).toBe(2);
+  });
+
+  test("maps to correct output shape", () => {
+    const result: RunCollectJobResult = {
+      sourceEvents: [],
+      counts: { raw: 0, normalized: 0, afterExactDedup: 0, afterNearDedup: 0, archivedNew: 0, archivedUpdated: 0 },
+      archived: { newCount: 0, updateCount: 0 },
+      failures: [],
+      candidates: [
         {
-          title: "Test Article",
+          id: "1",
+          title: "Article",
           sourceId: "src-1",
-          sourceName: "Test Source",
-          canonicalUrl: "https://example.com/article",
+          sourceName: "Source",
+          canonicalUrl: "https://example.com",
+          score: 8.0,
         },
       ],
     };
 
-    expect(summary.level).toBe("afterNearDedup");
-    expect(summary.topItems.length).toBe(1);
-    expect(summary.topItems[0].title).toBe("Test Article");
-  });
-
-  test("empty summary is valid", () => {
-    const summary: RunCandidateSummary = {
-      level: "afterNearDedup",
-      topItems: [],
-    };
-
-    expect(summary.topItems.length).toBe(0);
-  });
-
-  test("all level variants are valid", () => {
-    const levels: RunCandidateSummary["level"][] = ["normalized", "afterExactDedup", "afterNearDedup"];
-
-    for (const level of levels) {
-      const summary: RunCandidateSummary = { level, topItems: [] };
-      expect(summary.level).toBe(level);
-    }
-  });
-});
-
-describe("RunCandidateItem type structure", () => {
-  test("all fields optional except title and sourceId", () => {
-    const item: RunCandidateItem = {
-      title: "Article Title",
-      sourceId: "src-1",
-    };
-
-    expect(item.title).toBe("Article Title");
-    expect(item.sourceId).toBe("src-1");
-    expect(item.sourceName).toBeUndefined();
-    expect(item.canonicalUrl).toBeUndefined();
-  });
-
-  test("full item with all fields", () => {
-    const item: RunCandidateItem = {
-      title: "Full Article",
-      sourceId: "src-1",
-      sourceName: "Test Source",
-      canonicalUrl: "https://example.com/full-article",
-    };
-
-    expect(item.sourceName).toBe("Test Source");
-    expect(item.canonicalUrl).toBe("https://example.com/full-article");
-  });
-});
-
-// Pure function tests for top-items selection
-describe("candidate topItems selection logic", () => {
-  type MockCandidate = {
-    title: string;
-    sourceId: string;
-    sourceName?: string;
-    canonicalUrl?: string;
-    score: number;
-  };
-
-  function selectTopCandidates(candidates: MockCandidate[], topN: number): RunCandidateItem[] {
-    if (topN <= 0) return [];
-
-    return [...candidates]
-      .sort((a, b) => b.score - a.score)
-      .slice(0, topN)
-      .map((c) => ({
-        title: c.title,
-        sourceId: c.sourceId,
-        sourceName: c.sourceName,
-        canonicalUrl: c.canonicalUrl,
-      }));
-  }
-
-  test("selects top N by score", () => {
-    const candidates: MockCandidate[] = [
-      { title: "Low", sourceId: "src-1", score: 3.0 },
-      { title: "High", sourceId: "src-2", score: 9.0 },
-      { title: "Mid", sourceId: "src-3", score: 6.0 },
-    ];
-
-    const result = selectTopCandidates(candidates, 2);
-    expect(result.length).toBe(2);
-    expect(result[0].title).toBe("High");
-    expect(result[1].title).toBe("Mid");
-  });
-
-  test("returns all when topN exceeds candidates", () => {
-    const candidates: MockCandidate[] = [
-      { title: "A", sourceId: "src-1", score: 5.0 },
-      { title: "B", sourceId: "src-2", score: 4.0 },
-    ];
-
-    const result = selectTopCandidates(candidates, 10);
-    expect(result.length).toBe(2);
-  });
-
-  test("returns empty when candidates empty", () => {
-    const result = selectTopCandidates([], 5);
-    expect(result.length).toBe(0);
-  });
-
-  test("returns empty when topN is 0", () => {
-    const candidates: MockCandidate[] = [
-      { title: "A", sourceId: "src-1", score: 5.0 },
-    ];
-
-    const result = selectTopCandidates(candidates, 0);
-    expect(result.length).toBe(0);
-  });
-
-  test("maps to correct output shape", () => {
-    const candidates: MockCandidate[] = [
-      {
-        title: "Article",
-        sourceId: "src-1",
-        sourceName: "Source",
-        canonicalUrl: "https://url.com",
-        score: 8.0,
-      },
-    ];
-
-    const result = selectTopCandidates(candidates, 1);
-    expect(result[0]).toEqual({
+    const summary = buildRunCandidateSummary(result, "afterNearDedup", 1);
+    expect(summary.topItems[0]).toEqual({
       title: "Article",
       sourceId: "src-1",
       sourceName: "Source",
-      canonicalUrl: "https://url.com",
+      canonicalUrl: "https://example.com",
     });
+  });
+
+  test("handles candidates with undefined score (defaults to 0)", () => {
+    // Note: CandidateItem.score is required, but we test with 0 to ensure stability
+    const result: RunCollectJobResult = {
+      sourceEvents: [],
+      counts: { raw: 0, normalized: 0, afterExactDedup: 0, afterNearDedup: 0, archivedNew: 0, archivedUpdated: 0 },
+      archived: { newCount: 0, updateCount: 0 },
+      failures: [],
+      candidates: [
+        { id: "1", title: "First", sourceId: "src-1", sourceName: "Source", canonicalUrl: "https://example.com/1", score: 0 },
+        { id: "2", title: "Second", sourceId: "src-2", sourceName: "Source", canonicalUrl: "https://example.com/2", score: 0 },
+      ],
+    };
+
+    const summary = buildRunCandidateSummary(result, "afterNearDedup", 1);
+    expect(summary.topItems.length).toBe(1);
+    // With equal scores, order is implementation-dependent but should be consistent
+  });
+
+  test("defaults to afterNearDedup level", () => {
+    const result: RunCollectJobResult = {
+      sourceEvents: [],
+      counts: { raw: 0, normalized: 0, afterExactDedup: 0, afterNearDedup: 0, archivedNew: 0, archivedUpdated: 0 },
+      archived: { newCount: 0, updateCount: 0 },
+      failures: [],
+      candidates: [
+        { id: "1", title: "Test", sourceId: "src-1", sourceName: "Source", canonicalUrl: "https://example.com", score: 5.0 },
+      ],
+    };
+
+    const summary = buildRunCandidateSummary(result);
+    expect(summary.level).toBe("afterNearDedup");
+  });
+
+  test("accepts normalized level", () => {
+    const result: RunCollectJobResult = {
+      sourceEvents: [],
+      counts: { raw: 0, normalized: 0, afterExactDedup: 0, afterNearDedup: 0, archivedNew: 0, archivedUpdated: 0 },
+      archived: { newCount: 0, updateCount: 0 },
+      failures: [],
+      candidates: [
+        { id: "1", title: "Test", sourceId: "src-1", sourceName: "Source", canonicalUrl: "https://example.com", score: 5.0 },
+      ],
+    };
+
+    const summary = buildRunCandidateSummary(result, "normalized");
+    expect(summary.level).toBe("normalized");
   });
 });

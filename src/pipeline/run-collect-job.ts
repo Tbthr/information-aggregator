@@ -61,6 +61,7 @@ export interface CandidateItem {
   sourceId: string;
   sourceName: string;
   canonicalUrl: string;
+  score: number;
 }
 
 export interface RunCollectJobResult {
@@ -258,6 +259,7 @@ export async function runCollectJob(options: RunCollectJobOptions = {}): Promise
     sourceId: item.sourceId ?? "",
     sourceName: sourceNameMap[item.sourceId ?? ""] ?? item.sourceId ?? "",
     canonicalUrl: item.canonicalUrl ?? item.url ?? "",
+    score: item.engagementScore ?? 0,
   }));
 
   const archiveResult = await archiveRawItems(dedupedRawItems, now, sourceNameMap);

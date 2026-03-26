@@ -27,8 +27,9 @@ export function buildRunCandidateSummary(
     };
   }
 
-  // Select top N candidates (already after near-dedup, order is preserved from pipeline)
+  // Select top N candidates sorted by score descending
   const topItems: RunCandidateItem[] = candidates
+    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
     .slice(0, topN)
     .map((c: CandidateItem) => ({
       title: c.title,

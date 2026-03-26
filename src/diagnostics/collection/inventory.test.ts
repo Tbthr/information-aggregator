@@ -1,8 +1,104 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test, mock } from "bun:test";
+
+// Set up mocks BEFORE importing the module under test
+mock.module("@/lib/prisma", () => ({
+  prisma: {
+    item: {
+      count: async () => 100,
+      findMany: mock(async () => [
+        {
+          id: "item-1",
+          title: "Test Article",
+          sourceName: "Test Source",
+          score: 8.5,
+          publishedAt: new Date("2026-03-25T10:00:00.000Z"),
+        },
+        {
+          id: "item-2",
+          title: "Second Article",
+          sourceName: "Another Source",
+          score: 7.0,
+          publishedAt: new Date("2026-03-25T09:00:00.000Z"),
+        },
+      ]),
+    },
+    tweet: {
+      count: async () => 50,
+      findMany: mock(async () => [
+        {
+          id: "tweet-1",
+          authorHandle: "@testuser",
+          text: "Test tweet content",
+          score: 7.0,
+          publishedAt: new Date("2026-03-25T09:00:00.000Z"),
+        },
+      ]),
+    },
+    source: {
+      count: async () => 10,
+    },
+    sourceHealth: {
+      count: async () => 2,
+    },
+  },
+}));
+
+// Import after mocks are set up
+import { loadCollectionInventory, buildPersistedSummary } from "./inventory";
 import type { CollectionInventory, PersistedSummary } from "./types";
 
-// Test with a simple mock-style approach (no DB required for these unit tests)
-// The actual DB-backed functions are tested via integration tests
+describe("loadCollectionInventory", () => {
+  test("returns correct inventory structure", async () => {
+    const inventory = await loadCollectionInventory();
+
+    expect(inventory.itemCount).toBe(100);
+    expect(inventory.tweetCount).toBe(50);
+    expect(inventory.sourceCount).toBe(10);
+    expect(inventory.unhealthySourceCount).toBe(2);
+  });
+
+  test("inventory has correct type shape", async () => {
+    const inventory: CollectionInventory = await loadCollectionInventory();
+
+    expect(typeof inventory.itemCount).toBe("number");
+    expect(typeof inventory.tweetCount).toBe("number");
+    expect(typeof inventory.sourceCount).toBe("number");
+    expect(typeof inventory.unhealthySourceCount).toBe("number");
+  });
+});
+
+describe("buildPersistedSummary", () => {
+  test("returns correct persisted summary structure", async () => {
+    const summary = await buildPersistedSummary(10);
+
+    expect(Array.isArray(summary.topItems)).toBe(true);
+    expect(Array.isArray(summary.topTweets)).toBe(true);
+  });
+
+  test("topItems have correct shape", async () => {
+    const summary = await buildPersistedSummary(10);
+
+    if (summary.topItems.length > 0) {
+      const item = summary.topItems[0];
+      expect(item).toHaveProperty("id");
+      expect(item).toHaveProperty("title");
+      expect(item).toHaveProperty("sourceName");
+      expect(typeof item.title).toBe("string");
+    }
+  });
+
+  test("topTweets have correct shape", async () => {
+    const summary = await buildPersistedSummary(10);
+
+    if (summary.topTweets.length > 0) {
+      const tweet = summary.topTweets[0];
+      expect(tweet).toHaveProperty("id");
+      expect(tweet).toHaveProperty("authorHandle");
+      expect(tweet).toHaveProperty("text");
+      expect(typeof tweet.authorHandle).toBe("string");
+    }
+  });
+});
 
 describe("CollectionInventory type structure", () => {
   test("inventory has correct shape", () => {
@@ -60,75 +156,49 @@ describe("PersistedSummary type structure", () => {
   });
 });
 
-describe("PersistedSummary truncation logic", () => {
-  // Pure function tests for truncation behavior
+describe("PersistedItemSummary type structure", () => {
+  test("item summary has correct fields", () => {
+    const item = {
+      id: "item-1",
+      title: "Test Article",
+      sourceName: "Test Source",
+      score: 8.5,
+      publishedAt: "2026-03-25T10:00:00.000Z",
+    };
 
-  function truncateItems<T extends { publishedAt?: string; score?: number }>(
-    items: T[],
-    topN: number
-  ): T[] {
-    if (topN <= 0) return [];
-    // Sort by score desc, then by publishedAt desc
-    return [...items]
-      .sort((a, b) => {
-        const scoreDiff = (b.score ?? 0) - (a.score ?? 0);
-        if (scoreDiff !== 0) return scoreDiff;
-        const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
-        const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
-        return dateB - dateA;
-      })
-      .slice(0, topN);
-  }
-
-  test("truncates to top N by score", () => {
-    const items = [
-      { id: "a", score: 5.0, publishedAt: "2026-03-25T10:00:00.000Z" },
-      { id: "b", score: 9.0, publishedAt: "2026-03-25T09:00:00.000Z" },
-      { id: "c", score: 7.0, publishedAt: "2026-03-25T08:00:00.000Z" },
-    ];
-
-    const result = truncateItems(items, 2);
-    expect(result.length).toBe(2);
-    expect(result[0].id).toBe("b"); // highest score
-    expect(result[1].id).toBe("c");
+    expect(item.id).toBe("item-1");
+    expect(item.title).toBe("Test Article");
+    expect(item.sourceName).toBe("Test Source");
+    expect(item.score).toBe(8.5);
+    expect(item.publishedAt).toBe("2026-03-25T10:00:00.000Z");
   });
 
-  test("sorts by score then by date for tie-breaking", () => {
-    const items = [
-      { id: "a", score: 7.0, publishedAt: "2026-03-25T10:00:00.000Z" },
-      { id: "b", score: 7.0, publishedAt: "2026-03-25T11:00:00.000Z" },
-    ];
+  test("score and publishedAt are optional", () => {
+    const item = {
+      id: "item-1",
+      title: "Test Article",
+      sourceName: "Test Source",
+    };
 
-    const result = truncateItems(items, 1);
-    expect(result.length).toBe(1);
-    expect(result[0].id).toBe("b"); // newer date for tie
+    expect(item.score).toBeUndefined();
+    expect(item.publishedAt).toBeUndefined();
   });
+});
 
-  test("returns empty array when topN is 0", () => {
-    const items = [{ id: "a", score: 5.0 }];
-    const result = truncateItems(items, 0);
-    expect(result.length).toBe(0);
-  });
+describe("PersistedTweetSummary type structure", () => {
+  test("tweet summary has correct fields", () => {
+    const tweet = {
+      id: "tweet-1",
+      authorHandle: "@testuser",
+      text: "Test tweet content",
+      score: 7.0,
+      publishedAt: "2026-03-25T09:00:00.000Z",
+    };
 
-  test("handles items without score (defaults to 0)", () => {
-    const items = [
-      { id: "a" },
-      { id: "b", score: 5.0 },
-    ];
-
-    const result = truncateItems(items, 1);
-    expect(result.length).toBe(1);
-    expect(result[0].id).toBe("b");
-  });
-
-  test("handles items without publishedAt", () => {
-    const items = [
-      { id: "a", score: 8.0 },
-      { id: "b", score: 9.0 },
-    ];
-
-    const result = truncateItems(items, 2);
-    expect(result.length).toBe(2);
-    expect(result[0].id).toBe("b");
+    expect(tweet.id).toBe("tweet-1");
+    expect(tweet.authorHandle).toBe("@testuser");
+    expect(tweet.text).toBe("Test tweet content");
+    expect(tweet.score).toBe(7.0);
+    expect(tweet.publishedAt).toBe("2026-03-25T09:00:00.000Z");
   });
 });

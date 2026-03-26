@@ -61,14 +61,15 @@ export function classifySourceHealth(detail: SourceHealthSummary): SourceHealthS
     return "healthy";
   }
 
-  const now = Date.now();
+  // All timestamps are UTC ISO strings from database (via toISOString())
+  const nowMs = Date.now();
 
-  // Compute time since last success (if any)
-  const msSinceSuccess = lastSuccessAt ? now - new Date(lastSuccessAt).getTime() : Infinity;
+  // Compute time since last success (if any) - both values are UTC ms
+  const msSinceSuccess = lastSuccessAt ? nowMs - new Date(lastSuccessAt).getTime() : Infinity;
   const successHoursAgo = msSinceSuccess / (1000 * 60 * 60);
 
-  // Compute time since last failure (if any)
-  const msSinceFailure = lastFailureAt ? now - new Date(lastFailureAt).getTime() : Infinity;
+  // Compute time since last failure (if any) - both values are UTC ms
+  const msSinceFailure = lastFailureAt ? nowMs - new Date(lastFailureAt).getTime() : Infinity;
   const failureHoursAgo = msSinceFailure / (1000 * 60 * 60);
 
   // If last success is more recent than last failure, recent enough = warning level
