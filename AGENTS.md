@@ -133,29 +133,30 @@ Expected: Build succeeds with no errors.
 | 级别 | 触发条件 | 命令 | 预期耗时 |
 |------|----------|------|----------|
 | L1 快速 | 仅改前端/类型/UI | `pnpm check && pnpm build` | ~30s |
-| L2 配置 | 改了配置 API/Schema | `npx tsx scripts/verify-reports-pipeline.ts --config-only` | ~10s |
-| L3 日报 | 改了日报生成逻辑 | `npx tsx scripts/verify-reports-pipeline.ts --daily-only --verbose` | ~5min |
-| L4 周报 | 改了周报生成逻辑 | `npx tsx scripts/verify-reports-pipeline.ts --weekly-only --verbose` | ~5min |
-| L5 全量 | 改了收集管道/AI 逻辑 | `npx tsx scripts/verify-reports-pipeline.ts --cleanup --verbose` | ~15min |
+| L2 配置 | 改了配置 API/Schema | `npx tsx scripts/diagnostics.ts reports --config-only` | ~10s |
+| L3 日报 | 改了日报生成逻辑 | `npx tsx scripts/diagnostics.ts reports --daily-only` | ~5min |
+| L4 周报 | 改了周报生成逻辑 | `npx tsx scripts/diagnostics.ts reports --weekly-only` | ~5min |
+| L5 全量 | 改了收集管道/AI 逻辑 | `npx tsx scripts/diagnostics.ts full --run-collection --cleanup` | ~15min |
 
 #### 验收脚本参数
 
 | 参数 | 说明 |
 |------|------|
+| `collection` | 运行收集诊断（guards, health, inventory） |
+| `reports` | 运行报表诊断（config, daily, weekly, integrity） |
+| `full` | 运行全量诊断（collection + reports） |
+| `--run-collection` | 触发实际收集运行（collection 模式） |
+| `--config-only` | 仅验证配置 API，跳过报表生成 |
+| `--daily-only` | 仅运行日报断言 |
+| `--weekly-only` | 仅运行周报断言 |
+| `--cleanup` | 运行后清理测试数据（危险） |
+| `--allow-write` | 在只读模式允许写操作 |
+| `--confirm-production` | 确认生产环境风险 |
+| `--confirm-cleanup` | 确认数据清理风险 |
 | `--api-url <url>` | API 地址，默认 http://localhost:3000 |
-| `--skip-collection` | 跳过收集阶段（当 items 已存在时使用） |
-| `--collection-only` | 仅执行收集阶段 |
-| `--daily-only` | 仅执行日报阶段 |
-| `--weekly-only` | 仅执行周报阶段 |
-| `--config-only` | 仅测试配置 API |
-| `--cleanup` | 验收前清理日报周报数据 |
-| `--timeout <秒>` | 收集轮询超时，默认 300s |
-| `--poll-interval <秒>` | 收集轮询间隔，默认 3s |
-| `--verbose` | 详细输出 |
 | `--json-output <path>` | JSON 结果输出路径 |
-| `--daily-packs <ids>` | 指定日报使用的 pack（逗号分隔） |
-| `--max-items <n>` | 覆盖配置的 maxItems |
-| `--pick-count <n>` | 覆盖配置的 pickCount |
+| `--verbose` | 详细输出 |
+| `--help` | 显示帮助信息 |
 
 #### L5 全量验收步骤（逐项通过标准）
 
@@ -173,7 +174,7 @@ pnpm build
 
 **Step 3: 全流程 E2E**
 ```bash
-npx tsx scripts/verify-reports-pipeline.ts --cleanup --verbose --json-output /tmp/pipeline-result.json
+npx tsx scripts/diagnostics.ts full --run-collection --cleanup --confirm-cleanup --verbose
 ```
 - 通过：脚本 exit 0，Summary 中 FAIL 数 = 0
 - 每个测试项通过标准：

@@ -11,7 +11,8 @@
     "check": "tsc --noEmit",
     "lint": "eslint src/",
     "format": "prettier --write src/",
-    "format:check": "prettier --check src/"
+    "format:check": "prettier --check src/",
+    "diagnostics": "tsx scripts/diagnostics.ts"
   },
   "devDependencies": {
     "@mozilla/readability": "^0.6.0",
