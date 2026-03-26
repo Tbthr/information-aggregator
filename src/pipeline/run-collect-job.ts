@@ -15,7 +15,7 @@
 
 import { loadAllPacksFromDb } from "../config/load-pack-prisma";
 import { generateSourceId } from "../config/source-id";
-import { collectSources, type CollectDependencies, type CollectSourceEvent } from "./collect";
+import { collectSources, type CollectDependencies, type CollectSourceEvent, type AdapterFn } from "./collect";
 import { normalizeItems } from "./normalize";
 import { dedupeExact } from "./dedupe-exact";
 import { dedupeNear } from "./dedupe-near";
@@ -64,6 +64,14 @@ export interface RunCollectJobOptions {
    * Optional callback invoked for each source event during collection.
    */
   onSourceEvent?: (event: CollectSourceEvent) => void;
+  /**
+   * Optional packs to use instead of loading from DB (for testing).
+   */
+  packs?: SourcePack[];
+  /**
+   * Optional adapters to use instead of building default adapters (for testing).
+   */
+  adapters?: Record<string, AdapterFn>;
 }
 
 /**
@@ -115,7 +123,7 @@ export async function runCollectJob(options: RunCollectJobOptions = {}): Promise
   // ── 1. Load packs ────────────────────────────────────────────────
   log("Starting collect job");
 
-  const packs = await loadAllPacksFromDb();
+  const packs = options.packs ?? await loadAllPacksFromDb();
 
   // ── 2. Sync packs to DB ────────────────────────────────────────
   const packRecords = packs.map((p) => ({
@@ -161,7 +169,7 @@ export async function runCollectJob(options: RunCollectJobOptions = {}): Promise
   const sourceEvents: CollectSourceEvent[] = [];
 
   const dependencies: CollectDependencies = {
-    adapters: buildAdapters(),
+    adapters: options.adapters ?? buildAdapters(),
     concurrency: 3,
     onSourceEvent: (event) => {
       logger?.info("Source event", {

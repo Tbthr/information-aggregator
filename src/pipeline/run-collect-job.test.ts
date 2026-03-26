@@ -1,10 +1,10 @@
 import { describe, expect, test, mock } from "bun:test";
 
 // Set up mocks BEFORE importing the module under test
-mock.module("../../lib/prisma", () => ({
+mock.module("../lib/prisma", () => ({
   prisma: {
-    pack: { findMany: async () => [] },
-    source: { findMany: async () => [] },
+    pack: { findMany: async () => [], upsert: async () => ({}) },
+    source: { findMany: async () => [], upsert: async () => ({}) },
     item: {
       findMany: async () => [],
       createMany: async () => ({ count: 0 }),
@@ -14,23 +14,23 @@ mock.module("../../lib/prisma", () => ({
   },
 }));
 
-mock.module("../../config/load-pack-prisma", () => ({
+mock.module("../config/load-pack-prisma", () => ({
   loadAllPacksFromDb: async () => [],
 }));
 
-mock.module("../../config/source-id", () => ({
+mock.module("../config/source-id", () => ({
   generateSourceId: (url: string) => url,
 }));
 
-mock.module("../../adapters/build-adapters", () => ({
+mock.module("../adapters/build-adapters", () => ({
   buildAdapters: () => ({ rss: async () => [] }),
 }));
 
-mock.module("../../ai/providers", () => ({
+mock.module("../ai/providers", () => ({
   createAiClient: () => null,
 }));
 
-mock.module("../../archive/enrich-prisma", () => ({
+mock.module("../archive/enrich-prisma", () => ({
   getItemsToEnrich: async () => [],
   enrichItems: async () => ({ successCount: 0, failCount: 0, totalCount: 0 }),
 }));
@@ -77,23 +77,41 @@ describe("runCollectJob", () => {
   });
 
   test("failed sources appear in failures result when adapter throws", async () => {
-    // Re-mock the adapter to throw an error for a specific source
-    mock.module("../../adapters/build-adapters", () => ({
-      buildAdapters: () => ({
-        rss: async () => {
-          throw new Error("adapter error");
-        },
-      }),
-    }));
-
     const mockLogger = {
       info: () => {},
       warn: () => {},
       error: () => {},
     };
 
-    const result = await runCollectJob({ logger: mockLogger });
+    // Provide a pack with a source and an adapter that throws
+    const testPacks = [
+      {
+        id: "test-pack",
+        name: "Test Pack",
+        description: "Test",
+        sources: [
+          {
+            id: "test-source",
+            type: "rss" as const,
+            url: "https://example.com/feed.xml",
+            name: "Test Source",
+            enabled: true,
+          },
+        ],
+      },
+    ];
 
-    expect(Array.isArray(result.failures)).toBe(true);
+    const result = await runCollectJob({
+      logger: mockLogger,
+      packs: testPacks,
+      adapters: {
+        rss: async () => {
+          throw new Error("adapter error");
+        },
+      },
+    });
+
+    expect(result.failures.length).toBeGreaterThan(0);
+    expect(result.failures[0].error).toContain("adapter error");
   });
 });
