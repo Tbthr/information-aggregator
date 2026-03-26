@@ -180,6 +180,41 @@ npx tsx scripts/diagnostics.ts full \
 - `--confirm-production`
 - `--confirm-cleanup`
 
+### 参数归一化与非法组合
+
+为避免命令模型歧义，CLI 在进入 runner 前必须先完成参数归一化，并拒绝非法组合。
+
+#### `collection`
+
+- 默认行为：只读离线诊断
+- `--run-collection`：执行真实采集并落库
+- `--cleanup`：非法，不允许出现在 `collection`
+- `--config-only` / `--daily-only` / `--weekly-only` / `--skip-collection`：非法
+
+#### `reports`
+
+- 默认行为：执行报表验收，不主动运行 collection
+- `--config-only`：仅配置校验，不触发日报/周报生成
+- `--daily-only`：仅执行日报相关阶段
+- `--weekly-only`：仅执行周报相关阶段
+- `--cleanup`：允许，但仅在 `reports` 模式下清理日报/周报相关数据
+- `--skip-collection`：删除该参数，不再支持
+
+非法组合：
+
+- `--config-only --cleanup`
+- `--config-only --daily-only`
+- `--config-only --weekly-only`
+- `--daily-only --weekly-only`
+
+#### `full`
+
+- 默认行为：执行 collection 离线诊断 + reports 验收
+- `--run-collection`：在 full 模式中额外执行真实采集并落库，然后再执行 reports 验收
+- `--cleanup`：允许，仅作用于 reports 相关数据
+
+这样定义后，`full` 不默认写入；只有显式带 `--run-collection` 时才做真实采集写入。
+
 ## 统一结果模型
 
 ### 顶层结果
@@ -190,6 +225,15 @@ interface DiagnosticsRunResult {
   startedAt: string
   finishedAt: string
   durationMs: number
+  effectiveEnv: "test" | "production"
+  inferredEnv: "test" | "production" | "unknown"
+  dbHost: string
+  apiTarget?: {
+    url: string
+    reportedEnv?: "test" | "production" | "unknown"
+    reportedDbHost?: string
+  }
+  riskLevel: "read-only" | "write" | "high-risk-write"
   status: "PASS" | "WARN" | "FAIL"
   summary: {
     pass: number
@@ -198,6 +242,7 @@ interface DiagnosticsRunResult {
     skip: number
   }
   stages: DiagnosticsStageResult[]
+  assertions: DiagnosticsAssertion[]
   sections?: {
     collection?: CollectionDiagnosticsSection
     reports?: ReportsDiagnosticsSection
@@ -214,8 +259,23 @@ interface DiagnosticsStageResult {
   category: "collection" | "reports" | "system"
   status: "PASS" | "WARN" | "FAIL" | "SKIP"
   durationMs: number
+  blocking?: boolean
+  dependsOn?: string[]
   details?: string
   data?: Record<string, unknown>
+}
+```
+
+### Assertion 结果
+
+```ts
+interface DiagnosticsAssertion {
+  id: string
+  category: "collection" | "reports" | "system" | "api"
+  status: "PASS" | "WARN" | "FAIL" | "SKIP"
+  blocking: boolean
+  message: string
+  evidence?: Record<string, unknown>
 }
 ```
 
@@ -256,7 +316,7 @@ interface CollectionDiagnosticsSection {
       archivedUpdated?: number
     }
   }
-  candidateSummary?: {
+  persistedSummary?: {
     topItems: Array<{
       id: string
       title: string
@@ -270,6 +330,15 @@ interface CollectionDiagnosticsSection {
       text: string
       score?: number
       publishedAt?: string
+    }>
+  }
+  runCandidateSummary?: {
+    level: "normalized" | "afterExactDedup" | "afterNearDedup"
+    topItems: Array<{
+      title: string
+      sourceId: string
+      sourceName?: string
+      canonicalUrl?: string
     }>
   }
 }
@@ -288,6 +357,10 @@ interface ReportsDiagnosticsSection {
     tweets: number
     dailyReports: number
     weeklyReports: number
+  }
+  resolvedTargets?: {
+    dailyDate?: string
+    weeklyWeekNumber?: string
   }
   daily?: {
     date?: string
@@ -308,13 +381,39 @@ interface ReportsDiagnosticsSection {
 2. 读取 `Source` / `SourceHealth`，生成源健康摘要。
 3. 读取最近窗口内的 `Item` / `Tweet`，生成人工可读 inventory。
 4. 如果未传 `--run-collection`：
-   - 输出离线 health + inventory + candidate summary
+   - 输出离线 health + inventory + persisted summary
 5. 如果传入 `--run-collection`：
-   - 直接在项目内调用采集逻辑，而不是请求本地 API
+   - 调用共享 collect orchestrator，而不是新写一套 diagnostics 专用采集逻辑
    - 捕获 `onSourceEvent`
    - 统计 `raw -> normalized -> exact dedupe -> near dedupe -> archive`
    - 真实落库
-   - 再基于落库结果生成最终 inventory 与 candidate summary
+   - 再基于共享 orchestrator 暴露的中间结果生成 `runCandidateSummary`
+   - 最终输出 inventory、persisted summary 与 runCandidateSummary
+
+### Collection 共享编排要求
+
+为了保证 diagnostics 与生产行为一致，必须先将当前 [`app/api/cron/collect/route.ts`](/Users/lyq/ai-enhance/information-aggregator/app/api/cron/collect/route.ts) 中的 collect job 主流程抽到共享 service，例如：
+
+```text
+src/pipeline/run-collect-job.ts
+```
+
+该 service 负责：
+
+1. pack/source 同步
+2. source 解析
+3. `collectSources()` 执行
+4. normalize / exact dedupe / near dedupe
+5. `archiveRawItems()`
+6. `enrichItems()`
+7. source health 成功/失败记录
+8. 返回 diagnostics 需要的中间计数与 source events
+
+约束：
+
+1. cron route 和 diagnostics runner 必须调用同一套 shared orchestrator
+2. 不允许出现一套“生产 collect 实现”与一套“diagnostics collect 实现”并行演化
+3. diagnostics 仅在 orchestrator 外面做结果记录和展示，不重写业务流程
 
 ### `reports` 模式
 
@@ -325,9 +424,22 @@ interface ReportsDiagnosticsSection {
    - 仅配置校验
    - 仅日报校验
    - 仅周报校验
-   - 跳过 collection
    - cleanup 后执行全量验收
 5. 复用现有报表生成与验证逻辑，输出统一 stage 结果。
+
+### 报表时间边界
+
+所有日报与周报 diagnostics 必须遵守项目既有时间规则：
+
+1. 日报目标日期按北京时间（UTC+8）界定
+2. 周报目标周按北京时间（UTC+8）界定
+3. 相关 runner、assertion 和 JSON 输出必须显式记录解析后的目标日期/周编号
+
+实现上必须复用共享日期工具，而不是各自重新计算：
+
+- [`lib/date-utils.ts`](/Users/lyq/ai-enhance/information-aggregator/lib/date-utils.ts) 中的 `beijingDayRange()`
+- [`lib/date-utils.ts`](/Users/lyq/ai-enhance/information-aggregator/lib/date-utils.ts) 中的 `beijingWeekRange()`
+- 对应的 week number 计算工具
 
 ### `full` 模式
 
@@ -370,6 +482,30 @@ DIAGNOSTICS_ENV=test|production
 ```
 
 若未设置，默认按 `production` 处理。
+
+### 环境识别与一致性校验
+
+仅依赖 `DIAGNOSTICS_ENV` 不足以构成安全边界，diagnostics 在执行前必须进行双重校验：
+
+1. 从 `DATABASE_URL` 解析脱敏后的 host，并推断 `inferredEnv`
+2. 将 `inferredEnv` 与 `DIAGNOSTICS_ENV` 比较；若不一致，直接拒绝执行
+
+若传入 `--api-url`，还必须对目标 API 做 preflight 检查，要求其返回：
+
+1. API 自身认定的环境
+2. API 当前连接的脱敏数据库 host
+
+若 CLI 侧与 API 侧环境或数据库 host 不一致，同样直接拒绝执行，避免 split-brain：
+
+- CLI 连 test DB，但 API 连 production DB
+- CLI 认定是 test，但 API 认定是 production
+- cleanup 针对的数据库和触发生成的 API 指向不同环境
+
+实现要求：
+
+1. 环境推断规则必须集中定义在 `src/diagnostics/core/guards.ts`
+2. host 显示必须脱敏，不在终端或 JSON 中直接暴露完整连接串
+3. 所有拒绝执行都必须返回 machine-readable assertion
 
 ### 动作分级
 
@@ -425,6 +561,27 @@ DIAGNOSTICS_ENV=test|production
 2. 是否会生成日报/周报
 3. 是否会 cleanup
 
+## 候选摘要定义
+
+“candidate summary” 需要拆成两个明确概念，避免实现歧义：
+
+### Persisted summary
+
+用于只读模式，表示当前数据库中最近窗口内已归档的内容摘要：
+
+- 数据来源：`Item` / `Tweet`
+- 用途：快速了解当前库里最近有哪些可参与报表的数据
+- 输出字段：标题、来源、时间、分数
+
+### Run candidate summary
+
+用于 `--run-collection`，表示本次采集执行过程中的候选集摘要：
+
+- 数据来源：共享 collect orchestrator 暴露的中间结果
+- 默认展示 `afterNearDedup` 结果
+- 必要时保留 `normalized` / `afterExactDedup` 级别供 JSON 输出
+- 用途：排查采集、normalize 和 dedupe 过程中的内容变化
+
 ## 与现有实现的关系
 
 ### 需要保留的现有能力
@@ -438,6 +595,27 @@ DIAGNOSTICS_ENV=test|production
 5. latest API 行为校验
 6. `topicCount` 准确性校验
 7. Weekly item source 约束校验
+
+### 旧 stage 与新 assertion/stage 的映射
+
+本次重构删除旧脚本文件名，但不能丢失已有验收语义。实现时必须保留或显式映射当前 AGENTS 中的关键 stage 标识，例如：
+
+- `B-04 Config validation`
+- `B-05 Weekly days validation`
+- `B-06 Malformed body`
+- `B-08 Nullable prompts`
+- `D-17 Empty daily API`
+- `E-10 Empty weekly API`
+- `G-05 Daily latest`
+- `G-06 Weekly latest`
+- `F-01 DigestTopic FK`
+- `F-03 WeeklyPick FK`
+- `F-04 topicCount accuracy`
+- `F-05 Weekly item source`
+- `F-06 Item fields`
+- `F-07 Tweet fields`
+
+这些标识可以继续作为 assertion id，或提供明确映射表，避免迁移后无法对照旧验收说明。
 
 ### 需要新增的能力
 
@@ -458,6 +636,8 @@ DIAGNOSTICS_ENV=test|production
 2. 环境门禁判断
 3. 参数归一化
 4. 结果对象格式化
+5. 环境推断与环境不匹配拒绝
+6. 非法 flag 组合归一化与拒绝
 
 ### 集成测试
 
@@ -467,6 +647,9 @@ DIAGNOSTICS_ENV=test|production
 2. `collection --run-collection` 的真实落库模式
 3. `reports` runner 在不同参数组合下的行为
 4. stage 失败后的聚合结果
+5. collect orchestrator 与 cron route 的行为一致性
+6. API preflight 与 CLI 环境/数据库不一致时拒绝执行
+7. 北京时间日/周边界的目标解析
 
 ### 端到端验收
 
@@ -490,6 +673,8 @@ DIAGNOSTICS_ENV=test|production
 5. `reports --weekly-only`
 6. `full --run-collection --cleanup`
 7. `production` 环境下写入门禁
+8. JSON 写文件失败时主结果仍可见
+9. formatter 失败时 JSON 结果仍可输出
 
 ## 迁移计划
 
@@ -499,8 +684,10 @@ DIAGNOSTICS_ENV=test|production
 4. 创建 `src/diagnostics/runners`，串联 collection、reports 和 full 模式。
 5. 新增统一入口 [`scripts/diagnostics.ts`](/Users/lyq/ai-enhance/information-aggregator/scripts/diagnostics.ts)。
 6. 删除旧 [`scripts/verify-reports-pipeline.ts`](/Users/lyq/ai-enhance/information-aggregator/scripts/verify-reports-pipeline.ts)。
-7. 更新 [`AGENTS.md`](/Users/lyq/ai-enhance/information-aggregator/AGENTS.md) 中所有旧命令引用。
-8. 补充 tests，并执行 `pnpm check` 与 `pnpm build` 验证。
+7. 更新 [`AGENTS.md`](/Users/lyq/ai-enhance/information-aggregator/AGENTS.md)、README 及仓库中所有旧命令引用。
+8. 明确旧 stage id 到新 assertion/stage 的映射策略，并记录在文档中。
+9. 决定 JSON 输出是否版本化；若为 breaking change，增加 `schemaVersion` 字段。
+10. 补充 tests，并执行 `pnpm check` 与 `pnpm build` 验证。
 
 ## 风险与取舍
 
