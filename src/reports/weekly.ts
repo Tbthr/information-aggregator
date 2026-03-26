@@ -32,8 +32,6 @@ async function collectData(config: WeeklyReportConfig) {
     },
   })
 
-  if (dailyOverviews.length < 3) return null
-
   // Collect all referenced item IDs and tweet IDs
   const itemIdSet = new Set<string>()
   const topicSummaries: { date: string; dayLabel: string; title: string; summary: string }[] = []
@@ -181,9 +179,6 @@ export async function generateWeeklyReport(
 
   // Step 1: Collect data
   const data = await collectData(config)
-  if (!data) {
-    return { weekNumber, pickCount: 0, errorSteps: ["insufficientDailyReports"] }
-  }
   const { items, topicSummaries } = data
 
   if (items.length === 0) {

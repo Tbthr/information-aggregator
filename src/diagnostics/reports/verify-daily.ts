@@ -62,6 +62,15 @@ export async function runDailyAssertions(
         message: "no items in past 24h",
         evidence: { itemCount: 0 },
       });
+      // stage6 depends on stage5 — skip when there's nothing to verify
+      assertions.push({
+        id: "reports.stage6",
+        category: "reports",
+        status: "SKIP",
+        blocking: false,
+        message: "stage5 skipped: no recent items to generate report",
+        evidence: { stage5Skipped: true },
+      });
     } else {
       verboseLog(`  Found ${recentItemCount} items in the past 24 hours`);
 
@@ -75,12 +84,22 @@ export async function runDailyAssertions(
           message: `POST /api/cron/daily returned ${res.status}`,
           evidence: { status: res.status },
         });
+        // stage6 cannot run if stage5 failed to trigger
+        assertions.push({
+          id: "reports.stage6",
+          category: "reports",
+          status: "SKIP",
+          blocking: false,
+          message: "stage5 failed: cannot verify",
+          evidence: { stage5Failed: true },
+        });
       } else {
         // Compute target date
         const targetDate = formatUtcDate(new Date());
         verboseLog(`  Target date: ${targetDate}`);
 
         // Poll for DailyOverview
+        let stage5Passed = false;
         try {
           await pollUntil(
             () => prisma.dailyOverview.findUnique({ where: { date: targetDate } }),
@@ -97,6 +116,7 @@ export async function runDailyAssertions(
             message: `generated for ${targetDate}`,
             evidence: { date: targetDate, itemCount: recentItemCount },
           });
+          stage5Passed = true;
         } catch (err) {
           assertions.push({
             id: "reports.stage5",
@@ -107,125 +127,127 @@ export async function runDailyAssertions(
             evidence: { error: err instanceof Error ? err.message : String(err) },
           });
         }
-      }
-    }
 
-    // ── Stage 6: Verify Daily Report ──────────────────────────
+        // ── Stage 6: Verify Daily Report ──────────────────────────
+        // Only run if stage5 successfully triggered report generation
 
-    const stage6Start = Date.now();
-    const targetDate = formatUtcDate(new Date());
+        if (stage5Passed) {
+          const stage6Start = Date.now();
 
-    // --- API check ---
-    const apiRes = await fetch(`${apiUrl}/api/daily?date=${targetDate}`);
-    if (!apiRes.ok) {
-      assertions.push({
-        id: "reports.stage6",
-        category: "reports",
-        status: "FAIL",
-        blocking: true,
-        message: `GET /api/daily returned ${apiRes.status}`,
-        evidence: { status: apiRes.status },
-      });
-    } else {
-      const apiBody: ApiResponse<DailyReportData> = await apiRes.json();
-      if (!apiBody.success || !apiBody.data) {
-        assertions.push({
-          id: "reports.stage6",
-          category: "reports",
-          status: "FAIL",
-          blocking: true,
-          message: `API response unsuccessful`,
-          evidence: { success: apiBody.success },
-        });
-      } else {
-        const dailyData = apiBody.data;
-        verboseLog(`  API check: date=${dailyData.date}, topics=${dailyData.topics.length}`);
-
-        if (dailyData.topics.length === 0) {
-          assertions.push({
-            id: "reports.stage6",
-            category: "reports",
-            status: "FAIL",
-            blocking: true,
-            message: "empty report: no topics",
-            evidence: { topicCount: 0 },
-          });
-        } else {
-          // --- DB check ---
-          const overview = await prisma.dailyOverview.findUnique({
-            where: { date: targetDate },
-            include: { topics: { orderBy: { order: "asc" } } },
-          });
-
-          if (!overview) {
+          // --- API check ---
+          const apiRes = await fetch(`${apiUrl}/api/daily?date=${targetDate}`);
+          if (!apiRes.ok) {
             assertions.push({
               id: "reports.stage6",
               category: "reports",
               status: "FAIL",
               blocking: true,
-              message: `DailyOverview not found for ${targetDate}`,
-              evidence: { date: targetDate },
+              message: `GET /api/daily returned ${apiRes.status}`,
+              evidence: { status: apiRes.status },
             });
           } else {
-            const errors: string[] = [];
-
-            // Validate topicCount
-            if (overview.topicCount !== overview.topics.length) {
-              errors.push(`topicCount mismatch: stored=${overview.topicCount}, actual=${overview.topics.length}`);
-            }
-
-            // Validate topics
-            for (const topic of overview.topics) {
-              if (!topic.title || topic.title.trim() === "") {
-                errors.push(`topic ${topic.id}: empty title`);
-              }
-              if (!topic.summary || topic.summary.trim() === "") {
-                errors.push(`topic ${topic.id}: empty summary`);
-              }
-              if (topic.itemIds.length === 0 && topic.tweetIds.length === 0) {
-                errors.push(`topic ${topic.id}: no itemIds or tweetIds`);
-              }
-            }
-
-            // Full reference integrity: check ALL itemIds
-            const allItemIds = new Set<string>();
-            const allTweetIds = new Set<string>();
-            for (const topic of overview.topics) {
-              for (const id of topic.itemIds) allItemIds.add(id);
-              for (const id of topic.tweetIds) allTweetIds.add(id);
-            }
-
-            if (allItemIds.size > 0) {
-              const existingItemCount = await prisma.item.count({
-                where: { id: { in: Array.from(allItemIds) } },
+            const apiBody: ApiResponse<DailyReportData> = await apiRes.json();
+            if (!apiBody.success || !apiBody.data) {
+              assertions.push({
+                id: "reports.stage6",
+                category: "reports",
+                status: "FAIL",
+                blocking: true,
+                message: `API response unsuccessful`,
+                evidence: { success: apiBody.success },
               });
-              const missingItemCount = allItemIds.size - existingItemCount;
-              if (missingItemCount > 0) {
-                errors.push(`FK integrity: ${missingItemCount}/${allItemIds.size} itemIds not found`);
+            } else {
+              const dailyData = apiBody.data;
+              verboseLog(`  API check: date=${dailyData.date}, topics=${dailyData.topics.length}`);
+
+              if (dailyData.topics.length === 0) {
+                assertions.push({
+                  id: "reports.stage6",
+                  category: "reports",
+                  status: "FAIL",
+                  blocking: true,
+                  message: "empty report: no topics",
+                  evidence: { topicCount: 0 },
+                });
+              } else {
+                // --- DB check ---
+                const overview = await prisma.dailyOverview.findUnique({
+                  where: { date: targetDate },
+                  include: { topics: { orderBy: { order: "asc" } } },
+                });
+
+                if (!overview) {
+                  assertions.push({
+                    id: "reports.stage6",
+                    category: "reports",
+                    status: "FAIL",
+                    blocking: true,
+                    message: `DailyOverview not found for ${targetDate}`,
+                    evidence: { date: targetDate },
+                  });
+                } else {
+                  const errors: string[] = [];
+
+                  // Validate topicCount
+                  if (overview.topicCount !== overview.topics.length) {
+                    errors.push(`topicCount mismatch: stored=${overview.topicCount}, actual=${overview.topics.length}`);
+                  }
+
+                  // Validate topics
+                  for (const topic of overview.topics) {
+                    if (!topic.title || topic.title.trim() === "") {
+                      errors.push(`topic ${topic.id}: empty title`);
+                    }
+                    if (!topic.summary || topic.summary.trim() === "") {
+                      errors.push(`topic ${topic.id}: empty summary`);
+                    }
+                    if (topic.itemIds.length === 0 && topic.tweetIds.length === 0) {
+                      errors.push(`topic ${topic.id}: no itemIds or tweetIds`);
+                    }
+                  }
+
+                  // Full reference integrity: check ALL itemIds
+                  const allItemIds = new Set<string>();
+                  const allTweetIds = new Set<string>();
+                  for (const topic of overview.topics) {
+                    for (const id of topic.itemIds) allItemIds.add(id);
+                    for (const id of topic.tweetIds) allTweetIds.add(id);
+                  }
+
+                  if (allItemIds.size > 0) {
+                    const existingItemCount = await prisma.item.count({
+                      where: { id: { in: Array.from(allItemIds) } },
+                    });
+                    const missingItemCount = allItemIds.size - existingItemCount;
+                    if (missingItemCount > 0) {
+                      errors.push(`FK integrity: ${missingItemCount}/${allItemIds.size} itemIds not found`);
+                    }
+                  }
+
+                  if (allTweetIds.size > 0) {
+                    const existingTweetCount = await prisma.tweet.count({
+                      where: { id: { in: Array.from(allTweetIds) } },
+                    });
+                    const missingTweetCount = allTweetIds.size - existingTweetCount;
+                    if (missingTweetCount > 0) {
+                      errors.push(`FK integrity: ${missingTweetCount}/${allTweetIds.size} tweetIds not found`);
+                    }
+                  }
+
+                  assertions.push({
+                    id: "reports.stage6",
+                    category: "reports",
+                    status: errors.length === 0 ? "PASS" : "FAIL",
+                    blocking: true,
+                    message:
+                      errors.length === 0
+                        ? `${overview.topics.length} topics verified`
+                        : `${errors.length} error(s): ${errors.join("; ")}`,
+                    evidence: { topicCount: overview.topics.length, errors },
+                  });
+                }
               }
             }
-
-            if (allTweetIds.size > 0) {
-              const existingTweetCount = await prisma.tweet.count({
-                where: { id: { in: Array.from(allTweetIds) } },
-              });
-              const missingTweetCount = allTweetIds.size - existingTweetCount;
-              if (missingTweetCount > 0) {
-                errors.push(`FK integrity: ${missingTweetCount}/${allTweetIds.size} tweetIds not found`);
-              }
-            }
-
-            assertions.push({
-              id: "reports.stage6",
-              category: "reports",
-              status: errors.length === 0 ? "PASS" : "FAIL",
-              blocking: true,
-              message:
-                errors.length === 0
-                  ? `${overview.topics.length} topics verified`
-                  : `${errors.length} error(s): ${errors.join("; ")}`,
-              evidence: { topicCount: overview.topics.length, errors },
-            });
           }
         }
       }

@@ -48,64 +48,52 @@ export async function runWeeklyAssertions(
   if (!dailyOnly) {
     const stage7Start = Date.now();
 
-    // Check if we have enough DailyOverview records
+    // Check if we have any DailyOverview records
     const dailyCount = await prisma.dailyOverview.count();
-    if (dailyCount < 3) {
-      verboseLog(`  [SKIP] Only ${dailyCount} DailyOverview records (need >= 3)`);
+    verboseLog(`  Found ${dailyCount} DailyOverview records`);
+
+    const res = await fetch(`${apiUrl}/api/cron/weekly`, { method: "POST" });
+    if (!res.ok) {
       assertions.push({
         id: "reports.stage7",
         category: "reports",
-        status: "SKIP",
-        blocking: false,
-        message: `only ${dailyCount} daily overviews (need >= 3)`,
-        evidence: { dailyCount },
+        status: "FAIL",
+        blocking: true,
+        message: `POST /api/cron/weekly returned ${res.status}`,
+        evidence: { status: res.status },
       });
     } else {
-      verboseLog(`  Found ${dailyCount} DailyOverview records`);
+      // Compute week number
+      const { start: monday } = beijingWeekRange(new Date());
+      const weekNumber = utcWeekNumber(monday);
+      verboseLog(`  Target week: ${weekNumber}`);
 
-      const res = await fetch(`${apiUrl}/api/cron/weekly`, { method: "POST" });
-      if (!res.ok) {
+      // Poll for WeeklyReport
+      try {
+        await pollUntil(
+          () => prisma.weeklyReport.findUnique({ where: { weekNumber } }),
+          (report) => report !== null,
+          { timeout, interval: pollInterval, stageName: "Weekly report generation" }
+        );
+
+        verboseLog(`  [OK] WeeklyReport created for ${weekNumber}`);
+        assertions.push({
+          id: "reports.stage7",
+          category: "reports",
+          status: "PASS",
+          blocking: false,
+          message: `generated for ${weekNumber}`,
+          evidence: { weekNumber, dailyCount },
+        });
+      } catch (err) {
         assertions.push({
           id: "reports.stage7",
           category: "reports",
           status: "FAIL",
           blocking: true,
-          message: `POST /api/cron/weekly returned ${res.status}`,
-          evidence: { status: res.status },
+          message: "generation timed out",
+          evidence: { error: err instanceof Error ? err.message : String(err) },
         });
-      } else {
-        // Compute week number
-        const { start: monday } = beijingWeekRange(new Date());
-        const weekNumber = utcWeekNumber(monday);
-        verboseLog(`  Target week: ${weekNumber}`);
-
-        // Poll for WeeklyReport
-        try {
-          await pollUntil(
-            () => prisma.weeklyReport.findUnique({ where: { weekNumber } }),
-            (report) => report !== null,
-            { timeout, interval: pollInterval, stageName: "Weekly report generation" }
-          );
-
-          verboseLog(`  [OK] WeeklyReport created for ${weekNumber}`);
-          assertions.push({
-            id: "reports.stage7",
-            category: "reports",
-            status: "PASS",
-            blocking: false,
-            message: `generated for ${weekNumber}`,
-            evidence: { weekNumber, dailyCount },
-          });
-        } catch (err) {
-          assertions.push({
-            id: "reports.stage7",
-            category: "reports",
-            status: "FAIL",
-            blocking: true,
-            message: "generation timed out",
-            evidence: { error: err instanceof Error ? err.message : String(err) },
-          });
-        }
       }
     }
 

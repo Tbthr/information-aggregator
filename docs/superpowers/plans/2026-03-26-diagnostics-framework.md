@@ -738,6 +738,7 @@ Expected: 全部被拒绝，并返回明确错误。
 要求：
 - 先 dispatch subagent 梳理问题边界
 - 得到修复计划后再改业务代码
+- 代码完成后，使用subagent-driven-development skill进行两阶段review
 - 修复后重跑受影响 diagnostics 组合
 
 - [ ] **Step 9: 运行完整构建验收**

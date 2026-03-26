@@ -78,8 +78,8 @@ model DailyReportConfig {
 
   keywordBlacklist   String[]
   filterPrompt       String?
-  topicPrompt        String?
-  topicSummaryPrompt String?
+  topicPrompt        String
+  topicSummaryPrompt String
   createdAt          DateTime @default(now()) @db.Timestamptz
   updatedAt          DateTime @updatedAt @db.Timestamptz
 }

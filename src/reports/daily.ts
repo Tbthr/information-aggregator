@@ -142,7 +142,7 @@ async function topicClustering(
     })),
   ]
 
-  const prompt = buildTopicClusteringPrompt(contentList, config.topicPrompt ?? "")
+  const prompt = buildTopicClusteringPrompt(contentList, config.topicPrompt)
   const result = await aiClient.generateText(prompt)
   return parseTopicClusteringResult(result)
 }
@@ -184,7 +184,7 @@ async function generateTopicSummaries(
 
         if (contents.length === 0) return null
 
-        const prompt = buildTopicSummaryPrompt(topic.title, contents, config.topicSummaryPrompt ?? "")
+        const prompt = buildTopicSummaryPrompt(topic.title, contents, config.topicSummaryPrompt)
         const result = await aiClient.generateText(prompt)
         const parsed = parseTopicSummaryResult(result)
 
@@ -292,14 +292,44 @@ export async function generateDailyReport(
   // Load config
   let config = await prisma.dailyReportConfig.findUnique({ where: { id: "default" } })
   if (!config) {
-    // Use upsert with all required fields - this should not happen normally since DB has defaults
+    // This fallback should not happen in production since DB has defaults
+    // These prompts include JSON output instructions as a safety measure
+    const defaultTopicPrompt = `你是一位专业的信息分析师。请将以下内容列表按照话题进行聚类分组。
+
+要求：
+1. 分成 3-8 个话题
+2. 每个话题内的内容应该高度相关
+3. 每条内容只能属于一个话题
+4. 不要遗漏重要内容
+5. 话题标题简洁有力（中文，10字以内）
+
+请以 JSON 格式输出：
+
+{
+  "topics": [
+    {
+      "title": "话题标题",
+      "itemIndexes": [0, 1, 2],
+      "tweetIndexes": []
+    }
+  ]
+}`
+    const defaultTopicSummaryPrompt = `你是一位专业的信息分析师。请为以下话题下的内容生成一段综合总结。
+
+要求：
+1. 总结应该提炼核心信息和关键趋势
+2. 200-400字
+3. 用中文撰写
+4. 不要简单罗列，要综合分析
+
+请直接输出总结文本，不要包含 JSON 格式或额外标记。`
     config = await prisma.dailyReportConfig.upsert({
       where: { id: "default" },
       create: {
         id: "default",
         filterPrompt: "",
-        topicPrompt: "",
-        topicSummaryPrompt: "",
+        topicPrompt: defaultTopicPrompt,
+        topicSummaryPrompt: defaultTopicSummaryPrompt,
       },
       update: {},
     })

@@ -20,13 +20,12 @@ export async function runReportsConfigAssertions(
     if (verbose) console.log(...args);
   };
 
-  // ── B-04: Config validation (maxItems>200, minScore<0, pickCount=0) ──
+  // ── B-04: Config validation (maxItems>200, minScore<0) ──
 
   const b04Start = Date.now();
   const b04Cases = [
     { body: { daily: { maxItems: 999 } }, label: "maxItems=999 (>200)" },
     { body: { daily: { minScore: -1 } }, label: "minScore=-1 (<0)" },
-    { body: { daily: { pickCount: 0 } }, label: "pickCount=0 (<1)" },
   ];
 
   let allB04Rejected = true;

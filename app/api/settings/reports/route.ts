@@ -12,8 +12,8 @@ const dailyConfigSchema = z.object({
   minScore: z.number().int().min(0).max(10).optional(),
   keywordBlacklist: z.array(z.string()).optional(),
   filterPrompt: z.string().nullable().optional(),
-  topicPrompt: z.string().nullable().optional(),
-  topicSummaryPrompt: z.string().nullable().optional(),
+  topicPrompt: z.string().optional(),
+  topicSummaryPrompt: z.string().optional(),
 })
 
 const weeklyConfigSchema = z.object({
@@ -74,6 +74,15 @@ export async function PUT(request: NextRequest) {
   if (dailyUpdate) {
     // Get existing config to fill in required prompt fields if not provided
     const existing = await prisma.dailyReportConfig.findUnique({ where: { id: "default" } })
+    const updateData: Record<string, unknown> = {}
+    if (dailyUpdate.filterPrompt !== undefined) updateData.filterPrompt = dailyUpdate.filterPrompt
+    if (dailyUpdate.topicPrompt !== undefined) updateData.topicPrompt = dailyUpdate.topicPrompt
+    if (dailyUpdate.topicSummaryPrompt !== undefined) updateData.topicSummaryPrompt = dailyUpdate.topicSummaryPrompt
+    if (dailyUpdate.packs !== undefined) updateData.packs = dailyUpdate.packs
+    if (dailyUpdate.maxItems !== undefined) updateData.maxItems = dailyUpdate.maxItems
+    if (dailyUpdate.minScore !== undefined) updateData.minScore = dailyUpdate.minScore
+    if (dailyUpdate.keywordBlacklist !== undefined) updateData.keywordBlacklist = dailyUpdate.keywordBlacklist
+
     await prisma.dailyReportConfig.upsert({
       where: { id: "default" },
       create: {
@@ -86,15 +95,7 @@ export async function PUT(request: NextRequest) {
         minScore: dailyUpdate.minScore ?? existing?.minScore ?? 0,
         keywordBlacklist: dailyUpdate.keywordBlacklist ?? existing?.keywordBlacklist ?? [],
       },
-      update: {
-        filterPrompt: dailyUpdate.filterPrompt,
-        topicPrompt: dailyUpdate.topicPrompt,
-        topicSummaryPrompt: dailyUpdate.topicSummaryPrompt,
-        packs: dailyUpdate.packs,
-        maxItems: dailyUpdate.maxItems,
-        minScore: dailyUpdate.minScore,
-        keywordBlacklist: dailyUpdate.keywordBlacklist,
-      },
+      update: updateData,
     })
   }
 

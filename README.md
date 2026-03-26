@@ -37,6 +37,31 @@ pnpm dev
 - [Prisma](https://www.prisma.io/)
 - [Supabase](https://supabase.com/)
 
+## Diagnostics Framework
+
+项目内置诊断框架，用于验证收集流水线和报表系统的正确性。
+
+### 命令
+
+```bash
+# 只读诊断（无风险）
+npx tsx scripts/diagnostics.ts collection                          # 收集系统诊断
+npx tsx scripts/diagnostics.ts reports --config-only               # 报表配置校验
+
+# 写入诊断（需确认）
+npx tsx scripts/diagnostics.ts collection --run-collection --allow-write  # 触发实际收集
+npx tsx scripts/diagnostics.ts reports --daily-only --allow-write --confirm-production
+npx tsx scripts/diagnostics.ts reports --weekly-only --allow-write --confirm-production
+npx tsx scripts/diagnostics.ts full --allow-write --confirm-production       # 全量诊断
+
+# 完整命令矩阵见 AGENTS.md
+```
+
+### 已知限制
+
+- `--cleanup` 标志已定义但**未实现**。目前不会执行任何数据清理。
+- 生产环境写入操作需要 `--confirm-production` 确认。
+
 ## License
 
 MIT

@@ -39,12 +39,11 @@ export function buildTopicClusteringPrompt(
   items: TopicClusterItem[],
   prompt: string
 ): string {
-  const safePrompt = prompt ?? ""
   const contentList = items
     .map((item, i) => `[${i}] [${item.type === "item" ? "文章" : "推文"}] ${item.title}\n    ${item.summary}`)
     .join("\n\n")
 
-  return `${safePrompt}\n\n---\n\n以下是需要分类的内容列表：\n\n${contentList}`
+  return `${prompt}\n\n---\n\n以下是需要分类的内容列表：\n\n${contentList}`
 }
 
 export function parseTopicClusteringResult(text: string): TopicClusteringResult {
@@ -63,12 +62,11 @@ export function buildTopicSummaryPrompt(
   contents: { title: string; summary: string; type: string }[],
   prompt: string
 ): string {
-  const safePrompt = prompt ?? ""
   const contentList = contents
     .map((c) => `- [${c.type === "item" ? "文章" : "推文"}] ${c.title}: ${c.summary}`)
     .join("\n")
 
-  return `${safePrompt}\n\n---\n\n话题：${topicTitle}\n\n该话题下的内容：\n${contentList}`
+  return `${prompt}\n\n---\n\n话题：${topicTitle}\n\n该话题下的内容：\n${contentList}`
 }
 
 export function parseTopicSummaryResult(text: string): TopicSummaryResult {
