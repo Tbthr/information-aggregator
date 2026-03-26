@@ -39,11 +39,12 @@ export function buildTopicClusteringPrompt(
   items: TopicClusterItem[],
   prompt: string
 ): string {
+  const safePrompt = prompt ?? ""
   const contentList = items
     .map((item, i) => `[${i}] [${item.type === "item" ? "文章" : "推文"}] ${item.title}\n    ${item.summary}`)
     .join("\n\n")
 
-  return `${prompt}\n\n---\n\n以下是需要分类的内容列表：\n\n${contentList}`
+  return `${safePrompt}\n\n---\n\n以下是需要分类的内容列表：\n\n${contentList}`
 }
 
 export function parseTopicClusteringResult(text: string): TopicClusteringResult {
@@ -62,11 +63,12 @@ export function buildTopicSummaryPrompt(
   contents: { title: string; summary: string; type: string }[],
   prompt: string
 ): string {
+  const safePrompt = prompt ?? ""
   const contentList = contents
     .map((c) => `- [${c.type === "item" ? "文章" : "推文"}] ${c.title}: ${c.summary}`)
     .join("\n")
 
-  return `${prompt}\n\n---\n\n话题：${topicTitle}\n\n该话题下的内容：\n${contentList}`
+  return `${safePrompt}\n\n---\n\n话题：${topicTitle}\n\n该话题下的内容：\n${contentList}`
 }
 
 export function parseTopicSummaryResult(text: string): TopicSummaryResult {
@@ -81,11 +83,12 @@ export function buildFilterPrompt(
   items: TopicClusterItem[],
   prompt: string
 ): string {
+  const safePrompt = prompt ?? ""
   const contentList = items
     .map((item, i) => `[${i}] [${item.type === "item" ? "文章" : "推文"}] ${item.title}\n    ${item.summary}`)
     .join("\n\n")
 
-  return `${prompt}\n\n---\n\n以下是需要过滤的内容列表：\n\n${contentList}`
+  return `${safePrompt}\n\n---\n\n以下是需要过滤的内容列表：\n\n${contentList}`
 }
 
 export function parseFilterResult(text: string): { keep: number[]; discard: number[] } {
@@ -103,11 +106,13 @@ export function buildPickReasonPrompt(
   summary: string,
   prompt: string
 ): string {
-  return `${prompt}\n\n---\n\n文章标题：${title}\n文章摘要：${summary}`
+  const safePrompt = prompt ?? ""
+  return `${safePrompt}\n\n---\n\n文章标题：${title}\n文章摘要：${summary}`
 }
 
 export function parsePickReasonResult(text: string): PickReasonResult {
-  return { reason: text.trim() }
+  const reason = text.trim()
+  return { reason: reason || "内容精选" }
 }
 
 // ============================================================
@@ -119,6 +124,7 @@ export function buildEditorialPrompt(
   topItems: { title: string; summary: string; score: number }[],
   prompt: string
 ): string {
+  const safePrompt = prompt ?? ""
   const topicSection = topicSummaries
     .map((t) => `【${t.date} ${t.dayLabel}】${t.title}: ${t.summary}`)
     .join("\n\n")
@@ -126,7 +132,7 @@ export function buildEditorialPrompt(
     .map((item) => `- [${item.score}分] ${item.title}: ${item.summary}`)
     .join("\n")
 
-  return `${prompt}\n\n---\n\n本周话题摘要：\n\n${topicSection}\n\n本周高分文章：\n${itemSection}`
+  return `${safePrompt}\n\n---\n\n本周话题摘要：\n\n${topicSection}\n\n本周高分文章：\n${itemSection}`
 }
 
 export function parseEditorialResult(text: string): EditorialResult {
