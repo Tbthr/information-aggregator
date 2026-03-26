@@ -56,6 +56,11 @@ export async function loadSourceHealthSummary(): Promise<SourceHealthSummary[]> 
 export function classifySourceHealth(detail: SourceHealthSummary): SourceHealthStatus {
   const { consecutiveFailures, lastSuccessAt, lastFailureAt } = detail;
 
+  // If never checked (no success AND no failure), return unknown
+  if (!lastSuccessAt && !lastFailureAt) {
+    return "unknown";
+  }
+
   // No failures recorded — definitely healthy
   if (consecutiveFailures === 0) {
     return "healthy";
