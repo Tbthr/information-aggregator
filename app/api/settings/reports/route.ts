@@ -11,9 +11,9 @@ const dailyConfigSchema = z.object({
   maxItems: z.number().int().min(1).max(200).optional(),
   minScore: z.number().int().min(0).max(10).optional(),
   keywordBlacklist: z.array(z.string()).optional(),
-  filterPrompt: z.string().optional(),
-  topicPrompt: z.string().optional(),
-  topicSummaryPrompt: z.string().optional(),
+  filterPrompt: z.string().nullable().optional(),
+  topicPrompt: z.string().nullable().optional(),
+  topicSummaryPrompt: z.string().nullable().optional(),
 })
 
 const weeklyConfigSchema = z.object({
@@ -24,8 +24,8 @@ const weeklyConfigSchema = z.object({
     .max(28)
     .refine((v) => v % 7 === 0, { message: "必须为 7 的倍数" })
     .optional(),
-  editorialPrompt: z.string().optional(),
-  pickReasonPrompt: z.string().optional(),
+  editorialPrompt: z.string().nullable().optional(),
+  pickReasonPrompt: z.string().nullable().optional(),
   pickCount: z.number().int().min(1).max(20).optional(),
 })
 

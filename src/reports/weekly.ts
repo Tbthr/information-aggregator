@@ -77,7 +77,7 @@ async function generateEditorial(
       score: item.score ?? 0,
     }))
 
-  const prompt = buildEditorialPrompt(sortedSummaries, topItems, config.editorialPrompt)
+  const prompt = buildEditorialPrompt(sortedSummaries, topItems, config.editorialPrompt ?? "")
   const result = await aiClient.generateText(prompt)
   const parsed = parseEditorialResult(result)
   return parsed.editorial
@@ -95,7 +95,7 @@ async function generateWeeklyPicks(
 
   for (const item of sortedItems.slice(0, pickCount)) {
     try {
-      const prompt = buildPickReasonPrompt(item.title, item.summary ?? "", config.pickReasonPrompt)
+      const prompt = buildPickReasonPrompt(item.title, item.summary ?? "", config.pickReasonPrompt ?? "")
       const result = await aiClient.generateText(prompt)
       const parsed = parsePickReasonResult(result)
       picks.push({ itemId: item.id, reason: parsed.reason })

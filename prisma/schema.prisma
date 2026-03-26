@@ -77,9 +77,9 @@ model DailyReportConfig {
   minScore           Int      @default(0)
 
   keywordBlacklist   String[]
-  filterPrompt       String
-  topicPrompt        String
-  topicSummaryPrompt String
+  filterPrompt       String?
+  topicPrompt        String?
+  topicSummaryPrompt String?
   createdAt          DateTime @default(now()) @db.Timestamptz
   updatedAt          DateTime @updatedAt @db.Timestamptz
 }
@@ -190,8 +190,8 @@ model WeeklyReportConfig {
 
   days               Int      @default(7)
 
-  editorialPrompt    String
-  pickReasonPrompt   String
+  editorialPrompt    String?
+  pickReasonPrompt   String?
 
   pickCount          Int      @default(6)
 

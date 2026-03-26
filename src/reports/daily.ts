@@ -142,7 +142,7 @@ async function topicClustering(
     })),
   ]
 
-  const prompt = buildTopicClusteringPrompt(contentList, config.topicPrompt)
+  const prompt = buildTopicClusteringPrompt(contentList, config.topicPrompt ?? "")
   const result = await aiClient.generateText(prompt)
   return parseTopicClusteringResult(result)
 }
@@ -184,7 +184,7 @@ async function generateTopicSummaries(
 
         if (contents.length === 0) return null
 
-        const prompt = buildTopicSummaryPrompt(topic.title, contents, config.topicSummaryPrompt)
+        const prompt = buildTopicSummaryPrompt(topic.title, contents, config.topicSummaryPrompt ?? "")
         const result = await aiClient.generateText(prompt)
         const parsed = parseTopicSummaryResult(result)
 
