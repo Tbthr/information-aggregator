@@ -4,7 +4,7 @@ import type { RawItem, SourceType } from "../types/index";
 import type { Item } from "@prisma/client";
 
 // 批量操作的分批大小
-const BATCH_SIZE = 100;
+const BATCH_SIZE = 30;
 
 export interface ArchiveResult {
   newCount: number;
