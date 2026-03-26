@@ -47,7 +47,7 @@ export function redactDatabaseHost(url: string): string {
 }
 
 export interface NormalizeAndValidateArgsOptions {
-  mode: DiagnosticsMode;
+  mode?: DiagnosticsMode;
   runCollection?: boolean;
   configOnly?: boolean;
   dailyOnly?: boolean;
