@@ -1,7 +1,8 @@
 // Diagnostics Framework Collection Health
 
 import { prisma } from "@/lib/prisma";
-import type { SourceHealthDetail, SourceHealthStatus } from "./types";
+import type { SourceHealthSummary, SourceHealthStatus } from "./types";
+export type { SourceHealthSummary } from "./types";
 
 /**
  * Classification thresholds
@@ -14,7 +15,7 @@ const FAILING_MIN_CONSECUTIVE = 3;
  * Loads all source health records from the database and joins with source names.
  * Returns an array of source health details ready for diagnostics.
  */
-export async function loadSourceHealthSummary(): Promise<SourceHealthDetail[]> {
+export async function loadSourceHealthSummary(): Promise<SourceHealthSummary[]> {
   const records = await prisma.sourceHealth.findMany({
     include: {
       source: {
@@ -26,15 +27,21 @@ export async function loadSourceHealthSummary(): Promise<SourceHealthDetail[]> {
     },
   });
 
-  return records.map((record) => ({
-    sourceId: record.sourceId,
-    sourceName: record.source.name,
-    status: "healthy" as SourceHealthStatus,
-    consecutiveFailures: record.consecutiveFailures,
-    lastSuccessAt: record.lastSuccessAt?.toISOString(),
-    lastFailureAt: record.lastFailureAt?.toISOString(),
-    lastError: record.lastError ?? undefined,
-  }));
+  return records.map((record) => {
+    const detail: SourceHealthSummary = {
+      sourceId: record.sourceId,
+      sourceName: record.source.name,
+      status: "healthy" as SourceHealthStatus,
+      consecutiveFailures: record.consecutiveFailures,
+      lastSuccessAt: record.lastSuccessAt?.toISOString(),
+      lastFailureAt: record.lastFailureAt?.toISOString(),
+      lastError: record.lastError ?? undefined,
+    };
+    return {
+      ...detail,
+      status: classifySourceHealth(detail),
+    };
+  });
 }
 
 /**
@@ -46,7 +53,7 @@ export async function loadSourceHealthSummary(): Promise<SourceHealthDetail[]> {
  * - failing: consecutiveFailures >= FAILING_MIN_CONSECUTIVE AND no recent success
  * - unknown: never been checked
  */
-export function classifySourceHealth(detail: SourceHealthDetail): SourceHealthStatus {
+export function classifySourceHealth(detail: SourceHealthSummary): SourceHealthStatus {
   const { consecutiveFailures, lastSuccessAt, lastFailureAt } = detail;
 
   // No failures recorded — definitely healthy

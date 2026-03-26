@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { classifySourceHealth } from "./health";
-import type { CollectionInventory, PersistedSummary, PersistedItemSummary, PersistedTweetSummary, SourceHealthDetail } from "./types";
+import type { CollectionInventory, PersistedSummary, PersistedItemSummary, PersistedTweetSummary, SourceHealthSummary } from "./types";
 
 /**
  * Loads collection inventory counts from the database.

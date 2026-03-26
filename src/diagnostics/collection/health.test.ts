@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { classifySourceHealth, type SourceHealthDetail } from "./health";
+import { classifySourceHealth, type SourceHealthSummary } from "./health";
 
 describe("classifySourceHealth", () => {
   test("consecutiveFailures = 0 with recent success is healthy", () => {
     const now = new Date().toISOString();
-    const detail: SourceHealthDetail = {
+    const detail: SourceHealthSummary = {
       sourceId: "src-1",
       sourceName: "Test Source",
       status: "healthy",
@@ -19,7 +19,7 @@ describe("classifySourceHealth", () => {
   });
 
   test("consecutiveFailures = 0 with no history is healthy", () => {
-    const detail: SourceHealthDetail = {
+    const detail: SourceHealthSummary = {
       sourceId: "src-1",
       sourceName: "Test Source",
       status: "healthy",
@@ -36,7 +36,7 @@ describe("classifySourceHealth", () => {
   test("consecutiveFailures > 0 but last success is recent is warning", () => {
     const now = new Date();
     const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString();
-    const detail: SourceHealthDetail = {
+    const detail: SourceHealthSummary = {
       sourceId: "src-1",
       sourceName: "Test Source",
       status: "warning",
@@ -53,7 +53,7 @@ describe("classifySourceHealth", () => {
   test("consecutiveFailures > 0 with no recent success is failing", () => {
     const now = new Date();
     const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
-    const detail: SourceHealthDetail = {
+    const detail: SourceHealthSummary = {
       sourceId: "src-1",
       sourceName: "Test Source",
       status: "failing",
@@ -71,7 +71,7 @@ describe("classifySourceHealth", () => {
     const now = new Date();
     const twoDaysAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000).toISOString();
     const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
-    const detail: SourceHealthDetail = {
+    const detail: SourceHealthSummary = {
       sourceId: "src-1",
       sourceName: "Test Source",
       status: "failing",
@@ -86,7 +86,7 @@ describe("classifySourceHealth", () => {
   });
 
   test("missing lastSuccessAt and lastFailureAt with failures is failing", () => {
-    const detail: SourceHealthDetail = {
+    const detail: SourceHealthSummary = {
       sourceId: "src-1",
       sourceName: "Test Source",
       status: "failing",
@@ -101,7 +101,7 @@ describe("classifySourceHealth", () => {
   });
 
   test("undefined consecutiveFailures defaults to healthy", () => {
-    const detail: SourceHealthDetail = {
+    const detail: SourceHealthSummary = {
       sourceId: "src-1",
       sourceName: "Test Source",
       status: "healthy",

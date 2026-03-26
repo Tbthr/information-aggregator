@@ -29,9 +29,9 @@ export interface SourceEvent {
 }
 
 /**
- * Source health detail from database
+ * Source health summary from database
  */
-export interface SourceHealthDetail {
+export interface SourceHealthSummary {
   sourceId: string;
   sourceName: string;
   status: SourceHealthStatus;
@@ -104,7 +104,7 @@ export interface RunCandidateSummary {
  */
 export interface CollectionDiagnosticsSection {
   inventory?: CollectionInventory;
-  health?: SourceHealthDetail[];
+  health?: SourceHealthSummary[];
   run?: {
     triggered: boolean;
     sourceEvents: SourceEvent[];
