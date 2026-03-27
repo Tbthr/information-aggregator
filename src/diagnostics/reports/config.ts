@@ -82,20 +82,21 @@ export async function runReportsConfigAssertions(
   });
 
   // ── B-08: Nullable prompt fields ──
+  // Only filterPrompt is nullable (String?), topicPrompt and topicSummaryPrompt are non-nullable (String)
 
-  const b08Res = await apiPut(url, { daily: { filterPrompt: "Only AI content", topicPrompt: null } });
+  const b08Res = await apiPut(url, { daily: { filterPrompt: null } });
   if (b08Res.status === 200) {
-    const resp = b08Res.data as { success: boolean; data: { daily: { filterPrompt: string | null; topicPrompt: string | null } } };
-    const ok = resp.data?.daily?.filterPrompt === "Only AI content" && resp.data?.daily?.topicPrompt === null;
-    verboseLog(`  B-08 nullable prompts: filterPrompt="${resp.data?.daily?.filterPrompt}", topicPrompt=${resp.data?.daily?.topicPrompt} ${ok ? "OK" : "MISMATCH"}`);
+    const resp = b08Res.data as { success: boolean; data: { daily: { filterPrompt: string | null } } };
+    const ok = resp.data?.daily?.filterPrompt === null;
+    verboseLog(`  B-08 nullable filterPrompt: filterPrompt=${resp.data?.daily?.filterPrompt} ${ok ? "OK" : "MISMATCH"}`);
 
     assertions.push({
       id: "B-08",
       category: "api",
       status: ok ? "PASS" : "FAIL",
       blocking: false,
-      message: ok ? "nullable fields work correctly (filterPrompt set, topicPrompt null)" : "nullable fields mismatch",
-      evidence: { filterPrompt: resp.data?.daily?.filterPrompt, topicPrompt: resp.data?.daily?.topicPrompt },
+      message: ok ? "filterPrompt nullable works correctly (set to null)" : "filterPrompt null mismatch",
+      evidence: { filterPrompt: resp.data?.daily?.filterPrompt },
     });
   } else {
     assertions.push({
@@ -103,7 +104,7 @@ export async function runReportsConfigAssertions(
       category: "api",
       status: "FAIL",
       blocking: false,
-      message: `PUT returned ${b08Res.status} for nullable prompts test`,
+      message: `PUT returned ${b08Res.status} for nullable filterPrompt test`,
       evidence: { status: b08Res.status },
     });
   }
