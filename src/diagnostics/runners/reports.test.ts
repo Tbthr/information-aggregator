@@ -66,8 +66,8 @@ describe("reports runner", () => {
     const section = {
       reports: {
         config: {
-          daily: { maxItems: 200, minScore: 0.3, pickCount: 5 },
-          weekly: { days: 7 },
+          daily: { maxItems: 200, minScore: 0 },
+          weekly: { days: 7, pickCount: 5 },
         },
       },
     };

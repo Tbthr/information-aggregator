@@ -54,7 +54,7 @@ export interface DailyReportData {
     itemIds: string[];
     tweetIds: string[];
   }>;
-  referencedItems: Array<{ id: string; title: string; url: string; score: number; summary: string | null }>;
+  referencedItems: Array<{ id: string; title: string; url: string; summary: string | null }>;
   referencedTweets: Array<{ id: string; text: string; authorHandle: string; tweetUrl: string }>;
 }
 
@@ -67,5 +67,5 @@ export interface WeeklyReportData {
   errorMessage?: string | null;
   errorSteps?: string[] | null;
   picks: Array<{ id: string; order: number; itemId: string; reason: string }>;
-  referencedItems: Array<{ id: string; title: string; url: string; score: number; summary: string | null }>;
+  referencedItems: Array<{ id: string; title: string; url: string; summary: string | null }>;
 }
