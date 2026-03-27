@@ -21,7 +21,8 @@ import { filterByPack } from "./filter-by-pack";
 import { dedupeExact } from "./dedupe-exact";
 import { dedupeNear } from "./dedupe-near";
 import {
-  archiveRawItems,
+  archiveNormalizedItems,
+  type NormalizedItemArchiveInput,
   syncPacksToPrisma,
   upsertSourcesBatch,
   recordSourcesSuccessBatch,
@@ -32,6 +33,12 @@ import { createAiClient } from "../ai/providers";
 import { buildAdapters } from "../adapters/build-adapters";
 import type { RawItem, NormalizedItem, SourcePack, SourceType } from "../types/index";
 import type { Logger } from "../utils/logger";
+
+/**
+ * Unsupported source types that should be skipped during collection.
+ * These sources are intentionally not supported in the new pipeline.
+ */
+const UNSUPPORTED_SOURCE_TYPES: SourceType[] = ["github-trending"];
 
 export interface SourceFailure {
   sourceId: string;
@@ -108,12 +115,17 @@ interface ResolvedSource {
 
 /**
  * Resolve enabled sources from packs, deduplicating by URL.
+ * Filters out unsupported source types (e.g., github-trending).
  */
 function resolveSourcesForCollection(packs: SourcePack[]): ResolvedSource[] {
   const seen = new Set<string>();
   const sources: ResolvedSource[] = [];
   for (const pack of packs) {
     for (const source of pack.sources) {
+      // Skip unsupported source types
+      if (UNSUPPORTED_SOURCE_TYPES.includes(source.type)) {
+        continue;
+      }
       if (!source.enabled && source.enabled !== undefined) continue;
       if (seen.has(source.url)) continue;
       seen.add(source.url);
@@ -139,6 +151,9 @@ export async function runCollectJob(options: RunCollectJobOptions = {}): Promise
   const log = (msg: string, data?: Record<string, unknown>) => {
     logger?.info(msg, data);
   };
+
+  // ── 0. Job start timestamp (shared across all stages) ───────────
+  const jobStartedAt = new Date().toISOString();
 
   // ── 1. Load packs ────────────────────────────────────────────────
   log("Starting collect job");
@@ -179,10 +194,13 @@ export async function runCollectJob(options: RunCollectJobOptions = {}): Promise
   }
   await upsertSourcesBatch(allSources);
 
-  // ── 4. Resolve sources for collection ─────────────────────────
+  // ── 4. Resolve sources for collection (filters unsupported types) ─
   const sources = resolveSourcesForCollection(packs);
 
   log("Collecting from sources", { count: sources.length });
+
+  // Build sourceNameMap for later use
+  const sourceNameMap = Object.fromEntries(sources.map((s) => [s.id, s.description ?? s.id]));
 
   // ── 5. Collect from sources ────────────────────────────────────
   const failedSources: SourceFailure[] = [];
@@ -228,22 +246,36 @@ export async function runCollectJob(options: RunCollectJobOptions = {}): Promise
   // ── 9. Near dedup ──────────────────────────────────────────────
   const afterNear = dedupeNear(afterExact);
 
-  // Convert NormalizedItem[] back to RawItem[] for archival
-  const dedupedRawItems: RawItem[] = afterNear.map((item): RawItem => ({
-    id: item.id,
-    sourceId: item.sourceId ?? "",
-    title: item.title ?? "",
-    url: item.normalizedUrl,
-    fetchedAt: new Date().toISOString(),
-    metadataJson: item.metadataJson ?? "{}",
-    publishedAt: item.publishedAt,
-  }));
-
-  log("After dedup", { original: rawItems.length, deduped: dedupedRawItems.length });
+  log("After dedup", { original: rawItems.length, deduped: afterNear.length });
 
   // ── 10. Archive ─────────────────────────────────────────────────
-  const now = new Date().toISOString();
-  const sourceNameMap = Object.fromEntries(sources.map((s) => [s.id, s.description ?? s.id]));
+  // Build archive input from NormalizedItem[] with proper field mapping
+  const archiveInput: NormalizedItemArchiveInput[] = afterNear.map((item) => {
+    // Parse author from metadataJson
+    let author: string | null = null;
+    try {
+      const metadata = JSON.parse(item.metadataJson);
+      author = metadata.authorName ?? null;
+    } catch {
+      author = null;
+    }
+
+    return {
+      id: item.id,
+      title: item.title,
+      normalizedUrl: item.normalizedUrl,
+      sourceId: item.sourceId,
+      sourceName: sourceNameMap[item.sourceId] ?? item.sourceId,
+      sourceType: item.sourceType,
+      publishedAt: item.publishedAt,
+      fetchedAt: jobStartedAt,
+      author,
+      summary: item.normalizedSummary || null,
+      content: item.normalizedContent || null,
+      metadataJson: item.metadataJson,
+      packId: item.filterContext?.packId ?? null,
+    };
+  });
 
   // Build candidate items from afterNear dedup stage for diagnostics
   const candidates: CandidateItem[] = afterNear.map((item) => ({
@@ -255,7 +287,7 @@ export async function runCollectJob(options: RunCollectJobOptions = {}): Promise
     score: 0, // engagementScore removed from NormalizedItem
   }));
 
-  const archiveResult = await archiveRawItems(dedupedRawItems, now, sourceNameMap);
+  const archiveResult = await archiveNormalizedItems(archiveInput, jobStartedAt, sourceNameMap);
   log("Archived items", { newCount: archiveResult.newCount, updateCount: archiveResult.updateCount });
 
   // ── 11. AI enrichment ─────────────────────────────────────────
@@ -286,7 +318,7 @@ export async function runCollectJob(options: RunCollectJobOptions = {}): Promise
     .filter((source) => !failedSourceIds.has(source.id))
     .map((source) => {
       const sourceItems = rawItems.filter((i) => i.sourceId === source.id);
-      return { sourceId: source.id, fetchedAt: now, itemCount: sourceItems.length };
+      return { sourceId: source.id, fetchedAt: jobStartedAt, itemCount: sourceItems.length };
     })
     .filter((r) => r.itemCount > 0);
   await recordSourcesSuccessBatch(healthRecords);
