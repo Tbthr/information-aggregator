@@ -7,7 +7,6 @@
  *  - normalization
  *  - exact + near deduplication
  *  - archival
- *  - AI enrichment
  *  - source health tracking
  *
  * Used by both the cron route and the diagnostics framework.
@@ -28,8 +27,6 @@ import {
   recordSourcesSuccessBatch,
   recordSourceFailure,
 } from "../archive/upsert-prisma";
-import { getItemsToEnrich, enrichItems } from "../archive/enrich-prisma";
-import { createAiClient } from "../ai/providers";
 import { buildAdapters } from "../adapters/build-adapters";
 import type { RawItem, NormalizedItem, SourcePack, SourceType } from "../types/index";
 import type { Logger } from "../utils/logger";
@@ -290,30 +287,13 @@ export async function runCollectJob(options: RunCollectJobOptions = {}): Promise
   const archiveResult = await archiveNormalizedItems(archiveInput, jobStartedAt, sourceNameMap);
   log("Archived items", { newCount: archiveResult.newCount, updateCount: archiveResult.updateCount });
 
-  // ── 11. AI enrichment ─────────────────────────────────────────
-  if (archiveResult.newCount > 0) {
-    const aiClient = createAiClient();
-    if (aiClient) {
-      const newItemIds = archiveResult.newItemIds;
-      const enrichItemIds = await getItemsToEnrich("new", newItemIds);
-      if (enrichItemIds.length > 0) {
-        log("Enriching items", { count: enrichItemIds.length });
-        const enrichResult = await enrichItems(enrichItemIds, aiClient);
-        log("Enriched items", {
-          success: enrichResult.successCount,
-          failed: enrichResult.failCount,
-        });
-      }
-    }
-  }
-
-  // ── 12. Record source failures ─────────────────────────────────
+  // ── 11. Record source failures ─────────────────────────────────
   const failedSourceIds = new Set(failedSources.map((s) => s.sourceId));
   if (failedSources.length > 0) {
     await Promise.allSettled(failedSources.map((s) => recordSourceFailure(s.sourceId, s.error)));
   }
 
-  // ── 13. Record source successes ────────────────────────────────
+  // ── 12. Record source successes ────────────────────────────────
   const healthRecords = sources
     .filter((source) => !failedSourceIds.has(source.id))
     .map((source) => {

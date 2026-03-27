@@ -61,15 +61,6 @@ mock.module("../adapters/build-adapters", () => ({
   buildAdapters: () => ({ rss: async () => [] }),
 }));
 
-mock.module("../ai/providers", () => ({
-  createAiClient: () => null,
-}));
-
-mock.module("../archive/enrich-prisma", () => ({
-  getItemsToEnrich: async () => [],
-  enrichItems: async () => ({ successCount: 0, failCount: 0, totalCount: 0 }),
-}));
-
 // Import after mocks are set up
 import { runCollectJob, type PipelineCounts, type ArchiveCounts, type SourceFailure } from "./run-collect-job";
 

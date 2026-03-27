@@ -31,7 +31,8 @@ function loadEnvFile() {
     }
     console.log(`   .env 文件已加载 (${loadedCount} 个变量)`);
   } catch (e) {
-    console.log("   .env 文件加载失败:", e);
+    console.error("   .env 文件加载失败:", e);
+    process.exit(1);
   }
 }
 
