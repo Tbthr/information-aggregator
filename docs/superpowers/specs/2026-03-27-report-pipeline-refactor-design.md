@@ -98,6 +98,14 @@ pack 级过滤规则作为本次任务快照进入 pipeline，不在后续阶段
 - 解析相对时间，如“2小时前”
 - 统一 24 小时时间窗口判断基准
 
+后端服务统一使用 UTC：
+
+- Supabase / Prisma 使用 `timestamptz`
+- adapter 必须将来源时间统一换算为 UTC
+- 采集过滤、持久化、评分、日报生成全部以 UTC 时间点为准
+- 只有 API 返回给前端展示时，才转换为北京时间等展示时区
+- 本设计中的日报时间语义为滚动 24 小时，而不是北京时间自然日
+
 ### Adapter 职责
 
 adapter 输出的是 `RawItem`，不是落库对象。
@@ -119,6 +127,11 @@ warning 至少包含：
 - 原始时间值
 - 丢弃原因
 
+日期补全规则：
+
+- 优先按来源时间字符串自带时区解析
+- 如果来源值只有日期且无时区信息，则按 UTC 当日 `23:59:59` 处理
+
 ### RawItem
 
 `RawItem` 是采集最小标准化结果，仅用于进入 normalize。
@@ -138,6 +151,7 @@ warning 至少包含：
 
 - `publishedAt` 必填
 - 其他来源差异信息不放顶层，统一放入 `metadataJson`
+- `fetchedAt` 表示 adapter 产出该条 `RawItem` 时的抓取时间，并原样映射到 `Item.fetchedAt`
 
 ### metadataJson
 
@@ -288,6 +302,13 @@ warning 至少包含：
 - 配置了 `mustInclude` 时，任一命中即通过
 - 未配置 `mustInclude` 时默认通过
 
+匹配语义：
+
+- 当前统一为小写后的子串匹配
+- `mustInclude` 内部是 OR 语义
+- `exclude` 内部是 OR 语义
+- 不引入 token match、布尔表达式或语言特定分词逻辑
+
 过滤规则只使用 `filterContext`，不回查数据库。
 
 ## 去重
@@ -365,7 +386,7 @@ warning 至少包含：
 - `sourceName <- source snapshot`
 - `sourceType <- sourceType`
 - `publishedAt <- publishedAt`
-- `fetchedAt <- current fetch time`
+- `fetchedAt <- RawItem.fetchedAt`
 - `author <- metadataJson.authorName`
 - `summary <- normalizedSummary`
 - `content <- normalizedContent`
@@ -380,6 +401,12 @@ warning 至少包含：
 - 更新其余基础事实字段
 
 本轮先不支持一篇内容属于多个 pack。
+
+pack 归属规则：
+
+- 若同一 `normalizedUrl` 被多个 pack 命中，当前版本只保留一条 `Item`
+- `packId` 采用首次命中优先
+- 后续其他 pack 再命中相同 URL，不改已有 `Item.packId`
 
 ## 日报输入与统一候选模型
 
@@ -409,12 +436,16 @@ warning 至少包含：
 - `content`
 - `publishedAt`
 - `sourceLabel`
+- `normalizedUrl`
+- `normalizedTitle`
 - `rawRef`
 
 规则：
 
 - 单条候选只属于一个 pack
 - 日报支持多 pack，本质是多来源合并读取
+- 对 `tweet`，`packId` 暂时允许使用固定保留值，而不强行映射到真实业务 pack
+- `tweet` 当前总是参与日报输入，不受所选 pack 集合限制
 
 ## 评分阶段
 
@@ -521,6 +552,12 @@ warning 至少包含：
 9. 对每个 topic 执行 summary
 10. 持久化 `DailyOverview` 和 `DigestTopic`
 11. 周报继续消费日报结果
+
+当前周报兼容规则：
+
+- 本轮设计下，日报可包含多 kind 候选
+- 周报暂时只消费日报中的 item 相关结果
+- 非 item 的日报候选先不进入周报主链，后续单独设计
 
 ## 对现有逻辑的主要影响
 
