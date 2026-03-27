@@ -571,8 +571,23 @@ pack 归属规则：
 
 ## 待后续设计的问题
 
-- `Tweet -> ReportCandidate` 的具体映射细节
-- `item` score adapter 的具体信号定义
-- 历史重复判断的时间窗口长度
-- `DailyOverview` / `DigestTopic` 与底层候选引用关系的具体 schema
-- 迁移过程中的 schema 变更顺序与兼容策略
+本轮已明确以下结论：
+
+- `Tweet -> ReportCandidate`
+  - `title = tweet 主文本首句或截断文本`
+  - `summary = tweet 主文本`
+  - `content` 当前留空，后续在支持 thread / quoted / article 展开后再增强
+  - `sourceLabel = @handle`
+  - 实现时添加注释：`TODO: 需要优化`
+- `item` score adapter
+  - 本轮只要求保留独立 adapter 边界与统一输出结构
+  - 具体信号定义与权重本轮不定死
+  - 实现时添加注释：`TODO: 需要优化`
+- 历史重复判断窗口固定为最近 14 天
+- `DailyOverview` / `DigestTopic` 与底层候选引用关系当前继续使用 `itemIds` / `tweetIds`
+- 对应实现位置添加注释：`TODO: 需要优化`
+- 迁移策略采用分阶段兼容方式：
+  1. 先新增新字段和新结构，保留旧逻辑
+  2. 再切换写路径
+  3. 再切换读路径
+  4. 最后删除旧字段和旧逻辑
