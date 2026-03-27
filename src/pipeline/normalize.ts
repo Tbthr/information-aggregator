@@ -63,7 +63,7 @@ export function normalizeItems(items: RawItem[]): NormalizedItem[] {
       relationshipToCanonical: relation.relationshipToCanonical,
       isDiscussionSource: relation.isDiscussionSource,
       normalizedTitle,
-      normalizedText: [normalizedTitle, normalizeWhitespace(item.content ?? "")].filter(Boolean).join(" "),
+      normalizedText: [normalizedTitle, normalizeWhitespace(metadata?.content ?? "")].filter(Boolean).join(" "),
       metadataJson: item.metadataJson,
       sourceType: metadata?.sourceType,
       contentType: metadata?.contentType,
@@ -72,7 +72,7 @@ export function normalizeItems(items: RawItem[]): NormalizedItem[] {
       // Raw items stay immutable; normalization is stored separately so dedup rules can evolve safely.
       processedAt: item.fetchedAt,
       publishedAt: item.publishedAt,
-      content: item.content,
+      content: metadata?.content,
     };
   });
 }

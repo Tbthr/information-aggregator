@@ -242,8 +242,6 @@ export async function runCollectJob(options: RunCollectJobOptions = {}): Promise
     fetchedAt: item.processedAt ?? new Date().toISOString(),
     metadataJson: item.metadataJson ?? "{}",
     publishedAt: item.publishedAt,
-    author: undefined,
-    content: item.content,
   }));
 
   log("After dedup", { original: rawItems.length, deduped: dedupedRawItems.length });

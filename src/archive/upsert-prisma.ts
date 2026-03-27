@@ -26,6 +26,24 @@ function parseSourceType(metadataJson: string): SourceType {
 }
 
 /**
+ * 从 metadataJson 解析 author 和 content
+ */
+function parseMetadataFields(metadataJson: string | undefined): { author: string | null; content: string | null } {
+  if (!metadataJson) {
+    return { author: null, content: null };
+  }
+  try {
+    const metadata = JSON.parse(metadataJson);
+    return {
+      author: metadata.authorName ?? null,
+      content: metadata.content ?? null,
+    };
+  } catch {
+    return { author: null, content: null };
+  }
+}
+
+/**
  * 将 RawItem 转换为数据库记录（用于 createMany）
  */
 function rawItemToCreateData(
@@ -35,6 +53,7 @@ function rawItemToCreateData(
 ): Omit<Item, "source" | "bookmarks" | "createdAt" | "updatedAt" | "id"> {
   const sourceType = parseSourceType(item.metadataJson);
   const sourceName = sourceNameMap[item.sourceId] ?? item.sourceId;
+  const { author, content } = parseMetadataFields(item.metadataJson);
 
   return {
     // id 由 Prisma 自动生成 cuid
@@ -45,10 +64,10 @@ function rawItemToCreateData(
     sourceType,
     publishedAt: item.publishedAt ? new Date(item.publishedAt) : null,
     fetchedAt: new Date(fetchedAt),
-    author: item.author ?? null,
+    author,
     summary: null,
     bullets: [],
-    content: item.content ?? null,
+    content,
     imageUrl: null,
     categories: [],
     score: 5.0,

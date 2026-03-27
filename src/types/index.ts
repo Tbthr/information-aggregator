@@ -59,8 +59,6 @@ export interface RawItem {
   fetchedAt: string;
   metadataJson: string;
   publishedAt?: string;
-  author?: string;
-  content?: string;
   // Runtime filter context (not stored in DB, set at collection time)
   filterContext?: FilterContext;
 }
@@ -120,6 +118,7 @@ export interface RawItemMetadata {
   tweetId?: string;           // 推文 ID
   authorId?: string;          // 作者 ID
   authorName?: string;        // 作者显示名
+  content?: string;           // 正文内容
   expandedUrl?: string;       // 展开的外链 URL
   conversationId?: string;    // 对话 ID
   parent?: RawItemThreadItem; // 父推文（回复上下文）
