@@ -53,6 +53,8 @@ function rawItemToCreateData(
     categories: [],
     score: 5.0,
     metadataJson: item.metadataJson ?? null,
+    // packId is optional in the schema (additive for migration)
+    packId: null,
   };
 }
 

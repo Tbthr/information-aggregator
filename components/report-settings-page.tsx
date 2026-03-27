@@ -23,6 +23,11 @@ interface DailyConfig {
   filterPrompt: string
   topicPrompt: string
   topicSummaryPrompt: string
+  // Kind preferences for article vs tweet base scoring
+  kindPreferences?: {
+    articles?: number
+    tweets?: number
+  } | null
 }
 
 interface WeeklyConfig {
@@ -191,6 +196,7 @@ export function ReportSettingsPage() {
     filterPrompt: "",
     topicPrompt: "",
     topicSummaryPrompt: "",
+    kindPreferences: null,
   })
 
   const [weekly, setWeekly] = useState<WeeklyConfig>({
@@ -215,6 +221,7 @@ export function ReportSettingsPage() {
         filterPrompt: (d.filterPrompt as string) ?? prev.filterPrompt,
         topicPrompt: (d.topicPrompt as string) ?? prev.topicPrompt,
         topicSummaryPrompt: (d.topicSummaryPrompt as string) ?? prev.topicSummaryPrompt,
+        kindPreferences: (d.kindPreferences as { articles?: number; tweets?: number } | null) ?? prev.kindPreferences,
       }))
     }
     if (settings?.weekly) {
@@ -253,6 +260,7 @@ export function ReportSettingsPage() {
             filterPrompt: daily.filterPrompt,
             topicPrompt: daily.topicPrompt,
             topicSummaryPrompt: daily.topicSummaryPrompt,
+            kindPreferences: daily.kindPreferences,
           }),
           weekly: escapePrompts({
             days: weekly.days,
@@ -369,6 +377,48 @@ export function ReportSettingsPage() {
                 setDaily((prev) => ({ ...prev, keywordBlacklist: tags }))
               }
             />
+          </div>
+
+          {/* Kind Preferences for article vs tweet base scoring */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">内容类型偏好</Label>
+            <p className="text-xs text-muted-foreground">
+              调整文章和推文的基础评分权重（0-10，0 表示不使用该类型）
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <NumberField
+                label="文章权重"
+                min={0}
+                max={10}
+                value={daily.kindPreferences?.articles ?? 5}
+                onChange={(v) =>
+                  setDaily((prev) => ({
+                    ...prev,
+                    kindPreferences: {
+                      ...prev.kindPreferences,
+                      articles: v,
+                      tweets: prev.kindPreferences?.tweets !== undefined ? prev.kindPreferences.tweets : 5,
+                    },
+                  }))
+                }
+              />
+              <NumberField
+                label="推文权重"
+                min={0}
+                max={10}
+                value={daily.kindPreferences?.tweets ?? 5}
+                onChange={(v) =>
+                  setDaily((prev) => ({
+                    ...prev,
+                    kindPreferences: {
+                      ...prev.kindPreferences,
+                      tweets: v,
+                      articles: prev.kindPreferences?.articles !== undefined ? prev.kindPreferences.articles : 5,
+                    },
+                  }))
+                }
+              />
+            </div>
           </div>
 
           {/* Prompt 区域 */}

@@ -12,7 +12,13 @@ import type { InlineSource, SourcePack, SourceType } from "../types/index";
  * Convert database Pack and Source records to SourcePack type
  */
 function convertToSourcePack(
-  packRecord: { id: string; name: string; description: string | null },
+  packRecord: {
+    id: string;
+    name: string;
+    description: string | null;
+    mustInclude: string[];
+    exclude: string[];
+  },
   sourceRecords: Array<{
     id: string;
     type: string;
@@ -37,6 +43,8 @@ function convertToSourcePack(
     name: packRecord.name,
     description: packRecord.description ?? undefined,
     sources,
+    mustInclude: packRecord.mustInclude,
+    exclude: packRecord.exclude,
   };
 }
 

@@ -14,6 +14,11 @@ const dailyConfigSchema = z.object({
   filterPrompt: z.string().nullable().optional(),
   topicPrompt: z.string().optional(),
   topicSummaryPrompt: z.string().optional(),
+  // Kind preferences for article vs tweet base scoring (additive for migration)
+  kindPreferences: z.object({
+    articles: z.number().min(0).max(10).optional(),
+    tweets: z.number().min(0).max(10).optional(),
+  }).nullable().optional(),
 })
 
 const weeklyConfigSchema = z.object({
@@ -48,8 +53,18 @@ export async function GET() {
   ])
 
   // Handle null packs array (null means no filter, treat as empty for API consistency)
+  // Parse kindPreferences from JSON string if present
+  let parsedKindPreferences: { articles?: number; tweets?: number } | null = null
+  if (daily?.kindPreferences) {
+    try {
+      parsedKindPreferences = JSON.parse(daily.kindPreferences)
+    } catch {
+      parsedKindPreferences = null
+    }
+  }
+
   return success({
-    daily: daily ? { ...daily, packs: daily.packs ?? [] } : null,
+    daily: daily ? { ...daily, packs: daily.packs ?? [], kindPreferences: parsedKindPreferences } : null,
     weekly,
   })
 }
@@ -82,6 +97,12 @@ export async function PUT(request: NextRequest) {
     if (dailyUpdate.maxItems !== undefined) updateData.maxItems = dailyUpdate.maxItems
     if (dailyUpdate.minScore !== undefined) updateData.minScore = dailyUpdate.minScore
     if (dailyUpdate.keywordBlacklist !== undefined) updateData.keywordBlacklist = dailyUpdate.keywordBlacklist
+    if (dailyUpdate.kindPreferences !== undefined) {
+      // kindPreferences is stored as JSON string in the DB
+      updateData.kindPreferences = dailyUpdate.kindPreferences
+        ? JSON.stringify(dailyUpdate.kindPreferences)
+        : null
+    }
 
     await prisma.dailyReportConfig.upsert({
       where: { id: "default" },
@@ -94,6 +115,9 @@ export async function PUT(request: NextRequest) {
         maxItems: dailyUpdate.maxItems ?? existing?.maxItems ?? 50,
         minScore: dailyUpdate.minScore ?? existing?.minScore ?? 0,
         keywordBlacklist: dailyUpdate.keywordBlacklist ?? existing?.keywordBlacklist ?? [],
+        kindPreferences: dailyUpdate.kindPreferences
+          ? JSON.stringify(dailyUpdate.kindPreferences)
+          : null,
       },
       update: updateData,
     })

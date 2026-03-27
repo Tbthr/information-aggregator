@@ -38,8 +38,19 @@ export interface SourcePack {
   // 模板引用
   promptTemplate?: string;   // 引用 config/prompts/{name}.md
   viewTemplate?: string;     // 引用 config/views/{name}.md
+  // Pack-level filter config (additive for migration)
+  mustInclude?: string[];    // Required keywords for items in this pack
+  exclude?: string[];        // Excluded keywords for items in this pack
 }
 
+// FilterContext - runtime context for filtering items
+export interface FilterContext {
+  packId: string;
+  mustInclude?: string[];
+  exclude?: string[];
+}
+
+// RawItem - 采集最小标准化结果，仅用于进入 normalize
 export interface RawItem {
   id: string;
   sourceId: string;
@@ -50,6 +61,8 @@ export interface RawItem {
   publishedAt?: string;
   author?: string;
   content?: string;
+  // Runtime filter context (not stored in DB, set at collection time)
+  filterContext?: FilterContext;
 }
 
 export interface RawItemEngagement {
@@ -132,6 +145,47 @@ export interface NormalizedItem {
   contentType?: string;
   engagementScore?: number;
   content?: string;
+  // Spec-required normalized fields
+  normalizedUrl?: string;
+  normalizedSummary?: string;
+  normalizedContent?: string;
+  // Runtime filter context (not stored in DB, set at collection time)
+  filterContext?: FilterContext;
+}
+
+// ReportCandidate - 日报阶段统一候选模型，不是数据库表
+export interface ReportCandidate {
+  id: string;
+  kind: "article" | "tweet";
+  packId: string;
+  title: string;
+  summary: string;
+  content: string;
+  publishedAt?: string;
+  sourceLabel: string;
+  normalizedUrl: string;
+  normalizedTitle: string;
+  // rawRef is used to reference the original raw item
+  rawRef: {
+    id: string;
+    sourceId: string;
+  };
+}
+
+// Score breakdown types for runtime scoring
+export interface SignalScores {
+  freshness?: number;
+  engagement?: number;
+  quality?: number;
+  sourceWeight?: number;
+}
+
+export interface ScoreBreakdown {
+  baseScore: number;
+  signalScores: SignalScores;
+  runtimeScore: number;
+  historyPenalty: number;
+  finalScore: number;
 }
 
 export interface SourceHealth {
