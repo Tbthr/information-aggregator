@@ -48,22 +48,26 @@ export async function loadSourceHealthSummary(): Promise<SourceHealthSummary[]> 
  * Classifies a source health detail into a health status.
  *
  * Logic:
- * - healthy: consecutiveFailures = 0 OR (has recent success OR lastFailureAt is older than lastSuccessAt)
- * - warning: consecutiveFailures > 0 BUT last success within WARNING_THRESHOLD_HOURS
- * - failing: consecutiveFailures >= FAILING_MIN_CONSECUTIVE AND no recent success
- * - unknown: never been checked
+ * - healthy: consecutiveFailures = 0 OR lastFailureAt is older than lastSuccessAt
+ * - warning: failures > 0 AND last success within WARNING_THRESHOLD_HOURS
+ * - failing: failures >= FAILING_MIN_CONSECUTIVE AND failure within FAILING_THRESHOLD_HOURS,
+ *            OR has failures but no timestamps recorded
+ * - unknown: (only if consecutiveFailures is truly undefined — treated as healthy)
  */
 export function classifySourceHealth(detail: SourceHealthSummary): SourceHealthStatus {
   const { consecutiveFailures, lastSuccessAt, lastFailureAt } = detail;
 
-  // If never checked (no success AND no failure), return unknown
-  if (!lastSuccessAt && !lastFailureAt) {
-    return "unknown";
-  }
+  // Treat undefined consecutiveFailures as 0 (never failed)
+  const failures = consecutiveFailures ?? 0;
 
   // No failures recorded — definitely healthy
-  if (consecutiveFailures === 0) {
+  if (failures === 0) {
     return "healthy";
+  }
+
+  // Has failures but no timestamps — can't determine recency, treat as failing
+  if (!lastSuccessAt && !lastFailureAt) {
+    return "failing";
   }
 
   // All timestamps are UTC ISO strings from database (via toISOString())
@@ -90,11 +94,11 @@ export function classifySourceHealth(detail: SourceHealthSummary): SourceHealthS
   }
 
   // No success ever, or failure is more recent
-  if (consecutiveFailures >= FAILING_MIN_CONSECUTIVE && failureHoursAgo < FAILING_THRESHOLD_HOURS) {
+  if (failures >= FAILING_MIN_CONSECUTIVE && failureHoursAgo < FAILING_THRESHOLD_HOURS) {
     return "failing";
   }
 
-  if (consecutiveFailures > 0 && failureHoursAgo < WARNING_THRESHOLD_HOURS) {
+  if (failureHoursAgo < WARNING_THRESHOLD_HOURS) {
     return "warning";
   }
 
