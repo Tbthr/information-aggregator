@@ -1,37 +1,32 @@
 interface ExactDedupItem {
   id: string;
   normalizedUrl: string;
-  processedAt?: string;
-  contentType?: string;
+  publishedAt?: string;
 }
 
-function contentTypePriority(contentType?: string): number {
-  switch (contentType) {
-    case "article":
-      return 3;
-    case "digest_entry":
-      return 2;
-    case "community_post":
-      return 1;
-    default:
-      return 0;
-  }
-}
-
+/**
+ * Exact deduplication by normalizedUrl.
+ * Groups items by normalizedUrl and keeps only the one with newest publishedAt.
+ * "identity irrelevant" - we don't care about contentType or any other field.
+ */
 export function dedupeExact<T extends ExactDedupItem>(items: T[]): T[] {
   const winners = new Map<string, T>();
 
   for (const item of items) {
     const current = winners.get(item.normalizedUrl);
-    const currentPriority = contentTypePriority(current?.contentType);
-    const itemPriority = contentTypePriority(item.contentType);
 
-    if (
-      !current
-      || itemPriority > currentPriority
-      || (itemPriority === currentPriority && (item.processedAt ?? "") >= (current.processedAt ?? ""))
-    ) {
+    if (!current) {
+      // First occurrence - keep it
       winners.set(item.normalizedUrl, item);
+    } else {
+      // Compare publishedAt - keep newest
+      const currentTime = current.publishedAt ? new Date(current.publishedAt).getTime() : 0;
+      const itemTime = item.publishedAt ? new Date(item.publishedAt).getTime() : 0;
+
+      if (itemTime >= currentTime) {
+        winners.set(item.normalizedUrl, item);
+      }
+      // If itemTime < currentTime, keep current (do nothing)
     }
   }
 
