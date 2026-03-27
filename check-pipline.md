@@ -40,10 +40,10 @@ npx tsx scripts/diagnostics.ts reports --config-only
 
 这是核心步骤，将依次执行：
 
-1. **Collection Stage**: 触发 `POST /api/cron/collect`，收集所有配置的 RSS/Twitter 来源
-2. **AI Enhancement**: 对收集的原始数据进行 AI 增强、去重、归档
-3. **Storage**: 将处理后的 items/tweets 写入数据库
-4. **Daily Report**: 生成今日日报（`DailyOverview` + `DigestTopic`）
+1. **Collection Stage**: 触发 `POST /api/cron/collect`，收集所有配置的 RSS/Twitter 来源（滚动 24h 窗口）
+2. **Normalize & Filter**: 对收集的原始数据进行标准化、pack 过滤（mustInclude/exclude）、去重
+3. **Storage**: 将处理后的 items/tweets 写入数据库（候选池）
+4. **Daily Report**: 从候选池读取 Items + Tweets -> 构建 ReportCandidate -> 4 阶段运行时评分 -> 截取 top N -> AI 聚类 -> 持久化（`DailyOverview` + `DigestTopic`）
 5. **Weekly Report**: 生成本周周报（`WeeklyReport` + `WeeklyPick`）
 6. **API Verification**: 验证各 API 端点返回正确数据
 
@@ -106,10 +106,12 @@ npx tsx scripts/diagnostics.ts reports --config-only
 
 ### 1. Item 字段校验标准
 
+Item 是采集管道的持久化候选池（candidate pool）。Legacy enhancement-result 字段（score, bullets, categories, imageUrl）已移除；评分由日报阶段运行时计算。
+
 | 字段 | 类型 | 必填 | 校验规则 | 为 Null 的原因 |
 |------|------|------|----------|----------------|
 | `id` | String | 是 | `cuid()` 生成，全局唯一 | — |
-| `title` | String | 是 | 非空字符串，最大长度不限 | — |
+| `title` | String | 是 | 非空字符串 | — |
 | `url` | String | 是 | 非空，符合 URL 格式，`@unique` 唯一索引 | — |
 | `sourceId` | String | 是 | 必须关联到存在的 Source 记录 | — |
 | `sourceName` | String | 是 | 非空字符串 | — |
@@ -117,17 +119,14 @@ npx tsx scripts/diagnostics.ts reports --config-only
 | `publishedAt` | DateTime | 否 | ISO 8601 格式 | RSS 源未提供发布时间，或收集时解析失败 |
 | `fetchedAt` | DateTime | 是 | ISO 8601 格式，默认 `now()` | — |
 | `author` | String | 否 | 可空字符串 | RSS 源未提供作者信息 |
-| `summary` | String | 否 | 可空，内容为 AI 生成或原文摘要 | AI 增强未完成，或 RSS 源无摘要内容 |
-| `bullets` | String[] | 否 | 可空数组 | AI 增强未生成要点列表 |
-| `content` | String | 否 | 可空，`@db.Text` 类型 | RSS 源仅提供摘要，未提供全文；或 AI 增强未生成 |
-| `imageUrl` | String | 否 | 可空，符合 URL 格式 | RSS 源未提供封面图，或解析失败 |
-| `categories` | String[] | 否 | 可空数组 | RSS 源未提供分类标签，且 AI 增强未分类 |
-| `score` | Float | 是 | 默认 `5.0`，范围通常 0-10 | — |
+| `summary` | String | 否 | 可空，`@db.Text`，内容为原文摘要或 AI 生成 | AI 增强未完成，或 RSS 源无摘要内容 |
+| `content` | String | 否 | 可空，`@db.Text` 类型 | RSS 源仅提供摘要，未提供全文 |
 | `metadataJson` | String | 否 | 可空，JSON 字符串格式 | 无扩展元数据，或解析失败 |
+| `packId` | String | 否 | 可空，关联到 Pack 记录 | 采集时未匹配到 pack |
 | `createdAt` | DateTime | 是 | ISO 8601 格式，默认 `now()` | — |
 | `updatedAt` | DateTime | 是 | ISO 8601 格式，自动更新 | — |
 
-**索引**: `@unique([url])`, `@index([sourceId])`, `@index([fetchedAt])`, `@index([score])`, `@index([publishedAt])`
+**索引**: `@unique([url])`, `@index([sourceId])`, `@index([fetchedAt])`, `@index([publishedAt])`, `@index([packId])`
 
 ### 2. Tweet 字段校验标准
 
@@ -149,9 +148,6 @@ npx tsx scripts/diagnostics.ts reports --config-only
 | `replyCount` | Int | 是 | 默认 `0`，≥ 0 | — |
 | `retweetCount` | Int | 是 | 默认 `0`，≥ 0 | — |
 | `summary` | String | 否 | 可空，AI 生成的摘要 | AI 增强未完成 |
-| `bullets` | String[] | 否 | 可空数组 | AI 增强未生成要点列表 |
-| `categories` | String[] | 否 | 可空数组 | AI 增强未分类 |
-| `score` | Float | 是 | 默认 `5.0`，范围通常 0-10 | — |
 | `mediaJson` | String | 否 | 可空，JSON 字符串 | 推文无媒体附件（图片/视频/动画） |
 | `quotedTweetJson` | String | 否 | 可空，JSON 字符串 | 非引用推文 |
 | `threadJson` | String | 否 | 可空，JSON 字符串 | 非线程推文 |
@@ -160,7 +156,7 @@ npx tsx scripts/diagnostics.ts reports --config-only
 | `createdAt` | DateTime | 是 | ISO 8601 格式，默认 `now()` | — |
 | `updatedAt` | DateTime | 是 | ISO 8601 格式，自动更新 | — |
 
-**索引**: `@index([tab])`, `@index([fetchedAt])`, `@index([score])`, `@index([authorHandle])`, `@index([publishedAt])`
+**索引**: `@index([tab])`, `@index([fetchedAt])`, `@index([authorHandle])`, `@index([publishedAt])`
 
 ### 3. DigestTopic 字段校验标准
 
@@ -294,6 +290,13 @@ npx tsx scripts/diagnostics.ts reports --config-only
 - `scripts/diagnostics.ts` — CLI 入口
 - `src/diagnostics/runners/full.ts` — 全流程编排
 - `src/diagnostics/collection/run-collection.ts` — 收集执行器
+- `src/pipeline/collect.ts` — 采集管道（adapters -> RawItem）
+- `src/pipeline/normalize.ts` — 标准化（RawItem -> NormalizedItem）
+- `src/pipeline/filter-by-pack.ts` — Pack 过滤（mustInclude/exclude）
+- `src/pipeline/dedupe-exact.ts` / `dedupe-near.ts` — 去重
+- `src/pipeline/rank.ts` — 入库（NormalizedItem -> Item）
+- `src/reports/report-candidate.ts` — Item/Tweet -> ReportCandidate 映射
+- `src/reports/scoring/` — 运行时评分管道（4 阶段：base -> signal -> merge -> history penalty）
 - `src/reports/daily.ts` — 日报生成
 - `src/reports/weekly.ts` — 周报生成
 - `src/diagnostics/reports/verify-daily.ts` — 日报断言

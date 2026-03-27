@@ -22,8 +22,13 @@ information-aggregator/
 ├── hooks/            # Custom React hooks
 ├── lib/              # Utilities (api-client, prisma, types)
 ├── src/              # Backend pipeline code
-├── prisma/           # Database schema
-└── config/           # YAML configuration files
+│   ├── pipeline/     # Collection: adapters -> normalize -> filter -> dedupe -> persist
+│   ├── reports/      # Daily/weekly report generation & runtime candidate scoring
+│   ├── archive/      # AI enrichment & DB persistence
+│   ├── ai/           # AI client & prompt engineering
+│   └── types/        # Shared TypeScript types (RawItem, ReportCandidate, etc.)
+├── prisma/           # Database schema (Prisma)
+└── config/packs/     # Pack seed data (YAML, loaded into DB at setup)
 ```
 
 ## Development Workflow
