@@ -375,6 +375,19 @@ warning 至少包含：
 - `categories`
 - `imageUrl`
 
+兼容性要求：
+
+- 删除这些字段前，必须完成所有现有消费者的迁移
+- 迁移范围包括但不限于：
+  - 日报/周报生成路径
+  - API route shaping / mapper
+  - API client 类型与转换
+  - Item 详情/列表相关 API
+  - 依赖 article score、bullets、categories、imageUrl 的前端组件
+- 运行时评分迁移到 `ReportCandidate` 后，UI/API 不得继续假设 `Item` 持久化保存 `score`
+- `/api/items` 在本轮迁移中直接删除 `score`、`bullets`、`categories`、`imageUrl` 字段
+- `/api/items` 的 `sort=ranked` 在本轮迁移中一并废弃，不再提供基于持久化 `Item.score` 的排序语义
+
 ### 字段映射
 
 `NormalizedItem -> Item`：

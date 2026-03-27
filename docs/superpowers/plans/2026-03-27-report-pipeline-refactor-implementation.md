@@ -525,39 +525,58 @@ git commit -m "refactor: align weekly and diagnostics with report pipeline chang
 - Modify: `app/api/views/[id]/route.ts`
 - Modify: `lib/types.ts`
 - Modify: `lib/api-client.ts`
+- Modify: `components/daily-page.tsx`
+- Modify: `components/weekly-page.tsx`
+- Modify: `components/article-card.tsx`
+- Modify: `components/reading-panel.tsx`
 
 - [ ] **Step 1: Write failing compatibility tests**
 
-Cover removal of persisted `Item.score`, `bullets`, `categories`, `imageUrl` assumptions in remaining readers.
+Cover removal of persisted `Item.score`, `bullets`, `categories`, `imageUrl` assumptions in remaining readers, including API shapers and visible UI consumers.
 
 - [ ] **Step 2: Run targeted tests**
 
 Run: `pnpm test -- src/reports/daily.test.ts src/diagnostics/reports/*.test.ts`
 Expected: FAIL if any reader still depends on removed fields.
 
-- [ ] **Step 3: Remove legacy schema fields and cleanup remaining readers**
+- [ ] **Step 3: Run a repo-wide search for residual legacy field readers**
+
+Run: `rg -n "\\.score\\b|bullets\\b|categories\\b|imageUrl\\b" app lib src components -g '!node_modules'`
+Expected: a reviewable list of remaining `Item` field consumers to migrate or intentionally retain for non-Item models such as `Tweet`.
+
+- [ ] **Step 4: Remove legacy schema fields and cleanup remaining readers**
 
 Remove old `Item` enhancement-result fields only after write/read paths have fully switched, and update all remaining API/UI readers that still expect those fields.
 
-- [ ] **Step 4: Apply schema and regenerate Prisma client**
+For `/api/items` specifically:
+- remove `score`, `bullets`, `categories`, `imageUrl` from the response contract
+- remove persisted-score-based `sort=ranked` behavior
+- update API types/client/UI consumers accordingly
+
+- [ ] **Step 5: Apply schema and regenerate Prisma client**
 
 Run: `npx prisma db push`
 Expected: PASS
 
-- [ ] **Step 5: Regenerate Prisma client if needed**
+- [ ] **Step 6: Regenerate Prisma client if needed**
 
 Run: `npx prisma generate`
 Expected: PASS
 
-- [ ] **Step 6: Re-run targeted tests**
+- [ ] **Step 7: Re-run targeted tests**
 
 Run: `pnpm test -- src/reports/daily.test.ts src/diagnostics/reports/*.test.ts`
 Expected: PASS
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Re-run typecheck and build to catch leftover UI/API readers**
+
+Run: `pnpm check && pnpm build`
+Expected: PASS
+
+- [ ] **Step 9: Commit**
 
 ```bash
-git add prisma/schema.prisma src/reports/daily.ts src/reports/weekly.ts app/api/daily/route.ts app/api/weekly/route.ts app/api/_lib/mappers.ts app/api/items/types.ts app/api/items/_lib.ts app/api/views/[id]/route.ts lib/types.ts lib/api-client.ts
+git add prisma/schema.prisma src/reports/daily.ts src/reports/weekly.ts app/api/daily/route.ts app/api/weekly/route.ts app/api/_lib/mappers.ts app/api/items/types.ts app/api/items/_lib.ts app/api/views/[id]/route.ts lib/types.ts lib/api-client.ts components/daily-page.tsx components/weekly-page.tsx components/article-card.tsx components/reading-panel.tsx
 git commit -m "refactor: remove legacy item enhancement fields"
 ```
 
