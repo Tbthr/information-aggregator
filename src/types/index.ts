@@ -164,6 +164,7 @@ export interface ReportCandidate {
   content: string;
   publishedAt?: string;
   sourceLabel: string;
+  categories?: string[];
   normalizedUrl: string;
   normalizedTitle: string;
   // rawRef is used to reference the original raw item

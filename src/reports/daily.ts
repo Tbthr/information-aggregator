@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma"
 import type { Item, Tweet, DailyReportConfig } from "@prisma/client"
 import type { AiClient } from "@/src/ai/types"
-import { formatUtcDate, formatUtcDayLabel } from "@/lib/date-utils"
+import type { ReportCandidate, ScoreBreakdown, SignalScores } from "@/src/types/index"
+import { formatUtcDate, formatUtcDayLabel, beijingDayRange } from "@/lib/date-utils"
 import {
   buildTopicClusteringPrompt,
   parseTopicClusteringResult,
@@ -11,6 +12,16 @@ import {
   parseFilterResult,
   type TopicClusterItem,
 } from "@/src/ai/prompts-reports"
+import { itemToReportCandidate, tweetToReportCandidate } from "./report-candidate"
+import {
+  applyBaseStage,
+  applyTweetSignalScoring,
+  applyItemSignalScoring,
+  applyMergeStage,
+  applyHistoryPenaltyStage,
+  type KindPreferences,
+  type ScoredCandidate as ScoringScoredCandidate,
+} from "./scoring"
 
 const SUMMARY_TRUNCATE_LENGTH = 500
 const PARALLEL_CONCURRENCY = 3
@@ -21,22 +32,179 @@ export interface DailyGenerateResult {
   errorSteps: string[]
 }
 
+// Re-export ScoredCandidate from scoring types for external consumers
+export type ScoredCandidate = ScoringScoredCandidate
+
 // ============================================================
-// Pipeline Steps
+// Pure pipeline functions (exported for testing)
 // ============================================================
 
-/** Step 1: Collect items and tweets from the past 24 hours */
+/**
+ * Maps DB Items and Tweets to unified ReportCandidate[].
+ * Items from all packs are included; tweets are always included regardless of pack.
+ */
+export function collectCandidates(items: Item[], tweets: Tweet[]): ReportCandidate[] {
+  const candidates: ReportCandidate[] = []
+
+  for (const item of items) {
+    candidates.push(itemToReportCandidate(item))
+  }
+
+  // Tweets are always included (not pack-filtered)
+  for (const tweet of tweets) {
+    candidates.push(tweetToReportCandidate(tweet))
+  }
+
+  return candidates
+}
+
+/**
+ * Parses kindPreferences from DailyReportConfig JSON field.
+ * Returns empty object for null, empty, or invalid JSON.
+ */
+export function parseKindPreferences(raw: string | null | undefined): KindPreferences {
+  if (!raw) return {}
+  try {
+    const parsed = JSON.parse(raw)
+    if (typeof parsed === "object" && parsed !== null) return parsed
+    return {}
+  } catch {
+    return {}
+  }
+}
+
+/**
+ * Runs the full scoring pipeline on candidates.
+ *
+ * Stages:
+ * 1. Base stage: apply kind preferences
+ * 2. Signal stage: tweet engagement signals / item signals
+ * 3. Merge stage: combine into runtimeScore
+ * 4. History penalty stage: penalize recently seen items/tweets
+ */
+export function scoreCandidates(
+  candidates: ReportCandidate[],
+  options: {
+    kindPreferences: KindPreferences
+    recentCandidates?: ReportCandidate[]
+    tweetEngagements?: Map<string, { likeCount?: number; replyCount?: number; retweetCount?: number }>
+  }
+): ScoredCandidate[] {
+  const { kindPreferences, recentCandidates = [], tweetEngagements } = options
+
+  return candidates.map((candidate) => {
+    // Stage 1: Base
+    const { baseScore } = applyBaseStage({ candidate, kindPreferences })
+
+    // Stage 2: Signals (kind-specific)
+    let signalScores: SignalScores
+    if (candidate.kind === "tweet") {
+      const engagement = tweetEngagements?.get(candidate.id)
+      const tweetResult = applyTweetSignalScoring({ candidate, engagement })
+      signalScores = tweetResult.signalScores
+    } else {
+      const itemResult = applyItemSignalScoring({ candidate })
+      signalScores = itemResult.signalScores
+    }
+
+    // Stage 3: Merge
+    const { runtimeScore } = applyMergeStage({ baseScore, signalScores })
+
+    // Stage 4: History penalty
+    const { historyPenalty, finalScore } = applyHistoryPenaltyStage({
+      runtimeScore,
+      candidate,
+      recentCandidates,
+    })
+
+    const breakdown: ScoreBreakdown = {
+      baseScore,
+      signalScores,
+      runtimeScore,
+      historyPenalty,
+      finalScore,
+    }
+
+    return { ...candidate, breakdown }
+  })
+}
+
+/**
+ * Trims scored candidates to top N by finalScore (descending).
+ * This reduces AI cost by sending fewer items to the clustering prompt.
+ */
+export function trimTopN(scored: ScoredCandidate[], n: number): ScoredCandidate[] {
+  if (n <= 0) return []
+  if (scored.length <= n) return scored
+  return [...scored].sort((a, b) => b.breakdown.finalScore - a.breakdown.finalScore).slice(0, n)
+}
+
+/**
+ * Converts ReportCandidate[] to TopicClusterItem[] for AI clustering.
+ * Articles use type="item", tweets use type="tweet" with @handle as title.
+ */
+export function candidatesToTopicClusterItems(candidates: ReportCandidate[]): TopicClusterItem[] {
+  return candidates.map((c, index) => ({
+    title: c.kind === "tweet" ? c.sourceLabel : c.title,
+    summary: c.summary.slice(0, SUMMARY_TRUNCATE_LENGTH),
+    type: (c.kind === "tweet" ? "tweet" : "item") as "item" | "tweet",
+    index,
+  }))
+}
+
+/**
+ * Converts a subset of candidates (by absolute index) to topic summary contents.
+ * Used when building per-topic summary prompts from AI clustering results.
+ */
+export function candidatesToTopicContents(
+  candidates: ReportCandidate[],
+  itemIndexes: number[],
+  tweetIndexes: number[]
+): { title: string; summary: string; type: "item" | "tweet" }[] {
+  const contents: { title: string; summary: string; type: "item" | "tweet" }[] = []
+
+  for (const idx of itemIndexes) {
+    const c = candidates[idx]
+    if (c && c.kind === "article") {
+      contents.push({
+        title: c.title,
+        summary: c.summary.slice(0, SUMMARY_TRUNCATE_LENGTH),
+        type: "item",
+      })
+    }
+  }
+
+  for (const idx of tweetIndexes) {
+    const c = candidates[idx]
+    if (c && c.kind === "tweet") {
+      contents.push({
+        title: c.sourceLabel,
+        summary: c.summary.slice(0, SUMMARY_TRUNCATE_LENGTH),
+        type: "tweet",
+      })
+    }
+  }
+
+  return contents
+}
+
+// ============================================================
+// Internal pipeline steps (async, DB-dependent)
+// ============================================================
+
+/** Step 1: Collect items and tweets from the target Beijing day range */
 async function collectData(now: Date) {
-  const start = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+  const dateStr = formatUtcDate(now)
+  const { start, end } = beijingDayRange(dateStr)
 
   const [items, tweets] = await Promise.all([
     prisma.item.findMany({
-      where: { publishedAt: { gte: start, lte: now } },
-      orderBy: { score: "desc" },
+      where: { publishedAt: { gte: start, lte: end } },
+      orderBy: { publishedAt: "desc" },
     }),
     prisma.tweet.findMany({
       where: {
-        publishedAt: { gte: start, lte: now },
+        publishedAt: { gte: start, lte: end },
         tab: { in: ["home", "lists"] },
       },
     }),
@@ -82,76 +250,43 @@ async function filterContent(
   return { filteredItems, filteredTweets }
 }
 
-/** Step 2b: Optional AI pre-filter */
+/** Step 3: Optional AI pre-filter (operates on trimmed candidates) */
 async function aiFilter(
-  filteredItems: Item[],
-  filteredTweets: Tweet[],
+  candidates: ScoredCandidate[],
   config: DailyReportConfig,
   aiClient: AiClient
-): Promise<{ items: Item[]; tweets: Tweet[] }> {
-  if (!config.filterPrompt) return { items: filteredItems, tweets: filteredTweets }
+): Promise<ScoredCandidate[]> {
+  if (!config.filterPrompt) return candidates
 
   try {
-    const allContent: TopicClusterItem[] = [
-      ...filteredItems.map((item, i) => ({
-        title: item.title,
-        summary: (item.summary ?? "").slice(0, SUMMARY_TRUNCATE_LENGTH),
-        type: "item" as const,
-        index: i,
-      })),
-      ...filteredTweets.map((tweet, i) => ({
-        title: `@${tweet.authorHandle}`,
-        summary: (tweet.text ?? "").slice(0, SUMMARY_TRUNCATE_LENGTH),
-        type: "tweet" as const,
-        index: filteredItems.length + i,
-      })),
-    ]
-
-    const prompt = buildFilterPrompt(allContent, config.filterPrompt)
+    const clusterItems = candidatesToTopicClusterItems(candidates)
+    const prompt = buildFilterPrompt(clusterItems, config.filterPrompt)
     const result = await aiClient.generateText(prompt)
     const { keep } = parseFilterResult(result)
 
-    const keptItems = filteredItems.filter((_, i) => keep.includes(i))
-    const keptTweets = filteredTweets.filter((_, i) => keep.includes(filteredItems.length + i))
-    return { items: keptItems, tweets: keptTweets }
+    return candidates.filter((_, i) => keep.includes(i))
   } catch {
-    // AI filter failure → pass all through
-    return { items: filteredItems, tweets: filteredTweets }
+    // AI filter failure -> pass all through
+    return candidates
   }
 }
 
-/** Step 3: AI topic clustering */
+/** Step 4: AI topic clustering (operates on trimmed candidates) */
 async function topicClustering(
-  items: Item[],
-  tweets: Tweet[],
+  candidates: ScoredCandidate[],
   aiClient: AiClient,
   config: DailyReportConfig
 ) {
-  const contentList: TopicClusterItem[] = [
-    ...items.map((item, i) => ({
-      title: item.title,
-      summary: (item.summary ?? "").slice(0, SUMMARY_TRUNCATE_LENGTH),
-      type: "item" as const,
-      index: i,
-    })),
-    ...tweets.map((tweet, i) => ({
-      title: `@${tweet.authorHandle}`,
-      summary: (tweet.text ?? "").slice(0, SUMMARY_TRUNCATE_LENGTH),
-      type: "tweet" as const,
-      index: items.length + i,
-    })),
-  ]
-
-  const prompt = buildTopicClusteringPrompt(contentList, config.topicPrompt)
+  const clusterItems = candidatesToTopicClusterItems(candidates)
+  const prompt = buildTopicClusteringPrompt(clusterItems, config.topicPrompt)
   const result = await aiClient.generateText(prompt)
   return parseTopicClusteringResult(result)
 }
 
-/** Step 4a: Generate summary for each topic (parallel) */
+/** Step 5: Generate summary for each topic (parallel) */
 async function generateTopicSummaries(
   clusteringResult: ReturnType<typeof parseTopicClusteringResult>,
-  items: Item[],
-  tweets: Tweet[],
+  candidates: ScoredCandidate[],
   aiClient: AiClient,
   config: DailyReportConfig
 ) {
@@ -162,37 +297,28 @@ async function generateTopicSummaries(
     const batch = topics.slice(i, i + PARALLEL_CONCURRENCY)
     const batchResults = await Promise.allSettled(
       batch.map(async (topic) => {
-        const topicItems = topic.itemIndexes
-          .filter((idx) => idx < items.length)
-          .map((idx) => items[idx])
-        const topicTweets = topic.tweetIndexes
-          .filter((idx) => idx >= items.length)
-          .map((idx) => tweets[idx - items.length])
-
-        const contents = [
-          ...topicItems.map((item) => ({
-            title: item.title,
-            summary: (item.summary ?? "").slice(0, SUMMARY_TRUNCATE_LENGTH),
-            type: "item" as const,
-          })),
-          ...topicTweets.map((tweet) => ({
-            title: `@${tweet.authorHandle}`,
-            summary: (tweet.text ?? "").slice(0, SUMMARY_TRUNCATE_LENGTH),
-            type: "tweet" as const,
-          })),
-        ]
-
+        const contents = candidatesToTopicContents(candidates, topic.itemIndexes, topic.tweetIndexes)
         if (contents.length === 0) return null
 
         const prompt = buildTopicSummaryPrompt(topic.title, contents, config.topicSummaryPrompt)
         const result = await aiClient.generateText(prompt)
         const parsed = parseTopicSummaryResult(result)
 
+        // Extract itemIds and tweetIds from the candidates referenced in this topic
+        const topicItemIds = topic.itemIndexes
+          .map((idx) => candidates[idx])
+          .filter((c) => c && c.kind === "article")
+          .map((c) => c.id)
+        const topicTweetIds = topic.tweetIndexes
+          .map((idx) => candidates[idx])
+          .filter((c) => c && c.kind === "tweet")
+          .map((c) => c.id)
+
         return {
           title: topic.title,
           summary: parsed.summary,
-          itemIds: topicItems.map((item) => item.id),
-          tweetIds: topicTweets.map((tweet) => tweet.id),
+          itemIds: topicItemIds,
+          tweetIds: topicTweetIds,
         }
       })
     )
@@ -207,7 +333,7 @@ async function generateTopicSummaries(
   return results
 }
 
-/** Step 5: Persist results */
+/** Step 6: Persist results */
 async function persistResults(
   date: string,
   dayLabel: string,
@@ -259,20 +385,22 @@ async function persistResults(
 // Fallback: Category-based grouping when AI clustering fails
 // ============================================================
 
-function fallbackCategoryGrouping(items: Item[]): { title: string; summary: string; itemIds: string[]; tweetIds: string[] }[] {
-  const groups = new Map<string, Item[]>()
+function fallbackCategoryGrouping(candidates: ScoredCandidate[]): { title: string; summary: string; itemIds: string[]; tweetIds: string[] }[] {
+  const articleCandidates = candidates.filter((c) => c.kind === "article")
+  if (articleCandidates.length === 0) return []
 
-  for (const item of items) {
-    const categories = item.categories ?? []
-    const category = categories[0] ?? "其他"
-    if (!groups.has(category)) groups.set(category, [])
-    groups.get(category)!.push(item)
+  // Group by categories when available, falling back to sourceLabel
+  const groups = new Map<string, ScoredCandidate[]>()
+  for (const c of articleCandidates) {
+    const key = ((c.categories && c.categories.length > 0 ? c.categories[0] : null) ?? c.sourceLabel) || "其他"
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key)!.push(c)
   }
 
-  return Array.from(groups.entries()).map(([category, groupItems]) => ({
-    title: category,
-    summary: groupItems[0].summary ?? "",
-    itemIds: groupItems.map((item) => item.id),
+  return Array.from(groups.entries()).map(([groupKey, groupItems]) => ({
+    title: groupKey.slice(0, 20),
+    summary: groupItems[0].summary,
+    itemIds: groupItems.map((c) => c.id),
     tweetIds: [],
   }))
 }
@@ -281,6 +409,19 @@ function fallbackCategoryGrouping(items: Item[]): { title: string; summary: stri
 // Main Pipeline
 // ============================================================
 
+/**
+ * Generates a daily report using the new runtime candidates pipeline.
+ *
+ * Pipeline order:
+ * 1. Collect items + tweets from DB (Beijing day range)
+ * 2. Filter by pack, blacklist, min score (DB-level)
+ * 3. Map to ReportCandidate[]
+ * 4. Score candidates (base -> signal -> merge -> history penalty)
+ * 5. Trim to top N (before AI, to reduce cost)
+ * 6. Optional AI pre-filter
+ * 7. AI topic clustering + summary generation
+ * 8. Persist results
+ */
 export async function generateDailyReport(
   now: Date,
   aiClient: AiClient
@@ -335,7 +476,7 @@ export async function generateDailyReport(
     })
   }
 
-  // Step 1: Collect data
+  // Step 1: Collect data from DB
   let items: Item[]
   let tweets: Tweet[]
   try {
@@ -348,55 +489,76 @@ export async function generateDailyReport(
     return { date, topicCount: 0, errorSteps }
   }
 
-  // Apply maxItems limit
-  items = items.slice(0, config.maxItems ?? 50)
-
-  // Step 2: Filter
+  // Step 2: DB-level filtering (pack, blacklist, min score)
   const { filteredItems, filteredTweets } = await filterContent(items, tweets, config)
 
-  // Step 2b: Optional AI filter
-  let finalItems = filteredItems
-  let finalTweets = filteredTweets
-  if (config.filterPrompt) {
-    const aiResult = await aiFilter(filteredItems, filteredTweets, config, aiClient)
-    finalItems = aiResult.items
-    finalTweets = aiResult.tweets
-  }
-
-  if (finalItems.length === 0 && finalTweets.length === 0) {
+  if (filteredItems.length === 0 && filteredTweets.length === 0) {
     await persistResults(date, dayLabel, [], "过去24小时无内容", errorSteps)
     return { date, topicCount: 0, errorSteps }
   }
 
-  // Step 3: Topic clustering
+  // Step 3: Map to ReportCandidate[]
+  const candidates = collectCandidates(filteredItems, filteredTweets)
+
+  // Step 4: Score all candidates
+  const kindPreferences = parseKindPreferences(config.kindPreferences)
+  const scored = scoreCandidates(candidates, { kindPreferences })
+
+  // Step 5: Trim to top N before AI
+  const maxItems = config.maxItems ?? 50
+  const trimmed = trimTopN(scored, maxItems)
+
+  if (trimmed.length === 0) {
+    await persistResults(date, dayLabel, [], "评分后无内容", errorSteps)
+    return { date, topicCount: 0, errorSteps }
+  }
+
+  // Step 6: Optional AI pre-filter (on trimmed candidates)
+  let finalCandidates = trimmed
+  if (config.filterPrompt) {
+    finalCandidates = await aiFilter(trimmed, config, aiClient)
+  }
+
+  if (finalCandidates.length === 0) {
+    await persistResults(date, dayLabel, [], "AI过滤后无内容", errorSteps)
+    return { date, topicCount: 0, errorSteps }
+  }
+
+  // Step 7: AI topic clustering + summaries
   let topics: { title: string; summary: string; itemIds: string[]; tweetIds: string[] }[] = []
   try {
-    const clusteringResult = await topicClustering(finalItems, finalTweets, aiClient, config)
+    const clusteringResult = await topicClustering(finalCandidates, aiClient, config)
 
-    // Step 4a: Topic summaries
+    // Step 7b: Topic summaries
     try {
-      topics = await generateTopicSummaries(clusteringResult, finalItems, finalTweets, aiClient, config)
+      topics = await generateTopicSummaries(clusteringResult, finalCandidates, aiClient, config)
     } catch {
       errorSteps.push("topicSummary")
-      // Fallback: use clustering titles with first item summary
+      // Fallback: use clustering titles with first candidate summary
       topics = clusteringResult.topics.map((topic) => ({
         title: topic.title,
         summary: topic.itemIndexes[0] !== undefined
-          ? (finalItems[topic.itemIndexes[0]]?.summary ?? "")
+          ? finalCandidates[topic.itemIndexes[0]]?.summary ?? ""
           : "",
-        itemIds: topic.itemIndexes.filter((i) => i < finalItems.length).map((i) => finalItems[i].id),
+        // TODO: itemIds/tweetIds extraction will be refined when we track the
+        // full candidate-to-topic mapping in a future task
+        itemIds: topic.itemIndexes
+          .map((idx) => finalCandidates[idx])
+          .filter((c): c is ScoredCandidate => !!c && c.kind === "article")
+          .map((c) => c.id),
         tweetIds: topic.tweetIndexes
-          .filter((i) => i >= finalItems.length)
-          .map((i) => finalTweets[i - finalItems.length].id),
+          .map((idx) => finalCandidates[idx])
+          .filter((c): c is ScoredCandidate => !!c && c.kind === "tweet")
+          .map((c) => c.id),
       }))
     }
   } catch {
     errorSteps.push("topicClustering")
-    // Fallback: group by categories
-    topics = fallbackCategoryGrouping(finalItems)
+    // Fallback: group by source
+    topics = fallbackCategoryGrouping(finalCandidates)
   }
 
-  // Step 4b: Persist
+  // Step 8: Persist
   try {
     await persistResults(date, dayLabel, topics, errorSteps.length > 0 ? "部分步骤失败" : undefined, errorSteps)
   } catch {
