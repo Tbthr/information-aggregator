@@ -64,21 +64,7 @@ export function ArticleCard({ article, isSaved, onToggleSave, onClick, variant =
           <SaveButton articleId={article.id} isSaved={isSaved} onToggle={onToggleSave} size="md" className="shrink-0" />
         </div>
         <p className="text-sm font-sans text-muted-foreground leading-relaxed">{article.summary}</p>
-        {/* AI Bullets */}
-        <div className="rounded-lg px-3 py-2.5" style={{ background: "var(--bullet-bg)" }}>
-          <p className="text-[10px] font-sans font-semibold tracking-widest uppercase text-primary mb-1.5">
-            AI 要点
-          </p>
-          <ul className="space-y-1">
-            {article.bullets.map((b, i) => (
-              <li key={i} className="flex gap-2 text-xs font-sans text-foreground/80">
-                <span className="text-primary shrink-0">›</span>
-                <span>{b}</span>
-              </li>
-          ))}
-        </ul>
       </div>
-    </div>
     )
   }
 
@@ -105,17 +91,7 @@ export function ArticleCard({ article, isSaved, onToggleSave, onClick, variant =
         </div>
         <SaveButton articleId={article.id} isSaved={isSaved} onToggle={onToggleSave} size="sm" className="shrink-0" />
       </div>
-      {/* AI Bullets */}
-      <div className="rounded-md px-2.5 py-2" style={{ background: "var(--bullet-bg)" }}>
-        <ul className="space-y-1">
-          {article.bullets.slice(0, 3).map((b, i) => (
-            <li key={i} className="flex gap-1.5 text-[11px] font-sans text-foreground/75">
-              <span className="text-primary shrink-0">›</span>
-              <span className="line-clamp-2">{b}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
+      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{article.summary}</p>
     </div>
   )
 }

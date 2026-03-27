@@ -1,6 +1,10 @@
 /**
  * AI 增强模块（Prisma 版本）
  * 对 Item 进行内容提取和 AI 增强
+ *
+ * Note: Legacy enrichment fields (bullets, categories, score, imageUrl) have been
+ * removed from the Item model. This module now only writes content and summary.
+ * AI scoring is handled at runtime by the daily pipeline (ephemeral, not persisted).
  */
 
 import { prisma } from "../../lib/prisma";
@@ -70,11 +74,7 @@ export async function getItemsToEnrich(
 interface ItemEnrichData {
   id: string;
   content?: string;
-  imageUrl?: string;
   summary?: string;
-  bullets?: string[];
-  categories?: string[];
-  score?: number;
 }
 
 /**
@@ -109,30 +109,18 @@ async function extractContentForItem(
 }
 
 /**
- * 对单个 Item 执行 AI 增强
+ * 对单个 Item 执行 AI 增强（summary only)
  */
 async function aiEnrichItem(
   item: { id: string; title: string; url: string },
   content: string | null,
   aiClient: AiClient,
-): Promise<Omit<ItemEnrichData, "id" | "content" | "imageUrl"> | null> {
+): Promise<{ summary?: string } | null> {
   const textContent = content || item.title;
 
   try {
-    // 并行执行 AI 任务
-    const [score, summary, bullets, categories] = await Promise.all([
-      aiClient.scoreWithContent(item.title, textContent, item.url).catch(() => null),
-      aiClient.summarizeContent(item.title, textContent, 150).catch(() => null),
-      aiClient.extractKeyPoints(item.title, textContent, 5).catch(() => null),
-      aiClient.generateTags(item.title, textContent, 3).catch(() => null),
-    ]);
-
-    return {
-      score: score ?? 5.0,
-      summary: summary ?? undefined,
-      bullets: bullets ?? [],
-      categories: categories ?? [],
-    };
+    const summary = await aiClient.summarizeContent(item.title, textContent, 150).catch(() => null);
+    return { summary: summary ?? undefined };
   } catch (error) {
     logger.error("AI enrichment failed", {
       itemId: item.id,
@@ -225,9 +213,6 @@ export async function enrichItems(
         data: {
           id: itemId,
           content: textContent ?? undefined,
-          imageUrl: extractedContent && isExtractionSuccess(extractedContent)
-            ? undefined // Readability 不提取 imageUrl，后续可扩展
-            : undefined,
           ...aiResult,
         },
       };
@@ -247,16 +232,13 @@ export async function enrichItems(
 
   for (const result of results) {
     try {
+      const updateData: { content?: string; summary?: string } = {};
+      if (result.content !== undefined) updateData.content = result.content;
+      if (result.summary !== undefined) updateData.summary = result.summary;
+
       await prisma.item.update({
         where: { id: result.id },
-        data: {
-          content: result.content,
-          imageUrl: result.imageUrl,
-          summary: result.summary,
-          bullets: result.bullets ?? [],
-          categories: result.categories ?? [],
-          score: result.score ?? 5.0,
-        },
+        data: updateData,
       });
       successCount++;
     } catch (error) {
@@ -280,5 +262,3 @@ export async function enrichItems(
     totalCount: itemIds.length,
   };
 }
-
-

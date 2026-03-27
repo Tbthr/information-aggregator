@@ -126,16 +126,6 @@ export function ReadingPanel({ article, open, onClose, isSaved, onToggleSave }: 
                 <p className="font-serif text-base leading-relaxed text-foreground">
                   {article.summary}
                 </p>
-                {article.bullets.length > 0 && (
-                  <ul className="mt-3 space-y-1.5">
-                    {article.bullets.map((b, i) => (
-                      <li key={i} className="flex gap-2 text-sm font-sans text-foreground/80">
-                        <span className="text-primary mt-0.5 shrink-0">›</span>
-                        <span>{b}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
               </div>
 
               {/* 正文 */}

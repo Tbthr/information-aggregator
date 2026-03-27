@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     itemIdSet.size > 0
       ? await prisma.item.findMany({
           where: { id: { in: Array.from(itemIdSet) } },
-          select: { id: true, title: true, url: true, score: true, summary: true },
+          select: { id: true, title: true, url: true, summary: true },
         })
       : []
 
@@ -52,7 +52,6 @@ export async function GET(request: NextRequest) {
       id: item.id,
       title: item.title,
       url: item.url,
-      score: item.score,
       summary: item.summary,
     })),
   })

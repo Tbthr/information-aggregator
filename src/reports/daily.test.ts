@@ -27,17 +27,13 @@ function makeItem(overrides: Partial<Item> = {}): Item {
     fetchedAt: new Date("2026-03-27T12:00:00Z"),
     author: "John Doe",
     summary: "Article summary",
-    bullets: [],
     content: "Article content",
-    imageUrl: null,
-    categories: [],
-    score: 5.0,
     metadataJson: "{}",
     packId: "pack-1",
     createdAt: new Date("2026-03-27T12:00:00Z"),
     updatedAt: new Date("2026-03-27T12:00:00Z"),
     ...overrides,
-  };
+  } as Item;
 }
 
 function makeTweet(overrides: Partial<Tweet> = {}): Tweet {

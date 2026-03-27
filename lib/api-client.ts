@@ -14,15 +14,10 @@ interface ItemData {
   firstSeenAt: string
   lastSeenAt: string
   author: string | null
-  score: number
   metadata: Record<string, unknown>
 
-  // New enrichment fields
   summary: string | null
-  bullets: string[]
   content: string | null
-  imageUrl: string | null
-  categories: string[]
   sourceName: string
   isBookmarked: boolean
   saved?: {
@@ -118,11 +113,7 @@ export function mapItemToArticle(item: ItemData): Article {
     sourceUrl: item.url,
     publishedAt: item.publishedAt || item.fetchedAt,
     summary: item.summary || "",
-    bullets: item.bullets || [],
     content: item.content || "",
-    imageUrl: item.imageUrl ?? undefined,
-    category: item.categories?.[0] ?? undefined,
-    aiScore: item.score,
     isBookmarked: item.isBookmarked,
   }
 }

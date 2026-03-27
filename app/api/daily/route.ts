@@ -69,7 +69,6 @@ export async function GET(request: NextRequest) {
       id: item.id,
       title: item.title,
       url: item.url,
-      score: item.score,
       summary: item.summary,
     })),
     referencedTweets: referencedTweets.map((tweet) => ({

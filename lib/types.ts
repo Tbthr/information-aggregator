@@ -29,11 +29,7 @@ export type Article = {
   sourceUrl: string
   publishedAt: string
   summary: string
-  bullets: string[]
   content: string
-  imageUrl?: string
-  category?: string
-  aiScore?: number
   isBookmarked?: boolean
 }
 
@@ -76,7 +72,6 @@ export type ReferencedItem = {
   id: string
   title: string
   url: string
-  score: number
   summary: string | null
 }
 

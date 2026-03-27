@@ -162,25 +162,22 @@ describe("PersistedItemSummary type structure", () => {
       id: "item-1",
       title: "Test Article",
       sourceName: "Test Source",
-      score: 8.5,
       publishedAt: "2026-03-25T10:00:00.000Z",
     };
 
     expect(item.id).toBe("item-1");
     expect(item.title).toBe("Test Article");
     expect(item.sourceName).toBe("Test Source");
-    expect(item.score).toBe(8.5);
     expect(item.publishedAt).toBe("2026-03-25T10:00:00.000Z");
   });
 
-  test("score and publishedAt are optional", () => {
+  test("publishedAt is optional", () => {
     const item = {
       id: "item-1",
       title: "Test Article",
       sourceName: "Test Source",
     };
 
-    expect(item.score).toBeUndefined();
     expect(item.publishedAt).toBeUndefined();
   });
 });

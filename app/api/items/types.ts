@@ -47,18 +47,13 @@ export interface ItemData {
   firstSeenAt: string
   lastSeenAt: string
   author: string | null
-  score: number
   saved?: {
     savedAt: string
   }
   metadata: Record<string, unknown>
 
-  // 新增字段
   summary: string | null
-  bullets: string[]
   content: string | null
-  imageUrl: string | null
-  categories: string[]
   sourceName: string
   isBookmarked: boolean
 }

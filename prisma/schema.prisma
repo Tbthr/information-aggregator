@@ -100,11 +100,7 @@ model Item {
   fetchedAt    DateTime @default(now()) @db.Timestamptz
   author       String?
   summary      String?  @db.Text
-  bullets      String[]
   content      String?  @db.Text
-  imageUrl     String?
-  categories   String[]
-  score        Float    @default(5.0)
   metadataJson String?  @db.Text
 
   // Pack reference (additive for migration - allows items to be associated with packs)
@@ -120,7 +116,6 @@ model Item {
   @@unique([url])
   @@index([sourceId])
   @@index([fetchedAt])
-  @@index([score])
   @@index([publishedAt])
   @@index([packId])
 }

@@ -5,11 +5,7 @@ export function toArticle(item: {
   url: string
   publishedAt: Date | null
   summary: string | null
-  bullets: string[]
   content: string | null
-  imageUrl: string | null
-  categories: string[]
-  score: number
 }) {
   return {
     id: item.id,
@@ -18,10 +14,6 @@ export function toArticle(item: {
     sourceUrl: item.url,
     publishedAt: item.publishedAt?.toISOString() ?? "",
     summary: item.summary ?? "",
-    bullets: item.bullets,
     content: item.content ?? "",
-    imageUrl: item.imageUrl ?? undefined,
-    category: item.categories[0] ?? undefined,
-    aiScore: item.score,
   }
 }

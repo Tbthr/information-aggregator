@@ -5,8 +5,8 @@
 // It does NOT independently select Items -- all WeeklyPick.itemId values must
 // originate from DigestTopic.itemIds within the same time window.
 //
-// Item.score (persisted enrichment-time score) is used for sorting weekly picks.
-// This is separate from the daily pipeline's runtime finalScore.
+// Weekly picks are sorted by publishedAt (most recent first), since Item.score
+// has been removed from the schema.
 //
 // These diagnostics verify:
 //   - Weekly report generation produces valid WeeklyReport + WeeklyPicks

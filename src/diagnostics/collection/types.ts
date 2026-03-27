@@ -58,7 +58,6 @@ export interface PersistedItemSummary {
   id: string;
   title: string;
   sourceName: string;
-  score?: number;
   publishedAt?: string;
 }
 

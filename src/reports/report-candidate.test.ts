@@ -15,16 +15,12 @@ describe("itemToReportCandidate", () => {
       fetchedAt: new Date("2026-03-27T12:00:00Z"),
       author: "John Doe",
       summary: "Article summary",
-      bullets: [],
       content: "Article content",
-      imageUrl: null,
-      categories: [],
-      score: 5.0,
       metadataJson: '{"summary":"Article summary"}',
       packId: "pack-1",
       createdAt: new Date("2026-03-27T12:00:00Z"),
       updatedAt: new Date("2026-03-27T12:00:00Z"),
-    };
+    } as Item;
 
     const candidate = itemToReportCandidate(item);
 
@@ -52,16 +48,12 @@ describe("itemToReportCandidate", () => {
       fetchedAt: new Date("2026-03-27T12:00:00Z"),
       author: null,
       summary: null,
-      bullets: [],
       content: null,
-      imageUrl: null,
-      categories: [],
-      score: 5.0,
       metadataJson: "{}",
       packId: "pack-1",
       createdAt: new Date("2026-03-27T12:00:00Z"),
       updatedAt: new Date("2026-03-27T12:00:00Z"),
-    };
+    } as Item;
 
     const candidate = itemToReportCandidate(item);
 
@@ -81,19 +73,39 @@ describe("itemToReportCandidate", () => {
       fetchedAt: new Date(),
       author: null,
       summary: null,
-      bullets: [],
       content: null,
-      imageUrl: null,
-      categories: [],
-      score: 5.0,
       metadataJson: "{}",
       packId: "pack-1",
       createdAt: new Date(),
       updatedAt: new Date(),
-    };
+    } as Item;
 
     const candidate = itemToReportCandidate(item);
     expect(candidate.sourceLabel).toBe("My Favorite Blog");
+  });
+
+  test("does not include categories field", () => {
+    const item: Item = {
+      id: "item-4",
+      title: "Test",
+      url: "https://example.com/test",
+      sourceId: "source-1",
+      sourceName: "Source",
+      sourceType: "rss",
+      publishedAt: new Date(),
+      fetchedAt: new Date(),
+      author: null,
+      summary: "Summary",
+      content: null,
+      metadataJson: "{}",
+      packId: "pack-1",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as Item;
+
+    const candidate = itemToReportCandidate(item);
+    // categories should not be set on ReportCandidate (removed from Item model)
+    expect(candidate.categories).toBeUndefined();
   });
 });
 

@@ -66,11 +66,7 @@ function rawItemToCreateData(
     fetchedAt: new Date(fetchedAt),
     author,
     summary: null,
-    bullets: [],
     content,
-    imageUrl: null,
-    categories: [],
-    score: 5.0,
     metadataJson: item.metadataJson ?? null,
     // packId is optional in the schema (additive for migration)
     packId: null,
@@ -114,11 +110,7 @@ function normalizedItemToCreateData(
     fetchedAt: new Date(item.fetchedAt),
     author: item.author,
     summary: item.summary,
-    bullets: [],
     content: item.content,
-    imageUrl: null,
-    categories: [],
-    score: 5.0,
     metadataJson: item.metadataJson,
     packId: item.packId,
   };

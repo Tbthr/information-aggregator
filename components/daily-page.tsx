@@ -48,21 +48,6 @@ function ExternalLinkIcon({ className }: { className?: string }) {
   )
 }
 
-// ── Score badge ──
-
-function ScoreBadge({ score }: { score?: number | null }) {
-  if (!score) return null
-  return (
-    <span
-      className="inline-flex items-center gap-1 text-[10px] font-sans font-semibold px-2 py-0.5 rounded-full shrink-0"
-      style={{ background: "var(--bullet-bg)", color: "var(--accent-foreground)" }}
-    >
-      <span style={{ color: "var(--save-active)" }}>&#9733;</span>
-      {score.toFixed(1)}
-    </span>
-  )
-}
-
 // ── Date helpers ──
 
 function shiftDate(dateStr: string, delta: number): string {
@@ -123,7 +108,6 @@ function ReferenceLinkRow({
         )}
       </a>
       <div className="flex items-center gap-2 shrink-0 mt-0.5">
-        <ScoreBadge score={item.score} />
         <SaveButton
           articleId={item.id}
           isSaved={isSaved}

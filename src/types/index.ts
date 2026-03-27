@@ -125,7 +125,6 @@ export interface RawItemMetadata {
 }
 
 // NormalizedItem - simplified article-only output from normalize.ts
-// Legacy fields kept for backward compatibility during transition; will be removed in Task 9
 export interface NormalizedItem {
   id: string;
   sourceId: string;

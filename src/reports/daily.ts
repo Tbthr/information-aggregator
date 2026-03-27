@@ -213,13 +213,13 @@ async function collectData(now: Date) {
   return { items, tweets }
 }
 
-/** Step 2: Filter by pack, keyword blacklist and min score */
+/** Step 2: Filter by pack and keyword blacklist */
 async function filterContent(
   items: Item[],
   tweets: Tweet[],
   config: DailyReportConfig
 ): Promise<{ filteredItems: Item[]; filteredTweets: Tweet[] }> {
-  const { keywordBlacklist, minScore } = config
+  const { keywordBlacklist } = config
 
   // Pack filtering: if packs specified, only include items from enabled sources in those packs
   let packFilteredItems = items
@@ -241,7 +241,7 @@ async function filterContent(
   }
 
   const filteredItems = packFilteredItems.filter(
-    (item) => (item.score ?? 0) >= minScore && !matchesBlacklist(item.title + " " + (item.summary ?? ""))
+    (item) => !matchesBlacklist(item.title + " " + (item.summary ?? ""))
   )
   const filteredTweets = tweets.filter(
     (tweet) => !matchesBlacklist((tweet.text ?? "") + " " + (tweet.authorHandle ?? ""))
@@ -389,10 +389,10 @@ function fallbackCategoryGrouping(candidates: ScoredCandidate[]): { title: strin
   const articleCandidates = candidates.filter((c) => c.kind === "article")
   if (articleCandidates.length === 0) return []
 
-  // Group by categories when available, falling back to sourceLabel
+  // Group by sourceLabel as fallback when AI clustering fails
   const groups = new Map<string, ScoredCandidate[]>()
   for (const c of articleCandidates) {
-    const key = ((c.categories && c.categories.length > 0 ? c.categories[0] : null) ?? c.sourceLabel) || "其他"
+    const key = c.sourceLabel || "其他"
     if (!groups.has(key)) groups.set(key, [])
     groups.get(key)!.push(c)
   }
@@ -502,7 +502,13 @@ export async function generateDailyReport(
 
   // Step 4: Score all candidates
   const kindPreferences = parseKindPreferences(config.kindPreferences)
-  const scored = scoreCandidates(candidates, { kindPreferences })
+  let scored = scoreCandidates(candidates, { kindPreferences })
+
+  // Step 4b: Apply minScore filter from config (on runtime finalScore)
+  const minScore = config.minScore ?? 0
+  if (minScore > 0) {
+    scored = scored.filter((s) => s.breakdown.finalScore >= minScore)
+  }
 
   // Step 5: Trim to top N before AI
   const maxItems = config.maxItems ?? 50

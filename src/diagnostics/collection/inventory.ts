@@ -33,22 +33,21 @@ export async function loadCollectionInventory(): Promise<CollectionInventory> {
  */
 export async function buildPersistedSummary(topN: number = 20): Promise<PersistedSummary> {
   const [topItems, topTweets] = await Promise.all([
-    // Get top items by score, with source name
+    // Get top items by recency, with source name
     prisma.item.findMany({
       orderBy: [
-        { score: "desc" },
         { publishedAt: "desc" },
+        { fetchedAt: "desc" },
       ],
       take: topN,
       select: {
         id: true,
         title: true,
         sourceName: true,
-        score: true,
         publishedAt: true,
       },
     }),
-    // Get top tweets by score
+    // Get top tweets by score (Tweet model retains score)
     prisma.tweet.findMany({
       orderBy: [
         { score: "desc" },
@@ -69,7 +68,6 @@ export async function buildPersistedSummary(topN: number = 20): Promise<Persiste
     id: item.id,
     title: item.title,
     sourceName: item.sourceName,
-    score: item.score,
     publishedAt: item.publishedAt?.toISOString(),
   }));
 

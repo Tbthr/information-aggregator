@@ -24,9 +24,8 @@ export interface WeeklyGenerateResult {
 // results via DigestTopic.itemIds to get the set of relevant Item IDs.
 //
 // Item records are fetched for enrichment context only (title, summary).
-// Sorting uses Item.score (persisted DB field, default 5.0), which is the
-// enrichment-time quality score. This is separate from the daily pipeline's
-// runtime finalScore (which is ephemeral and not persisted).
+// Sorting uses publishedAt (most recent first), since the persisted Item.score
+// field has been removed (replaced by the daily pipeline's ephemeral runtime finalScore).
 //
 // Contract: DailyOverview -> DigestTopic.itemIds -> Item.id (FK-compatible)
 // Weekly picks: WeeklyPick.itemId -> Item.id (FK-compatible)
@@ -69,7 +68,6 @@ async function collectData(config: WeeklyReportConfig) {
   }
 
   // Fetch Item records for enrichment context (title, summary).
-  // Item.score is the persisted enrichment-time score, NOT the daily pipeline's runtime finalScore.
   const items = itemIdSet.size > 0
     ? await prisma.item.findMany({ where: { id: { in: Array.from(itemIdSet) } } })
     : []
@@ -87,16 +85,13 @@ async function generateEditorial(
   // Sort topic summaries by date ascending
   const sortedSummaries = [...topicSummaries].sort((a, b) => a.date.localeCompare(b.date))
 
-  // Get top items by persisted enrichment score for editorial context.
-  // Note: Item.score is the enrichment-time score (default 5.0), separate from
-  // the daily pipeline's runtime finalScore which is ephemeral.
+  // Get top items by recency for editorial context.
   const topItems = [...items]
-    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+    .sort((a, b) => (b.publishedAt?.getTime() ?? 0) - (a.publishedAt?.getTime() ?? 0))
     .slice(0, 10)
     .map((item) => ({
       title: item.title,
       summary: (item.summary ?? "").slice(0, 500),
-      score: item.score ?? 0,
     }))
 
   const prompt = buildEditorialPrompt(sortedSummaries, topItems, config.editorialPrompt ?? "")
@@ -113,9 +108,9 @@ async function generateWeeklyPicks(
 ) {
   const pickCount = config.pickCount ?? 6
 
-  // Sort by persisted enrichment score. All items come from daily topic itemIds
+  // Sort by recency. All items come from daily topic itemIds
   // so the weekly-daily contract is maintained (verified by integrity check F-05).
-  const sortedItems = [...items].sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+  const sortedItems = [...items].sort((a, b) => (b.publishedAt?.getTime() ?? 0) - (a.publishedAt?.getTime() ?? 0))
   const picks: { itemId: string; reason: string }[] = []
 
   for (const item of sortedItems.slice(0, pickCount)) {

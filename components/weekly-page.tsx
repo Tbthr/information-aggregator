@@ -6,7 +6,6 @@ import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { ArticleListSkeleton } from "@/components/loading-skeletons"
 import { SaveButton } from "@/components/save-button"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { useWeekly } from "@/hooks/use-api"
@@ -58,16 +57,6 @@ function getCurrentWeek(): string {
   return getWeekString(new Date())
 }
 
-// Score badge
-function ScoreBadge({ score }: { score: number }) {
-  return (
-    <Badge variant="outline" className="text-[10px] font-sans font-semibold gap-1 px-2 py-0.5 rounded-full">
-      <span style={{ color: "var(--save-active)" }}>★</span>
-      {score.toFixed(1)}
-    </Badge>
-  )
-}
-
 // Pick card
 function PickCard({
   pick,
@@ -94,7 +83,6 @@ function PickCard({
           <span className="text-[10px] font-mono text-muted-foreground/60 w-5 shrink-0">
             {String(rank).padStart(2, "0")}
           </span>
-          {item && <ScoreBadge score={item.score} />}
           {!isDeleted && (
             <SaveButton
               articleId={pick.itemId}

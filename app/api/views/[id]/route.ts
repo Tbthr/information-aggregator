@@ -64,7 +64,6 @@ export async function GET(
       where: {
         sourceId: { in: sourceIds },
         fetchedAt: { gte: dateThreshold },
-        score: { gte: minScore },
       },
       include: {
         source: {
@@ -75,7 +74,7 @@ export async function GET(
           },
         },
       },
-      orderBy: { score: "desc" },
+      orderBy: { publishedAt: "desc" },
       take: limit,
     })
 

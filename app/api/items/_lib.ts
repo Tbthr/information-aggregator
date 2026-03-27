@@ -81,7 +81,7 @@ export async function listItems(query: ItemsQuery): Promise<ApiResponse<ItemsDat
       orderBy:
         query.sort === "recent"
           ? [{ fetchedAt: "desc" }]
-          : [{ score: "desc" }, { fetchedAt: "desc" }],
+          : [{ publishedAt: "desc" }, { fetchedAt: "desc" }],
       skip: (query.page - 1) * query.pageSize,
       take: query.pageSize,
     }),
@@ -233,16 +233,11 @@ function serializeItem(item: ItemRecord): ItemData {
     firstSeenAt: item.fetchedAt.toISOString(),
     lastSeenAt: item.fetchedAt.toISOString(),
     author: item.author ?? null,
-    score: item.score,
     isBookmarked: !!bookmarkedAt,
     saved: bookmarkedAt ? { savedAt: bookmarkedAt } : undefined,
     metadata,
-    // 新增字段
     summary: item.summary ?? null,
-    bullets: item.bullets ?? [],
     content: item.content ?? null,
-    imageUrl: item.imageUrl ?? null,
-    categories: item.categories ?? [],
   }
 }
 

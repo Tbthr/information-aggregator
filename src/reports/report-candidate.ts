@@ -16,7 +16,6 @@ export function itemToReportCandidate(item: Item): ReportCandidate {
     content: item.content ?? "",
     publishedAt: item.publishedAt?.toISOString(),
     sourceLabel: item.sourceName,
-    categories: item.categories.length > 0 ? item.categories : undefined,
     normalizedUrl: item.url, // Item.url is already normalized per spec
     normalizedTitle: normalizeTitleForComparison(item.title),
     rawRef: {
