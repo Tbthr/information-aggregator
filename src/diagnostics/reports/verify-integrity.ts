@@ -1,5 +1,21 @@
 // Diagnostics Framework Reports Integrity Verification
 // Migrated from scripts/verify-reports-pipeline.ts testCrossPipelineIntegrity()
+//
+// Compatibility: These cross-pipeline integrity checks verify the contract
+// between daily and weekly reports after the scoring pipeline refactor.
+//
+// Key invariants:
+//   F-01: DigestTopic.dailyId -> DailyOverview.id (no orphans)
+//   F-03: WeeklyPick.weeklyId -> WeeklyReport.id (no orphans)
+//   F-04: DailyOverview.topicCount === actual DigestTopic count
+//   F-05: Every WeeklyPick.itemId appears in some DigestTopic.itemIds
+//         (weekly only consumes what daily produced)
+//   F-06: Items referenced by DigestTopic.itemIds have non-null title/url/sourceId
+//   F-07: Tweets referenced by DigestTopic.tweetIds have non-null text/authorHandle/url
+//
+// The daily pipeline now uses runtime scoring (ReportCandidate + ScoredCandidate),
+// but the persisted output shape (itemIds/tweetIds on DigestTopic) is unchanged.
+// These checks ensure the weekly-daily data contract is maintained.
 
 import { prisma } from "@/lib/prisma";
 import type { DiagnosticsAssertion } from "../core/types";

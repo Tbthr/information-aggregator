@@ -16,6 +16,25 @@ export interface WeeklyGenerateResult {
 }
 
 // ============================================================
+// Compatibility Notes
+// ============================================================
+//
+// Weekly report reads from DailyOverview (which uses the new scoring pipeline).
+// It does NOT directly read Items/Tweets for data selection -- it consumes daily
+// results via DigestTopic.itemIds to get the set of relevant Item IDs.
+//
+// Item records are fetched for enrichment context only (title, summary).
+// Sorting uses Item.score (persisted DB field, default 5.0), which is the
+// enrichment-time quality score. This is separate from the daily pipeline's
+// runtime finalScore (which is ephemeral and not persisted).
+//
+// Contract: DailyOverview -> DigestTopic.itemIds -> Item.id (FK-compatible)
+// Weekly picks: WeeklyPick.itemId -> Item.id (FK-compatible)
+// Integrity check F-05 verifies: every WeeklyPick.itemId appears in some
+// DigestTopic.itemIds from the same time window.
+// ============================================================
+
+// ============================================================
 // Pipeline Steps
 // ============================================================
 
@@ -32,7 +51,8 @@ async function collectData(config: WeeklyReportConfig) {
     },
   })
 
-  // Collect all referenced item IDs and tweet IDs
+  // Collect all referenced item IDs from daily topics (the weekly-daily contract).
+  // Weekly only consumes what daily produced -- it does not independently select Items.
   const itemIdSet = new Set<string>()
   const topicSummaries: { date: string; dayLabel: string; title: string; summary: string }[] = []
 
@@ -48,6 +68,8 @@ async function collectData(config: WeeklyReportConfig) {
     }
   }
 
+  // Fetch Item records for enrichment context (title, summary).
+  // Item.score is the persisted enrichment-time score, NOT the daily pipeline's runtime finalScore.
   const items = itemIdSet.size > 0
     ? await prisma.item.findMany({ where: { id: { in: Array.from(itemIdSet) } } })
     : []
@@ -65,7 +87,9 @@ async function generateEditorial(
   // Sort topic summaries by date ascending
   const sortedSummaries = [...topicSummaries].sort((a, b) => a.date.localeCompare(b.date))
 
-  // Get top items by score for context
+  // Get top items by persisted enrichment score for editorial context.
+  // Note: Item.score is the enrichment-time score (default 5.0), separate from
+  // the daily pipeline's runtime finalScore which is ephemeral.
   const topItems = [...items]
     .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
     .slice(0, 10)
@@ -88,6 +112,9 @@ async function generateWeeklyPicks(
   config: WeeklyReportConfig
 ) {
   const pickCount = config.pickCount ?? 6
+
+  // Sort by persisted enrichment score. All items come from daily topic itemIds
+  // so the weekly-daily contract is maintained (verified by integrity check F-05).
   const sortedItems = [...items].sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
   const picks: { itemId: string; reason: string }[] = []
 

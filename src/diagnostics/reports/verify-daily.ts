@@ -1,5 +1,13 @@
 // Diagnostics Framework Reports Daily Verification
 // Migrated from scripts/verify-reports-pipeline.ts Stage 5, 6, D-17, G-05
+//
+// Compatibility: The daily report now uses the runtime scoring pipeline
+// (ReportCandidate + ScoredCandidate), but the output shape is unchanged:
+//   - DailyOverview.topicCount matches DigestTopic count
+//   - DigestTopic.itemIds and DigestTopic.tweetIds are retained (FK-compatible)
+//   - Item/Tweet records referenced by those IDs still have all required fields
+//
+// These diagnostics verify the output contract that weekly depends on.
 
 import { prisma } from "@/lib/prisma";
 import { formatUtcDate } from "@/lib/date-utils";

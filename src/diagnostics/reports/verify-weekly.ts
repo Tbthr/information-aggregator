@@ -1,5 +1,17 @@
 // Diagnostics Framework Reports Weekly Verification
 // Migrated from scripts/verify-reports-pipeline.ts Stage 7, 8, E-10, G-06
+//
+// Compatibility: Weekly report reads from DailyOverview (via DigestTopic.itemIds).
+// It does NOT independently select Items -- all WeeklyPick.itemId values must
+// originate from DigestTopic.itemIds within the same time window.
+//
+// Item.score (persisted enrichment-time score) is used for sorting weekly picks.
+// This is separate from the daily pipeline's runtime finalScore.
+//
+// These diagnostics verify:
+//   - Weekly report generation produces valid WeeklyReport + WeeklyPicks
+//   - Weekly picks reference valid Item IDs (FK integrity)
+//   - API endpoints return correct shape for empty and latest queries
 
 import { prisma } from "@/lib/prisma";
 import { beijingWeekRange, utcWeekNumber } from "@/lib/date-utils";
