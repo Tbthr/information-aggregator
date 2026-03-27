@@ -405,28 +405,79 @@ export async function upsertSourcesBatch(
 ): Promise<void> {
   if (sources.length === 0) return;
 
-  const upsertPromises = sources.map((source) =>
-    prisma.source.upsert({
-      where: { id: source.id },
-      create: {
-        id: source.id,
-        type: source.type,
-        name: source.name || source.id,
-        url: source.url || "",
-        enabled: source.enabled,
-        configJson: source.configJson,
-        packId: source.packId,
-      },
-      update: {
-        type: source.type,
-        name: source.name || source.id,
-        url: source.url || "",
-        enabled: source.enabled,
-        configJson: source.configJson,
-        packId: source.packId,
-      },
-    }),
+  // Deduplicate by (packId, url) — keep first occurrence, ignore duplicates
+  const seen = new Set<string>();
+  const deduped = sources.filter((s) => {
+    const key = `${s.packId ?? ""}|${s.url ?? ""}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  // Step 1: Query existing sources by (packId, url) to handle the case where
+  // a (packId, url) combo exists with a different id than source.id
+  const packUrlKeys = deduped.map((s) => ({ packId: s.packId ?? null, url: s.url ?? "" }));
+  const existingByPackUrl = await prisma.source.findMany({
+    where: {
+      OR: packUrlKeys.map((k) => ({ packId: k.packId, url: { equals: k.url } })),
+    },
+    select: { id: true, packId: true, url: true },
+  });
+  const packUrlToId = new Map(
+    existingByPackUrl.map((e) => [`${e.packId ?? ""}|${e.url}`, e.id]),
   );
+
+  // Step 2: Build upsert operations — use id if exists, otherwise use (packId, url)
+  const upsertPromises = deduped.map((source) => {
+    const key = `${source.packId ?? ""}|${source.url ?? ""}`;
+    const existingId = packUrlToId.get(key);
+
+    if (existingId) {
+      // (packId, url) exists — upsert by id to update it
+      return prisma.source.upsert({
+        where: { id: existingId },
+        create: {
+          id: existingId,
+          type: source.type,
+          name: source.name || source.id,
+          url: source.url || "",
+          enabled: source.enabled,
+          configJson: source.configJson,
+          packId: source.packId,
+        },
+        update: {
+          type: source.type,
+          name: source.name || source.id,
+          url: source.url || "",
+          enabled: source.enabled,
+          configJson: source.configJson,
+          packId: source.packId,
+        },
+      });
+    } else {
+      // No existing (packId, url) — upsert by id (will create new)
+      return prisma.source.upsert({
+        where: { id: source.id },
+        create: {
+          id: source.id,
+          type: source.type,
+          name: source.name || source.id,
+          url: source.url || "",
+          enabled: source.enabled,
+          configJson: source.configJson,
+          packId: source.packId,
+        },
+        update: {
+          type: source.type,
+          name: source.name || source.id,
+          url: source.url || "",
+          enabled: source.enabled,
+          configJson: source.configJson,
+          packId: source.packId,
+        },
+      });
+    }
+  });
 
   // 分批执行
   for (let i = 0; i < upsertPromises.length; i += BATCH_SIZE) {
