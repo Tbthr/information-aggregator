@@ -17,6 +17,7 @@ import { loadAllPacksFromDb } from "../config/load-pack-prisma";
 import { generateSourceId } from "../config/source-id";
 import { collectSources, type CollectDependencies, type CollectSourceEvent, type AdapterFn } from "./collect";
 import { normalizeItems } from "./normalize";
+import { filterByPack } from "./filter-by-pack";
 import { dedupeExact } from "./dedupe-exact";
 import { dedupeNear } from "./dedupe-near";
 import {
@@ -45,6 +46,7 @@ export interface ArchiveCounts {
 export interface PipelineCounts {
   raw: number;
   normalized: number;
+  afterPackFilter: number;
   afterExactDedup: number;
   afterNearDedup: number;
   archivedNew: number;
@@ -213,40 +215,33 @@ export async function runCollectJob(options: RunCollectJobOptions = {}): Promise
   const normalized = normalizeItems(rawItems);
   log("Normalized items", { count: normalized.length });
 
-  // ── 7. Exact dedup ─────────────────────────────────────────────
-  const noExactKey = normalized.filter((i) => !i.exactDedupKey);
-  if (noExactKey.length > 0) {
-    log("Items dropped: missing exactDedupKey", { count: noExactKey.length });
-  }
-  const afterExact = dedupeExact(
-    normalized.filter((i): i is NormalizedItem & { exactDedupKey: string } => !!i.exactDedupKey)
-  );
+  // ── 7. Filter by pack ───────────────────────────────────────────
+  const afterPackFilter = normalized.filter((item) => {
+    if (!item.filterContext) return true;
+    return filterByPack(item, item.filterContext);
+  });
+  log("After pack filter", { before: normalized.length, after: afterPackFilter.length });
 
-  // ── 8. Near dedup ──────────────────────────────────────────────
-  const noProcessedAt = afterExact.filter((i) => !i.processedAt);
-  if (noProcessedAt.length > 0) {
-    log("Items dropped: missing processedAt", { count: noProcessedAt.length });
-  }
-  const afterNear = dedupeNear(
-    afterExact.filter(
-      (i): i is NormalizedItem & { exactDedupKey: string; processedAt: string } => !!i.processedAt
-    )
-  );
+  // ── 8. Exact dedup ─────────────────────────────────────────────
+  const afterExact = dedupeExact(afterPackFilter);
+
+  // ── 9. Near dedup ──────────────────────────────────────────────
+  const afterNear = dedupeNear(afterExact);
 
   // Convert NormalizedItem[] back to RawItem[] for archival
   const dedupedRawItems: RawItem[] = afterNear.map((item): RawItem => ({
     id: item.id,
     sourceId: item.sourceId ?? "",
     title: item.title ?? "",
-    url: item.canonicalUrl ?? item.url ?? "",
-    fetchedAt: item.processedAt ?? new Date().toISOString(),
+    url: item.normalizedUrl,
+    fetchedAt: new Date().toISOString(),
     metadataJson: item.metadataJson ?? "{}",
     publishedAt: item.publishedAt,
   }));
 
   log("After dedup", { original: rawItems.length, deduped: dedupedRawItems.length });
 
-  // ── 9. Archive ─────────────────────────────────────────────────
+  // ── 10. Archive ─────────────────────────────────────────────────
   const now = new Date().toISOString();
   const sourceNameMap = Object.fromEntries(sources.map((s) => [s.id, s.description ?? s.id]));
 
@@ -256,14 +251,14 @@ export async function runCollectJob(options: RunCollectJobOptions = {}): Promise
     title: item.title ?? "",
     sourceId: item.sourceId ?? "",
     sourceName: sourceNameMap[item.sourceId ?? ""] ?? item.sourceId ?? "",
-    canonicalUrl: item.canonicalUrl ?? item.url ?? "",
-    score: item.engagementScore ?? 0,
+    canonicalUrl: item.normalizedUrl,
+    score: 0, // engagementScore removed from NormalizedItem
   }));
 
   const archiveResult = await archiveRawItems(dedupedRawItems, now, sourceNameMap);
   log("Archived items", { newCount: archiveResult.newCount, updateCount: archiveResult.updateCount });
 
-  // ── 10. AI enrichment ─────────────────────────────────────────
+  // ── 11. AI enrichment ─────────────────────────────────────────
   if (archiveResult.newCount > 0) {
     const aiClient = createAiClient();
     if (aiClient) {
@@ -280,13 +275,13 @@ export async function runCollectJob(options: RunCollectJobOptions = {}): Promise
     }
   }
 
-  // ── 11. Record source failures ─────────────────────────────────
+  // ── 12. Record source failures ─────────────────────────────────
   const failedSourceIds = new Set(failedSources.map((s) => s.sourceId));
   if (failedSources.length > 0) {
     await Promise.allSettled(failedSources.map((s) => recordSourceFailure(s.sourceId, s.error)));
   }
 
-  // ── 12. Record source successes ────────────────────────────────
+  // ── 13. Record source successes ────────────────────────────────
   const healthRecords = sources
     .filter((source) => !failedSourceIds.has(source.id))
     .map((source) => {
@@ -304,6 +299,7 @@ export async function runCollectJob(options: RunCollectJobOptions = {}): Promise
     counts: {
       raw: rawItems.length,
       normalized: normalized.length,
+      afterPackFilter: afterPackFilter.length,
       afterExactDedup: afterExact.length,
       afterNearDedup: afterNear.length,
       archivedNew: archiveResult.newCount,

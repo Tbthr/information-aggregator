@@ -124,32 +124,34 @@ export interface RawItemMetadata {
   parent?: RawItemThreadItem; // 父推文（回复上下文）
 }
 
+// NormalizedItem - simplified article-only output from normalize.ts
+// Legacy fields kept for backward compatibility during transition; will be removed in Task 9
 export interface NormalizedItem {
   id: string;
-  rawItemId: string;
-  canonicalUrl: string;
+  sourceId: string;
+  title: string;
+  publishedAt?: string;
+  sourceType: SourceType;
+  contentType: "article"; // fixed to article per spec
+  normalizedUrl: string;
+  normalizedTitle: string;
+  normalizedSummary: string;
+  normalizedContent: string;
+  metadataJson: string;
+  // Runtime filter context (not stored in DB, set at collection time)
+  filterContext?: FilterContext;
+  // Legacy fields (deprecated, will be removed per Task 9)
+  rawItemId?: string;
+  canonicalUrl?: string;
   linkedCanonicalUrl?: string;
   relationshipToCanonical?: CanonicalRelationship;
   isDiscussionSource?: boolean;
-  normalizedTitle: string;
   normalizedText?: string;
   exactDedupKey?: string;
   processedAt?: string;
-  publishedAt?: string;
-  sourceId?: string;
-  title?: string;
   url?: string;
-  metadataJson?: string;
-  sourceType?: SourceType;
-  contentType?: string;
   engagementScore?: number;
   content?: string;
-  // Spec-required normalized fields
-  normalizedUrl?: string;
-  normalizedSummary?: string;
-  normalizedContent?: string;
-  // Runtime filter context (not stored in DB, set at collection time)
-  filterContext?: FilterContext;
 }
 
 // ReportCandidate - 日报阶段统一候选模型，不是数据库表

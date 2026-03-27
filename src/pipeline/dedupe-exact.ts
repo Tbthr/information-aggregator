@@ -1,6 +1,6 @@
 interface ExactDedupItem {
   id: string;
-  exactDedupKey: string;
+  normalizedUrl: string;
   processedAt?: string;
   contentType?: string;
 }
@@ -22,7 +22,7 @@ export function dedupeExact<T extends ExactDedupItem>(items: T[]): T[] {
   const winners = new Map<string, T>();
 
   for (const item of items) {
-    const current = winners.get(item.exactDedupKey);
+    const current = winners.get(item.normalizedUrl);
     const currentPriority = contentTypePriority(current?.contentType);
     const itemPriority = contentTypePriority(item.contentType);
 
@@ -31,7 +31,7 @@ export function dedupeExact<T extends ExactDedupItem>(items: T[]): T[] {
       || itemPriority > currentPriority
       || (itemPriority === currentPriority && (item.processedAt ?? "") >= (current.processedAt ?? ""))
     ) {
-      winners.set(item.exactDedupKey, item);
+      winners.set(item.normalizedUrl, item);
     }
   }
 

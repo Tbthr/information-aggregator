@@ -1,7 +1,7 @@
 interface NearDedupItem {
   id: string;
   normalizedTitle: string;
-  canonicalUrl: string;
+  normalizedUrl: string;
   processedAt?: string;
 }
 
