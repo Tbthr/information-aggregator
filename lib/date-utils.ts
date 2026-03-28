@@ -85,6 +85,7 @@ export function beijingDayRange(dateStr: string): { start: Date; end: Date } {
   const start = new Date(`${dateStr}T00:00:00.000Z`)
   start.setUTCHours(start.getUTCHours() - BEIJING_OFFSET_HOURS)
 
+  // End: 23:59 Beijing = 15:59 UTC same day (subtract offset directly).
   const end = new Date(`${dateStr}T23:59:59.999Z`)
   end.setUTCHours(end.getUTCHours() - BEIJING_OFFSET_HOURS)
 

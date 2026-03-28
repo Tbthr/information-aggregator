@@ -13,10 +13,17 @@ const FAILING_MIN_CONSECUTIVE = 3;
 
 /**
  * Loads all source health records from the database and joins with source names.
- * Returns an array of source health details ready for diagnostics.
+ * Only returns health records for enabled sources (enabled = true).
+ * Disabled sources are excluded from health checks to avoid false positives
+ * from sources that are intentionally offline.
  */
 export async function loadSourceHealthSummary(): Promise<SourceHealthSummary[]> {
   const records = await prisma.sourceHealth.findMany({
+    where: {
+      source: {
+        enabled: true,
+      },
+    },
     include: {
       source: {
         select: {
@@ -102,5 +109,6 @@ export function classifySourceHealth(detail: SourceHealthSummary): SourceHealthS
     return "warning";
   }
 
-  return "failing";
+  // Failure is older than FAILING_THRESHOLD_HOURS — reset to healthy
+  return "healthy";
 }

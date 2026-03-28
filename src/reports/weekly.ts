@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import type { Item, WeeklyReportConfig } from "@prisma/client"
 import type { AiClient } from "@/src/ai/types"
-import { utcWeekNumber, beijingWeekRange } from "@/lib/date-utils"
+import { utcWeekNumber, beijingWeekRange, formatUtcDate } from "@/lib/date-utils"
 import {
   buildEditorialPrompt,
   parseEditorialResult,
@@ -38,11 +38,15 @@ export interface WeeklyGenerateResult {
 // ============================================================
 
 /** Step 1: Collect data from daily reports */
-async function collectData(config: WeeklyReportConfig) {
-  const days = config.days ?? 7
+async function collectData(config: WeeklyReportConfig, weekStart: Date, weekEnd: Date) {
   const dailyOverviews = await prisma.dailyOverview.findMany({
-    orderBy: { date: "desc" },
-    take: days,
+    where: {
+      date: {
+        gte: formatUtcDate(weekStart),
+        lte: formatUtcDate(weekEnd),
+      },
+    },
+    orderBy: { date: "asc" },
     include: {
       topics: {
         orderBy: { order: "asc" },
@@ -200,7 +204,7 @@ export async function generateWeeklyReport(
   }
 
   // Step 1: Collect data
-  const data = await collectData(config)
+  const data = await collectData(config, monday, weekRange.end)
   const { items, topicSummaries } = data
 
   if (items.length === 0) {

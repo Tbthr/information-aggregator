@@ -18,8 +18,32 @@
 // These checks ensure the weekly-daily data contract is maintained.
 
 import { prisma } from "@/lib/prisma";
+import { formatUtcDate } from "@/lib/date-utils";
 import type { DiagnosticsAssertion } from "../core/types";
 import type { ReportsRunOptions } from "./types";
+
+/**
+ * Parse a week number string like "2026-W13" into the Monday date of that week.
+ * Returns a Date at 00:00:00.000 UTC representing the start of that ISO week.
+ */
+function parseWeekNumber(weekNumber: string): Date {
+  const [yearStr, weekStr] = weekNumber.split("-W");
+  const year = parseInt(yearStr, 10);
+  const weekNum = parseInt(weekStr, 10);
+
+  // Jan 4 is always in ISO week 1 per ISO 8601.
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const jan4Day = jan4.getUTCDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+
+  // Days to go back from jan4 to reach Monday of week 1.
+  // Mon(1)->0, Tue(2)->1, Wed(3)->2, Thu(4)->3, Fri(5)->4, Sat(6)->5, Sun(0)->6
+  const daysToMonday = jan4Day === 0 ? 6 : jan4Day - 1;
+  const week1Monday = new Date(Date.UTC(year, 0, 4 - daysToMonday));
+
+  // Add (weekNum - 1) weeks to get the Monday of the target week
+  const targetMonday = new Date(week1Monday.getTime() + (weekNum - 1) * 7 * 24 * 60 * 60 * 1000);
+  return targetMonday;
+}
 
 /**
  * Runs cross-pipeline integrity assertions (F-01 through F-07).
@@ -112,27 +136,48 @@ export async function runIntegrityAssertions(
   } else {
     const dailyOverviews = await prisma.dailyOverview.findMany({
       include: { topics: true },
-      orderBy: { date: "desc" },
+      orderBy: { date: "asc" },
     });
 
-    // Collect all topic itemIds from daily reports
-    const dailyTopicItemIds = new Set<string>();
+    // Index daily overviews by date string (YYYY-MM-DD) for efficient range queries
+    // Note: DailyOverview.date is stored as a String (YYYY-MM-DD), not a DateTime
+    const dailyByDate = new Map<string, typeof dailyOverviews[0]>();
     for (const daily of dailyOverviews) {
-      for (const topic of daily.topics) {
-        for (const id of topic.itemIds) dailyTopicItemIds.add(id);
-      }
+      dailyByDate.set(daily.date, daily);
     }
 
     let f05NotFromDaily = 0;
     let f05TotalPicks = 0;
+
     for (const report of weeklyReports) {
+      // Calculate the week range (Monday to Sunday) for this weekly report
+      const weekStart = parseWeekNumber(report.weekNumber);
+      const weekEnd = new Date(weekStart.getTime());
+      weekEnd.setUTCDate(weekEnd.getUTCDate() + 6);
+
+      // Collect itemIds from daily overviews within this week only
+      const weeklyDailyTopicItemIds = new Set<string>();
+      const current = new Date(weekStart);
+      while (current <= weekEnd) {
+        const dateStr = formatUtcDate(current);
+        const daily = dailyByDate.get(dateStr);
+        if (daily) {
+          for (const topic of daily.topics) {
+            for (const id of topic.itemIds) weeklyDailyTopicItemIds.add(id);
+          }
+        }
+        current.setUTCDate(current.getUTCDate() + 1);
+      }
+
+      // Check each pick of this weekly report
       for (const pick of report.picks) {
         f05TotalPicks++;
-        if (!dailyTopicItemIds.has(pick.itemId)) {
+        if (!weeklyDailyTopicItemIds.has(pick.itemId)) {
           f05NotFromDaily++;
         }
       }
     }
+
     const f05Ok = f05NotFromDaily === 0;
     verboseLog(`  F-05 weekly picks from daily topics: ${f05TotalPicks - f05NotFromDaily}/${f05TotalPicks}`);
 

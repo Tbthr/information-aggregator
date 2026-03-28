@@ -4,6 +4,7 @@ import { runCollectionDiagnostics } from "./collection";
 import { runReportsDiagnostics } from "./reports";
 import { deriveRiskLevel } from "../core/guards";
 import { createRunResult, summarizeStageStatuses, deriveRunStatus } from "../core/result";
+import { prisma } from "@/lib/prisma";
 import type { DiagnosticsMode, DiagnosticsArgs, DiagnosticsStageResult, DiagnosticsAssertion, DiagnosticsRunResult } from "../core/types";
 import type { CollectionDiagnosticsSection, ReportsDiagnosticsSection } from "../core/types";
 
@@ -34,6 +35,40 @@ export async function runFullDiagnostics(
   const allAssertions: DiagnosticsAssertion[] = [];
   let collectionSection: CollectionDiagnosticsSection | undefined;
   let reportsSection: ReportsDiagnosticsSection | undefined;
+
+  // ── Cleanup (before runners, to clear old data) ──────────────
+  if (args.cleanup) {
+    const cleanupStart = Date.now();
+    try {
+      if (args.runCollection) {
+        await prisma.item.deleteMany({});
+      }
+      if (!args.weeklyOnly) {
+        await prisma.dailyOverview.deleteMany({});
+      }
+      if (!args.dailyOnly) {
+        await prisma.weeklyReport.deleteMany({});
+      }
+
+      allStages.push({
+        key: "cleanup",
+        label: "Cleanup",
+        category: "system",
+        status: "PASS",
+        durationMs: Date.now() - cleanupStart,
+        details: "old test data cleaned up before run",
+      });
+    } catch (err) {
+      allStages.push({
+        key: "cleanup",
+        label: "Cleanup",
+        category: "system",
+        status: "FAIL",
+        durationMs: Date.now() - cleanupStart,
+        details: `cleanup failed: ${err instanceof Error ? err.message : String(err)}`,
+      });
+    }
+  }
 
   // ── Collection Runner ───────────────────────────────────────
   log("starting collection diagnostics...");
