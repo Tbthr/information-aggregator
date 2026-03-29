@@ -7,7 +7,7 @@ export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
 const dailyConfigSchema = z.object({
-  packs: z.array(z.string()).optional(),
+  topicIds: z.array(z.string()).optional(),
   maxItems: z.number().int().min(1).max(200).optional(),
   minScore: z.number().int().min(0).max(10).optional(),
   keywordBlacklist: z.array(z.string()).optional(),
@@ -64,7 +64,7 @@ export async function GET() {
   }
 
   return success({
-    daily: daily ? { ...daily, packs: daily.packs ?? [], kindPreferences: parsedKindPreferences } : null,
+    daily: daily ? { ...daily, topicIds: daily.topicIds ?? [], kindPreferences: parsedKindPreferences } : null,
     weekly,
   })
 }
@@ -93,7 +93,7 @@ export async function PUT(request: NextRequest) {
     if (dailyUpdate.filterPrompt !== undefined) updateData.filterPrompt = dailyUpdate.filterPrompt
     if (dailyUpdate.topicPrompt !== undefined) updateData.topicPrompt = dailyUpdate.topicPrompt
     if (dailyUpdate.topicSummaryPrompt !== undefined) updateData.topicSummaryPrompt = dailyUpdate.topicSummaryPrompt
-    if (dailyUpdate.packs !== undefined) updateData.packs = dailyUpdate.packs
+    if (dailyUpdate.topicIds !== undefined) updateData.topicIds = dailyUpdate.topicIds
     if (dailyUpdate.maxItems !== undefined) updateData.maxItems = dailyUpdate.maxItems
     if (dailyUpdate.minScore !== undefined) updateData.minScore = dailyUpdate.minScore
     if (dailyUpdate.keywordBlacklist !== undefined) updateData.keywordBlacklist = dailyUpdate.keywordBlacklist
@@ -111,7 +111,7 @@ export async function PUT(request: NextRequest) {
         filterPrompt: dailyUpdate.filterPrompt ?? existing?.filterPrompt ?? "",
         topicPrompt: dailyUpdate.topicPrompt ?? existing?.topicPrompt ?? "",
         topicSummaryPrompt: dailyUpdate.topicSummaryPrompt ?? existing?.topicSummaryPrompt ?? "",
-        packs: dailyUpdate.packs ?? existing?.packs ?? [],
+        topicIds: dailyUpdate.topicIds ?? existing?.topicIds ?? [],
         maxItems: dailyUpdate.maxItems ?? existing?.maxItems ?? 50,
         minScore: dailyUpdate.minScore ?? existing?.minScore ?? 0,
         keywordBlacklist: dailyUpdate.keywordBlacklist ?? existing?.keywordBlacklist ?? [],

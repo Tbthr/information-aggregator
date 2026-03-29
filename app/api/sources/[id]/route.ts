@@ -18,12 +18,15 @@ async function findSourceById(id: string) {
 
 // Zod schema for Source update
 const sourceUpdateSchema = z.object({
-  type: z.string().min(1).optional(),
+  kind: z.string().min(1).optional(),
   name: z.string().min(1).optional(),
   url: z.string().min(1).optional(),
   description: z.string().nullable().optional(),
   enabled: z.boolean().optional(),
-  packId: z.string().nullable().optional(),
+  defaultTopicIds: z.array(z.string()).optional(),
+  configJson: z.string().nullable().optional(),
+  priority: z.number().int().optional(),
+  authRef: z.string().nullable().optional(),
 })
 
 export async function PATCH(
@@ -50,31 +53,21 @@ export async function PATCH(
       return error("Source not found", 404)
     }
 
-    // Validate packId exists if provided
-    if (parsedData.packId !== undefined && parsedData.packId !== null) {
-      const pack = await prisma.pack.findUnique({
-        where: { id: parsedData.packId },
-      })
-
-      if (!pack) {
-        return error("Pack not found", 404)
-      }
-    }
-
     // Build update data, only including defined fields
     const updateData: Prisma.SourceUpdateInput = {}
 
-    if (parsedData.type !== undefined) updateData.type = parsedData.type
+    if (parsedData.kind !== undefined) updateData.kind = parsedData.kind
     if (parsedData.name !== undefined) updateData.name = parsedData.name
     if (parsedData.url !== undefined) updateData.url = parsedData.url
     if (parsedData.description !== undefined) {
       updateData.description = parsedData.description === null ? { set: null } : parsedData.description
     }
     if (parsedData.enabled !== undefined) updateData.enabled = parsedData.enabled
-    if (parsedData.packId !== undefined) {
-      updateData.pack = parsedData.packId
-        ? { connect: { id: parsedData.packId } }
-        : { disconnect: true }
+    if (parsedData.defaultTopicIds !== undefined) updateData.defaultTopicIds = parsedData.defaultTopicIds
+    if (parsedData.configJson !== undefined) updateData.configJson = parsedData.configJson
+    if (parsedData.priority !== undefined) updateData.priority = parsedData.priority
+    if (parsedData.authRef !== undefined) {
+      updateData.authRef = parsedData.authRef === null ? { set: null } : parsedData.authRef
     }
 
     const source = await prisma.source.update({
@@ -86,9 +79,7 @@ export async function PATCH(
   } catch (err) {
     console.error("Error updating source:", err)
 
-    const prismaErr = handlePrismaError(err, {
-      p2003: "Pack not found",
-    })
+    const prismaErr = handlePrismaError(err, {})
     if (prismaErr) return prismaErr
 
     return error("Failed to update source")

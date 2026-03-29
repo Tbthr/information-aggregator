@@ -13,7 +13,7 @@ const customViewCreateSchema = z.object({
   icon: z.string().min(1),
   description: z.string().nullable().optional(),
   filterJson: z.string().nullable().optional(),
-  packIds: z.array(z.string()).default([]),
+  topicIds: z.array(z.string()).default([]),
 })
 
 export async function GET() {
@@ -29,7 +29,19 @@ export async function GET() {
       orderBy: { order: "asc" },
     })
 
-    return success({ views })
+    // Transform to use topicIds instead of packIds in response
+    const transformedViews = views.map((view) => ({
+      id: view.id,
+      name: view.name,
+      icon: view.icon,
+      description: view.description,
+      filterJson: view.filterJson,
+      order: view.order,
+      topicIds: view.customViewPacks.map((cvp) => cvp.packId),
+      customViewPacks: view.customViewPacks,
+    }))
+
+    return success({ views: transformedViews })
   } catch (err) {
     console.error("Error in /api/custom-views:", err)
     return error("Failed to load custom views")
@@ -59,7 +71,7 @@ export async function POST(request: Request) {
         filterJson: parsedData.filterJson,
         updatedAt: new Date(),
         customViewPacks: {
-          create: parsedData.packIds.map((packId) => ({ packId })),
+          create: parsedData.topicIds.map((topicId) => ({ packId: topicId })),
         },
       },
       include: {

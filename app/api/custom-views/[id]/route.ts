@@ -13,7 +13,7 @@ const customViewUpdateSchema = z.object({
   icon: z.string().min(1).optional(),
   description: z.string().nullable().optional(),
   filterJson: z.string().nullable().optional(),
-  packIds: z.array(z.string()).optional(),
+  topicIds: z.array(z.string()).optional(),
 })
 
 export async function GET(
@@ -41,7 +41,17 @@ export async function GET(
       return error("Custom view not found", 404)
     }
 
-    return success(view)
+    // Transform to use topicIds instead of packIds in response
+    return success({
+      id: view.id,
+      name: view.name,
+      icon: view.icon,
+      description: view.description,
+      filterJson: view.filterJson,
+      order: view.order,
+      topicIds: view.customViewPacks.map((cvp) => cvp.packId),
+      customViewPacks: view.customViewPacks,
+    })
   } catch (err) {
     console.error("Error fetching custom view:", err)
     return error("Failed to load custom view")
@@ -81,10 +91,10 @@ export async function PUT(
     if (parsedData.filterJson !== undefined) {
       updateData.filterJson = parsedData.filterJson
     }
-    if (parsedData.packIds !== undefined) {
+    if (parsedData.topicIds !== undefined) {
       updateData.customViewPacks = {
         deleteMany: {},
-        create: parsedData.packIds.map((packId) => ({ packId })),
+        create: parsedData.topicIds.map((topicId) => ({ packId: topicId })),
       }
     }
 
@@ -100,13 +110,22 @@ export async function PUT(
       },
     })
 
-    return success(view)
+    return success({
+      id: view.id,
+      name: view.name,
+      icon: view.icon,
+      description: view.description,
+      filterJson: view.filterJson,
+      order: view.order,
+      topicIds: view.customViewPacks.map((cvp) => cvp.packId),
+      customViewPacks: view.customViewPacks,
+    })
   } catch (err) {
     console.error("Error updating custom view:", err)
 
     const prismaErr = handlePrismaError(err, {
       p2025: "Custom view not found",
-      p2003: "One or more pack IDs do not exist",
+      p2003: "One or more topic IDs do not exist",
     })
     if (prismaErr) return prismaErr
 

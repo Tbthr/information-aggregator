@@ -23,17 +23,16 @@ export async function GET(request: NextRequest) {
       weekNumber: week ?? null,
       editorial: null,
       picks: [],
-      referencedItems: [],
+      contents: [],
     })
   }
 
-  // Collect item IDs from picks and fetch referenced items
-  const itemIdSet = new Set(report.picks.map((p) => p.itemId))
-  const referencedItems =
-    itemIdSet.size > 0
-      ? await prisma.item.findMany({
-          where: { id: { in: Array.from(itemIdSet) } },
-          select: { id: true, title: true, url: true, summary: true },
+  // Collect content IDs from picks and fetch referenced content
+  const contentIdSet = new Set(report.picks.map((p) => p.contentId).filter((id): id is string => !!id))
+  const contents =
+    contentIdSet.size > 0
+      ? await prisma.content.findMany({
+          where: { id: { in: Array.from(contentIdSet) } },
         })
       : []
 
@@ -45,14 +44,24 @@ export async function GET(request: NextRequest) {
     picks: report.picks.map((p) => ({
       id: p.id,
       order: p.order,
-      itemId: p.itemId,
+      contentId: p.contentId,
       reason: p.reason,
     })),
-    referencedItems: referencedItems.map((item) => ({
-      id: item.id,
-      title: item.title,
-      url: item.url,
-      summary: item.summary,
+    contents: contents.map((c) => ({
+      id: c.id,
+      kind: c.kind,
+      sourceId: c.sourceId,
+      title: c.title,
+      body: c.body,
+      url: c.url,
+      authorLabel: c.authorLabel,
+      publishedAt: c.publishedAt?.toISOString() ?? null,
+      fetchedAt: c.fetchedAt.toISOString(),
+      engagementScore: c.engagementScore,
+      qualityScore: c.qualityScore,
+      topicIds: c.topicIds,
+      topicScoresJson: c.topicScoresJson,
+      metadataJson: c.metadataJson,
     })),
   })
 }

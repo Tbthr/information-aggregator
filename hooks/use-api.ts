@@ -2,7 +2,7 @@
 
 import { useMemo } from "react"
 import useSWR, { SWRConfiguration } from "swr"
-import type { Article, ApiResponse, DailyReportData, WeeklyReportData } from "@/lib/types"
+import type { Article, ApiResponse, DailyReportData, WeeklyReportData, Topic, Content } from "@/lib/types"
 import type { Pack } from "@/components/sidebar/types"
 
 // ============ Types ============
@@ -12,6 +12,7 @@ interface CustomView {
   name: string
   icon: string
   description?: string
+  topicIds?: string[]
   customViewPacks?: Array<{ packId: string; pack?: { id: string; name: string } }>
 }
 
@@ -75,6 +76,48 @@ interface PacksResponse {
 
 export function usePacks() {
   return useSWR<Pack[]>("/api/packs", (url) => fetcher<PacksResponse>(url).then((d) => d.packs), defaultConfig)
+}
+
+// ── Topics API Hooks ──
+
+interface TopicsResponse {
+  topics: Topic[]
+}
+
+export function useTopics() {
+  return useSWR<Topic[]>("/api/topics", (url) => fetcher<TopicsResponse>(url).then((d) => d.topics), defaultConfig)
+}
+
+// ── Content API Hooks ──
+
+interface ContentResponse {
+  contents: Content[]
+}
+
+interface FetchContentParams {
+  topicIds?: string
+  sourceIds?: string
+  kinds?: string
+  window?: "today" | "week" | "month"
+  page?: number
+  pageSize?: number
+  sort?: "ranked" | "recent"
+  search?: string
+}
+
+export function useContent(params: FetchContentParams = {}) {
+  const sp = new URLSearchParams()
+  if (params.topicIds) sp.set("topicIds", params.topicIds)
+  if (params.sourceIds) sp.set("sourceIds", params.sourceIds)
+  if (params.kinds) sp.set("kinds", params.kinds)
+  if (params.window) sp.set("window", params.window)
+  if (params.page) sp.set("page", String(params.page))
+  if (params.pageSize) sp.set("pageSize", String(params.pageSize))
+  if (params.sort) sp.set("sort", params.sort)
+  if (params.search) sp.set("search", params.search)
+
+  const key = sp.toString() ? `/api/content?${sp.toString()}` : "/api/content"
+  return useSWR<Content[]>(key, (url) => fetcher<ContentResponse>(url).then((d) => d.contents), defaultConfig)
 }
 
 interface CustomViewsResponse {

@@ -24,32 +24,23 @@ export async function GET(request: NextRequest) {
       dayLabel: null,
       topicCount: 0,
       topics: [],
-      referencedItems: [],
-      referencedTweets: [],
+      contents: [],
     })
   }
 
-  // Collect all referenced IDs from topics
-  const itemIds = new Set<string>()
-  const tweetIds = new Set<string>()
+  // Collect all content IDs from topics
+  const contentIdSet = new Set<string>()
   for (const topic of overview.topics) {
-    for (const id of topic.itemIds) itemIds.add(id)
-    for (const id of topic.tweetIds) tweetIds.add(id)
+    for (const id of topic.contentIds) contentIdSet.add(id)
   }
 
-  // Fetch referenced items and tweets in parallel
-  const [referencedItems, referencedTweets] = await Promise.all([
-    itemIds.size > 0
-      ? prisma.item.findMany({
-          where: { id: { in: Array.from(itemIds) } },
+  // Fetch referenced content
+  const contents =
+    contentIdSet.size > 0
+      ? await prisma.content.findMany({
+          where: { id: { in: Array.from(contentIdSet) } },
         })
-      : [],
-    tweetIds.size > 0
-      ? prisma.tweet.findMany({
-          where: { id: { in: Array.from(tweetIds) } },
-        })
-      : [],
-  ])
+      : []
 
   return success({
     date: overview.date,
@@ -64,18 +55,23 @@ export async function GET(request: NextRequest) {
       summary: t.summary,
       itemIds: t.itemIds,
       tweetIds: t.tweetIds,
+      contentIds: t.contentIds,
     })),
-    referencedItems: referencedItems.map((item) => ({
-      id: item.id,
-      title: item.title,
-      url: item.url,
-      summary: item.summary,
-    })),
-    referencedTweets: referencedTweets.map((tweet) => ({
-      id: tweet.id,
-      text: tweet.text,
-      authorHandle: tweet.authorHandle,
-      tweetUrl: tweet.url,
+    contents: contents.map((c) => ({
+      id: c.id,
+      kind: c.kind,
+      sourceId: c.sourceId,
+      title: c.title,
+      body: c.body,
+      url: c.url,
+      authorLabel: c.authorLabel,
+      publishedAt: c.publishedAt?.toISOString() ?? null,
+      fetchedAt: c.fetchedAt.toISOString(),
+      engagementScore: c.engagementScore,
+      qualityScore: c.qualityScore,
+      topicIds: c.topicIds,
+      topicScoresJson: c.topicScoresJson,
+      metadataJson: c.metadataJson,
     })),
   })
 }
