@@ -354,7 +354,7 @@ async function migrateWeeklyPick(): Promise<{ migrated: number }> {
   log("Step 5: Migrating WeeklyPick.itemId → contentId...");
 
   const picks = await prisma.weeklyPick.findMany({
-    where: { itemId: { not: null } },
+    where: { itemId: { not: "" } },
     include: { weekly: true },
   });
 
@@ -470,7 +470,7 @@ async function migrateBookmarks(): Promise<{ migrated: number; deleted: number }
   log("Step 8a: Migrating Bookmark.itemId → Bookmark.contentId...");
 
   const bookmarks = await prisma.bookmark.findMany({
-    where: { itemId: { not: null } },
+    where: { itemId: { not: "" } },
     include: { item: true },
   });
 
@@ -566,8 +566,10 @@ async function migrateBookmarks(): Promise<{ migrated: number; deleted: number }
     }
 
     // Create new Bookmark entry
+    // Note: itemId is required in schema but deprecated - use placeholder during migration
     await prisma.bookmark.create({
       data: {
+        itemId: `legacy-tweet:${tb.tweetId}`, // Legacy placeholder
         contentId,
         bookmarkedAt: tb.bookmarkedAt,
       },
