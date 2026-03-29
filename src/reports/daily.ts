@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma"
-import type { Item, Tweet, DailyReportConfig } from "@prisma/client"
+import type { Content, DailyReportConfig } from "@prisma/client"
 import type { AiClient } from "@/src/ai/types"
 import type { ReportCandidate, ScoreBreakdown, SignalScores } from "@/src/types/index"
 import { formatUtcDate, formatUtcDayLabel, beijingDayRange } from "@/lib/date-utils"
@@ -12,7 +12,7 @@ import {
   parseFilterResult,
   type TopicClusterItem,
 } from "@/src/ai/prompts-reports"
-import { itemToReportCandidate, tweetToReportCandidate } from "./report-candidate"
+import { contentToReportCandidate } from "./report-candidate"
 import {
   applyBaseStage,
   applyTweetSignalScoring,
@@ -40,22 +40,11 @@ export type ScoredCandidate = ScoringScoredCandidate
 // ============================================================
 
 /**
- * Maps DB Items and Tweets to unified ReportCandidate[].
- * Items from all packs are included; tweets are always included regardless of pack.
+ * Maps DB Content records to unified ReportCandidate[].
+ * Content is the unified content model that replaces Item and Tweet.
  */
-export function collectCandidates(items: Item[], tweets: Tweet[]): ReportCandidate[] {
-  const candidates: ReportCandidate[] = []
-
-  for (const item of items) {
-    candidates.push(itemToReportCandidate(item))
-  }
-
-  // Tweets are always included (not pack-filtered)
-  for (const tweet of tweets) {
-    candidates.push(tweetToReportCandidate(tweet))
-  }
-
-  return candidates
+export function collectCandidates(contents: Content[]): ReportCandidate[] {
+  return contents.map(contentToReportCandidate)
 }
 
 /**
@@ -192,47 +181,35 @@ export function candidatesToTopicContents(
 // Internal pipeline steps (async, DB-dependent)
 // ============================================================
 
-/** Step 1: Collect items and tweets from the target Beijing day range */
+/** Step 1: Collect Content records from the target Beijing day range */
 async function collectData(now: Date) {
   const dateStr = formatUtcDate(now)
   const { start, end } = beijingDayRange(dateStr)
 
-  const [items, tweets] = await Promise.all([
-    prisma.item.findMany({
-      where: { publishedAt: { gte: start, lte: end } },
-      orderBy: { publishedAt: "desc" },
-    }),
-    prisma.tweet.findMany({
-      where: {
-        publishedAt: { gte: start, lte: end },
-        tab: { in: ["home", "lists"] },
-      },
-    }),
-  ])
+  const contents = await prisma.content.findMany({
+    where: { publishedAt: { gte: start, lte: end } },
+    orderBy: { publishedAt: "desc" },
+  })
 
-  return { items, tweets }
+  return { contents }
 }
 
-/** Step 2: Filter by pack and keyword blacklist */
+/** Step 2: Filter by topic and keyword blacklist */
 async function filterContent(
-  items: Item[],
-  tweets: Tweet[],
+  contents: Content[],
   config: DailyReportConfig
-): Promise<{ filteredItems: Item[]; filteredTweets: Tweet[] }> {
+): Promise<{ filteredContents: Content[] }> {
   const { keywordBlacklist } = config
 
-  // Pack filtering: if packs specified, only include items from enabled sources in those packs
-  let packFilteredItems = items
-  if (config.packs.length > 0) {
-    const packSources = await prisma.source.findMany({
-      where: { packId: { in: config.packs }, enabled: true },
-      select: { id: true },
-    })
-    if (packSources.length === 0) {
-      console.warn(`[daily-report] packs ${config.packs.join(", ")} 下无已启用的数据源，所有条目将被过滤`)
+  // Topic filtering: if topicIds specified, only include contents matching those topics
+  let topicFilteredContents = contents
+  if (config.topicIds.length > 0) {
+    topicFilteredContents = contents.filter((content) =>
+      content.topicIds.some((tid) => config.topicIds.includes(tid))
+    )
+    if (topicFilteredContents.length === 0) {
+      console.warn(`[daily-report] topicIds ${config.topicIds.join(", ")} 下无内容，所有条目将被过滤`)
     }
-    const sourceIdSet = new Set(packSources.map((s) => s.id))
-    packFilteredItems = items.filter((item) => sourceIdSet.has(item.sourceId))
   }
 
   const matchesBlacklist = (text: string): boolean => {
@@ -240,14 +217,11 @@ async function filterContent(
     return keywordBlacklist.some((keyword) => text.toLowerCase().includes(keyword.toLowerCase()))
   }
 
-  const filteredItems = packFilteredItems.filter(
-    (item) => !matchesBlacklist(item.title + " " + (item.summary ?? ""))
-  )
-  const filteredTweets = tweets.filter(
-    (tweet) => !matchesBlacklist((tweet.text ?? "") + " " + (tweet.authorHandle ?? ""))
+  const filteredContents = topicFilteredContents.filter(
+    (content) => !matchesBlacklist((content.title ?? "") + " " + (content.body ?? ""))
   )
 
-  return { filteredItems, filteredTweets }
+  return { filteredContents }
 }
 
 /** Step 3: Optional AI pre-filter (operates on trimmed candidates) */
@@ -292,7 +266,7 @@ async function generateTopicSummaries(
 ) {
   const { topics } = clusteringResult
 
-  const results: { title: string; summary: string; itemIds: string[]; tweetIds: string[] }[] = []
+  const results: { title: string; summary: string; contentIds: string[] }[] = []
   for (let i = 0; i < topics.length; i += PARALLEL_CONCURRENCY) {
     const batch = topics.slice(i, i + PARALLEL_CONCURRENCY)
     const batchResults = await Promise.allSettled(
@@ -304,21 +278,16 @@ async function generateTopicSummaries(
         const result = await aiClient.generateText(prompt)
         const parsed = parseTopicSummaryResult(result)
 
-        // Extract itemIds and tweetIds from the candidates referenced in this topic
-        const topicItemIds = topic.itemIndexes
+        // Extract contentIds from the candidates referenced in this topic
+        const topicContentIds = [...topic.itemIndexes, ...topic.tweetIndexes]
           .map((idx) => candidates[idx])
-          .filter((c) => c && c.kind === "article")
-          .map((c) => c.id)
-        const topicTweetIds = topic.tweetIndexes
-          .map((idx) => candidates[idx])
-          .filter((c) => c && c.kind === "tweet")
-          .map((c) => c.id)
+          .filter((c) => !!c)
+          .map((c) => c!.id)
 
         return {
           title: topic.title,
           summary: parsed.summary,
-          itemIds: topicItemIds,
-          tweetIds: topicTweetIds,
+          contentIds: topicContentIds,
         }
       })
     )
@@ -337,7 +306,7 @@ async function generateTopicSummaries(
 async function persistResults(
   date: string,
   dayLabel: string,
-  topics: { title: string; summary: string; itemIds: string[]; tweetIds: string[] }[],
+  topics: { title: string; summary: string; contentIds: string[] }[],
   errorMessage?: string,
   errorSteps?: string[]
 ) {
@@ -363,7 +332,7 @@ async function persistResults(
     // Delete old topics
     await tx.digestTopic.deleteMany({ where: { dailyId: overview.id } })
 
-    // Create new topics
+    // Create new topics with contentIds
     if (topics.length > 0) {
       await tx.digestTopic.createMany({
         data: topics.map((topic, index) => ({
@@ -371,8 +340,10 @@ async function persistResults(
           order: index,
           title: topic.title,
           summary: topic.summary,
-          itemIds: topic.itemIds,
-          tweetIds: topic.tweetIds,
+          contentIds: topic.contentIds,
+          // Legacy fields - kept for migration compatibility
+          itemIds: [],
+          tweetIds: [],
         })),
       })
     }
@@ -385,7 +356,7 @@ async function persistResults(
 // Fallback: Category-based grouping when AI clustering fails
 // ============================================================
 
-function fallbackCategoryGrouping(candidates: ScoredCandidate[]): { title: string; summary: string; itemIds: string[]; tweetIds: string[] }[] {
+function fallbackCategoryGrouping(candidates: ScoredCandidate[]): { title: string; summary: string; contentIds: string[] }[] {
   const articleCandidates = candidates.filter((c) => c.kind === "article")
   if (articleCandidates.length === 0) return []
 
@@ -400,8 +371,7 @@ function fallbackCategoryGrouping(candidates: ScoredCandidate[]): { title: strin
   return Array.from(groups.entries()).map(([groupKey, groupItems]) => ({
     title: groupKey.slice(0, 20),
     summary: groupItems[0].summary,
-    itemIds: groupItems.map((c) => c.id),
-    tweetIds: [],
+    contentIds: groupItems.map((c) => c.id),
   }))
 }
 
@@ -477,28 +447,26 @@ export async function generateDailyReport(
   }
 
   // Step 1: Collect data from DB
-  let items: Item[]
-  let tweets: Tweet[]
+  let contents: Content[]
   try {
     const result = await collectData(now)
-    items = result.items
-    tweets = result.tweets
+    contents = result.contents
   } catch {
     errorSteps.push("dataCollection")
     await persistResults(date, dayLabel, [], "数据收集失败", errorSteps)
     return { date, topicCount: 0, errorSteps }
   }
 
-  // Step 2: DB-level filtering (pack, blacklist, min score)
-  const { filteredItems, filteredTweets } = await filterContent(items, tweets, config)
+  // Step 2: Topic-level filtering (topicIds, blacklist, min score)
+  const { filteredContents } = await filterContent(contents, config)
 
-  if (filteredItems.length === 0 && filteredTweets.length === 0) {
+  if (filteredContents.length === 0) {
     await persistResults(date, dayLabel, [], "过去24小时无内容", errorSteps)
     return { date, topicCount: 0, errorSteps }
   }
 
   // Step 3: Map to ReportCandidate[]
-  const candidates = collectCandidates(filteredItems, filteredTweets)
+  const candidates = collectCandidates(filteredContents)
 
   // Step 4: Score all candidates
   const kindPreferences = parseKindPreferences(config.kindPreferences)
@@ -531,7 +499,7 @@ export async function generateDailyReport(
   }
 
   // Step 7: AI topic clustering + summaries
-  let topics: { title: string; summary: string; itemIds: string[]; tweetIds: string[] }[] = []
+  let topics: { title: string; summary: string; contentIds: string[] }[] = []
   try {
     const clusteringResult = await topicClustering(finalCandidates, aiClient, config)
 
@@ -546,16 +514,10 @@ export async function generateDailyReport(
         summary: topic.itemIndexes[0] !== undefined
           ? finalCandidates[topic.itemIndexes[0]]?.summary ?? ""
           : "",
-        // TODO: itemIds/tweetIds extraction will be refined when we track the
-        // full candidate-to-topic mapping in a future task
-        itemIds: topic.itemIndexes
+        contentIds: [...topic.itemIndexes, ...topic.tweetIndexes]
           .map((idx) => finalCandidates[idx])
-          .filter((c): c is ScoredCandidate => !!c && c.kind === "article")
-          .map((c) => c.id),
-        tweetIds: topic.tweetIndexes
-          .map((idx) => finalCandidates[idx])
-          .filter((c): c is ScoredCandidate => !!c && c.kind === "tweet")
-          .map((c) => c.id),
+          .filter((c): c is ScoredCandidate => !!c)
+          .map((c) => c!.id),
       }))
     }
   } catch {

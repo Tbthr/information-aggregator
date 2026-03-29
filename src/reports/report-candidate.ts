@@ -1,57 +1,95 @@
-import type { Item, Tweet } from "@prisma/client";
+import type { Content } from "@prisma/client";
 import type { ReportCandidate } from "../types/index";
 
 const TWEET_TITLE_MAX_LENGTH = 100;
 
 /**
- * Maps a persisted Item to a unified ReportCandidate.
+ * Maps a persisted Content to a unified ReportCandidate.
+ * Content is the unified content model that replaces Item and Tweet.
  */
-export function itemToReportCandidate(item: Item): ReportCandidate {
+export function contentToReportCandidate(content: Content): ReportCandidate {
+  const isTweet = content.kind === "tweet";
+  const bodyText = content.body ?? "";
+
+  // For tweets, derive title from body text (like tweetToReportCandidate does)
+  const title = isTweet ? extractTweetTitle(bodyText) : (content.title ?? "");
+  // For tweets, bodyText becomes summary; for articles, content becomes content field
+  const articleContent = isTweet ? "" : bodyText;
+  const summary = isTweet ? bodyText : "";
+
+  // For tweets, sourceLabel is @authorHandle; for articles, it's empty (set by caller)
+  const sourceLabel = isTweet && content.authorLabel ? `@${content.authorLabel}` : "";
+
   return {
+    id: content.id,
+    kind: content.kind as ReportCandidate["kind"],
+    topicId: "", // Will be set by caller if needed
+    title,
+    summary,
+    content: articleContent,
+    url: content.url,
+    authorLabel: content.authorLabel ?? undefined,
+    publishedAt: content.publishedAt?.toISOString(),
+    sourceLabel,
+    normalizedUrl: content.url,
+    normalizedTitle: normalizeTitleForComparison(title),
+    engagementScore: content.engagementScore ?? undefined,
+    qualityScore: content.qualityScore ?? undefined,
+    rawRef: {
+      id: content.id,
+      sourceId: content.sourceId,
+    },
+  };
+}
+
+/**
+ * @deprecated Use contentToReportCandidate instead. Item is deprecated in favor of Content.
+ */
+export function itemToReportCandidate(item: { id: string; title: string; summary: string | null; content: string | null; publishedAt: Date | null; sourceName: string; url: string; sourceId: string; packId: string | null }): ReportCandidate {
+  const candidate = {
     id: item.id,
-    kind: "article",
-    packId: item.packId ?? "",
+    kind: "article" as const,
+    topicId: item.packId ?? "", // Legacy - packId maps to topicId
     title: item.title,
     summary: item.summary ?? "",
     content: item.content ?? "",
+    url: item.url,
     publishedAt: item.publishedAt?.toISOString(),
     sourceLabel: item.sourceName,
-    normalizedUrl: item.url, // Item.url is already normalized per spec
+    normalizedUrl: item.url,
     normalizedTitle: normalizeTitleForComparison(item.title),
     rawRef: {
       id: item.id,
       sourceId: item.sourceId,
     },
   };
+  // @ts-ignore - packId is deprecated but needed for backward compatibility
+  return candidate;
 }
 
 /**
- * Maps a persisted Tweet to a unified ReportCandidate.
- *
- * TODO: 需要优化
- * - title extraction from tweet text (currently uses first sentence or truncation)
- * - summary could include more context
- * - content field is left empty; will be enhanced when thread/quoted/article support is added
+ * @deprecated Use contentToReportCandidate instead. Tweet is deprecated in favor of Content.
  */
-export function tweetToReportCandidate(tweet: Tweet): ReportCandidate {
+export function tweetToReportCandidate(tweet: { id: string; text: string | null; publishedAt: Date | null; authorHandle: string; expandedUrl: string | null; url: string }): ReportCandidate {
   const mainText = tweet.text ?? "";
   const title = extractTweetTitle(mainText);
-  const summary = mainText; // Full text as summary
+  const summary = mainText;
 
   return {
     id: tweet.id,
     kind: "tweet",
-    packId: "", // TODO: tweets don't have packId mapping yet; using reserved value
+    topicId: "", // Legacy - no topic mapping
     title,
     summary,
-    content: "", // TODO: 需要优化 - will expand when thread/quoted/article support is added
+    content: "",
+    url: tweet.expandedUrl ?? tweet.url,
     publishedAt: tweet.publishedAt?.toISOString(),
     sourceLabel: `@${tweet.authorHandle}`,
     normalizedUrl: tweet.expandedUrl ?? tweet.url,
     normalizedTitle: normalizeTitleForComparison(title),
     rawRef: {
       id: tweet.id,
-      sourceId: "twitter", // tweets don't have sourceId in the same sense
+      sourceId: "twitter",
     },
   };
 }
