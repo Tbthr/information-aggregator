@@ -25,7 +25,7 @@ mock.module("../lib/prisma", () => ({
   prisma: {
     pack: { findMany: async () => [], upsert: async () => ({}) },
     source: { findMany: async () => [], upsert: async () => ({}) },
-    item: {
+    content: {
       findMany: async ({ where }: { where: { url: { in: string[] } } }) => {
         return archivedItems.filter((i) => where.url.in.includes(i.url)).map((i) => ({ id: i.id!, url: i.url }));
       },
@@ -118,7 +118,7 @@ describe("runCollectJob", () => {
         sources: [
           {
             id: "test-source",
-            type: "rss" as const,
+            kind: "rss" as const,
             url: "https://example.com/feed.xml",
             name: "Test Source",
             enabled: true,
@@ -157,7 +157,7 @@ describe("runCollectJob", () => {
         sources: [
           {
             id: "github-trending",
-            type: "github-trending" as const,
+            kind: "github-trending" as const,
             url: "https://github.com/trending",
             name: "GitHub Trending",
             enabled: true,
@@ -204,7 +204,7 @@ describe("runCollectJob", () => {
         sources: [
           {
             id: "source-1",
-            type: "rss" as const,
+            kind: "rss" as const,
             url: "https://example.com/feed",
             name: "Source 1",
             enabled: true,
@@ -263,7 +263,7 @@ describe("runCollectJob", () => {
         sources: [
           {
             id: "source-1",
-            type: "rss" as const,
+            kind: "rss" as const,
             url: "https://example.com/feed1",
             name: "Source 1",
             enabled: true,
@@ -277,7 +277,7 @@ describe("runCollectJob", () => {
         sources: [
           {
             id: "source-2",
-            type: "rss" as const,
+            kind: "rss" as const,
             url: "https://example.com/feed2",
             name: "Source 2",
             enabled: true,
@@ -337,7 +337,7 @@ describe("runCollectJob", () => {
         sources: [
           {
             id: "source-filtered",
-            type: "rss" as const,
+            kind: "rss" as const,
             url: "https://example.com/filtered",
             name: "Filtered Source",
             enabled: true,
@@ -351,7 +351,7 @@ describe("runCollectJob", () => {
         sources: [
           {
             id: "source-unfiltered",
-            type: "rss" as const,
+            kind: "rss" as const,
             url: "https://example.com/unfiltered",
             name: "Unfiltered Source",
             enabled: true,
