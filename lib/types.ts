@@ -20,6 +20,8 @@ export interface ApiResponse<T = unknown> {
   }
 }
 
+import { ContentKind } from "@/src/types/index"
+
 // ── Domain Types ──
 
 export type Article = {
@@ -69,10 +71,22 @@ export type WeeklyPick = {
   reason: string
 }
 
+// Topic type (mirrors Prisma Topic model)
+export type Topic = {
+  id: string
+  name: string
+  description?: string | null
+  includeRules: string[]
+  excludeRules: string[]
+  scoreBoost: number
+  displayOrder: number
+  maxItems: number
+}
+
 // Unified content reference type (matches Prisma Content model)
 export type Content = {
   id: string
-  kind: string
+  kind: ContentKind
   sourceId: string
   title?: string | null
   body?: string | null
