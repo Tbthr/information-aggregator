@@ -60,7 +60,7 @@
 6. `defaultTopicIds`
    用途：借鉴 `tech-news-digest` 的 `source.topics`；内容初始的 topic 候选集合来自这里。
 7. `configJson`
-   用途：来源类型专属采集参数，例如 RSS 的 URL、X 的 listId / birdMode / count。
+   用途：来源类型专属采集参数，例如 RSS 的 URL、website 的抓取入口、JSON feed 的 URL、X 的 listId / birdMode / count。
 8. `authRef`
    用途：认证配置引用，避免将凭据散落在业务逻辑中。
 9. `createdAt` / `updatedAt`
@@ -102,7 +102,7 @@
 1. `id`
    用途：内部主键，供所有流程稳定引用。
 2. `kind`
-   用途：内容类型标记，例如 `article`、`tweet`、未来的 `video`、`repo`。
+   用途：内容类型标记，例如 `article`、`tweet`、未来的 `video`、`repo`。注意它描述的是内容类型，不等于 `Source.kind`。
 3. `sourceId`
    用途：追踪内容来自哪个来源，参与来源健康和来源权重计算。
 4. `title`
@@ -184,9 +184,17 @@ topic 分类沿用 `tech-news-digest` 的规则优先策略，不走 AI-first：
 
 每种来源走自己的 adapter / preprocess：
 
-1. RSS / website / JSON feed 走 article 类适配器
-2. X 在这个阶段补全 quote / thread / article preview
-3. 未来的新类型也在这里完成类型专属的数据获取
+1. `rss` 使用独立的 RSS fetcher adapter
+2. `website` 使用独立的 website fetcher adapter
+3. `json-feed` 使用独立的 JSON feed fetcher adapter
+4. X 相关 source kinds（如 `xHome`、`xList`）共用独立的 X fetcher adapter，并在这一阶段补全 quote / thread / article preview
+5. 未来的新类型也在这里完成类型专属的数据获取
+
+这样拆分的原因是：
+
+1. RSS、website、JSON feed 虽然最终都可能产出 `Content(kind="article")`，但抓取方式、失败模式和配置结构并不相同
+2. fetcher adapter 按来源类型拆开后，后续接入新 article-like 来源时不会继续把逻辑堆到同一个 adapter 中
+3. “独立 fetcher，统一 normalize” 的边界更清晰，和 `tech-news-digest` 的 `fetch-rss.py` / `fetch-web.py` 分工一致
 
 ### 阶段 2：Normalize To Content
 
@@ -260,17 +268,6 @@ topic 分类沿用 `tech-news-digest` 的规则优先策略，不走 AI-first：
 5. 不要求 AI 成为 topic 分类主入口
 
 这些取舍的目的都是先把统一内容主表和统一报表主干搭起来，避免一步到位时同时引入过多抽象。
-
-## 与 2026-03-28 文档的关系
-
-[`2026-03-28-unified-pipeline-design.md`](./2026-03-28-unified-pipeline-design.md) 解决的是“不要继续维护多条独立 pipeline”。
-
-本文档在此基础上进一步收敛并修正：
-
-1. `Pack` 改名并重定义为 `Topic`
-2. `Item` 不再作为最终统一候选池，而是由新的 `Content` 取代
-3. 取消 `ContentDetail` / `ContentTopic` 额外表，采用单表优先的更克制方案
-4. topic 分类策略明确参考 `tech-news-digest`
 
 ## 后续实现重点
 
