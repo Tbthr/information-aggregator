@@ -360,7 +360,7 @@ export async function syncPacksToPrisma(
  */
 export async function upsertSourceToPrisma(source: {
   id: string;
-  type: string;
+  kind: string;
   name?: string;
   enabled: boolean;
   url?: string;
@@ -371,7 +371,7 @@ export async function upsertSourceToPrisma(source: {
     where: { id: source.id },
     create: {
       id: source.id,
-      type: source.type,
+      kind: source.kind,
       name: source.name || source.id,
       url: source.url || "",
       enabled: source.enabled,
@@ -379,7 +379,7 @@ export async function upsertSourceToPrisma(source: {
       packId: source.packId,
     },
     update: {
-      type: source.type,
+      kind: source.kind,
       name: source.name || source.id,
       url: source.url || "",
       enabled: source.enabled,
@@ -395,7 +395,7 @@ export async function upsertSourceToPrisma(source: {
 export async function upsertSourcesBatch(
   sources: Array<{
     id: string;
-    type: string;
+    kind: string;
     name?: string;
     enabled: boolean;
     url?: string;
@@ -438,7 +438,7 @@ export async function upsertSourcesBatch(
         where: { id: existingId },
         create: {
           id: existingId,
-          type: source.type,
+          kind: source.kind,
           name: source.name || source.id,
           url: source.url || "",
           enabled: source.enabled,
@@ -446,7 +446,7 @@ export async function upsertSourcesBatch(
           packId: source.packId,
         },
         update: {
-          type: source.type,
+          kind: source.kind,
           name: source.name || source.id,
           url: source.url || "",
           enabled: source.enabled,
@@ -460,7 +460,7 @@ export async function upsertSourcesBatch(
         where: { id: source.id },
         create: {
           id: source.id,
-          type: source.type,
+          kind: source.kind,
           name: source.name || source.id,
           url: source.url || "",
           enabled: source.enabled,
@@ -468,7 +468,7 @@ export async function upsertSourcesBatch(
           packId: source.packId,
         },
         update: {
-          type: source.type,
+          kind: source.kind,
           name: source.name || source.id,
           url: source.url || "",
           enabled: source.enabled,

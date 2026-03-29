@@ -12,11 +12,11 @@
  * Used by both the cron route and the diagnostics framework.
  */
 
-import { loadAllPacksFromDb } from "../config/load-pack-prisma";
+import { loadAllTopicsFromDb, type TopicWithSources } from "../config/load-pack-prisma";
 import { generateSourceId } from "../config/source-id";
 import { collectSources, type CollectDependencies, type CollectSourceEvent, type AdapterFn } from "./collect";
 import { normalizeItems } from "./normalize";
-import { filterByPack } from "./filter-by-pack";
+import { filterByPack } from "./filter-by-topic";
 import { dedupeExact } from "./dedupe-exact";
 import { dedupeNear } from "./dedupe-near";
 import {
@@ -28,7 +28,7 @@ import {
   recordSourceFailure,
 } from "../archive/upsert-content-prisma";
 import { buildAdapters } from "../adapters/build-adapters";
-import type { RawItem, NormalizedItem, SourcePack, SourceKind, ContentKind } from "../types/index";
+import type { RawItem, NormalizedItem, SourceKind, ContentKind } from "../types/index";
 import type { Logger } from "../utils/logger";
 
 /**
@@ -91,7 +91,7 @@ export interface RunCollectJobOptions {
   /**
    * Optional packs to use instead of loading from DB (for testing).
    */
-  packs?: SourcePack[];
+  packs?: TopicWithSources[];
   /**
    * Optional adapters to use instead of building default adapters (for testing).
    */
@@ -114,7 +114,7 @@ interface ResolvedSource {
  * Resolve enabled sources from packs, deduplicating by URL.
  * Filters out unsupported source kinds (e.g., github-trending).
  */
-function resolveSourcesForCollection(packs: SourcePack[]): ResolvedSource[] {
+function resolveSourcesForCollection(packs: TopicWithSources[]): ResolvedSource[] {
   const seen = new Set<string>();
   const sources: ResolvedSource[] = [];
   for (const pack of packs) {
@@ -155,7 +155,7 @@ export async function runCollectJob(options: RunCollectJobOptions = {}): Promise
   // ── 1. Load packs ────────────────────────────────────────────────
   log("Starting collect job");
 
-  const packs = options.packs ?? await loadAllPacksFromDb();
+  const packs = options.packs ?? await loadAllTopicsFromDb();
 
   // ── 2. Sync packs to DB ────────────────────────────────────────
   const packRecords = packs.map((p) => ({
