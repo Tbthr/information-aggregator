@@ -18,3 +18,5 @@ tmp/
 .superpowers/
 
 config/
+# next-agents-md
+.next-docs/
