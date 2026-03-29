@@ -20,22 +20,22 @@ import { filterByPack } from "./filter-by-pack";
 import { dedupeExact } from "./dedupe-exact";
 import { dedupeNear } from "./dedupe-near";
 import {
-  archiveNormalizedItems,
-  type NormalizedItemArchiveInput,
+  archiveContentItems,
+  type ContentArchiveInput,
   syncPacksToPrisma,
   upsertSourcesBatch,
   recordSourcesSuccessBatch,
   recordSourceFailure,
-} from "../archive/upsert-prisma";
+} from "../archive/upsert-content-prisma";
 import { buildAdapters } from "../adapters/build-adapters";
-import type { RawItem, NormalizedItem, SourcePack, SourceType } from "../types/index";
+import type { RawItem, NormalizedItem, SourcePack, SourceKind, ContentKind } from "../types/index";
 import type { Logger } from "../utils/logger";
 
 /**
  * Unsupported source types that should be skipped during collection.
  * These sources are intentionally not supported in the new pipeline.
  */
-const UNSUPPORTED_SOURCE_TYPES: SourceType[] = ["github-trending"];
+const UNSUPPORTED_SOURCE_KDS: SourceKind[] = ["github-trending" as SourceKind];
 
 export interface SourceFailure {
   sourceId: string;
@@ -103,7 +103,7 @@ export interface RunCollectJobOptions {
  */
 interface ResolvedSource {
   id: string;
-  type: SourceType;
+  kind: SourceKind;
   url: string;
   description?: string;
   packId: string;
@@ -112,15 +112,15 @@ interface ResolvedSource {
 
 /**
  * Resolve enabled sources from packs, deduplicating by URL.
- * Filters out unsupported source types (e.g., github-trending).
+ * Filters out unsupported source kinds (e.g., github-trending).
  */
 function resolveSourcesForCollection(packs: SourcePack[]): ResolvedSource[] {
   const seen = new Set<string>();
   const sources: ResolvedSource[] = [];
   for (const pack of packs) {
     for (const source of pack.sources) {
-      // Skip unsupported source types
-      if (UNSUPPORTED_SOURCE_TYPES.includes(source.type)) {
+      // Skip unsupported source kinds
+      if (UNSUPPORTED_SOURCE_KDS.includes(source.kind)) {
         continue;
       }
       if (!source.enabled && source.enabled !== undefined) continue;
@@ -168,7 +168,7 @@ export async function runCollectJob(options: RunCollectJobOptions = {}): Promise
   // ── 3. Sync sources to DB ─────────────────────────────────────
   const allSources: Array<{
     id: string;
-    type: string;
+    kind: string;
     name?: string;
     enabled: boolean;
     url?: string;
@@ -180,7 +180,7 @@ export async function runCollectJob(options: RunCollectJobOptions = {}): Promise
     for (const source of pack.sources) {
       allSources.push({
         id: generateSourceId(source.url),
-        type: source.type,
+        kind: source.kind,
         name: source.description,
         enabled: source.enabled !== false,
         url: source.url,
@@ -230,47 +230,48 @@ export async function runCollectJob(options: RunCollectJobOptions = {}): Promise
   const normalized = normalizeItems(rawItems);
   log("Normalized items", { count: normalized.length });
 
-  // ── 7. Filter by pack ───────────────────────────────────────────
-  const afterPackFilter = normalized.filter((item) => {
+  // ── 7. Filter by pack (topic-based during migration) ─────────────
+  // items without filterContext are kept (no filtering)
+  const afterTopicFilter = normalized.filter((item) => {
     if (!item.filterContext) return true;
     return filterByPack(item, item.filterContext);
   });
-  log("After pack filter", { before: normalized.length, after: afterPackFilter.length });
+  log("After topic filter", { before: normalized.length, after: afterTopicFilter.length });
 
   // ── 8. Exact dedup ─────────────────────────────────────────────
-  const afterExact = dedupeExact(afterPackFilter);
+  const afterExact = dedupeExact(afterTopicFilter);
 
   // ── 9. Near dedup ──────────────────────────────────────────────
   const afterNear = dedupeNear(afterExact);
 
   log("After dedup", { original: rawItems.length, deduped: afterNear.length });
 
-  // ── 10. Archive ─────────────────────────────────────────────────
-  // Build archive input from NormalizedItem[] with proper field mapping
-  const archiveInput: NormalizedItemArchiveInput[] = afterNear.map((item) => {
+  // ── 10. Archive as Content ────────────────────────────────────────
+  // Build Content archive input from NormalizedItem[] with proper field mapping
+  const archiveInput: ContentArchiveInput[] = afterNear.map((item) => {
     // Parse author from metadataJson
-    let author: string | null = null;
+    let authorLabel: string | null = null;
     try {
       const metadata = JSON.parse(item.metadataJson);
-      author = metadata.authorName ?? null;
+      authorLabel = metadata.authorName ?? null;
     } catch {
-      author = null;
+      authorLabel = null;
     }
 
     return {
       id: item.id,
-      title: item.title,
-      normalizedUrl: item.normalizedUrl,
-      sourceId: item.sourceId,
-      sourceName: sourceNameMap[item.sourceId] ?? item.sourceId,
-      sourceType: item.sourceType,
-      publishedAt: item.publishedAt,
+      kind: item.contentType as ContentKind,
+      title: item.normalizedTitle,
+      body: item.normalizedContent || null,
+      url: item.normalizedUrl,
+      authorLabel,
+      publishedAt: item.publishedAt ?? null,
       fetchedAt: jobStartedAt,
-      author,
-      summary: item.normalizedSummary || null,
-      content: item.normalizedContent || null,
+      engagementScore: item.engagementScore ?? null,
+      topicIds: item.filterContext?.topicIds ?? [],
+      topicScoresJson: null,
       metadataJson: item.metadataJson,
-      packId: item.filterContext?.packId ?? null,
+      sourceId: item.sourceId,
     };
   });
 
@@ -284,8 +285,8 @@ export async function runCollectJob(options: RunCollectJobOptions = {}): Promise
     score: 0, // engagementScore removed from NormalizedItem
   }));
 
-  const archiveResult = await archiveNormalizedItems(archiveInput, jobStartedAt, sourceNameMap);
-  log("Archived items", { newCount: archiveResult.newCount, updateCount: archiveResult.updateCount });
+  const archiveResult = await archiveContentItems(archiveInput);
+  log("Archived content", { newCount: archiveResult.newCount, updateCount: archiveResult.updateCount });
 
   // ── 11. Record source failures ─────────────────────────────────
   const failedSourceIds = new Set(failedSources.map((s) => s.sourceId));
@@ -311,7 +312,7 @@ export async function runCollectJob(options: RunCollectJobOptions = {}): Promise
     counts: {
       raw: rawItems.length,
       normalized: normalized.length,
-      afterPackFilter: afterPackFilter.length,
+      afterPackFilter: afterTopicFilter.length,
       afterExactDedup: afterExact.length,
       afterNearDedup: afterNear.length,
       archivedNew: archiveResult.newCount,

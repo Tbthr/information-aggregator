@@ -26,11 +26,11 @@ export interface CollectDependencies {
   concurrency?: number;
 }
 
-function defaultProviderForSourceType(sourceType: Source["type"]): string {
+function defaultProviderForSourceType(sourceType: Source["kind"]): string {
   return sourceType;
 }
 
-function defaultContentTypeForSourceType(sourceType: Source["type"]): string {
+function defaultContentTypeForSourceType(sourceType: Source["kind"]): string {
   switch (sourceType) {
     case "hn":
     case "reddit":
@@ -47,7 +47,7 @@ function buildCanonicalHints(source: Source, item: RawItem, metadata: RawItemMet
     return metadata.canonicalHints;
   }
 
-  if (source.type === "hn") {
+  if (source.kind === "hn") {
     const hnId = item.id.replace(/^hn-/, "");
     return {
       externalUrl: item.url,
@@ -55,7 +55,7 @@ function buildCanonicalHints(source: Source, item: RawItem, metadata: RawItemMet
     };
   }
 
-  if (source.type === "reddit") {
+  if (source.kind === "reddit") {
     return {
       externalUrl: item.url,
       discussionUrl: `https://www.reddit.com/r/artificial/comments/${item.id.replace(/^reddit-/, "")}`,
@@ -68,9 +68,9 @@ function buildCanonicalHints(source: Source, item: RawItem, metadata: RawItemMet
 function normalizeCollectedItem(source: Source, item: RawItem): RawItem {
   const metadata = parseRawItemMetadata(item.metadataJson);
   const normalizedMetadata: RawItemMetadata = {
-    provider: metadata?.provider ?? defaultProviderForSourceType(source.type),
-    sourceType: metadata?.sourceType ?? source.type,
-    contentType: metadata?.contentType ?? defaultContentTypeForSourceType(source.type),
+    provider: metadata?.provider ?? defaultProviderForSourceType(source.kind),
+    sourceKind: metadata?.sourceKind ?? source.kind,
+    contentType: metadata?.contentType ?? defaultContentTypeForSourceType(source.kind),
     engagement: metadata?.engagement,
     canonicalHints: buildCanonicalHints(source, item, metadata),
     subreddit: metadata?.subreddit,
@@ -98,14 +98,14 @@ export async function collectSources(sources: Source[], dependencies: CollectDep
     sources,
     { batchSize: sources.length, concurrency },
     async (source) => {
-      const adapter = dependencies.adapters[source.type];
+      const adapter = dependencies.adapters[source.kind];
       if (!adapter) {
         dependencies.onSourceEvent?.({
           sourceId: source.id,
           status: "failure",
           itemCount: 0,
           latencyMs: 0,
-          error: `Missing adapter: ${source.type}`,
+          error: `Missing adapter: ${source.kind}`,
         });
         return [];
       }
@@ -146,14 +146,14 @@ async function collectSourcesSequential(sources: Source[], dependencies: Collect
   const items: RawItem[] = [];
 
   for (const source of sources) {
-    const adapter = dependencies.adapters[source.type];
+    const adapter = dependencies.adapters[source.kind];
     if (!adapter) {
       dependencies.onSourceEvent?.({
         sourceId: source.id,
         status: "failure",
         itemCount: 0,
         latencyMs: 0,
-        error: `Missing adapter: ${source.type}`,
+        error: `Missing adapter: ${source.kind}`,
       });
       continue;
     }
