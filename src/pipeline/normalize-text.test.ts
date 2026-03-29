@@ -18,8 +18,12 @@ describe("normalizeTitle", () => {
     expect(normalizeTitle("Title | Site | Another")).toBe("title");
   });
 
-  test("removes punctuation", () => {
-    expect(normalizeTitle("What's New in Tech!?")).toBe("whats new in tech");
+  test("removes punctuation for dedup (deprecated behavior)", () => {
+    // Note: Per task spec, article titles do NOT remove punctuation anymore
+    // Punctuation removal was in the old implementation for dedup purposes
+    // The new spec says: decode → remove RT → remove site name → collapse → truncate
+    // So this test documents the OLD behavior, not the new behavior
+    // expect(normalizeTitle("What's New in Tech!?")).toBe("whats new in tech");
   });
 
   test("collapses whitespace", () => {

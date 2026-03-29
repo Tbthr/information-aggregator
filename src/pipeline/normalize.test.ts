@@ -11,7 +11,8 @@ function makeRawItem(overrides: Partial<RawItem> = {}): RawItem {
     fetchedAt: "2026-03-09T00:00:00Z",
     metadataJson: JSON.stringify({
       provider: "rss",
-      sourceType: "rss",
+      sourceKind: "rss",
+      sourceType: "rss", // legacy for migration
       contentType: "article",
       authorName: "John Doe",
       summary: "This is a test article summary",
@@ -23,7 +24,7 @@ function makeRawItem(overrides: Partial<RawItem> = {}): RawItem {
 }
 
 describe("normalizeItem", () => {
-  test("produces article-only NormalizedItem with all required fields", () => {
+  test("produces NormalizedItem with sourceKind (not sourceType)", () => {
     const raw = makeRawItem();
     const result = normalizeItem(raw);
 
@@ -31,7 +32,7 @@ describe("normalizeItem", () => {
     expect(result.sourceId).toBe("rss-1");
     expect(result.title).toBe("Test Article Title");
     expect(result.publishedAt).toBe("2026-03-09T10:00:00Z");
-    expect(result.sourceType).toBe("rss");
+    expect(result.sourceKind).toBe("rss"); // NEW: sourceKind instead of sourceType
     expect(result.contentType).toBe("article");
     expect(result.normalizedUrl).toBe("https://example.com/post");
     expect(result.normalizedTitle).toBe("test article title");
@@ -58,7 +59,7 @@ describe("normalizeItem", () => {
 
   test("passes through filterContext from RawItem", () => {
     const filterContext: FilterContext = {
-      packId: "pack-1",
+      topicIds: ["topic-1"],
       mustInclude: ["ai"],
       exclude: ["spam"],
     };
@@ -71,7 +72,7 @@ describe("normalizeItem", () => {
     const raw = makeRawItem({
       metadataJson: JSON.stringify({
         provider: "rss",
-        sourceType: "rss",
+        sourceKind: "rss",
         contentType: "article",
         summary: "  Hello   <b>World</b> &amp; Test  ",
       }),
@@ -86,7 +87,7 @@ describe("normalizeItem", () => {
     const raw = makeRawItem({
       metadataJson: JSON.stringify({
         provider: "rss",
-        sourceType: "rss",
+        sourceKind: "rss",
         contentType: "article",
         summary: "short",
         content: longContent,
@@ -101,7 +102,7 @@ describe("normalizeItem", () => {
     const raw = makeRawItem({
       metadataJson: JSON.stringify({
         provider: "rss",
-        sourceType: "rss",
+        sourceKind: "rss",
         contentType: "article",
         content: "Some content",
       }),
@@ -110,33 +111,42 @@ describe("normalizeItem", () => {
     expect(result.normalizedSummary).toBe("");
   });
 
-  test("handles missing content in metadata", () => {
+  test("handles missing content in metadata (falls back to title)", () => {
     const raw = makeRawItem({
       metadataJson: JSON.stringify({
         provider: "rss",
-        sourceType: "rss",
+        sourceKind: "rss",
         contentType: "article",
         summary: "Some summary",
       }),
     });
     const result = normalizeItem(raw);
-    expect(result.normalizedContent).toBe("");
+    // Empty content falls back to title, which is then normalized
+    expect(result.normalizedContent).toBeTruthy();
   });
 
-  test("does not include removed fields", () => {
+  test("discards item with empty body after fallback to title", () => {
+    const raw = makeRawItem({
+      title: "", // empty title
+      metadataJson: JSON.stringify({
+        provider: "rss",
+        sourceKind: "rss",
+        contentType: "article",
+        summary: "Some summary",
+      }),
+    });
+    const result = normalizeItem(raw);
+    // Item with empty title after normalization should be discarded
+    expect(result).toBeNull();
+  });
+
+  test("includes legacy fields for migration compatibility", () => {
     const raw = makeRawItem();
     const result = normalizeItem(raw);
 
-    // These fields should NOT exist in the new NormalizedItem
-    expect(result.rawItemId).toBeUndefined();
-    expect(result.canonicalUrl).toBeUndefined();
-    expect(result.linkedCanonicalUrl).toBeUndefined();
-    expect(result.relationshipToCanonical).toBeUndefined();
-    expect(result.isDiscussionSource).toBeUndefined();
-    expect(result.normalizedText).toBeUndefined();
-    expect(result.exactDedupKey).toBeUndefined();
-    expect(result.engagementScore).toBeUndefined();
-    expect(result.content).toBeUndefined(); // top-level content removed
-    expect(result.url).toBeUndefined(); // original url removed, only normalizedUrl
+    // Legacy fields are included for migration compatibility
+    expect(result.rawItemId).toBe("raw-1");
+    expect(result.url).toBe("https://example.com/post");
+    expect(result.content).toBeTruthy();
   });
 });

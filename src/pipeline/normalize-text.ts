@@ -30,7 +30,13 @@ function removeRtPrefix(value: string): string {
   return value.replace(/^RT\s*@\w+:\s*/i, "");
 }
 
-// Remove punctuation
+// Remove bare URLs from text
+function removeBareUrls(value: string): string {
+  // Remove t.co and other shortened URLs
+  return value.replace(/https?:\/\/\S+/g, "").trim();
+}
+
+// Remove punctuation for dedup comparison
 function removePunctuation(value: string): string {
   // Keep basic punctuation for sentence structure (only remove truly disruptive chars)
   return value.replace(/[!"#$%&'*+,/:;<=>?@[\]^`{|}~]/g, "");
@@ -40,15 +46,43 @@ export function normalizeWhitespace(value: string): string {
   return value.trim().replace(/\s+/g, " ");
 }
 
-export function normalizeTitle(value: string): string {
+/**
+ * Normalize title according to content type:
+ * - article: HTML decode → 去 RT 前缀 → 去尾部站点名 → 空白折叠 → 截断(160)
+ * - tweet: 去裸 URL → 空白折叠 → 截断(160)
+ * - other: decode → remove RT → remove site name → collapse whitespace → truncate(160)
+ *
+ * Returns null if title is empty after normalization (caller should discard)
+ */
+export function normalizeTitle(value: string, contentType?: string): string | null {
   let result = value;
-  result = removeRtPrefix(result);
-  result = removeSiteName(result);
-  result = removePunctuation(result);
-  result = normalizeWhitespace(result).toLowerCase();
-  return result;
+
+  if (contentType === "tweet") {
+    // Tweet: remove bare URLs, collapse whitespace, truncate
+    result = removeBareUrls(result);
+  } else {
+    // Article and others: full normalization
+    result = removeRtPrefix(result);
+    result = removeSiteName(result);
+  }
+
+  result = decodeHtmlEntities(result);
+  result = normalizeWhitespace(result);
+  result = result.toLowerCase();
+
+  // Truncate to 160 characters
+  if (result.length > 160) {
+    result = result.slice(0, 157) + "...";
+  }
+
+  return result || null;
 }
 
+/**
+ * Normalize summary for storage and display.
+ * - article: use summary field directly, strip HTML, decode entities
+ * - tweet: use tweet text + quote text + article preview text + thread summary
+ */
 export function normalizeSummary(value: string): string {
   let result = stripHtml(value);
   result = decodeHtmlEntities(result);
@@ -58,15 +92,52 @@ export function normalizeSummary(value: string): string {
   return result;
 }
 
-export function normalizeContent(value: string, maxLength: number = 500): string {
+/**
+ * Normalize content body according to content type:
+ * - article: 正文摘要/内容 > feed summary > title fallback
+ * - tweet: tweet text + quote text + article preview text + thread 摘要
+ * - Pure text: 去 HTML → decode → collapse → truncate(500)
+ *
+ * Empty body退化到title，仍空则返回null (caller should discard)
+ */
+export function normalizeContent(
+  value: string,
+  contentType: string = "article",
+  fallbackTitle?: string | null,
+  maxLength: number = 500
+): string | null {
+  if (!value || value.trim() === "") {
+    // Fall back to title if available
+    if (fallbackTitle) {
+      value = fallbackTitle;
+    } else {
+      return null;
+    }
+  }
+
   let result = stripHtml(value);
   result = decodeHtmlEntities(result);
   result = normalizeWhitespace(result);
-  result = result.toLowerCase();
 
-  if (result.length > maxLength) {
-    // Truncate to maxLength and add ellipsis
-    return result.slice(0, maxLength - 3) + "...";
+  // For non-tweet content, lowercase for consistency
+  if (contentType !== "tweet") {
+    result = result.toLowerCase();
   }
-  return result;
+
+  // Truncate to maxLength
+  if (result.length > maxLength) {
+    result = result.slice(0, maxLength - 3) + "...";
+  }
+
+  return result || null;
+}
+
+/**
+ * Derive dedupe text: title + " " + body → lowercase → 去标点 → 空白折叠
+ * Not stored in DB, only used for near-dedup comparison
+ */
+export function deriveDedupeText(title: string, body: string): string {
+  const combined = `${title} ${body}`.toLowerCase();
+  const depunctuated = removePunctuation(combined);
+  return normalizeWhitespace(depunctuated);
 }
