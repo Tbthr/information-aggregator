@@ -125,6 +125,13 @@
    用途：该内容最终命中的 topic 列表；一条内容可以属于多个栏目。
 13. `topicScoresJson`
    用途：记录每个 topic 的命中分；支撑“一条内容同时命中多个 topic 并加分”。
+   第一版结构固定为“以稳定 `topicId` 为 key、以基础匹配分为 value”的对象映射。
+   例如：`{"llm": 12, "agents": 8}`。
+   约束：
+   - key 必须是 `Topic.id`
+   - value 必须是未叠加 `Topic.scoreBoost` 的基础匹配分
+   - 未命中的 topic 不出现在对象中
+   - 不使用 topic name 或展示文案作为 key
 14. `metadataJson`
    用途：承载类型差异字段，例如 tweet 的 media / thread / quote / article preview。
 15. `createdAt` / `updatedAt`
@@ -187,6 +194,7 @@ topic 分类沿用 `tech-news-digest` 的规则优先策略，不走 AI-first：
 5. 某个 topic 的判定顺序为：
    `source.defaultTopicIds` 包含该 topic -> 检查 exclude -> 若命中 exclude 则剔除 -> 若 includeRules 为空则保留 -> 若 includeRules 非空则至少命中一条才保留
 6. 第一版不做“脱离 source 默认候选的全局 topic 猜测”；也就是说，topic 分类不会仅凭关键词把内容分配到 `defaultTopicIds` 之外的新 topic
+7. `topicScoresJson` 只保存基础匹配分；`Topic.scoreBoost` 仅在后续统一评分阶段参与最终排序，不回写到 `topicScoresJson`
 
 这个约束是有意的：先让 topic 成为“报表栏目过滤器”，而不是“全局自动标签器”。
 
@@ -220,6 +228,91 @@ topic 分类沿用 `tech-news-digest` 的规则优先策略，不走 AI-first：
 4. `engagementScore` 标准化
 5. `publishedAt` 校验
 
+#### 字段生成规则
+
+为避免不同 fetcher / normalizer 对统一字段产生不同理解，第一版明确以下生成规则：
+
+##### 标题统一化
+
+目标：所有内容类型都必须生成稳定、可展示、可比较的 `title`。
+
+1. `article`
+   优先使用原始标题；处理顺序固定为：HTML 解码 -> 去 RT 前缀 -> 去尾部站点名 -> 空白折叠 -> 长度截断。
+2. `tweet`
+   使用正文首句或首个非空段；处理顺序固定为：去裸 URL -> 空白折叠 -> 长度截断。
+3. 清洗后的 `title` 不能为空。
+4. 若清洗后为空，则该内容直接丢弃并记录 `warn`。
+5. `title` 是展示文本，不额外做激进去噪；文本去重依赖 `title + body` 的组合，而不是把 `title` 单独做成算法字段。
+6. 第一版 `title` 最大长度固定为 160 个字符，截断发生在所有清洗完成之后。
+7. 存储到 `Content.title` 的值保持原大小写，不做 lowercasing。
+
+##### 主文本 `body` 生成
+
+目标：生成统一的主文本，既能服务报表，也能服务文本去重与聚类。
+
+1. `article`
+   优先级为：正文摘要/正文内容 > feed summary > 标题补足。
+2. `tweet`
+   优先级为：tweet text + quote text + article preview text + thread 摘要片段。
+3. `body` 必须是纯文本；处理顺序固定为：去 HTML -> HTML 解码 -> 空白折叠 -> 长度截断。
+4. 第一版 `body` 最大长度固定为 500 个字符，截断发生在所有清洗完成之后。
+5. `body` 保留自然语义顺序，不做 lowercasing；如需大小写不敏感比较，由去重阶段自行处理。
+6. 若正文缺失，可退化为 `title`；若退化后仍为空，则该内容直接丢弃并记录 `warn`。
+
+##### 去重比较文本
+
+存储字段和 dedupe 比较字段分开定义，避免“重复规范化”带来的歧义：
+
+1. `Content.title` 和 `Content.body` 按上面的存储规则写入库中
+2. near-dedup 时，不直接比较存储值，而是现算 `dedupeText`
+3. `dedupeText` 的生成规则固定为：
+   - 输入：`Content.title + " " + Content.body`
+   - 处理顺序：lowercase -> 去标点 -> 空白折叠
+4. `dedupeText` 不回写数据库，只用于 near-dedup 比较
+5. 第一版不对 `dedupeText` 再做 HTML 处理，因为进入 `Content.body` 前 HTML 已被移除
+
+##### URL 归一化
+
+目标：`Content.url` 同时作为统一跳转地址和 URL 精确去重键。
+
+1. 优先使用来源已解析出的 canonical URL；若没有 canonical，则使用原始 URL。
+2. 统一使用现有 `src/pipeline/normalize-url.ts` 的规则作为第一版契约。
+3. 规范化步骤固定为：
+   - 协议小写
+   - host 小写
+   - 去掉 `www.`
+   - `twitter.com` / `www.twitter.com` / `www.x.com` 统一改写为 `x.com`
+   - 去掉 fragment
+   - 删除追踪参数：`fbclid`、`gclid`、`mc_cid`、`mc_eid`、`ref`、`utm_campaign`、`utm_content`、`utm_medium`、`utm_source`、`utm_term`
+   - 移除非根路径的尾部斜杠
+4. 其余 query 参数默认保留；第一版不做 allowlist。
+5. X / Twitter 内容入库前必须展开到最终内容 URL，而不是短链。
+6. 归一化失败或结果非法时，该内容直接丢弃并记录 `warn`。
+
+##### `engagementScore` 标准化
+
+目标：提供一个可跨内容类型比较的统一热度输入，而不是保存所有平台的原始互动字段。
+
+1. 原始平台指标保留在 `metadataJson`。
+2. `engagementScore` 只保存统一后的单值。
+3. 第一版采用轻量规则映射，不引入复杂学习型归一化。
+4. 各内容类型可使用不同公式，但输出区间必须一致。
+5. 第一版统一输出区间为 `0-100` 的整数，并在计算后做 `Math.max(0, Math.min(100, score))` 裁剪。
+6. 没有互动数据时可为空，不伪造热度值。
+
+第一版必须使用以下映射规则：
+
+1. `tweet`
+   `min(100, floor((likeCount * 1 + replyCount * 2 + retweetCount * 3) / 10))`
+2. `github`
+   `min(100, floor((starCount * 1 + forkCount * 2 + commentCount * 2) / 10))`
+3. `reddit`
+   `min(100, floor((score * 1 + commentCount * 2) / 10))`
+4. `article` / `rss` / `website` / `json-feed`
+   若无显式互动信号，则保持 `null`；不为了统一而虚构 engagement。
+
+在所有需要比较 `engagementScore` 的地方，`null` 视为 `-1`，永远低于任何非空分值。
+
 ### 阶段 3：Drop Invalid Content
 
 无法满足统一内容要求的数据直接丢弃：
@@ -241,6 +334,23 @@ topic 分类沿用 `tech-news-digest` 的规则优先策略，不走 AI-first：
 
 1. 先按归一化 `url` 精确去重
 2. 再按 `title + body` 做文本近似去重
+
+#### 文本近似去重算法
+
+第一版直接复用现有 `src/pipeline/dedupe-near.ts` 的核心思路，避免引入新的算法变量：
+
+1. 比较文本为本节前文定义的 `dedupeText`
+2. 先将 `dedupeText` 按空白切分成 token 数组；后续的预过滤、LCS 和 cluster 构建都基于 token，而不是字符
+3. token 级预过滤：至少共享 1 个 token
+4. 时间预过滤：`publishedAt` 相差不超过 24 小时
+5. 相似度算法：SequenceMatcher 风格 ratio，具体为 `2 * LCS / (len(a) + len(b))`
+6. 阈值固定为 `0.75`
+7. near-dedup 必须按“构图 + 连通分量”方式执行，而不是单次顺序扫描：
+   - 若 A≈B，B≈C，则 A/B/C 属于同一 duplicate cluster
+   - 每个 cluster 只选一个 winner
+   - winner 选择必须与输入顺序无关
+
+这意味着第一版 near-dedup 是“复用现有 LCS / 0.75 阈值思路，但比较输入扩展为 title + body，并升级为顺序无关的 cluster-based 去重”。
 
 #### 去重胜出规则
 
