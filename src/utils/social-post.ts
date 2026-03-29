@@ -16,7 +16,7 @@ export function isSocialPost(item: RankedCandidate): boolean {
   if (item.contentType === "social_post") {
     return true;
   }
-  if (item.sourceType?.startsWith("x-")) {
+  if (item.sourceKind?.startsWith("x-")) {
     return true;
   }
   return false;

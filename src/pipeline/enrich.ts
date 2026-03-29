@@ -129,7 +129,7 @@ export async function enrichCandidates<T extends RankedCandidate>(
         logger.debug("Social post detected, using existing content", {
           candidateId: candidate.id,
           contentType: candidate.contentType,
-          sourceType: candidate.sourceType,
+          sourceKind: candidate.sourceKind,
           contentLength: candidate.normalizedText?.length ?? 0,
         });
         return { candidateId: candidate.id, result: createSocialPostContent(candidate) };
