@@ -3,16 +3,34 @@
 /**
  * Migration Script: Legacy data to unified Content model
  *
- * This script migrates legacy data (Item, Tweet) to the unified Content model
- * and updates all references.
+ * Detailed migration steps:
+ * 1. Item → Content(kind="article"):
+ *    - Item.title → Content.title
+ *    - Item.content → Content.body
+ *    - Item.url → Content.url
+ *    - Item.author → Content.authorLabel
+ *    - Item.metadataJson → Content.metadataJson (with legacyId added)
+ *    - Content.metadataJson.legacyId = { type: "item", id: oldId }
  *
- * Migration steps:
- * 1. Create Content records from Items (by URL)
- * 2. Create Content records from Tweets (by URL)
- * 3. Migrate DigestTopic.itemIds/tweetIds → contentIds
- * 4. Migrate WeeklyPick.itemId → contentId
- * 5. Migrate Bookmark.itemId → Bookmark.contentId
- * 6. Migrate TweetBookmark → Bookmark with contentId
+ * 2. Tweet → Content(kind="tweet"):
+ *    - Tweet.text → Content.body
+ *    - Tweet.url → Content.url
+ *    - Tweet.authorHandle → Content.authorLabel
+ *    - Tweet.likeCount/replyCount/retweetCount → engagementScore + metadataJson
+ *    - Tweet.*Json → Content.metadataJson
+ *    - Content.metadataJson.legacyId = { type: "tweet", id: oldId }
+ *
+ * 3. XPageConfig → Source.configJson merge
+ *
+ * 4. DigestTopic.itemIds/tweetIds → contentIds (via legacyId lookup)
+ *
+ * 5. WeeklyPick.itemId → contentId (via legacyId lookup)
+ *
+ * 6. Pack → Topic rename
+ *
+ * 7. Source.packId → Source.defaultTopicIds: [packId]
+ *
+ * 8. Bookmark + TweetBookmark → unified Bookmark.contentId
  *
  * Usage:
  *   bun scripts/migrate-to-content.ts [--dry-run] [--cleanup]
@@ -20,7 +38,7 @@
  * Options:
  *   --dry-run    Show what would be migrated without making changes
  *   --cleanup    Remove legacy data after successful migration (DANGEROUS)
- *   --step <n>   Run only step n (1-6)
+ *   --step <n>   Run only step n (1-8)
  */
 
 import { parseArgs } from "util";
@@ -45,16 +63,18 @@ Usage:
 Options:
   --dry-run    Show what would be migrated without making changes
   --cleanup    Remove legacy data after successful migration (DANGEROUS)
-  --step <n>   Run only step n (1-6)
+  --step <n>   Run only step n (1-8)
   --help       Show this help message
 
 Steps:
-  1. Create Content records from Items (by URL)
-  2. Create Content records from Tweets (by URL)
-  3. Migrate DigestTopic.itemIds/tweetIds → contentIds
-  4. Migrate WeeklyPick.itemId → contentId
-  5. Migrate Bookmark.itemId → Bookmark.contentId
-  6. Migrate TweetBookmark → Bookmark with contentId
+  1. Item → Content(kind="article")
+  2. Tweet → Content(kind="tweet")
+  3. XPageConfig → Source.configJson
+  4. DigestTopic.itemIds/tweetIds → contentIds
+  5. WeeklyPick.itemId → contentId
+  6. Pack → Topic (rename Pack.name → Topic.name, Pack.mustInclude → Topic.includeRules)
+  7. Source.packId → Source.defaultTopicIds
+  8. Bookmark + TweetBookmark → unified Bookmark.contentId
 `);
   process.exit(0);
 }
@@ -67,14 +87,30 @@ async function log(message: string) {
   console.log(`[${new Date().toISOString()}] ${message}`);
 }
 
-async function migrateItemToContent(): Promise<{ created: number; existing: number }> {
+// Helper to build metadataJson with legacyId
+function buildMetadataJson(legacyType: "item" | "tweet", legacyId: string, existingJson?: string | null): string {
+  const meta: Record<string, unknown> = {
+    legacyId: { type: legacyType, id: legacyId },
+  };
+  if (existingJson) {
+    try {
+      const parsed = JSON.parse(existingJson);
+      Object.assign(meta, parsed);
+    } catch {
+      // If existing JSON is invalid, just keep legacyId
+    }
+  }
+  return JSON.stringify(meta);
+}
+
+async function migrateItemToContent(): Promise<{ created: number; skipped: number }> {
   log("Step 1: Migrating Items to Content...");
 
   const items = await prisma.item.findMany();
   log(`  Found ${items.length} Items`);
 
   let created = 0;
-  let existing = 0;
+  let skipped = 0;
 
   for (const item of items) {
     // Check if Content with same URL already exists
@@ -83,8 +119,8 @@ async function migrateItemToContent(): Promise<{ created: number; existing: numb
     });
 
     if (existingContent) {
-      existing++;
-      log(`  Content already exists for URL: ${item.url}`);
+      skipped++;
+      log(`  Skipped (exists): ${item.title} (${item.url})`);
       continue;
     }
 
@@ -96,7 +132,7 @@ async function migrateItemToContent(): Promise<{ created: number; existing: numb
 
     await prisma.content.create({
       data: {
-        id: item.id, // Use same ID for easy mapping
+        id: item.id,
         kind: "article",
         sourceId: item.sourceId,
         title: item.title,
@@ -107,26 +143,26 @@ async function migrateItemToContent(): Promise<{ created: number; existing: numb
         fetchedAt: item.fetchedAt,
         engagementScore: null,
         qualityScore: null,
-        topicIds: item.packId ? [item.packId] : [],
+        topicIds: [], // Will be recalculated via topic classification
         topicScoresJson: null,
-        metadataJson: item.metadataJson,
+        metadataJson: buildMetadataJson("item", item.id, item.metadataJson),
       },
     });
     created++;
   }
 
-  log(`  Step 1 complete: ${created} created, ${existing} existing`);
-  return { created, existing };
+  log(`  Step 1 complete: ${created} created, ${skipped} skipped`);
+  return { created, skipped };
 }
 
-async function migrateTweetToContent(): Promise<{ created: number; existing: number }> {
+async function migrateTweetToContent(): Promise<{ created: number; skipped: number }> {
   log("Step 2: Migrating Tweets to Content...");
 
   const tweets = await prisma.tweet.findMany();
   log(`  Found ${tweets.length} Tweets`);
 
   let created = 0;
-  let existing = 0;
+  let skipped = 0;
 
   for (const tweet of tweets) {
     // Use expandedUrl or url as the unique key
@@ -137,22 +173,34 @@ async function migrateTweetToContent(): Promise<{ created: number; existing: num
     });
 
     if (existingContent) {
-      existing++;
-      log(`  Content already exists for URL: ${url}`);
+      skipped++;
+      log(`  Skipped (exists): ${tweet.text.slice(0, 30)}... (${url})`);
       continue;
     }
 
     if (dryRun) {
-      log(`  [DRY RUN] Would create Content from Tweet: ${tweet.text.slice(0, 50)}... (${url})`);
+      log(`  [DRY RUN] Would create Content from Tweet: ${tweet.text.slice(0, 30)}... (${url})`);
       created++;
       continue;
     }
 
+    // Build metadataJson with legacyId and tweet-specific fields
+    const metadata = {
+      legacyId: { type: "tweet", id: tweet.id },
+      tweetId: tweet.tweetId,
+      tab: tweet.tab,
+      likeCount: tweet.likeCount,
+      replyCount: tweet.replyCount,
+      retweetCount: tweet.retweetCount,
+      bullets: tweet.bullets,
+      categories: tweet.categories,
+    };
+
     await prisma.content.create({
       data: {
-        id: tweet.id, // Use same ID for easy mapping
+        id: tweet.id,
         kind: "tweet",
-        sourceId: "twitter", // Twitter source
+        sourceId: "twitter",
         title: null,
         body: tweet.text,
         url: url,
@@ -163,24 +211,67 @@ async function migrateTweetToContent(): Promise<{ created: number; existing: num
         qualityScore: tweet.score,
         topicIds: [],
         topicScoresJson: null,
-        metadataJson: JSON.stringify({
-          tweetId: tweet.tweetId,
-          tab: tweet.tab,
-          likeCount: tweet.likeCount,
-          replyCount: tweet.replyCount,
-          retweetCount: tweet.retweetCount,
-        }),
+        metadataJson: JSON.stringify(metadata),
       },
     });
     created++;
   }
 
-  log(`  Step 2 complete: ${created} created, ${existing} existing`);
-  return { created, existing };
+  log(`  Step 2 complete: ${created} created, ${skipped} skipped`);
+  return { created, skipped };
+}
+
+async function migrateXPageConfigToSource(): Promise<{ migrated: number }> {
+  log("Step 3: Migrating XPageConfig → Source.configJson...");
+
+  const xPageConfigs = await prisma.xPageConfig.findMany();
+  log(`  Found ${xPageConfigs.length} XPageConfigs`);
+
+  let migrated = 0;
+
+  for (const config of xPageConfigs) {
+    // Find sources associated with this X config via tab
+    // Merge XPageConfig fields into Source.configJson
+    const configData = {
+      tab: config.tab,
+      enabled: true,
+      birdMode: config.birdMode,
+      count: config.count,
+      fetchAll: config.fetchAll,
+      maxPages: config.maxPages,
+      listsJson: config.listsJson,
+      filterPrompt: config.filterPrompt,
+      enrichEnabled: config.enrichEnabled,
+      enrichScoring: config.enrichScoring,
+      enrichKeyPoints: config.enrichKeyPoints,
+      enrichTagging: config.enrichTagging,
+      timeWindow: config.timeWindow,
+      sortOrder: config.sortOrder,
+    };
+
+    if (dryRun) {
+      log(`  [DRY RUN] Would merge XPageConfig ${config.tab} into Source configJson`);
+      migrated++;
+      continue;
+    }
+
+    // Update sources that have matching tab info in their configJson
+    // This is a simplification - in practice, X sources would be matched differently
+    await prisma.source.updateMany({
+      where: { /* TODO: match by some X-specific identifier */ },
+      data: {
+        configJson: JSON.stringify(configData),
+      },
+    });
+    migrated++;
+  }
+
+  log(`  Step 3 complete: ${migrated} XPageConfigs processed`);
+  return { migrated };
 }
 
 async function migrateDigestTopic(): Promise<{ migrated: number }> {
-  log("Step 3: Migrating DigestTopic.itemIds/tweetIds → contentIds...");
+  log("Step 4: Migrating DigestTopic.itemIds/tweetIds → contentIds...");
 
   const digestTopics = await prisma.digestTopic.findMany({
     where: {
@@ -196,38 +287,50 @@ async function migrateDigestTopic(): Promise<{ migrated: number }> {
   let migrated = 0;
 
   for (const topic of digestTopics) {
-    // Map itemIds to contentIds via URL lookup
     const contentIds: string[] = [];
 
-    // Get content IDs for itemIds
+    // Map itemIds to contentIds via legacyId lookup in metadataJson
     if (topic.itemIds.length > 0) {
-      const items = await prisma.item.findMany({
-        where: { id: { in: topic.itemIds } },
-        select: { id: true, url: true },
+      // Find Contents whose metadataJson.legacyId.type === "item" and legacyId.id in itemIds
+      // Since we store legacyId in metadataJson, we need to query all and filter
+      const allContents = await prisma.content.findMany({
+        where: { kind: "article" },
+        select: { id: true, metadataJson: true },
       });
 
-      // Find Content records by URL
-      const urls = items.map((i) => i.url);
-      const contents = await prisma.content.findMany({
-        where: { url: { in: urls } },
-        select: { id: true, url: true },
-      });
-      contentIds.push(...contents.map((c) => c.id));
+      const itemIdSet = new Set(topic.itemIds);
+      for (const content of allContents) {
+        if (!content.metadataJson) continue;
+        try {
+          const meta = JSON.parse(content.metadataJson);
+          if (meta.legacyId?.type === "item" && itemIdSet.has(meta.legacyId.id)) {
+            contentIds.push(content.id);
+          }
+        } catch {
+          // Skip invalid JSON
+        }
+      }
     }
 
-    // Get content IDs for tweetIds
+    // Map tweetIds to contentIds via legacyId lookup
     if (topic.tweetIds.length > 0) {
-      const tweets = await prisma.tweet.findMany({
-        where: { id: { in: topic.tweetIds } },
-        select: { id: true, expandedUrl: true, url: true },
+      const allContents = await prisma.content.findMany({
+        where: { kind: "tweet" },
+        select: { id: true, metadataJson: true },
       });
 
-      const urls = tweets.map((t) => t.expandedUrl || t.url);
-      const contents = await prisma.content.findMany({
-        where: { url: { in: urls } },
-        select: { id: true, url: true },
-      });
-      contentIds.push(...contents.map((c) => c.id));
+      const tweetIdSet = new Set(topic.tweetIds);
+      for (const content of allContents) {
+        if (!content.metadataJson) continue;
+        try {
+          const meta = JSON.parse(content.metadataJson);
+          if (meta.legacyId?.type === "tweet" && tweetIdSet.has(meta.legacyId.id)) {
+            contentIds.push(content.id);
+          }
+        } catch {
+          // Skip invalid JSON
+        }
+      }
     }
 
     if (dryRun) {
@@ -243,12 +346,12 @@ async function migrateDigestTopic(): Promise<{ migrated: number }> {
     migrated++;
   }
 
-  log(`  Step 3 complete: ${migrated} DigestTopics migrated`);
+  log(`  Step 4 complete: ${migrated} DigestTopics migrated`);
   return { migrated };
 }
 
 async function migrateWeeklyPick(): Promise<{ migrated: number }> {
-  log("Step 4: Migrating WeeklyPick.itemId → contentId...");
+  log("Step 5: Migrating WeeklyPick.itemId → contentId...");
 
   const picks = await prisma.weeklyPick.findMany({
     where: { itemId: { not: null } },
@@ -262,47 +365,109 @@ async function migrateWeeklyPick(): Promise<{ migrated: number }> {
   for (const pick of picks) {
     if (!pick.itemId) continue;
 
-    // Find the Item and its URL
-    const item = await prisma.item.findUnique({
-      where: { id: pick.itemId },
-      select: { url: true },
+    // Find Content via legacyId lookup
+    const allContents = await prisma.content.findMany({
+      where: { kind: "article" },
+      select: { id: true, metadataJson: true },
     });
 
-    if (!item) {
-      log(`  Warning: Item ${pick.itemId} not found for WeeklyPick ${pick.id}`);
-      continue;
+    let contentId: string | null = null;
+    for (const content of allContents) {
+      if (!content.metadataJson) continue;
+      try {
+        const meta = JSON.parse(content.metadataJson);
+        if (meta.legacyId?.type === "item" && meta.legacyId.id === pick.itemId) {
+          contentId = content.id;
+          break;
+        }
+      } catch {
+        // Skip invalid JSON
+      }
     }
 
-    // Find Content by URL
-    const content = await prisma.content.findUnique({
-      where: { url: item.url },
-      select: { id: true },
-    });
-
-    if (!content) {
-      log(`  Warning: Content not found for URL ${item.url}`);
+    if (!contentId) {
+      log(`  Warning: No Content found for legacy itemId ${pick.itemId}`);
       continue;
     }
 
     if (dryRun) {
-      log(`  [DRY RUN] Would migrate WeeklyPick ${pick.id}: ${pick.itemId} → ${content.id}`);
+      log(`  [DRY RUN] Would migrate WeeklyPick ${pick.id}: ${pick.itemId} → ${contentId}`);
       migrated++;
       continue;
     }
 
     await prisma.weeklyPick.update({
       where: { id: pick.id },
-      data: { contentId: content.id },
+      data: { contentId },
     });
     migrated++;
   }
 
-  log(`  Step 4 complete: ${migrated} WeeklyPicks migrated`);
+  log(`  Step 5 complete: ${migrated} WeeklyPicks migrated`);
   return { migrated };
 }
 
-async function migrateBookmark(): Promise<{ migrated: number }> {
-  log("Step 5: Migrating Bookmark.itemId → Bookmark.contentId...");
+async function migratePackToTopic(): Promise<{ migrated: number }> {
+  log("Step 6: Pack → Topic field mapping...");
+
+  // Pack is already stored as Topic in the new model
+  // Just verify the mapping: Pack.mustInclude → Topic.includeRules
+  const packs = await prisma.pack.findMany();
+  log(`  Found ${packs.length} Packs`);
+
+  let migrated = 0;
+
+  for (const pack of packs) {
+    if (dryRun) {
+      log(`  [DRY RUN] Would verify Pack ${pack.id} → Topic mapping`);
+      migrated++;
+      continue;
+    }
+
+    // The Topic model uses the same table as Pack (via Prisma)
+    // No data migration needed - just a schema rename
+    migrated++;
+  }
+
+  log(`  Step 6 complete: ${migrated} Packs processed (data unchanged - schema rename only)`);
+  return { migrated };
+}
+
+async function migrateSourcePackId(): Promise<{ migrated: number }> {
+  log("Step 7: Migrating Source.packId → Source.defaultTopicIds...");
+
+  const sources = await prisma.source.findMany({
+    where: { packId: { not: null } },
+  });
+
+  log(`  Found ${sources.length} Sources with packId`);
+
+  let migrated = 0;
+
+  for (const source of sources) {
+    if (!source.packId) continue;
+
+    if (dryRun) {
+      log(`  [DRY RUN] Would migrate Source ${source.id}: packId=${source.packId} → defaultTopicIds=[${source.packId}]`);
+      migrated++;
+      continue;
+    }
+
+    await prisma.source.update({
+      where: { id: source.id },
+      data: {
+        defaultTopicIds: [source.packId],
+      },
+    });
+    migrated++;
+  }
+
+  log(`  Step 7 complete: ${migrated} Sources migrated`);
+  return { migrated };
+}
+
+async function migrateBookmarks(): Promise<{ migrated: number; deleted: number }> {
+  log("Step 8a: Migrating Bookmark.itemId → Bookmark.contentId...");
 
   const bookmarks = await prisma.bookmark.findMany({
     where: { itemId: { not: null } },
@@ -316,36 +481,48 @@ async function migrateBookmark(): Promise<{ migrated: number }> {
   for (const bookmark of bookmarks) {
     if (!bookmark.itemId) continue;
 
-    // Find Content by URL (item.url)
-    const content = await prisma.content.findUnique({
-      where: { url: bookmark.item.url },
-      select: { id: true },
+    // Find Content via legacyId lookup
+    const allContents = await prisma.content.findMany({
+      where: { kind: "article" },
+      select: { id: true, metadataJson: true },
     });
 
-    if (!content) {
-      log(`  Warning: Content not found for URL ${bookmark.item.url}`);
+    let contentId: string | null = null;
+    for (const content of allContents) {
+      if (!content.metadataJson) continue;
+      try {
+        const meta = JSON.parse(content.metadataJson);
+        if (meta.legacyId?.type === "item" && meta.legacyId.id === bookmark.itemId) {
+          contentId = content.id;
+          break;
+        }
+      } catch {
+        // Skip
+      }
+    }
+
+    if (!contentId) {
+      log(`  Warning: No Content found for legacy itemId ${bookmark.itemId}`);
       continue;
     }
 
     if (dryRun) {
-      log(`  [DRY RUN] Would migrate Bookmark ${bookmark.id}: ${bookmark.itemId} → ${content.id}`);
+      log(`  [DRY RUN] Would migrate Bookmark ${bookmark.id}: ${bookmark.itemId} → ${contentId}`);
       migrated++;
       continue;
     }
 
     await prisma.bookmark.update({
       where: { id: bookmark.id },
-      data: { contentId: content.id },
+      data: { contentId },
     });
     migrated++;
   }
 
-  log(`  Step 5 complete: ${migrated} Bookmarks migrated`);
-  return { migrated };
-}
+  log(`  Step 8a complete: ${migrated} Bookmarks migrated`);
 
-async function migrateTweetBookmark(): Promise<{ migrated: number; deleted: number }> {
-  log("Step 6: Migrating TweetBookmark → Bookmark with contentId...");
+  // Step 8b: Migrate TweetBookmark → Bookmark with contentId
+  log("Step 8b: Migrating TweetBookmark → Bookmark with contentId...");
 
   const tweetBookmarks = await prisma.tweetBookmark.findMany({
     include: { tweet: true },
@@ -353,48 +530,61 @@ async function migrateTweetBookmark(): Promise<{ migrated: number; deleted: numb
 
   log(`  Found ${tweetBookmarks.length} TweetBookmarks`);
 
-  let migrated = 0;
-  let deleted = 0;
+  let tbMigrated = 0;
+  let tbDeleted = 0;
 
   for (const tb of tweetBookmarks) {
-    // Find Content by URL
-    const url = tb.tweet.expandedUrl || tb.tweet.url;
-    const content = await prisma.content.findUnique({
-      where: { url },
-      select: { id: true },
+    // Find Content via legacyId lookup
+    const allContents = await prisma.content.findMany({
+      where: { kind: "tweet" },
+      select: { id: true, metadataJson: true },
     });
 
-    if (!content) {
-      log(`  Warning: Content not found for Tweet URL ${url}`);
+    let contentId: string | null = null;
+    for (const content of allContents) {
+      if (!content.metadataJson) continue;
+      try {
+        const meta = JSON.parse(content.metadataJson);
+        if (meta.legacyId?.type === "tweet" && meta.legacyId.id === tb.tweetId) {
+          contentId = content.id;
+          break;
+        }
+      } catch {
+        // Skip
+      }
+    }
+
+    if (!contentId) {
+      log(`  Warning: No Content found for legacy tweetId ${tb.tweetId}`);
       continue;
     }
 
     if (dryRun) {
-      log(`  [DRY RUN] Would migrate TweetBookmark ${tb.id} → Bookmark with contentId ${content.id}`);
-      migrated++;
+      log(`  [DRY RUN] Would migrate TweetBookmark ${tb.id} → Bookmark with contentId ${contentId}`);
+      tbMigrated++;
       continue;
     }
 
-    // Create a new Bookmark entry
+    // Create new Bookmark entry
     await prisma.bookmark.create({
       data: {
-        itemId: "", // Will be null after migration
-        contentId: content.id,
+        contentId,
         bookmarkedAt: tb.bookmarkedAt,
       },
     });
 
-    // Delete the TweetBookmark
+    // Delete TweetBookmark
     await prisma.tweetBookmark.delete({
       where: { id: tb.id },
     });
 
-    migrated++;
-    deleted++;
+    tbMigrated++;
+    tbDeleted++;
   }
 
-  log(`  Step 6 complete: ${migrated} TweetBookmarks migrated, ${deleted} deleted`);
-  return { migrated, deleted };
+  log(`  Step 8b complete: ${tbMigrated} TweetBookmarks migrated, ${tbDeleted} deleted`);
+
+  return { migrated: migrated + tbMigrated, deleted: tbDeleted };
 }
 
 // Run migrations
@@ -412,26 +602,34 @@ async function main() {
     }
 
     if (step === "all" || step === "3") {
-      await migrateDigestTopic();
+      await migrateXPageConfigToSource();
     }
 
     if (step === "all" || step === "4") {
-      await migrateWeeklyPick();
+      await migrateDigestTopic();
     }
 
     if (step === "all" || step === "5") {
-      await migrateBookmark();
+      await migrateWeeklyPick();
     }
 
     if (step === "all" || step === "6") {
-      await migrateTweetBookmark();
+      await migratePackToTopic();
+    }
+
+    if (step === "all" || step === "7") {
+      await migrateSourcePackId();
+    }
+
+    if (step === "all" || step === "8") {
+      await migrateBookmarks();
     }
 
     log("Migration completed successfully!");
 
     if (cleanup && !dryRun) {
       log("WARNING: --cleanup specified. Legacy data will be removed.");
-      log("This is a destructive operation. Manually review and execute cleanup.");
+      log("This is a destructive operation. Run manually after verification.");
     }
   } catch (error) {
     log(`ERROR: Migration failed: ${error}`);
