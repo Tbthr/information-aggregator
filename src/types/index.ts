@@ -1,25 +1,50 @@
 export type RunKind = "query";
 export type QuerySort = "ranked" | "recent" | "engagement";
 export type CanonicalRelationship = "original" | "discussion" | "share";
-export const CANONICAL_SOURCE_TYPES = [
+export const CANONICAL_SOURCE_KINDS = [
   "rss",
   "json-feed",
   "website",
   "hn",
   "reddit",
   "github-trending",
+  "x",
+  "youtube",
 ] as const;
 
-export type SourceType = (typeof CANONICAL_SOURCE_TYPES)[number];
+export type SourceKind = (typeof CANONICAL_SOURCE_KINDS)[number];
 export type RunStatus = "pending" | "running" | "completed" | "failed" | "succeeded";
 
-// 内联数据源定义
+// Content kinds for unified content model
+export const CONTENT_KINDS = ["article", "tweet", "video", "github", "reddit", "hackernews"] as const;
+export type ContentKind = (typeof CONTENT_KINDS)[number];
+
+// Topic model fields (mirrors Prisma Topic)
+export interface Topic {
+  id: string;
+  name: string;
+  description?: string;
+  includeRules: string[];
+  excludeRules: string[];
+  scoreBoost: number;
+  displayOrder: number;
+  maxItems: number;
+}
+
+// TopicScores map for stable object mapping
+export type TopicScores = Record<string, number>; // topicId -> score
+
+// 内联数据源定义 (kind replaces type)
 export interface InlineSource {
-  type: SourceType;
+  kind: SourceKind;
   url: string;
   description?: string;
   enabled?: boolean;
   configJson?: string;
+  // NEW: topic-centric config
+  priority?: number;
+  defaultTopicIds?: string[];
+  authRef?: string;
 }
 
 // Source 类型别名，用于 adapter 函数签名
@@ -28,26 +53,21 @@ export type Source = InlineSource & { id: string };
 // Adapter 函数类型
 export type AdapterFn = (source: Source) => Promise<RawItem[]>;
 
-// Pack 定义 - 自包含数据源
-export interface SourcePack {
-  id: string;
-  name: string;
-  description?: string;
-  auth?: string;           // auth 引用
-  sources: InlineSource[];
-  // 模板引用
-  promptTemplate?: string;   // 引用 config/prompts/{name}.md
-  viewTemplate?: string;     // 引用 config/views/{name}.md
-  // Pack-level filter config (additive for migration)
-  mustInclude?: string[];    // Required keywords for items in this pack
-  exclude?: string[];        // Excluded keywords for items in this pack
-}
-
-// FilterContext - runtime context for filtering items
+// FilterContext - runtime context for filtering items (topic-centric for migration)
 export interface FilterContext {
-  packId: string;
+  topicIds: string[]; // Topics to filter by (replaces packId)
   mustInclude?: string[];
   exclude?: string[];
+}
+
+// Topic-centric classification context
+export interface ClassificationContext {
+  topics: Topic[];
+  sourceKind?: SourceKind;
+  timeRange?: {
+    start: string;
+    end: string;
+  };
 }
 
 // RawItem - 采集最小标准化结果，仅用于进入 normalize
@@ -103,7 +123,7 @@ export interface RawItemThreadItem {
 
 export interface RawItemMetadata {
   provider: string;
-  sourceType: SourceType;
+  sourceKind: SourceKind;
   contentType: string;
   engagement?: RawItemEngagement;
   canonicalHints?: RawItemCanonicalHints;
@@ -130,7 +150,7 @@ export interface NormalizedItem {
   sourceId: string;
   title: string;
   publishedAt?: string;
-  sourceType: SourceType;
+  sourceKind: SourceKind;
   contentType: "article"; // fixed to article per spec
   normalizedUrl: string;
   normalizedTitle: string;
@@ -153,19 +173,50 @@ export interface NormalizedItem {
   content?: string;
 }
 
-// ReportCandidate - 日报阶段统一候选模型，不是数据库表
+// Content - unified content model for normalized items
+export interface Content {
+  id: string;
+  kind: ContentKind;
+  sourceId: string;
+  title: string;
+  body?: string;
+  url: string;
+  authorLabel?: string;
+  publishedAt?: string;
+  fetchedAt: string;
+  engagementScore?: number;
+  qualityScore?: number;
+  topicIds: string[];
+  topicScoresJson?: string;
+  metadataJson?: string;
+}
+
+// Content discriminated union for kind-specific handling
+export type ArticleContent = Content & { kind: "article"; body: string };
+export type TweetContent = Content & { kind: "tweet"; body: string };
+export type VideoContent = Content & { kind: "video"; body?: string };
+export type GitHubContent = Content & { kind: "github"; body?: string };
+export type RedditContent = Content & { kind: "reddit"; body?: string };
+export type HackerNewsContent = Content & { kind: "hackernews"; body?: string };
+
+// ReportCandidate - 日报阶段统一候选模型（基于 Content，不是数据库表）
 export interface ReportCandidate {
   id: string;
-  kind: "article" | "tweet";
-  packId: string;
+  kind: ContentKind;
+  topicId: string; // Primary topic this candidate belongs to
+  topicScores?: TopicScores; // Scores across all matched topics
   title: string;
   summary: string;
   content: string;
+  url: string;
+  authorLabel?: string;
   publishedAt?: string;
   sourceLabel: string;
   categories?: string[];
   normalizedUrl: string;
   normalizedTitle: string;
+  engagementScore?: number;
+  qualityScore?: number;
   // rawRef is used to reference the original raw item
   rawRef: {
     id: string;
@@ -221,7 +272,7 @@ export interface RankedCandidate {
   finalScore?: number;
   rationale?: string;
   contentType?: string;
-  sourceType?: SourceType;
+  sourceKind?: SourceKind;
   metadataJson?: string;  // 原始元数据 JSON
   author?: string;        // 作者信息
   // 深度 enrichment 相关字段

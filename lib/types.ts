@@ -46,8 +46,8 @@ export type DigestTopic = {
   order: number
   title: string
   summary: string
-  itemIds: string[]
-  tweetIds: string[]
+  contentIds: string[]
+  topicScoresJson?: string
 }
 
 export type DailyReportData = {
@@ -57,29 +57,24 @@ export type DailyReportData = {
   errorMessage?: string | null
   errorSteps?: string[] | null
   topics: DigestTopic[]
-  referencedItems: ReferencedItem[]
-  referencedTweets: ReferencedTweet[]
+  contents: Content[]
 }
 
 export type WeeklyPick = {
   id: string
   order: number
-  itemId: string
+  contentId: string
   reason: string
 }
 
-export type ReferencedItem = {
+// Unified content reference type
+export type Content = {
   id: string
+  kind: string
   title: string
   url: string
-  summary: string | null
-}
-
-export type ReferencedTweet = {
-  id: string
-  text: string | null
-  authorHandle: string
-  tweetUrl: string | null
+  authorLabel?: string
+  summary?: string | null
 }
 
 export type WeeklyReportData = {
@@ -88,7 +83,7 @@ export type WeeklyReportData = {
   errorMessage?: string | null
   errorSteps?: string[] | null
   picks: WeeklyPick[]
-  referencedItems: ReferencedItem[]
+  contents: Content[]
 }
 
 export type Tweet = {
