@@ -62,6 +62,9 @@ export type DailyReportData = {
   errorSteps?: string[] | null
   topics: DigestTopic[]
   contents: Content[]
+  // Legacy aliases for migration (populated by API for backwards compatibility)
+  referencedItems?: Content[]
+  referencedTweets?: Content[]
 }
 
 export type WeeklyPick = {
@@ -102,6 +105,11 @@ export type Content = {
   summary?: string | null
 }
 
+// Legacy type aliases for backwards compatibility during migration
+// These allow components to use ReferencedItem/ReferencedTweet while API still returns old format
+export type ReferencedItem = Content
+export type ReferencedTweet = Content
+
 export type WeeklyReportData = {
   weekNumber: string | null
   editorial: string | null
@@ -109,6 +117,8 @@ export type WeeklyReportData = {
   errorSteps?: string[] | null
   picks: WeeklyPick[]
   contents: Content[]
+  // Legacy alias for migration (populated by API for backwards compatibility)
+  referencedItems?: Content[]
 }
 
 export type Tweet = {

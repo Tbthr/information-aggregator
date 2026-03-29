@@ -225,7 +225,7 @@ function serializeItem(item: ItemRecord): ItemData {
     url: item.url,
     source: {
       id: item.sourceId,
-      type: item.sourceType || item.source.type || "unknown",
+      type: item.sourceType || item.source.kind || "unknown",
     },
     sourceName: item.sourceName || item.source.name || item.sourceType,
     publishedAt: item.publishedAt ? item.publishedAt.toISOString() : null,
@@ -264,7 +264,7 @@ function summarizeSources(rows: ItemRecord[]): SourceInfo[] {
 
   for (const row of rows) {
     const current = stats.get(row.sourceId) ?? {
-      type: row.sourceType || row.source.type || "unknown",
+      type: row.sourceType || row.source.kind || "unknown",
       count: 0,
       lastSuccessAt: null as string | null,
     }

@@ -85,7 +85,7 @@ function PickCard({
           </span>
           {!isDeleted && (
             <SaveButton
-              articleId={pick.itemId}
+              articleId={pick.contentId}
               isSaved={isSaved}
               onToggle={onToggleSave}
               size="sm"
@@ -289,9 +289,9 @@ export function WeeklyPage({ isSaved, onToggleSave, onOpenArticle }: WeeklyPageP
               >
                 <PickCard
                   pick={pick}
-                  item={itemMap.get(pick.itemId)}
+                  item={itemMap.get(pick.contentId)}
                   rank={i + 1}
-                  isSaved={isSaved(pick.itemId)}
+                  isSaved={isSaved(pick.contentId)}
                   onToggleSave={onToggleSave}
                   onOpenArticle={onOpenArticle}
                 />

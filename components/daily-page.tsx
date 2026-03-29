@@ -130,25 +130,25 @@ function ReferenceLinkRow({
 }
 
 function TweetReferenceRow({ tweet }: { tweet: ReferencedTweet }) {
-  const displayText = tweet.text
-    ? tweet.text.length > 100
-      ? tweet.text.slice(0, 100) + "..."
-      : tweet.text
+  const displayText = tweet.body
+    ? tweet.body.length > 100
+      ? tweet.body.slice(0, 100) + "..."
+      : tweet.body
     : null
 
   return (
     <div className="group flex items-start gap-3 py-2.5 px-3 rounded-lg hover:bg-muted/60 transition-colors">
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-mono text-primary mb-1">@{tweet.authorHandle}</p>
+        <p className="text-xs font-mono text-primary mb-1">@{tweet.authorLabel}</p>
         {displayText && (
           <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
             {displayText}
           </p>
         )}
       </div>
-      {tweet.tweetUrl && (
+      {tweet.url && (
         <a
-          href={tweet.tweetUrl}
+          href={tweet.url}
           target="_blank"
           rel="noopener noreferrer"
           className="text-muted-foreground hover:text-primary transition-colors shrink-0 mt-1"
