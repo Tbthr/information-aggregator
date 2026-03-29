@@ -32,25 +32,45 @@ describe("dedupeExact", () => {
     expect(deduped).toHaveLength(2);
   });
 
-  test("ignores contentType - newest publishedAt always wins regardless of type", () => {
-    // Spec says NO contentType priority - just pick newest publishedAt
+  test("winner selection uses topicIds.length as primary criterion", () => {
+    // Item with more topics should win
     const items = [
-      { id: "article-old", normalizedUrl: "https://example.com/post", contentType: "article", publishedAt: "2026-03-09T00:00:00Z" },
-      { id: "community-new", normalizedUrl: "https://example.com/post", contentType: "community_post", publishedAt: "2026-03-09T01:00:00Z" },
+      { id: "few-topics", normalizedUrl: "https://example.com/post", topicIds: ["t1"], publishedAt: "2026-03-09T00:00:00Z" },
+      { id: "many-topics", normalizedUrl: "https://example.com/post", topicIds: ["t1", "t2", "t3"], publishedAt: "2026-03-09T00:00:00Z" },
     ];
     const deduped = dedupeExact(items);
     expect(deduped).toHaveLength(1);
-    expect(deduped[0]?.id).toBe("community-new"); // newest publishedAt wins, not article
+    expect(deduped[0]?.id).toBe("many-topics");
   });
 
-  test("uses publishedAt not processedAt", () => {
+  test("winner selection uses sourcePriority as secondary criterion", () => {
     const items = [
-      { id: "1", normalizedUrl: "https://example.com/post", publishedAt: "2026-03-09T00:00:00Z", processedAt: "2026-03-09T12:00:00Z" },
-      { id: "2", normalizedUrl: "https://example.com/post", publishedAt: "2026-03-09T01:00:00Z", processedAt: "2026-03-09T08:00:00Z" },
+      { id: "low-priority", normalizedUrl: "https://example.com/post", sourcePriority: 1, publishedAt: "2026-03-09T00:00:00Z" },
+      { id: "high-priority", normalizedUrl: "https://example.com/post", sourcePriority: 10, publishedAt: "2026-03-09T00:00:00Z" },
     ];
     const deduped = dedupeExact(items);
     expect(deduped).toHaveLength(1);
-    expect(deduped[0]?.id).toBe("2"); // newest publishedAt wins, not newest processedAt
+    expect(deduped[0]?.id).toBe("high-priority");
+  });
+
+  test("winner selection uses engagementScore as tertiary criterion (null = -1)", () => {
+    const items = [
+      { id: "no-engagement", normalizedUrl: "https://example.com/post", engagementScore: null, publishedAt: "2026-03-09T00:00:00Z" },
+      { id: "has-engagement", normalizedUrl: "https://example.com/post", engagementScore: 50, publishedAt: "2026-03-09T00:00:00Z" },
+    ];
+    const deduped = dedupeExact(items);
+    expect(deduped).toHaveLength(1);
+    expect(deduped[0]?.id).toBe("has-engagement");
+  });
+
+  test("winner selection uses id as final tiebreaker (lexicographic)", () => {
+    const items = [
+      { id: "zzz", normalizedUrl: "https://example.com/post", publishedAt: "2026-03-09T00:00:00Z" },
+      { id: "aaa", normalizedUrl: "https://example.com/post", publishedAt: "2026-03-09T00:00:00Z" },
+    ];
+    const deduped = dedupeExact(items);
+    expect(deduped).toHaveLength(1);
+    expect(deduped[0]?.id).toBe("aaa"); // "aaa" < "zzz" lexicographically
   });
 
   test("handles missing publishedAt - treats as oldest", () => {
@@ -61,5 +81,10 @@ describe("dedupeExact", () => {
     const deduped = dedupeExact(items);
     expect(deduped).toHaveLength(1);
     expect(deduped[0]?.id).toBe("with-date");
+  });
+
+  test("handles empty input", () => {
+    const deduped = dedupeExact([]);
+    expect(deduped).toHaveLength(0);
   });
 });
