@@ -19,6 +19,20 @@ export type RunStatus = "pending" | "running" | "completed" | "failed" | "succee
 export const CONTENT_KINDS = ["article", "tweet", "video", "github", "reddit", "hackernews"] as const;
 export type ContentKind = (typeof CONTENT_KINDS)[number];
 
+// SourceType - legacy alias for SourceKind (for migration compatibility)
+export type SourceType = SourceKind;
+
+// SourcePack - legacy type for pack-based sources (deprecated, use topic-centric model)
+export interface SourcePack {
+  id: string;
+  name: string;
+  description?: string | null;
+  mustInclude: string[];
+  exclude: string[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 // Topic model fields (mirrors Prisma Topic)
 export interface Topic {
   id: string;

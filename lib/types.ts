@@ -46,7 +46,9 @@ export type DigestTopic = {
   order: number
   title: string
   summary: string
-  contentIds: string[]
+  itemIds: string[]    // LEGACY: kept for migration
+  tweetIds: string[]   // LEGACY: kept for migration
+  contentIds: string[] // NEW: unified content references
   topicScoresJson?: string
 }
 
@@ -67,13 +69,22 @@ export type WeeklyPick = {
   reason: string
 }
 
-// Unified content reference type
+// Unified content reference type (matches Prisma Content model)
 export type Content = {
   id: string
   kind: string
-  title: string
+  sourceId: string
+  title?: string | null
+  body?: string | null
   url: string
-  authorLabel?: string
+  authorLabel?: string | null
+  publishedAt?: string | null
+  fetchedAt: string
+  engagementScore?: number | null
+  qualityScore?: number | null
+  topicIds: string[]
+  topicScoresJson?: string | null
+  metadataJson?: string | null
   summary?: string | null
 }
 
