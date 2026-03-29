@@ -4,47 +4,47 @@ import { buildBirdCommand, collectXBirdSource } from "./x-bird";
 
 describe("x bird integration", () => {
   test("maps x family source types to bird CLI arguments", () => {
-    expect(buildBirdCommand({ type: "x-bookmarks", configJson: JSON.stringify({ birdMode: "bookmarks" }) })).toEqual(["bird", "bookmarks", "--json"]);
-    expect(buildBirdCommand({ type: "x-likes", configJson: JSON.stringify({ birdMode: "likes" }) })).toEqual(["bird", "likes", "--json"]);
+    expect(buildBirdCommand({ kind: "x", configJson: JSON.stringify({ birdMode: "bookmarks" }) })).toEqual(["bird", "bookmarks", "--json"]);
+    expect(buildBirdCommand({ kind: "x", configJson: JSON.stringify({ birdMode: "likes" }) })).toEqual(["bird", "likes", "--json"]);
     expect(
       buildBirdCommand({
-        type: "x-list",
+        kind: "x",
         configJson: JSON.stringify({ birdMode: "list", listId: "2021198996157710621" }),
       }),
     ).toEqual(["bird", "list-timeline", "2021198996157710621", "--json"]);
-    expect(buildBirdCommand({ type: "x-home", configJson: JSON.stringify({ birdMode: "home" }) })).toEqual(["bird", "home", "--json"]);
+    expect(buildBirdCommand({ kind: "x", configJson: JSON.stringify({ birdMode: "home" }) })).toEqual(["bird", "home", "--json"]);
   });
 
   test("supports count parameter", () => {
-    expect(buildBirdCommand({ type: "x-home", configJson: JSON.stringify({ birdMode: "home", count: 50 }) })).toEqual(["bird", "home", "-n", "50", "--json"]);
-    expect(buildBirdCommand({ type: "x-bookmarks", configJson: JSON.stringify({ birdMode: "bookmarks", count: 100 }) })).toEqual(["bird", "bookmarks", "-n", "100", "--json"]);
+    expect(buildBirdCommand({ kind: "x", configJson: JSON.stringify({ birdMode: "home", count: 50 }) })).toEqual(["bird", "home", "-n", "50", "--json"]);
+    expect(buildBirdCommand({ kind: "x", configJson: JSON.stringify({ birdMode: "bookmarks", count: 100 }) })).toEqual(["bird", "bookmarks", "-n", "100", "--json"]);
     expect(
       buildBirdCommand({
-        type: "x-list",
+        kind: "x",
         configJson: JSON.stringify({ birdMode: "list", listId: "123", count: 200 }),
       }),
     ).toEqual(["bird", "list-timeline", "123", "-n", "200", "--json"]);
   });
 
   test("supports fetchAll parameter for list/bookmarks/likes", () => {
-    expect(buildBirdCommand({ type: "x-list", configJson: JSON.stringify({ birdMode: "list", listId: "123", fetchAll: true }) })).toEqual(["bird", "list-timeline", "123", "--all", "--json"]);
-    expect(buildBirdCommand({ type: "x-list", configJson: JSON.stringify({ birdMode: "list", listId: "123", fetchAll: true, maxPages: 5 }) })).toEqual(["bird", "list-timeline", "123", "--all", "--max-pages", "5", "--json"]);
-    expect(buildBirdCommand({ type: "x-bookmarks", configJson: JSON.stringify({ birdMode: "bookmarks", fetchAll: true }) })).toEqual(["bird", "bookmarks", "--all", "--json"]);
-    expect(buildBirdCommand({ type: "x-likes", configJson: JSON.stringify({ birdMode: "likes", fetchAll: true, maxPages: 3 }) })).toEqual(["bird", "likes", "--all", "--max-pages", "3", "--json"]);
+    expect(buildBirdCommand({ kind: "x", configJson: JSON.stringify({ birdMode: "list", listId: "123", fetchAll: true }) })).toEqual(["bird", "list-timeline", "123", "--all", "--json"]);
+    expect(buildBirdCommand({ kind: "x", configJson: JSON.stringify({ birdMode: "list", listId: "123", fetchAll: true, maxPages: 5 }) })).toEqual(["bird", "list-timeline", "123", "--all", "--max-pages", "5", "--json"]);
+    expect(buildBirdCommand({ kind: "x", configJson: JSON.stringify({ birdMode: "bookmarks", fetchAll: true }) })).toEqual(["bird", "bookmarks", "--all", "--json"]);
+    expect(buildBirdCommand({ kind: "x", configJson: JSON.stringify({ birdMode: "likes", fetchAll: true, maxPages: 3 }) })).toEqual(["bird", "likes", "--all", "--max-pages", "3", "--json"]);
   });
 
   test("ignores fetchAll for home timeline", () => {
     // home 不支持 --all，应该忽略
-    expect(buildBirdCommand({ type: "x-home", configJson: JSON.stringify({ birdMode: "home", fetchAll: true }) })).toEqual(["bird", "home", "--json"]);
+    expect(buildBirdCommand({ kind: "x", configJson: JSON.stringify({ birdMode: "home", fetchAll: true }) })).toEqual(["bird", "home", "--json"]);
     // 但 count 仍然有效
-    expect(buildBirdCommand({ type: "x-home", configJson: JSON.stringify({ birdMode: "home", fetchAll: true, count: 50 }) })).toEqual(["bird", "home", "-n", "50", "--json"]);
+    expect(buildBirdCommand({ kind: "x", configJson: JSON.stringify({ birdMode: "home", fetchAll: true, count: 50 }) })).toEqual(["bird", "home", "-n", "50", "--json"]);
   });
 
   test("converts bird output into raw items", async () => {
     const items = await collectXBirdSource(
       {
         id: "x-home",
-        type: "x-home",
+        kind: "x",
         url: "https://x.com/home",
         enabled: false,
         configJson: JSON.stringify({ birdMode: "home" }),
@@ -66,7 +66,7 @@ describe("x bird integration", () => {
     expect(items[0]?.title).toBe("Interesting thread");
     const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
     expect(metadata.provider).toBe("bird");
-    expect(metadata.sourceType).toBe("x-home");
+    expect(metadata.sourceKind).toBe("x");
     expect(metadata.contentType).toBe("social_post");
     expect(metadata.canonicalHints?.expandedUrl).toBe("https://example.com/article");
     expect(metadata.tweetId).toBe("tweet-1");
@@ -79,7 +79,7 @@ describe("x bird integration", () => {
     const items = await collectXBirdSource(
       {
         id: "x-home",
-        type: "x-home",
+        kind: "x",
         url: "https://x.com/home",
         enabled: false,
         configJson: JSON.stringify({ birdMode: "home" }),
@@ -110,7 +110,7 @@ describe("x bird integration", () => {
     expect(items[0]?.publishedAt).toBe("Mon Mar 09 13:11:00 +0000 2026");
     const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
     expect(metadata.provider).toBe("bird");
-    expect(metadata.sourceType).toBe("x-home");
+    expect(metadata.sourceKind).toBe("x");
     expect(metadata.contentType).toBe("social_post");
     expect(metadata.engagement).toEqual({
       score: 42,
@@ -125,7 +125,7 @@ describe("x bird integration", () => {
     const items = await collectXBirdSource(
       {
         id: "x-home",
-        type: "x-home",
+        kind: "x",
         url: "https://x.com/home",
         enabled: false,
         configJson: JSON.stringify({ birdMode: "home" }),
@@ -154,7 +154,7 @@ describe("x bird integration", () => {
   test("prefers explicit auth token config over browser profile settings", () => {
     expect(
       buildBirdCommand({
-        type: "x-home",
+        kind: "x",
         configJson: JSON.stringify({
           birdMode: "home",
           authToken: "auth-token-value",
@@ -168,7 +168,7 @@ describe("x bird integration", () => {
     // 带 count 参数
     expect(
       buildBirdCommand({
-        type: "x-home",
+        kind: "x",
         configJson: JSON.stringify({
           birdMode: "home",
           count: 100,
@@ -183,7 +183,7 @@ describe("x bird integration", () => {
     const items = await collectXBirdSource(
       {
         id: "x-home",
-        type: "x-home",
+        kind: "x",
         url: "https://x.com/home",
         enabled: false,
         configJson: JSON.stringify({ birdMode: "home" }),
@@ -221,7 +221,7 @@ describe("x bird integration", () => {
     const items = await collectXBirdSource(
       {
         id: "x-home",
-        type: "x-home",
+        kind: "x",
         url: "https://x.com/home",
         enabled: false,
         configJson: JSON.stringify({ birdMode: "home" }),
@@ -261,6 +261,8 @@ describe("x bird integration", () => {
     expect(metadata.media[0]).toEqual({
       type: "photo",
       url: "https://pbs.twimg.com/media/photo1.jpg",
+      width: 1200,
+      height: 800,
       previewUrl: "https://pbs.twimg.com/media/photo1.jpg:small",
     });
     expect(metadata.media[1].type).toBe("video");
@@ -271,7 +273,7 @@ describe("x bird integration", () => {
     const items = await collectXBirdSource(
       {
         id: "x-home",
-        type: "x-home",
+        kind: "x",
         url: "https://x.com/home",
         enabled: false,
         configJson: JSON.stringify({ birdMode: "home" }),
@@ -306,7 +308,7 @@ describe("x bird integration", () => {
     const items = await collectXBirdSource(
       {
         id: "x-home",
-        type: "x-home",
+        kind: "x",
         url: "https://x.com/home",
         enabled: false,
         configJson: JSON.stringify({ birdMode: "home" }),
@@ -340,7 +342,7 @@ describe("x bird integration", () => {
     const items = await collectXBirdSource(
       {
         id: "x-home",
-        type: "x-home",
+        kind: "x",
         url: "https://x.com/home",
         enabled: false,
         configJson: JSON.stringify({ birdMode: "home" }),
@@ -373,7 +375,7 @@ describe("x bird integration", () => {
     const items = await collectXBirdSource(
       {
         id: "x-home",
-        type: "x-home",
+        kind: "x",
         url: "https://x.com/home",
         enabled: false,
         configJson: JSON.stringify({ birdMode: "home" }),
@@ -398,7 +400,7 @@ describe("x bird integration", () => {
     const items = await collectXBirdSource(
       {
         id: "x-home",
-        type: "x-home",
+        kind: "x",
         url: "https://x.com/home",
         enabled: false,
         configJson: JSON.stringify({ birdMode: "home" }),
@@ -429,7 +431,7 @@ describe("x bird integration", () => {
     const items = await collectXBirdSource(
       {
         id: "x-home",
-        type: "x-home",
+        kind: "x",
         url: "https://x.com/home",
         enabled: false,
         configJson: JSON.stringify({ birdMode: "home" }),

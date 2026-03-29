@@ -183,7 +183,7 @@ function getCountArgs(config: BirdSourceConfig, mode: string): string[] {
   return args;
 }
 
-export function buildBirdCommand(source: Pick<Source, "type" | "configJson">): string[] {
+export function buildBirdCommand(source: Pick<Source, "kind" | "configJson">): string[] {
   const config = getBirdConfig(source);
   const mode = getBirdMode(source);
   const authArgs = getBirdAuthArgs(config);
@@ -326,7 +326,7 @@ function parseBirdItems(payload: string, source: Source): RawItem[] {
         content: rawText,
         metadataJson: JSON.stringify({
           provider: "bird",
-          sourceType: source.type,
+          sourceKind: source.kind,
           contentType: "social_post",
           conversationId: item.conversationId,
           engagement: item.likeCount === undefined && item.replyCount === undefined && item.retweetCount === undefined

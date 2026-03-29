@@ -42,7 +42,7 @@ describe("parseJsonFeedItems", () => {
 
     expect(JSON.parse(items[0]?.metadataJson ?? "{}")).toEqual({
       provider: "json-feed",
-      sourceType: "json-feed",
+      sourceKind: "json-feed",
       contentType: "article",
       rawPublishedAt: undefined,
       timeSourceField: undefined,
@@ -422,7 +422,7 @@ describe("parseJsonFeedItems", () => {
         version: "https://jsonfeed.org/version/1.1",
         items: [{ id: "1", title: "Test", url: "https://example.com/1" }],
       };
-      const filterContext = { packId: "pack-1", mustInclude: ["AI"], exclude: ["spam"] };
+      const filterContext = { topicIds: ["topic-1"], mustInclude: ["AI"], exclude: ["spam"] };
       const items = parseJsonFeedItems(payload, "json-1", JOB_STARTED_AT, filterContext);
       expect(items[0]?.filterContext).toEqual(filterContext);
     });

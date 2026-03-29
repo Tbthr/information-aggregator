@@ -265,7 +265,7 @@ export function parseRssItems(
     // Build metadataJson with audit and content fields
     const metadataJson = JSON.stringify({
       provider: "rss",
-      sourceType: "rss",
+      sourceKind: "rss",
       contentType: "article",
       rawPublishedAt: parsedTimestamp?.rawPublishedAt,
       timeSourceField: usedField || undefined,

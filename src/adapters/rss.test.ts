@@ -42,7 +42,7 @@ describe("parseRssItems", () => {
 
     expect(JSON.parse(items[0]?.metadataJson ?? "{}")).toEqual({
       provider: "rss",
-      sourceType: "rss",
+      sourceKind: "rss",
       contentType: "article",
       rawPublishedAt: undefined,
       timeSourceField: undefined,
@@ -449,7 +449,7 @@ describe("parseRssItems", () => {
           </item>
         </channel></rss>
       `;
-      const filterContext = { packId: "pack-1", mustInclude: ["AI"], exclude: ["spam"] };
+      const filterContext = { topicIds: ["topic-1"], mustInclude: ["AI"], exclude: ["spam"] };
       const items = parseRssItems(xml, "rss-1", JOB_STARTED_AT, filterContext);
       expect(items[0]?.filterContext).toEqual(filterContext);
     });

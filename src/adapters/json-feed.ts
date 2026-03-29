@@ -196,7 +196,7 @@ export function parseJsonFeedItems(
     // Build metadataJson with audit and content fields
     const metadataJson = JSON.stringify({
       provider: "json-feed",
-      sourceType: "json-feed",
+      sourceKind: "json-feed",
       contentType: "article",
       rawPublishedAt: parsedTimestamp?.rawPublishedAt,
       timeSourceField: usedField || undefined,
