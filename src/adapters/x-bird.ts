@@ -294,7 +294,7 @@ function buildParentMetadata(parent: BirdThreadItem | undefined): { id?: string;
   };
 }
 
-function parseBirdItems(payload: string, source: Source): RawItem[] {
+function parseBirdItems(payload: string, source: Source, jobStartedAt: string): { items: RawItem[], discardCount: number } {
   const parsed = JSON.parse(payload) as BirdItem[] | { tweets: BirdItem[] };
   // --all 参数会返回 {"tweets": [...]} 结构，需要提取 tweets 数组
   const items = Array.isArray(parsed) ? parsed : (parsed as { tweets: BirdItem[] }).tweets;
@@ -302,7 +302,10 @@ function parseBirdItems(payload: string, source: Source): RawItem[] {
     throw new Error("bird CLI output must be a JSON array or {tweets: [...]}");
   }
 
-  return items
+  let discardCount = 0;
+  const cutoffTime = new Date(new Date(jobStartedAt).getTime() - 24 * 60 * 60 * 1000);
+
+  const result = items
     .filter((item) => typeof item.text === "string")
     .map((item, index) => {
       const rawText = item.text ?? `Post ${index + 1}`;
@@ -311,6 +314,26 @@ function parseBirdItems(payload: string, source: Source): RawItem[] {
         ? article.title.trim()
         : normalizeBirdTitle(rawText);
       const authorUsername = extractAuthorUsername(item.author);
+
+      // Check 24h window using created_at or createdAt
+      const itemTime = item.created_at ?? item.createdAt;
+      if (itemTime) {
+        const parsedTime = new Date(itemTime);
+        if (!isNaN(parsedTime.getTime()) && parsedTime < cutoffTime) {
+          logger.warn("Discarding item outside 24h window", {
+            sourceId: source.id,
+            sourceType: "bird",
+            title: typeof article?.title === "string" && article.title.trim() !== ""
+              ? article.title.trim()
+              : normalizeBirdTitle(rawText),
+            url: item.url ?? "",
+            rawTime: itemTime,
+            discardReason: `created at ${parsedTime.toISOString()} is before cutoff ${cutoffTime.toISOString()}`,
+          });
+          discardCount++;
+          return null; // Will be filtered out
+        }
+      }
 
       return {
         id: item.id ?? `${source.id}-${index + 1}`,
@@ -352,7 +375,20 @@ function parseBirdItems(payload: string, source: Source): RawItem[] {
         }),
       };
     })
-    .filter((item) => item.url !== "");
+    .filter((item): item is NonNullable<typeof item> => item !== null && item.url !== "") as RawItem[];
+
+  // Log discard summary per source (D-04, D-05)
+  logger.info("Source fetch completed", {
+    sourceId: source.id,
+    sourceType: "bird",
+    fetched: result.length,
+    discarded: discardCount,
+    discardRate: result.length + discardCount > 0
+      ? `${((discardCount / (result.length + discardCount)) * 100).toFixed(1)}%`
+      : "0%",
+  });
+
+  return { items: result, discardCount };
 }
 
 export async function collectXBirdSource(
@@ -409,9 +445,11 @@ export async function collectXBirdSource(
 
     return output;
   },
+  jobStartedAt?: string,
 ): Promise<RawItem[]> {
   const command = buildBirdCommand(source);
   const rawOutput = await execImpl(command);
   saveDebugOutput(source.id, rawOutput);
-  return parseBirdItems(rawOutput, source);
+  const { items } = parseBirdItems(rawOutput, source, jobStartedAt ?? new Date().toISOString());
+  return items;
 }
