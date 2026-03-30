@@ -7,6 +7,7 @@
 
 import { prisma } from "../../lib/prisma";
 import type { ContentKind } from "../types/index";
+import type { Prisma } from "@prisma/client";
 
 // 批量操作的分批大小
 const BATCH_SIZE = 30;
@@ -49,14 +50,16 @@ export interface ContentArchiveResult {
  */
 export async function archiveContentItems(
   items: ContentArchiveInput[],
+  tx?: Prisma.TransactionClient,
 ): Promise<ContentArchiveResult> {
+  const client = tx ?? prisma;
   if (items.length === 0) {
     return { newCount: 0, updateCount: 0, totalCount: 0, newContentIds: [] };
   }
 
   // 1. 查询已存在的 URL
   const allUrls = items.map((i) => i.url);
-  const existingContents = await prisma.content.findMany({
+  const existingContents = await client.content.findMany({
     where: { url: { in: allUrls } },
     select: { id: true, url: true, topicIds: true },
   });
@@ -100,7 +103,7 @@ export async function archiveContentItems(
     // 分批创建
     for (let i = 0; i < createData.length; i += BATCH_SIZE) {
       const batch = createData.slice(i, i + BATCH_SIZE);
-      await prisma.content.createMany({
+      await client.content.createMany({
         data: batch,
         skipDuplicates: true,
       });
@@ -109,7 +112,7 @@ export async function archiveContentItems(
 
     // 查询本次实际新建的 content ID
     const newUrls = newItems.map((i) => i.url);
-    const createdContents = await prisma.content.findMany({
+    const createdContents = await client.content.findMany({
       where: { url: { in: newUrls } },
       select: { id: true, url: true },
     });
@@ -126,7 +129,7 @@ export async function archiveContentItems(
         ? Array.from(new Set([...existing.topicIds, ...item.topicIds]))
         : item.topicIds;
 
-      return prisma.content.update({
+      return client.content.update({
         where: { id: existingId },
         data: {
           fetchedAt: new Date(item.fetchedAt),
@@ -169,11 +172,13 @@ export async function syncTopicsToPrisma(
     displayOrder?: number;
     maxItems?: number;
   }>,
+  tx?: Prisma.TransactionClient,
 ): Promise<void> {
+  const client = tx ?? prisma;
   if (topics.length === 0) return;
 
   const upsertPromises = topics.map((topic) =>
-    prisma.topic.upsert({
+    client.topic.upsert({
       where: { id: topic.id },
       create: {
         id: topic.id,
@@ -217,7 +222,9 @@ export async function upsertSourcesBatch(
     configJson?: string;
     defaultTopicIds?: string[];
   }>,
+  tx?: Prisma.TransactionClient,
 ): Promise<void> {
+  const client = tx ?? prisma;
   if (sources.length === 0) return;
 
   // Deduplicate by url — keep first occurrence, ignore duplicates
@@ -231,7 +238,7 @@ export async function upsertSourcesBatch(
 
   // Step 1: Query existing sources by url
   const urls = deduped.map((s) => s.url ?? "");
-  const existingByUrl = await prisma.source.findMany({
+  const existingByUrl = await client.source.findMany({
     where: { url: { in: urls } },
     select: { id: true, url: true },
   });
@@ -242,7 +249,7 @@ export async function upsertSourcesBatch(
     const existingId = urlToId.get(source.url ?? "");
 
     if (existingId) {
-      return prisma.source.upsert({
+      return client.source.upsert({
         where: { id: existingId },
         create: {
           id: existingId,
@@ -263,7 +270,7 @@ export async function upsertSourcesBatch(
         },
       });
     } else {
-      return prisma.source.upsert({
+      return client.source.upsert({
         where: { id: source.id },
         create: {
           id: source.id,
