@@ -10,7 +10,6 @@ const dailyConfigSchema = z.object({
   topicIds: z.array(z.string()).optional(),
   maxItems: z.number().int().min(1).max(200).optional(),
   minScore: z.number().int().min(0).max(10).optional(),
-  keywordBlacklist: z.array(z.string()).optional(),
   filterPrompt: z.string().nullable().optional(),
   topicPrompt: z.string().optional(),
   topicSummaryPrompt: z.string().optional(),
@@ -96,7 +95,6 @@ export async function PUT(request: NextRequest) {
     if (dailyUpdate.topicIds !== undefined) updateData.topicIds = dailyUpdate.topicIds
     if (dailyUpdate.maxItems !== undefined) updateData.maxItems = dailyUpdate.maxItems
     if (dailyUpdate.minScore !== undefined) updateData.minScore = dailyUpdate.minScore
-    if (dailyUpdate.keywordBlacklist !== undefined) updateData.keywordBlacklist = dailyUpdate.keywordBlacklist
     if (dailyUpdate.kindPreferences !== undefined) {
       // kindPreferences is stored as JSON string in the DB
       updateData.kindPreferences = dailyUpdate.kindPreferences
@@ -114,7 +112,6 @@ export async function PUT(request: NextRequest) {
         topicIds: dailyUpdate.topicIds ?? existing?.topicIds ?? [],
         maxItems: dailyUpdate.maxItems ?? existing?.maxItems ?? 50,
         minScore: dailyUpdate.minScore ?? existing?.minScore ?? 0,
-        keywordBlacklist: dailyUpdate.keywordBlacklist ?? existing?.keywordBlacklist ?? [],
         kindPreferences: dailyUpdate.kindPreferences
           ? JSON.stringify(dailyUpdate.kindPreferences)
           : null,
