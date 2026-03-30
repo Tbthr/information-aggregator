@@ -9,7 +9,7 @@ import { SaveButton } from "@/components/save-button"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { useWeekly } from "@/hooks/use-api"
-import type { Article, WeeklyPick, ReferencedItem } from "@/lib/types"
+import type { Article, WeeklyPick, Content } from "@/lib/types"
 
 interface WeeklyPageProps {
   isSaved: (id: string) => boolean
@@ -67,7 +67,7 @@ function PickCard({
   onOpenArticle,
 }: {
   pick: WeeklyPick
-  item: ReferencedItem | undefined
+  item: Content | undefined
   rank: number
   isSaved: boolean
   onToggleSave: (id: string) => void
@@ -144,14 +144,14 @@ export function WeeklyPage({ isSaved, onToggleSave, onOpenArticle }: WeeklyPageP
   const { data, isLoading, error } = useWeekly(week)
 
   const itemMap = useMemo(() => {
-    const map = new Map<string, ReferencedItem>()
-    if (data?.referencedItems) {
-      for (const item of data.referencedItems) {
+    const map = new Map<string, Content>()
+    if (data?.contents) {
+      for (const item of data.contents) {
         map.set(item.id, item)
       }
     }
     return map
-  }, [data?.referencedItems])
+  }, [data?.contents])
 
   if (isLoading) {
     return (

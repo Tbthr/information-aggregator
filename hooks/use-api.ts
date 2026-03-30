@@ -3,7 +3,6 @@
 import { useMemo } from "react"
 import useSWR, { SWRConfiguration } from "swr"
 import type { Article, ApiResponse, DailyReportData, WeeklyReportData, Topic, Content } from "@/lib/types"
-import type { Pack } from "@/components/sidebar/types"
 
 // ============ Types ============
 
@@ -13,7 +12,6 @@ interface CustomView {
   icon: string
   description?: string
   topicIds?: string[]
-  customViewPacks?: Array<{ packId: string; pack?: { id: string; name: string } }>
 }
 
 // ============ Fetcher ============
@@ -69,14 +67,6 @@ function escapePrompts(obj: Record<string, unknown>): Record<string, unknown> {
 }
 
 // ============ Hooks ============
-
-interface PacksResponse {
-  packs: Pack[]
-}
-
-export function usePacks() {
-  return useSWR<Pack[]>("/api/packs", (url) => fetcher<PacksResponse>(url).then((d) => d.packs), defaultConfig)
-}
 
 // ── Topics API Hooks ──
 

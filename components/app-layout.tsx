@@ -7,7 +7,7 @@ import { ReadingPanel } from "@/components/reading-panel"
 import { SaveToast } from "@/components/save-toast"
 import { ScrollProgress } from "@/components/scroll-progress"
 import { useSaved } from "@/hooks/use-saved"
-import { useCustomViews } from "@/hooks/use-api"
+import { useCustomViews, useTopics } from "@/hooks/use-api"
 import type { Article } from "@/lib/types"
 import { useCallback, useState, useMemo } from "react"
 
@@ -34,16 +34,21 @@ export function AppLayout({ children, activeNav, onNav }: AppLayoutProps) {
 
   const { savedIds, toggleSave, isSaved } = useSaved()
   const { data: customViews } = useCustomViews()
+  const { data: topics = [] } = useTopics()
 
-  // 计算当前视图信息
+  // Compute current view info
   const viewInfo = useMemo(() => {
     const view = customViews?.find((v) => v.id === activeNav)
     if (!view) return undefined
+    // Look up topic names from topicIds
+    const topicNames = (view.topicIds || [])
+      .map((id) => topics.find((t) => t.id === id)?.name)
+      .filter(Boolean) as string[]
     return {
       name: view.name,
-      packNames: view.customViewPacks?.map((p) => p.pack?.name).filter(Boolean) as string[] || [],
+      topicNames,
     }
-  }, [customViews, activeNav])
+  }, [customViews, topics, activeNav])
 
   const handleToggleSave = useCallback(
     (id: string) => {

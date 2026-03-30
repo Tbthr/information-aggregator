@@ -15,7 +15,7 @@ const PAGE_TITLES: Record<string, { title: string; subtitle?: string }> = {
 
 interface ViewInfo {
   name: string
-  packNames: string[]
+  topicNames: string[]
 }
 
 interface TopbarProps {
@@ -46,19 +46,19 @@ export function Topbar({ activeNav, viewInfo }: TopbarProps) {
     }
   }
 
-  // 优先使用传入的 viewInfo，否则使用 PAGE_TITLES
+  // Use viewInfo if provided, otherwise fall back to PAGE_TITLES
   const info = viewInfo
-    ? { title: viewInfo.name, packNames: viewInfo.packNames }
+    ? { title: viewInfo.name, topicNames: viewInfo.topicNames }
     : PAGE_TITLES[activeNav] ?? { title: activeNav }
 
   return (
     <header className="h-14 shrink-0 border-b border-border flex items-center justify-between px-6 bg-background/95 backdrop-blur-sm sticky top-0 z-20">
       <div>
         <h1 className="font-sans font-semibold text-sm text-foreground leading-none">{info.title}</h1>
-        {/* Pack 名称列表 */}
-        {"packNames" in info && info.packNames && info.packNames.length > 0 && (
+        {/* Topic names list */}
+        {"topicNames" in info && info.topicNames && info.topicNames.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-1">
-            {info.packNames.map((name) => (
+            {info.topicNames.map((name) => (
               <span
                 key={name}
                 className="inline-block text-[10px] font-sans font-medium px-1.5 py-0.5 rounded border border-border text-muted-foreground"

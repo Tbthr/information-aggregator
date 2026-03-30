@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { Save, X, Loader2, Newspaper, CalendarDays } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
-import { useReportSettings, usePacks, escapePrompts } from "@/hooks/use-api"
+import { useReportSettings, useTopics, escapePrompts } from "@/hooks/use-api"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -186,7 +186,7 @@ function NumberField({
 
 export function ReportSettingsPage() {
   const { data: settings, isLoading, mutate } = useReportSettings()
-  const { data: packs } = usePacks()
+  const { data: packs } = useTopics()
 
   const [daily, setDaily] = useState<DailyConfig>({
     packs: [],

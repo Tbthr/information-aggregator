@@ -1,59 +1,5 @@
 import type { Article, CustomView, Tweet, XPageConfigData, ApiResponse } from "./types"
 
-// Item data from API
-interface ItemData {
-  id: string
-  title: string
-  url: string
-  source: {
-    id: string
-    type: string
-  }
-  publishedAt: string | null
-  fetchedAt: string
-  firstSeenAt: string
-  lastSeenAt: string
-  author: string | null
-  metadata: Record<string, unknown>
-
-  summary: string | null
-  content: string | null
-  sourceName: string
-  isBookmarked: boolean
-  saved?: {
-    savedAt: string
-  }
-}
-
-// Query params for fetching items
-export interface FetchItemsParams {
-  packs?: string
-  sources?: string
-  sourceTypes?: string
-  window?: "today" | "week" | "month"
-  page?: number
-  pageSize?: number
-  sort?: "ranked" | "recent"
-  search?: string
-}
-
-// Fetch result with pagination info
-export interface FetchItemsResult {
-  items: Article[]
-  sources: Array<{
-    id: string
-    type: string
-    packId: string
-    itemCount: number
-  }>
-  pagination: {
-    total: number
-    page: number
-    pageSize: number
-    totalPages: number
-  }
-}
-
 // Custom views API response type
 interface CustomViewsData {
   views: Array<{
@@ -61,13 +7,24 @@ interface CustomViewsData {
     name: string
     icon: string
     description: string
-    customViewPacks: Array<{ packId: string; pack?: { id: string; name: string } }>
+    topicIds?: string[]
   }>
 }
 
-// Bookmarks API response type
+// Bookmarks API response type (legacy, items-based)
 interface BookmarksData {
-  items: ItemData[]
+  items: Array<{
+    id: string
+    title: string
+    url: string
+    sourceName: string
+    sourceType: string
+    publishedAt: string | null
+    fetchedAt: string
+    summary: string | null
+    content: string | null
+    isBookmarked: boolean
+  }>
   total: number
 }
 
@@ -103,65 +60,6 @@ async function fetchApi<T>(url: string, options?: RequestInit): Promise<ApiRespo
 }
 
 /**
- * Map API ItemData to Article type
- */
-export function mapItemToArticle(item: ItemData): Article {
-  return {
-    id: item.id,
-    title: item.title,
-    source: item.sourceName || item.source.type,
-    sourceUrl: item.url,
-    publishedAt: item.publishedAt || item.fetchedAt,
-    summary: item.summary || "",
-    content: item.content || "",
-    isBookmarked: item.isBookmarked,
-  }
-}
-
-/**
- * Fetch items list with query parameters
- */
-export async function fetchItems(params: FetchItemsParams = {}): Promise<FetchItemsResult> {
-  const searchParams = new URLSearchParams()
-
-  if (params.packs) searchParams.set("packs", params.packs)
-  if (params.sources) searchParams.set("sources", params.sources)
-  if (params.sourceTypes) searchParams.set("sourceTypes", params.sourceTypes)
-  if (params.window) searchParams.set("window", params.window)
-  if (params.page) searchParams.set("page", String(params.page))
-  if (params.pageSize) searchParams.set("pageSize", String(params.pageSize))
-  if (params.sort) searchParams.set("sort", params.sort)
-  if (params.search) searchParams.set("search", params.search)
-
-  const url = `/api/items${searchParams.toString() ? `?${searchParams.toString()}` : ""}`
-  const response = await fetchApi<{ items: ItemData[]; sources: FetchItemsResult["sources"] }>(url)
-
-  if (!response.success || !response.data) {
-    return {
-      items: [],
-      sources: [],
-      pagination: {
-        total: 0,
-        page: params.page || 1,
-        pageSize: params.pageSize || 20,
-        totalPages: 0,
-      },
-    }
-  }
-
-  return {
-    items: response.data.items.map(mapItemToArticle),
-    sources: response.data.sources,
-    pagination: response.meta?.pagination || {
-      total: 0,
-      page: params.page || 1,
-      pageSize: params.pageSize || 20,
-      totalPages: 0,
-    },
-  }
-}
-
-/**
  * Fetch bookmarks
  */
 export async function fetchBookmarks(): Promise<Article[]> {
@@ -171,7 +69,16 @@ export async function fetchBookmarks(): Promise<Article[]> {
     return []
   }
 
-  return response.data.items.map(mapItemToArticle)
+  return response.data.items.map((item) => ({
+    id: item.id,
+    title: item.title,
+    source: item.sourceName || item.sourceType,
+    sourceUrl: item.url,
+    publishedAt: item.publishedAt || item.fetchedAt,
+    summary: item.summary || "",
+    content: item.content || "",
+    isBookmarked: item.isBookmarked,
+  }))
 }
 
 /**
@@ -215,43 +122,51 @@ export async function fetchCustomViews(): Promise<CustomViewsData["views"]> {
 }
 
 /**
- * Fetch items for a specific custom view
- * Uses the view's associated packs to filter items
+ * Fetch content for a specific custom view
+ * Uses the view's associated topicIds to filter content via Content API
  */
 export async function fetchCustomViewItems(
   viewId: string,
-  params: Omit<FetchItemsParams, "packs"> = {}
-): Promise<FetchItemsResult> {
-  // 1. 获取视图关联的 pack IDs
+  params: { window?: "today" | "week" | "month"; sort?: "ranked" | "recent"; search?: string } = {}
+): Promise<{ items: Article[] }> {
+  // 1. Get the view's associated topic IDs
   const viewsResponse = await fetchApi<CustomViewsData>("/api/custom-views")
 
-  const emptyResult: FetchItemsResult = {
-    items: [],
-    sources: [],
-    pagination: { total: 0, page: 1, pageSize: 20, totalPages: 0 },
-  }
-
   if (!viewsResponse.success || !viewsResponse.data) {
-    return emptyResult
+    return { items: [] }
   }
 
   const view = viewsResponse.data.views.find((v) => v.id === viewId)
   if (!view) {
-    return emptyResult
+    return { items: [] }
   }
 
-  const packIds = view.customViewPacks.map((p) => p.packId)
+  const topicIds = view.topicIds || []
 
-  // 2. 如果没有关联的 packs，返回空结果
-  if (packIds.length === 0) {
-    return emptyResult
+  // 2. If no associated topics, return empty
+  if (topicIds.length === 0) {
+    return { items: [] }
   }
 
-  // 3. 使用 pack IDs 获取文章
-  return fetchItems({
+  // 3. Fetch content via Content API using topicIds
+  const result = await fetchContent({
     ...params,
-    packs: packIds.join(","),
+    topicIds: topicIds.join(","),
   })
+
+  // 4. Map Content to Article format
+  const items = result.contents.map((c) => ({
+    id: c.id,
+    title: c.title || "",
+    source: c.authorLabel || c.sourceId,
+    sourceUrl: c.url,
+    publishedAt: c.publishedAt || c.fetchedAt,
+    summary: "",
+    content: c.body || "",
+    isBookmarked: false,
+  }))
+
+  return { items }
 }
 
 // ── Tweet API ──

@@ -53,8 +53,6 @@ export async function GET(request: NextRequest) {
       order: t.order,
       title: t.title,
       summary: t.summary,
-      itemIds: t.itemIds,
-      tweetIds: t.tweetIds,
       contentIds: t.contentIds,
     })),
     contents: contents.map((c) => ({

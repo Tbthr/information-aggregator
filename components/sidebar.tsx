@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { cn } from "@/lib/utils"
-import { usePacks, useCustomViews } from "@/hooks/use-api"
+import { useTopics, useCustomViews } from "@/hooks/use-api"
 import { toast } from "@/hooks/use-toast"
 import {
   Sun,
@@ -37,7 +37,7 @@ export type { NavId } from "./sidebar/types"
 export type { SidebarProps } from "./sidebar/types"
 
 // Internal imports
-import type { NavId, CustomView, SidebarProps, ViewFilter } from "./sidebar/types"
+import type { Pack, NavId, CustomView, SidebarProps, ViewFilter } from "./sidebar/types"
 import { NavButton } from "./sidebar/nav-button"
 import { SortableViewItem } from "./sidebar/sortable-view-item"
 import { ViewEditDrawer } from "./sidebar/view-edit-drawer"
@@ -54,7 +54,9 @@ const SOCIAL_NAV = [
 export function Sidebar({ activeNav, onNav, savedCount, collapsed, onToggleCollapse }: SidebarProps) {
   // SWR hooks
   const { data: customViews = [], isLoading: viewsLoading, mutate: mutateCustomViews } = useCustomViews()
-  const { data: packs = [] } = usePacks()
+  const { data: topics = [] } = useTopics()
+  // Map topics to Pack shape for ViewEditDrawer (which still uses Pack terminology)
+  const packs: Pack[] = topics.map((t) => ({ id: t.id, name: t.name, description: t.description ?? null }))
 
   // Drawer 状态
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -112,7 +114,7 @@ export function Sidebar({ activeNav, onNav, savedCount, collapsed, onToggleColla
         setEditingView(viewData)
         setViewName(viewData.name)
         setViewIcon(viewData.icon || "zap")
-        const packIds = viewData.customViewPacks?.map((p: { packId: string }) => p.packId) || []
+        const packIds = viewData.topicIds || []
         setSelectedPackIds(new Set(packIds))
         if (viewData.filterJson) {
           try {
@@ -153,7 +155,7 @@ export function Sidebar({ activeNav, onNav, savedCount, collapsed, onToggleColla
           body: JSON.stringify({
             name: viewName,
             icon: viewIcon,
-            packIds: Array.from(selectedPackIds),
+            topicIds: Array.from(selectedPackIds),
             filterJson: JSON.stringify(filterJson),
           }),
         })
@@ -173,7 +175,7 @@ export function Sidebar({ activeNav, onNav, savedCount, collapsed, onToggleColla
             name: viewName,
             icon: viewIcon,
             description: "",
-            packIds: Array.from(selectedPackIds),
+            topicIds: Array.from(selectedPackIds),
             filterJson: JSON.stringify(filterJson),
           }),
         })

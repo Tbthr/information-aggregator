@@ -5,7 +5,7 @@ import { Coffee, Zap } from "lucide-react"
 import { ArticleCard } from "@/components/article-card"
 import { ArticleListSkeleton } from "@/components/loading-skeletons"
 import type { Article, CustomView } from "@/lib/types"
-import { fetchCustomViews, fetchCustomViewItems } from "@/lib/api-client"
+import { fetchCustomViews, fetchCustomViewItems, fetchTopics } from "@/lib/api-client"
 
 interface CustomViewPageProps {
   viewId: string
@@ -19,14 +19,11 @@ const ICON_MAP: Record<string, React.FC<{ className?: string }>> = {
   zap: ({ className }) => <Zap className={className} />,
 }
 
-// Pack type from API response
-type ViewPack = { packId: string; pack?: { id: string; name: string } }
-
 export function CustomViewPage({ viewId, isSaved, onToggleSave, onOpenArticle }: CustomViewPageProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [view, setView] = useState<CustomView | null>(null)
-  const [viewPacks, setViewPacks] = useState<ViewPack[]>([])
+  const [topicNames, setTopicNames] = useState<string[]>([])
   const [articles, setArticles] = useState<Article[]>([])
 
   useEffect(() => {
@@ -37,8 +34,8 @@ export function CustomViewPage({ viewId, isSaved, onToggleSave, onOpenArticle }:
       setError(null)
 
       try {
-        // Fetch custom views list first
-        const views = await fetchCustomViews()
+        // Fetch custom views and topics in parallel
+        const [views, topics] = await Promise.all([fetchCustomViews(), fetchTopics()])
         const foundView = views.find((v) => v.id === viewId)
 
         if (!mounted) return
@@ -49,8 +46,11 @@ export function CustomViewPage({ viewId, isSaved, onToggleSave, onOpenArticle }:
           return
         }
 
-        // Save packs data for display
-        setViewPacks(foundView.customViewPacks || [])
+        // Resolve topic names from topicIds
+        const names = (foundView.topicIds || [])
+          .map((id) => topics.find((t) => t.id === id)?.name)
+          .filter(Boolean) as string[]
+        setTopicNames(names)
 
         // Convert view metadata to CustomView format
         const customView: CustomView = {
@@ -133,18 +133,17 @@ export function CustomViewPage({ viewId, isSaved, onToggleSave, onOpenArticle }:
           <h1 className="font-serif text-2xl font-bold text-foreground">{view.name}</h1>
         </div>
 
-        {/* 第二行：Pack 列表 */}
-        {viewPacks.length > 0 && (
+        {/* Topic list */}
+        {topicNames.length > 0 && (
           <div className="flex flex-wrap gap-2 ml-12">
-            {viewPacks.map((p) =>
-              p.pack ? (
+            {topicNames.map((name) => (
                 <span
-                  key={p.packId}
+                  key={name}
                   className="inline-block text-[10px] font-sans font-medium px-2 py-0.5 rounded border border-border text-muted-foreground"
                 >
-                  {p.pack.name}
+                  {name}
                 </span>
-              ) : null
+              )
             )}
           </div>
         )}

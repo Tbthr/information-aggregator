@@ -10,7 +10,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
-import type { Article, DigestTopic, ReferencedItem, ReferencedTweet } from "@/lib/types"
+import type { Article, DigestTopic, Content } from "@/lib/types"
 import { useDaily } from "@/hooks/use-api"
 
 // ── Icons (inline to avoid adding deps) ──
@@ -84,7 +84,7 @@ function ReferenceLinkRow({
   onToggleSave,
   onOpenArticle,
 }: {
-  item: ReferencedItem
+  item: Content
   isSaved: boolean
   onToggleSave: (id: string) => void
   onOpenArticle: (article: Article) => void
@@ -129,7 +129,7 @@ function ReferenceLinkRow({
   )
 }
 
-function TweetReferenceRow({ tweet }: { tweet: ReferencedTweet }) {
+function TweetReferenceRow({ tweet }: { tweet: Content }) {
   const displayText = tweet.body
     ? tweet.body.length > 100
       ? tweet.body.slice(0, 100) + "..."
@@ -172,22 +172,20 @@ function DeletedReferenceRow() {
 
 function TopicCard({
   topic,
-  itemMap,
-  tweetMap,
+  contentMap,
   isSaved,
   onToggleSave,
   onOpenArticle,
 }: {
   topic: DigestTopic
-  itemMap: Map<string, ReferencedItem>
-  tweetMap: Map<string, ReferencedTweet>
+  contentMap: Map<string, Content>
   isSaved: (id: string) => boolean
   onToggleSave: (id: string) => void
   onOpenArticle: (article: Article) => void
 }) {
   const [isOpen, setIsOpen] = useState(false)
 
-  const totalRefs = topic.itemIds.length + topic.tweetIds.length
+  const totalRefs = topic.contentIds.length
 
   return (
     <div
@@ -222,23 +220,21 @@ function TopicCard({
             </CollapsibleTrigger>
             <CollapsibleContent>
               <div className="px-3 pb-2 space-y-0.5">
-                {topic.itemIds.map((id) => {
-                  const item = itemMap.get(id)
-                  if (!item) return <DeletedReferenceRow key={`item-${id}`} />
+                {topic.contentIds.map((id) => {
+                  const content = contentMap.get(id)
+                  if (!content) return <DeletedReferenceRow key={id} />
+                  if (content.kind === "tweet") {
+                    return <TweetReferenceRow key={id} tweet={content} />
+                  }
                   return (
                     <ReferenceLinkRow
                       key={id}
-                      item={item}
+                      item={content}
                       isSaved={isSaved(id)}
                       onToggleSave={onToggleSave}
                       onOpenArticle={onOpenArticle}
                     />
                   )
-                })}
-                {topic.tweetIds.map((id) => {
-                  const tweet = tweetMap.get(id)
-                  if (!tweet) return <DeletedReferenceRow key={`tweet-${id}`} />
-                  return <TweetReferenceRow key={id} tweet={tweet} />
                 })}
               </div>
             </CollapsibleContent>
@@ -266,18 +262,14 @@ export function DailyPage({ isSaved, onToggleSave, onOpenArticle }: DailyPagePro
   const errorMessage = data?.errorMessage
   const errorSteps = data?.errorSteps
 
-  // Build lookup maps for referenced items/tweets
-  const { itemMap, tweetMap } = useMemo(() => {
-    const iMap = new Map<string, ReferencedItem>()
-    const tMap = new Map<string, ReferencedTweet>()
-    for (const item of data?.referencedItems ?? []) {
-      iMap.set(item.id, item)
+  // Build lookup map for referenced content
+  const contentMap = useMemo(() => {
+    const map = new Map<string, Content>()
+    for (const c of data?.contents ?? []) {
+      map.set(c.id, c)
     }
-    for (const tweet of data?.referencedTweets ?? []) {
-      tMap.set(tweet.id, tweet)
-    }
-    return { itemMap: iMap, tweetMap: tMap }
-  }, [data?.referencedItems, data?.referencedTweets])
+    return map
+  }, [data?.contents])
 
   // Navigation handlers
   const goPrev = () => setCurrentDate((d) => shiftDate(d, -1))
@@ -397,8 +389,7 @@ export function DailyPage({ isSaved, onToggleSave, onOpenArticle }: DailyPagePro
               <TopicCard
                 key={topic.id}
                 topic={topic}
-                itemMap={itemMap}
-                tweetMap={tweetMap}
+                contentMap={contentMap}
                 isSaved={isSaved}
                 onToggleSave={onToggleSave}
                 onOpenArticle={onOpenArticle}

@@ -3,6 +3,11 @@ import useSWR, { mutate as globalMutate } from "swr"
 import { fetchTweets, addTweetBookmark, removeTweetBookmark } from "@/lib/api-client"
 import type { Tweet } from "@/lib/types"
 
+// TODO: Once Tweet-specific fields (likeCount, replyCount, media, quotedTweet, etc.)
+// are migrated into the unified Content model's metadataJson, this hook can be
+// replaced with useContent({ kinds: 'tweet' }). For now, /api/tweets returns the
+// rich Tweet type that the X page components depend on.
+
 interface UseTweetsParams {
   tab?: string
   window?: "today" | "week" | "month"

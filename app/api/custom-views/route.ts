@@ -38,7 +38,6 @@ export async function GET() {
       filterJson: view.filterJson,
       order: view.order,
       topicIds: view.customViewPacks.map((cvp) => cvp.packId),
-      customViewPacks: view.customViewPacks,
     }))
 
     return success({ views: transformedViews })
@@ -83,13 +82,21 @@ export async function POST(request: Request) {
       },
     })
 
-    return success(view)
+    return success({
+      id: view.id,
+      name: view.name,
+      icon: view.icon,
+      description: view.description,
+      filterJson: view.filterJson,
+      order: view.order,
+      topicIds: view.customViewPacks.map((cvp) => cvp.packId),
+    })
   } catch (err) {
     console.error("Error creating custom view:", err)
 
     const prismaErr = handlePrismaError(err, {
       p2002: "Custom view with this ID already exists",
-      p2003: "One or more pack IDs do not exist",
+      p2003: "One or more topic IDs do not exist",
     })
     if (prismaErr) return prismaErr
 
