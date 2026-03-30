@@ -7,10 +7,10 @@ export type { ReportsDiagnosticsSection } from "../core/types";
  * Inventory counts for reports data
  */
 export interface ReportsInventory {
-  items: number;
-  tweets: number;
+  contents: number;
   dailyReports: number;
   weeklyReports: number;
+  topics: number;
 }
 
 /**
@@ -21,7 +21,7 @@ export interface ReportsRunOptions {
   verbose?: boolean;
   dailyOnly?: boolean;
   weeklyOnly?: boolean;
-  dailyPacks?: string[];
+  dailyTopicIds?: string[];
   maxItems?: number | null;
   pickCount?: number | null;
   timeout?: number;
@@ -53,9 +53,24 @@ export interface DailyReportData {
     summary: string;
     itemIds: string[];
     tweetIds: string[];
+    contentIds: string[];
   }>;
-  referencedItems: Array<{ id: string; title: string; url: string; summary: string | null }>;
-  referencedTweets: Array<{ id: string; text: string; authorHandle: string; tweetUrl: string }>;
+  contents: Array<{
+    id: string;
+    kind: string;
+    sourceId: string;
+    title?: string | null;
+    body?: string | null;
+    url: string;
+    authorLabel?: string | null;
+    publishedAt?: string | null;
+    fetchedAt: string;
+    engagementScore?: number | null;
+    qualityScore?: number | null;
+    topicIds: string[];
+    topicScoresJson?: string | null;
+    metadataJson?: string | null;
+  }>;
 }
 
 /**
@@ -66,6 +81,21 @@ export interface WeeklyReportData {
   editorial: string | null;
   errorMessage?: string | null;
   errorSteps?: string[] | null;
-  picks: Array<{ id: string; order: number; itemId: string; reason: string }>;
-  referencedItems: Array<{ id: string; title: string; url: string; summary: string | null }>;
+  picks: Array<{ id: string; order: number; contentId: string | null; reason: string }>;
+  contents: Array<{
+    id: string;
+    kind: string;
+    sourceId: string;
+    title?: string | null;
+    body?: string | null;
+    url: string;
+    authorLabel?: string | null;
+    publishedAt?: string | null;
+    fetchedAt: string;
+    engagementScore?: number | null;
+    qualityScore?: number | null;
+    topicIds: string[];
+    topicScoresJson?: string | null;
+    metadataJson?: string | null;
+  }>;
 }

@@ -1,11 +1,9 @@
 // Diagnostics Framework Reports Daily Verification
 // Migrated from scripts/verify-reports-pipeline.ts Stage 5, 6, D-17, G-05
 //
-// Compatibility: The daily report now uses the runtime scoring pipeline
-// (ReportCandidate + ScoredCandidate), but the output shape is unchanged:
-//   - DailyOverview.topicCount matches DigestTopic count
-//   - DigestTopic.itemIds and DigestTopic.tweetIds are retained (FK-compatible)
-//   - Item/Tweet records referenced by those IDs still have all required fields
+// Content model: The daily report uses contentIds on DigestTopic to reference
+// Content records. The legacy itemIds/tweetIds fields are retained for migration
+// but contentIds is the primary reference going forward.
 //
 // These diagnostics verify the output contract that weekly depends on.
 
@@ -56,19 +54,19 @@ export async function runDailyAssertions(
   if (!weeklyOnly) {
     const stage5Start = Date.now();
 
-    // Check if 24h items exist
+    // Check if 24h content exists
     const now24hAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const recentItemCount = await prisma.item.count({ where: { publishedAt: { gte: now24hAgo } } });
+    const recentContentCount = await prisma.content.count({ where: { fetchedAt: { gte: now24hAgo } } });
 
-    if (recentItemCount === 0) {
-      verboseLog("  [SKIP] No items in the past 24 hours");
+    if (recentContentCount === 0) {
+      verboseLog("  [SKIP] No content in the past 24 hours");
       assertions.push({
         id: "reports.stage5",
         category: "reports",
         status: "SKIP",
         blocking: false,
-        message: "no items in past 24h",
-        evidence: { itemCount: 0 },
+        message: "no content in past 24h",
+        evidence: { contentCount: 0 },
       });
       // stage6 depends on stage5 — skip when there's nothing to verify
       assertions.push({
@@ -76,11 +74,11 @@ export async function runDailyAssertions(
         category: "reports",
         status: "SKIP",
         blocking: false,
-        message: "stage5 skipped: no recent items to generate report",
+        message: "stage5 skipped: no recent content to generate report",
         evidence: { stage5Skipped: true },
       });
     } else {
-      verboseLog(`  Found ${recentItemCount} items in the past 24 hours`);
+      verboseLog(`  Found ${recentContentCount} content items in the past 24 hours`);
 
       const res = await fetch(`${apiUrl}/api/cron/daily`, { method: "POST" });
       if (!res.ok) {
@@ -122,7 +120,7 @@ export async function runDailyAssertions(
             status: "PASS",
             blocking: false,
             message: `generated for ${targetDate}`,
-            evidence: { date: targetDate, itemCount: recentItemCount },
+            evidence: { date: targetDate, contentCount: recentContentCount },
           });
           stage5Passed = true;
         } catch (err) {
@@ -209,36 +207,32 @@ export async function runDailyAssertions(
                     if (!topic.summary || topic.summary.trim() === "") {
                       errors.push(`topic ${topic.id}: empty summary`);
                     }
-                    if (topic.itemIds.length === 0 && topic.tweetIds.length === 0) {
-                      errors.push(`topic ${topic.id}: no itemIds or tweetIds`);
+                    if (topic.contentIds.length === 0) {
+                      errors.push(`topic ${topic.id}: no contentIds`);
                     }
                   }
 
-                  // Full reference integrity: check ALL itemIds
-                  const allItemIds = new Set<string>();
-                  const allTweetIds = new Set<string>();
+                  // Full reference integrity: check ALL contentIds
+                  const allContentIds = new Set<string>();
                   for (const topic of overview.topics) {
-                    for (const id of topic.itemIds) allItemIds.add(id);
-                    for (const id of topic.tweetIds) allTweetIds.add(id);
+                    for (const id of topic.contentIds) allContentIds.add(id);
                   }
 
-                  if (allItemIds.size > 0) {
-                    const existingItemCount = await prisma.item.count({
-                      where: { id: { in: Array.from(allItemIds) } },
+                  if (allContentIds.size > 0) {
+                    const existingContentCount = await prisma.content.count({
+                      where: { id: { in: Array.from(allContentIds) } },
                     });
-                    const missingItemCount = allItemIds.size - existingItemCount;
-                    if (missingItemCount > 0) {
-                      errors.push(`FK integrity: ${missingItemCount}/${allItemIds.size} itemIds not found`);
+                    const missingContentCount = allContentIds.size - existingContentCount;
+                    if (missingContentCount > 0) {
+                      errors.push(`FK integrity: ${missingContentCount}/${allContentIds.size} contentIds not found`);
                     }
                   }
 
-                  if (allTweetIds.size > 0) {
-                    const existingTweetCount = await prisma.tweet.count({
-                      where: { id: { in: Array.from(allTweetIds) } },
-                    });
-                    const missingTweetCount = allTweetIds.size - existingTweetCount;
-                    if (missingTweetCount > 0) {
-                      errors.push(`FK integrity: ${missingTweetCount}/${allTweetIds.size} tweetIds not found`);
+                  // Verify contents from API match expected fields
+                  if (dailyData.contents.length > 0) {
+                    for (const c of dailyData.contents) {
+                      if (!c.url) errors.push(`content ${c.id}: missing url`);
+                      if (!c.kind) errors.push(`content ${c.id}: missing kind`);
                     }
                   }
 

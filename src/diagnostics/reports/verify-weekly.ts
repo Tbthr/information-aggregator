@@ -1,16 +1,13 @@
 // Diagnostics Framework Reports Weekly Verification
 // Migrated from scripts/verify-reports-pipeline.ts Stage 7, 8, E-10, G-06
 //
-// Compatibility: Weekly report reads from DailyOverview (via DigestTopic.itemIds).
-// It does NOT independently select Items -- all WeeklyPick.itemId values must
-// originate from DigestTopic.itemIds within the same time window.
-//
-// Weekly picks are sorted by publishedAt (most recent first), since Item.score
-// has been removed from the schema.
+// Content model: Weekly report reads from DailyOverview (via DigestTopic.contentIds).
+// WeeklyPick.contentId references Content records (new model).
+// WeeklyPick.itemId is legacy and retained for migration.
 //
 // These diagnostics verify:
 //   - Weekly report generation produces valid WeeklyReport + WeeklyPicks
-//   - Weekly picks reference valid Item IDs (FK integrity)
+//   - Weekly picks reference valid Content IDs (FK integrity)
 //   - API endpoints return correct shape for empty and latest queries
 
 import { prisma } from "@/lib/prisma";
@@ -169,23 +166,23 @@ export async function runWeeklyAssertions(
 
           // Validate picks
           for (const pick of report.picks) {
-            if (!pick.itemId) {
-              errors.push(`pick ${pick.id}: no itemId`);
+            if (!pick.contentId) {
+              errors.push(`pick ${pick.id}: no contentId`);
             }
             if (!pick.reason || pick.reason.trim() === "") {
               errors.push(`pick ${pick.id}: empty reason`);
             }
           }
 
-          // Full reference integrity: check ALL itemIds
-          const itemIdSet = new Set(report.picks.map((p) => p.itemId));
-          if (itemIdSet.size > 0) {
-            const existingItemCount = await prisma.item.count({
-              where: { id: { in: Array.from(itemIdSet) } },
+          // Full reference integrity: check ALL contentIds
+          const contentIdSet = new Set(report.picks.map((p) => p.contentId).filter(Boolean));
+          if (contentIdSet.size > 0) {
+            const existingContentCount = await prisma.content.count({
+              where: { id: { in: Array.from(contentIdSet) } },
             });
-            const missingCount = itemIdSet.size - existingItemCount;
+            const missingCount = contentIdSet.size - existingContentCount;
             if (missingCount > 0) {
-              errors.push(`FK integrity: ${missingCount}/${itemIdSet.size} itemIds not found`);
+              errors.push(`FK integrity: ${missingCount}/${contentIdSet.size} contentIds not found`);
             }
           }
 

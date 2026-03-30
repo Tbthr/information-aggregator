@@ -6,19 +6,19 @@ import type { ReportsInventory } from "./types";
 
 /**
  * Loads reports inventory counts from the database.
- * Items and tweets are counted for the last 24 hours.
+ * Content is counted for the last 24 hours.
  */
 export async function loadReportsInventory(): Promise<ReportsInventory> {
   const now24hAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-  const [items, tweets, dailyReports, weeklyReports] = await Promise.all([
-    prisma.item.count({ where: { publishedAt: { gte: now24hAgo } } }),
-    prisma.tweet.count({ where: { publishedAt: { gte: now24hAgo }, tab: { in: ["home", "lists"] } } }),
+  const [contents, dailyReports, weeklyReports, topics] = await Promise.all([
+    prisma.content.count({ where: { fetchedAt: { gte: now24hAgo } } }),
     prisma.dailyOverview.count(),
     prisma.weeklyReport.count(),
+    prisma.digestTopic.count(),
   ]);
 
-  return { items, tweets, dailyReports, weeklyReports };
+  return { contents, dailyReports, weeklyReports, topics };
 }
 
 /**

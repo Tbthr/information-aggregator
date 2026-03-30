@@ -1,21 +1,18 @@
 // Diagnostics Framework Reports Integrity Verification
 // Migrated from scripts/verify-reports-pipeline.ts testCrossPipelineIntegrity()
 //
-// Compatibility: These cross-pipeline integrity checks verify the contract
-// between daily and weekly reports after the scoring pipeline refactor.
+// Content model: These cross-pipeline integrity checks verify the contract
+// between daily and weekly reports using the Content unified model.
 //
 // Key invariants:
 //   F-01: DigestTopic.dailyId -> DailyOverview.id (no orphans)
 //   F-03: WeeklyPick.weeklyId -> WeeklyReport.id (no orphans)
 //   F-04: DailyOverview.topicCount === actual DigestTopic count
-//   F-05: Every WeeklyPick.itemId appears in some DigestTopic.itemIds
+//   F-05: Every WeeklyPick.contentId appears in some DigestTopic.contentIds
 //         (weekly only consumes what daily produced)
-//   F-06: Items referenced by DigestTopic.itemIds have non-null title/url/sourceId
-//   F-07: Tweets referenced by DigestTopic.tweetIds have non-null text/authorHandle/url
-//
-// The daily pipeline now uses runtime scoring (ReportCandidate + ScoredCandidate),
-// but the persisted output shape (itemIds/tweetIds on DigestTopic) is unchanged.
-// These checks ensure the weekly-daily data contract is maintained.
+//   F-06: Content referenced by DigestTopic.contentIds has non-null url/kind
+//   F-07: (Legacy) Items referenced by DigestTopic.itemIds have non-null title/url/sourceId
+//   F-08: (Legacy) Tweets referenced by DigestTopic.tweetIds have non-null text/authorHandle/url
 
 import { prisma } from "@/lib/prisma";
 import { formatUtcDate } from "@/lib/date-utils";
@@ -117,7 +114,7 @@ export async function runIntegrityAssertions(
     evidence: { mismatchCount: f04MismatchCount, totalOverviews: overviews.length },
   });
 
-  // ── F-05: Weekly pick items come from daily topic items ─
+  // ── F-05: Weekly pick items come from daily topic content ─
 
   const f05Start = Date.now();
   const weeklyReports = await prisma.weeklyReport.findMany({
@@ -155,25 +152,27 @@ export async function runIntegrityAssertions(
       const weekEnd = new Date(weekStart.getTime());
       weekEnd.setUTCDate(weekEnd.getUTCDate() + 6);
 
-      // Collect itemIds from daily overviews within this week only
-      const weeklyDailyTopicItemIds = new Set<string>();
+      // Collect contentIds from daily overviews within this week only
+      const weeklyDailyTopicContentIds = new Set<string>();
       const current = new Date(weekStart);
       while (current <= weekEnd) {
         const dateStr = formatUtcDate(current);
         const daily = dailyByDate.get(dateStr);
         if (daily) {
           for (const topic of daily.topics) {
-            for (const id of topic.itemIds) weeklyDailyTopicItemIds.add(id);
+            for (const id of topic.contentIds) weeklyDailyTopicContentIds.add(id);
           }
         }
         current.setUTCDate(current.getUTCDate() + 1);
       }
 
-      // Check each pick of this weekly report
+      // Check each pick of this weekly report (contentId is the new field)
       for (const pick of report.picks) {
-        f05TotalPicks++;
-        if (!weeklyDailyTopicItemIds.has(pick.itemId)) {
-          f05NotFromDaily++;
+        if (pick.contentId) {
+          f05TotalPicks++;
+          if (!weeklyDailyTopicContentIds.has(pick.contentId)) {
+            f05NotFromDaily++;
+          }
         }
       }
     }
@@ -187,85 +186,123 @@ export async function runIntegrityAssertions(
       status: f05Ok ? "PASS" : "FAIL",
       blocking: false,
       message: f05Ok
-        ? "all weekly pick items from daily topics"
-        : `${f05NotFromDaily}/${f05TotalPicks} weekly pick items not from daily topics`,
+        ? "all weekly pick content from daily topics"
+        : `${f05NotFromDaily}/${f05TotalPicks} weekly pick content not from daily topics`,
       evidence: { totalPicks: f05TotalPicks, notFromDaily: f05NotFromDaily },
     });
   }
 
-  // ── F-06: Referenced items have non-null core fields ─
+  // ── F-06: Referenced content has non-null core fields ─
 
   const f06Start = Date.now();
   const allTopicsForF06 = await prisma.digestTopic.findMany();
-  const f06ItemIds = new Set<string>();
-  for (const t of allTopicsForF06) for (const id of t.itemIds) f06ItemIds.add(id);
+  const f06ContentIds = new Set<string>();
+  for (const t of allTopicsForF06) for (const id of t.contentIds) f06ContentIds.add(id);
 
-  if (f06ItemIds.size === 0) {
+  if (f06ContentIds.size === 0) {
     assertions.push({
       id: "F-06",
       category: "reports",
       status: "SKIP",
       blocking: false,
-      message: "no referenced items to verify",
-      evidence: { itemCount: 0 },
+      message: "no referenced content to verify",
+      evidence: { contentCount: 0 },
     });
   } else {
-    const f06Items = await prisma.item.findMany({
-      where: { id: { in: Array.from(f06ItemIds) } },
-      select: { id: true, title: true, url: true, sourceId: true },
+    const f06Content = await prisma.content.findMany({
+      where: { id: { in: Array.from(f06ContentIds) } },
+      select: { id: true, url: true, kind: true },
     });
     let f06InvalidCount = 0;
-    for (const item of f06Items) {
-      if (!item.title || !item.url || !item.sourceId) f06InvalidCount++;
+    for (const c of f06Content) {
+      if (!c.url || !c.kind) f06InvalidCount++;
     }
     const f06Ok = f06InvalidCount === 0;
-    verboseLog(`  F-06 item field completeness: ${f06Items.length - f06InvalidCount}/${f06Items.length} valid`);
+    verboseLog(`  F-06 content field completeness: ${f06Content.length - f06InvalidCount}/${f06Content.length} valid`);
 
     assertions.push({
       id: "F-06",
       category: "reports",
       status: f06Ok ? "PASS" : "FAIL",
       blocking: false,
-      message: f06Ok ? "all items have required fields (title, url, sourceId)" : `${f06InvalidCount} items missing required fields`,
-      evidence: { validCount: f06Items.length - f06InvalidCount, invalidCount: f06InvalidCount, totalCount: f06Items.length },
+      message: f06Ok ? "all content have required fields (url, kind)" : `${f06InvalidCount} content missing required fields`,
+      evidence: { validCount: f06Content.length - f06InvalidCount, invalidCount: f06InvalidCount, totalCount: f06Content.length },
     });
   }
 
-  // ── F-07: Referenced tweets have valid fields ─────────
+  // ── F-07: (Legacy) Referenced items have non-null core fields ─
 
   const f07Start = Date.now();
   const allTopicsForF07 = await prisma.digestTopic.findMany();
-  const f07TweetIds = new Set<string>();
-  for (const t of allTopicsForF07) for (const id of t.tweetIds) f07TweetIds.add(id);
+  const f07ItemIds = new Set<string>();
+  for (const t of allTopicsForF07) for (const id of t.itemIds) f07ItemIds.add(id);
 
-  if (f07TweetIds.size === 0) {
+  if (f07ItemIds.size === 0) {
     assertions.push({
       id: "F-07",
       category: "reports",
       status: "SKIP",
       blocking: false,
-      message: "no referenced tweets to verify",
-      evidence: { tweetCount: 0 },
+      message: "no referenced legacy items to verify",
+      evidence: { itemCount: 0 },
     });
   } else {
-    const f07Tweets = await prisma.tweet.findMany({
-      where: { id: { in: Array.from(f07TweetIds) } },
-      select: { id: true, text: true, authorHandle: true, url: true },
+    const f07Items = await prisma.item.findMany({
+      where: { id: { in: Array.from(f07ItemIds) } },
+      select: { id: true, title: true, url: true, sourceId: true },
     });
     let f07InvalidCount = 0;
-    for (const tweet of f07Tweets) {
-      if (!tweet.text || !tweet.authorHandle || !tweet.url) f07InvalidCount++;
+    for (const item of f07Items) {
+      if (!item.title || !item.url || !item.sourceId) f07InvalidCount++;
     }
     const f07Ok = f07InvalidCount === 0;
-    verboseLog(`  F-07 tweet field completeness: ${f07Tweets.length - f07InvalidCount}/${f07Tweets.length} valid`);
+    verboseLog(`  F-07 legacy item field completeness: ${f07Items.length - f07InvalidCount}/${f07Items.length} valid`);
 
     assertions.push({
       id: "F-07",
       category: "reports",
       status: f07Ok ? "PASS" : "FAIL",
       blocking: false,
-      message: f07Ok ? "all tweets have required fields (text, authorHandle, url)" : `${f07InvalidCount} tweets missing required fields`,
-      evidence: { validCount: f07Tweets.length - f07InvalidCount, invalidCount: f07InvalidCount, totalCount: f07Tweets.length },
+      message: f07Ok ? "all legacy items have required fields (title, url, sourceId)" : `${f07InvalidCount} legacy items missing required fields`,
+      evidence: { validCount: f07Items.length - f07InvalidCount, invalidCount: f07InvalidCount, totalCount: f07Items.length },
+    });
+  }
+
+  // ── F-08: (Legacy) Referenced tweets have valid fields ─────────
+
+  const f08Start = Date.now();
+  const allTopicsForF08 = await prisma.digestTopic.findMany();
+  const f08TweetIds = new Set<string>();
+  for (const t of allTopicsForF08) for (const id of t.tweetIds) f08TweetIds.add(id);
+
+  if (f08TweetIds.size === 0) {
+    assertions.push({
+      id: "F-08",
+      category: "reports",
+      status: "SKIP",
+      blocking: false,
+      message: "no referenced legacy tweets to verify",
+      evidence: { tweetCount: 0 },
+    });
+  } else {
+    const f08Tweets = await prisma.tweet.findMany({
+      where: { id: { in: Array.from(f08TweetIds) } },
+      select: { id: true, text: true, authorHandle: true, url: true },
+    });
+    let f08InvalidCount = 0;
+    for (const tweet of f08Tweets) {
+      if (!tweet.text || !tweet.authorHandle || !tweet.url) f08InvalidCount++;
+    }
+    const f08Ok = f08InvalidCount === 0;
+    verboseLog(`  F-08 legacy tweet field completeness: ${f08Tweets.length - f08InvalidCount}/${f08Tweets.length} valid`);
+
+    assertions.push({
+      id: "F-08",
+      category: "reports",
+      status: f08Ok ? "PASS" : "FAIL",
+      blocking: false,
+      message: f08Ok ? "all legacy tweets have required fields (text, authorHandle, url)" : `${f08InvalidCount} legacy tweets missing required fields`,
+      evidence: { validCount: f08Tweets.length - f08InvalidCount, invalidCount: f08InvalidCount, totalCount: f08Tweets.length },
     });
   }
 
