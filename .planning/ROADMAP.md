@@ -75,7 +75,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — Transaction wrapping
+- [x] 04-01-PLAN.md — Transaction wrapping
 - [ ] 04-02-PLAN.md — Retry logic and error logging
 
 ## Progress
@@ -85,4 +85,4 @@ Plans:
 | 1. Settings Consolidation | 2/2 | Complete | 2026-03-30 |
 | 2. Pipeline Field Quality | 2/2 | Complete   | 2026-03-30 |
 | 3. Topic Config + AI Opt | 0/2 | Not started | - |
-| 4. Pipeline Robustness | 0/2 | Not started | - |
+| 4. Pipeline Robustness | 1/2 | In Progress|  |
