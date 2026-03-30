@@ -4,6 +4,7 @@
 export interface NearDedupItem {
   id: string;
   normalizedTitle: string;
+  normalizedContent: string;
   normalizedUrl: string;
   publishedAt?: string | null;
   fetchedAt?: string | null;
@@ -85,10 +86,20 @@ function compareForWinner<T extends NearDedupItem>(a: T, b: T): number {
 }
 
 /**
- * Tokenize a title into a set of lowercase tokens.
+ * Strip punctuation characters that are disruptive for dedup comparison.
+ */
+function removePunctuation(value: string): string {
+  return value.replace(/[!"#$%&'*+,/:;<=>?@[\]^`{|}~]/g, "");
+}
+
+/**
+ * Tokenize dedupe text: lowercase -> strip punctuation -> collapse whitespace -> split.
+ * The input should be the combined title + body text.
  */
 function tokenize(value: string): string[] {
-  return value.split(/\s+/).filter(Boolean);
+  const lowered = value.toLowerCase();
+  const depunctuated = removePunctuation(lowered);
+  return depunctuated.split(/\s+/).filter(Boolean);
 }
 
 /**
@@ -187,8 +198,8 @@ function findClusters<T extends NearDedupItem>(items: T[], threshold = 0.75): Ma
     }
   }
 
-  // Tokenize all items first
-  const tokenized = items.map((item) => tokenize(item.normalizedTitle));
+  // Tokenize all items using combined title + body for dedupe comparison
+  const tokenized = items.map((item) => tokenize(`${item.normalizedTitle} ${item.normalizedContent}`));
 
   // Build similarity graph and union connected items
   for (let i = 0; i < n; i++) {
@@ -225,10 +236,10 @@ function findClusters<T extends NearDedupItem>(items: T[], threshold = 0.75): Ma
 }
 
 /**
- * Near deduplication by normalizedTitle using connected components.
+ * Near deduplication by combined title + body text using connected components.
  *
  * Algorithm (input-order independent):
- * 1. Tokenize all titles
+ * 1. Tokenize all items using combined title + body (lowercased, punctuation-stripped)
  * 2. Build similarity graph using bucket pre-filtering and 24h time window
  * 3. Find connected components (clusters) using Union-Find
  * 4. For each cluster, select a single winner using the winner selection algorithm
