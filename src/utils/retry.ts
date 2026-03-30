@@ -40,6 +40,7 @@ export async function withPrismaRetry<T>(
 ): Promise<T> {
   const { maxAttempts = 3, baseDelayMs = 100 } = options;
   let lastError: unknown;
+  let retryCount = 0;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
@@ -48,11 +49,12 @@ export async function withPrismaRetry<T>(
       lastError = err;
       if (attempt === maxAttempts) break;
       if (!isTransientPrismaError(err)) throw err;
+      retryCount = attempt;
       await sleep(baseDelayMs * Math.pow(2, attempt - 1));
     }
   }
   // Annotate the error with retry count before throwing so callers can log it
-  (lastError as { retryCount?: number }).retryCount = attempt - 1;
+  (lastError as { retryCount?: number }).retryCount = retryCount;
   throw lastError;
 }
 
