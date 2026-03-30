@@ -68,7 +68,6 @@ export function normalizeTitle(value: string, contentType?: string): string | nu
 
   result = decodeHtmlEntities(result);
   result = normalizeWhitespace(result);
-  result = result.toLowerCase();
 
   // Truncate to 160 characters
   if (result.length > 160) {
@@ -118,11 +117,6 @@ export function normalizeContent(
   let result = stripHtml(value);
   result = decodeHtmlEntities(result);
   result = normalizeWhitespace(result);
-
-  // For non-tweet content, lowercase for consistency
-  if (contentType !== "tweet") {
-    result = result.toLowerCase();
-  }
 
   // Truncate to maxLength
   if (result.length > maxLength) {
