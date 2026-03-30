@@ -336,3 +336,378 @@ components/
 ```
 
 <!-- NEXT-AGENTS-MD-START -->[Next.js Docs Index]|root: ./.next-docs|STOP. What you remember about Next.js is WRONG for this project. Always search docs and read before any task.|If docs missing, run this command first: npx @next/codemod agents-md --output AGENTS.md|01-app:{04-glossary.mdx}|01-app/01-getting-started:{01-installation.mdx,02-project-structure.mdx,03-layouts-and-pages.mdx,04-linking-and-navigating.mdx,05-server-and-client-components.mdx,06-fetching-data.mdx,07-mutating-data.mdx,08-caching.mdx,09-revalidating.mdx,10-error-handling.mdx,11-css.mdx,12-images.mdx,13-fonts.mdx,14-metadata-and-og-images.mdx,15-route-handlers.mdx,16-proxy.mdx,17-deploying.mdx,18-upgrading.mdx}|01-app/02-guides:{ai-agents.mdx,analytics.mdx,authentication.mdx,backend-for-frontend.mdx,caching-without-cache-components.mdx,ci-build-caching.mdx,content-security-policy.mdx,css-in-js.mdx,custom-server.mdx,data-security.mdx,debugging.mdx,draft-mode.mdx,environment-variables.mdx,forms.mdx,incremental-static-regeneration.mdx,instant-navigation.mdx,instrumentation.mdx,internationalization.mdx,json-ld.mdx,lazy-loading.mdx,local-development.mdx,mcp.mdx,mdx.mdx,memory-usage.mdx,migrating-to-cache-components.mdx,multi-tenant.mdx,multi-zones.mdx,open-telemetry.mdx,package-bundling.mdx,prefetching.mdx,preserving-ui-state.mdx,production-checklist.mdx,progressive-web-apps.mdx,public-static-pages.mdx,redirecting.mdx,sass.mdx,scripts.mdx,self-hosting.mdx,single-page-applications.mdx,static-exports.mdx,streaming.mdx,tailwind-v3-css.mdx,third-party-libraries.mdx,videos.mdx}|01-app/02-guides/migrating:{app-router-migration.mdx,from-create-react-app.mdx,from-vite.mdx}|01-app/02-guides/testing:{cypress.mdx,jest.mdx,playwright.mdx,vitest.mdx}|01-app/02-guides/upgrading:{codemods.mdx,version-14.mdx,version-15.mdx,version-16.mdx}|01-app/03-api-reference:{07-edge.mdx,08-turbopack.mdx}|01-app/03-api-reference/01-directives:{use-cache-private.mdx,use-cache-remote.mdx,use-cache.mdx,use-client.mdx,use-server.mdx}|01-app/03-api-reference/02-components:{font.mdx,form.mdx,image.mdx,link.mdx,script.mdx}|01-app/03-api-reference/03-file-conventions/01-metadata:{app-icons.mdx,manifest.mdx,opengraph-image.mdx,robots.mdx,sitemap.mdx}|01-app/03-api-reference/03-file-conventions/02-route-segment-config:{dynamicParams.mdx,instant.mdx,maxDuration.mdx,preferredRegion.mdx,runtime.mdx}|01-app/03-api-reference/03-file-conventions:{default.mdx,dynamic-routes.mdx,error.mdx,forbidden.mdx,instrumentation-client.mdx,instrumentation.mdx,intercepting-routes.mdx,layout.mdx,loading.mdx,mdx-components.mdx,not-found.mdx,page.mdx,parallel-routes.mdx,proxy.mdx,public-folder.mdx,route-groups.mdx,route.mdx,src-folder.mdx,template.mdx,unauthorized.mdx}|01-app/03-api-reference/04-functions:{after.mdx,cacheLife.mdx,cacheTag.mdx,catchError.mdx,connection.mdx,cookies.mdx,draft-mode.mdx,fetch.mdx,forbidden.mdx,generate-image-metadata.mdx,generate-metadata.mdx,generate-sitemaps.mdx,generate-static-params.mdx,generate-viewport.mdx,headers.mdx,image-response.mdx,next-request.mdx,next-response.mdx,not-found.mdx,permanentRedirect.mdx,redirect.mdx,refresh.mdx,revalidatePath.mdx,revalidateTag.mdx,unauthorized.mdx,unstable_cache.mdx,unstable_noStore.mdx,unstable_rethrow.mdx,updateTag.mdx,use-link-status.mdx,use-params.mdx,use-pathname.mdx,use-report-web-vitals.mdx,use-router.mdx,use-search-params.mdx,use-selected-layout-segment.mdx,use-selected-layout-segments.mdx,userAgent.mdx}|01-app/03-api-reference/05-config/01-next-config-js:{adapterPath.mdx,allowedDevOrigins.mdx,appDir.mdx,assetPrefix.mdx,authInterrupts.mdx,basePath.mdx,cacheComponents.mdx,cacheHandlers.mdx,cacheLife.mdx,compress.mdx,crossOrigin.mdx,cssChunking.mdx,deploymentId.mdx,devIndicators.mdx,distDir.mdx,env.mdx,expireTime.mdx,exportPathMap.mdx,generateBuildId.mdx,generateEtags.mdx,headers.mdx,htmlLimitedBots.mdx,httpAgentOptions.mdx,images.mdx,incrementalCacheHandlerPath.mdx,inlineCss.mdx,logging.mdx,mdxRs.mdx,onDemandEntries.mdx,optimizePackageImports.mdx,output.mdx,pageExtensions.mdx,poweredByHeader.mdx,productionBrowserSourceMaps.mdx,proxyClientMaxBodySize.mdx,reactCompiler.mdx,reactMaxHeadersLength.mdx,reactStrictMode.mdx,redirects.mdx,rewrites.mdx,sassOptions.mdx,serverActions.mdx,serverComponentsHmrCache.mdx,serverExternalPackages.mdx,staleTimes.mdx,staticGeneration.mdx,taint.mdx,trailingSlash.mdx,transpilePackages.mdx,turbopack.mdx,turbopackFileSystemCache.mdx,turbopackIgnoreIssue.mdx,typedRoutes.mdx,typescript.mdx,urlImports.mdx,useLightningcss.mdx,viewTransition.mdx,webVitalsAttribution.mdx,webpack.mdx}|01-app/03-api-reference/05-config:{02-typescript.mdx,03-eslint.mdx}|01-app/03-api-reference/06-cli:{create-next-app.mdx,next.mdx}|02-pages/01-getting-started:{01-installation.mdx,02-project-structure.mdx,04-images.mdx,05-fonts.mdx,06-css.mdx,11-deploying.mdx}|02-pages/02-guides:{analytics.mdx,authentication.mdx,babel.mdx,ci-build-caching.mdx,content-security-policy.mdx,css-in-js.mdx,custom-server.mdx,debugging.mdx,draft-mode.mdx,environment-variables.mdx,forms.mdx,incremental-static-regeneration.mdx,instrumentation.mdx,internationalization.mdx,lazy-loading.mdx,mdx.mdx,multi-zones.mdx,open-telemetry.mdx,package-bundling.mdx,post-css.mdx,preview-mode.mdx,production-checklist.mdx,redirecting.mdx,sass.mdx,scripts.mdx,self-hosting.mdx,static-exports.mdx,tailwind-v3-css.mdx,third-party-libraries.mdx}|02-pages/02-guides/migrating:{app-router-migration.mdx,from-create-react-app.mdx,from-vite.mdx}|02-pages/02-guides/testing:{cypress.mdx,jest.mdx,playwright.mdx,vitest.mdx}|02-pages/02-guides/upgrading:{codemods.mdx,version-10.mdx,version-11.mdx,version-12.mdx,version-13.mdx,version-14.mdx,version-9.mdx}|02-pages/03-building-your-application/01-routing:{01-pages-and-layouts.mdx,02-dynamic-routes.mdx,03-linking-and-navigating.mdx,05-custom-app.mdx,06-custom-document.mdx,07-api-routes.mdx,08-custom-error.mdx}|02-pages/03-building-your-application/02-rendering:{01-server-side-rendering.mdx,02-static-site-generation.mdx,04-automatic-static-optimization.mdx,05-client-side-rendering.mdx}|02-pages/03-building-your-application/03-data-fetching:{01-get-static-props.mdx,02-get-static-paths.mdx,03-forms-and-mutations.mdx,03-get-server-side-props.mdx,05-client-side.mdx}|02-pages/03-building-your-application/06-configuring:{12-error-handling.mdx}|02-pages/04-api-reference:{06-edge.mdx,08-turbopack.mdx}|02-pages/04-api-reference/01-components:{font.mdx,form.mdx,head.mdx,image-legacy.mdx,image.mdx,link.mdx,script.mdx}|02-pages/04-api-reference/02-file-conventions:{instrumentation.mdx,proxy.mdx,public-folder.mdx,src-folder.mdx}|02-pages/04-api-reference/03-functions:{get-initial-props.mdx,get-server-side-props.mdx,get-static-paths.mdx,get-static-props.mdx,next-request.mdx,next-response.mdx,use-params.mdx,use-report-web-vitals.mdx,use-router.mdx,use-search-params.mdx,userAgent.mdx}|02-pages/04-api-reference/04-config/01-next-config-js:{adapterPath.mdx,allowedDevOrigins.mdx,assetPrefix.mdx,basePath.mdx,bundlePagesRouterDependencies.mdx,compress.mdx,crossOrigin.mdx,deploymentId.mdx,devIndicators.mdx,distDir.mdx,env.mdx,exportPathMap.mdx,generateBuildId.mdx,generateEtags.mdx,headers.mdx,httpAgentOptions.mdx,images.mdx,logging.mdx,onDemandEntries.mdx,optimizePackageImports.mdx,output.mdx,pageExtensions.mdx,poweredByHeader.mdx,productionBrowserSourceMaps.mdx,proxyClientMaxBodySize.mdx,reactStrictMode.mdx,redirects.mdx,rewrites.mdx,serverExternalPackages.mdx,trailingSlash.mdx,transpilePackages.mdx,turbopack.mdx,typescript.mdx,urlImports.mdx,useLightningcss.mdx,webVitalsAttribution.mdx,webpack.mdx}|02-pages/04-api-reference/04-config:{01-typescript.mdx,02-eslint.mdx}|02-pages/04-api-reference/05-cli:{create-next-app.mdx,next.mdx}|03-architecture:{accessibility.mdx,fast-refresh.mdx,nextjs-compiler.mdx,supported-browsers.mdx}|04-community:{01-contribution-guide.mdx,02-rspack.mdx}<!-- NEXT-AGENTS-MD-END -->
+
+<!-- GSD:project-start source:PROJECT.md -->
+## Project
+
+**信息聚合平台 - 采集与报告优化**
+
+对 Information Aggregator 的数据采集管道（Collection Pipeline）、日报生成、周报生成进行全面的质量审计和优化，同时修正前端报告设置页面，确保配置完整性。
+
+**这不是：** 新功能开发或架构重构
+
+---
+<!-- GSD:project-end -->
+
+<!-- GSD:stack-start source:codebase/STACK.md -->
+## Technology Stack
+
+## Languages
+- TypeScript 5.8.2 - All application code (frontend and backend)
+- Python 0.6.0 - Mozilla Readability for HTML parsing
+- CSS - Tailwind CSS 4.2.2 for styling
+## Runtime
+- Node.js (via Next.js 16.2.0)
+- Bun - Test runner (`bun test`)
+- pnpm (project uses pnpm scripts)
+- Lockfile: `pnpm-lock.yaml`
+## Frameworks
+- Next.js 16.2.0 (App Router) - Full-stack framework
+- React 19.2.4 - UI library
+- React DOM 19.2.4
+- Tailwind CSS 4.2.2 - Utility-first CSS
+- shadcn/ui - Component library built on Radix UI
+- Radix UI (multiple packages) - Headless UI primitives
+- class-variance-authority 0.7.1 - Component variant management
+- clsx 2.1.1 - Conditional classnames
+- tailwind-merge 3.5.0 - Tailwind class merging
+- Prisma 6.19.2 - ORM for PostgreSQL
+- @prisma/client 6.19.2 - Prisma runtime
+- SWR 2.4.1 - Data fetching and caching (frontend)
+- Zod 4.3.6 - Runtime type validation
+- react-hook-form 7.54.1 - Form state management
+- Zod 4.3.6 - Schema validation (used with react-hook-form)
+- @dnd-kit/core 6.3.1 - Drag and drop primitives
+- @dnd-kit/sortable 10.0.0 - Sortable list primitives
+- @dnd-kit/utilities 3.2.2 - DnD utilities
+- react-markdown 10.1.0 - Markdown rendering
+- remark-gfm 4.0.1 - GitHub Flavored Markdown
+- lucide-react 0.577.0 - Icon library
+- tw-animate-css 1.4.0 - Tailwind animation utilities
+- embla-carousel-react 8.6.0 - Carousel component
+- react-resizable-panels 2.1.7 - Resizable panel layout
+- yet-another-react-lightbox 3.29.1 - Lightbox component
+- sonner 1.7.1 - Toast notifications (used via hook)
+- recharts 2.15.0 - Chart library
+- react-day-picker 9.13.2 - Date picker component
+## AI Integration
+- Custom AI client implementation at `src/ai/`
+- Supports multiple providers with fallback
+- Anthropic (Claude) - `src/ai/providers/anthropic.ts`
+- Google Gemini - `src/ai/providers/gemini.ts`
+- OpenAI-compatible - `src/ai/providers/openai.ts`
+- Fallback provider - `src/ai/providers/fallback.ts`
+- Provider selection via `AI_DEFAULT_PROVIDER` env var
+- Multiple API keys support (comma-separated)
+- Multiple endpoints with automatic fallback
+- Config schema at `src/ai/config/schema.ts`
+- Config loader at `src/ai/config/load.ts`
+- Article enrichment (`enrichArticle`)
+- Multi-dimensional scoring (`scoreMultiDimensional`)
+- Key points extraction (`extractKeyPoints`)
+- Tag generation (`generateTags`)
+- Content summarization (`summarizeContent`)
+- Batch filtering (`batchFilter`)
+- Topic suggestions (`suggestTopics`)
+- Highlights generation (`generateHighlights`)
+- Daily brief overview (`generateDailyBriefOverview`)
+- Post summarization (`summarizePost`)
+- `src/ai/prompts-enrichment.ts` - Enrichment prompts
+- `src/ai/prompts-filter.ts` - Content filtering prompts
+- `src/ai/prompts-reports.ts` - Report generation prompts
+- `src/ai/prompts-highlights.ts` - Highlights prompts
+- `src/ai/prompts-daily-brief.ts` - Daily brief prompts
+- `src/ai/prompts-x-analysis.ts` - X/Twitter analysis prompts
+## Data Pipeline
+- RSS feed parsing - `src/adapters/rss.ts`
+- JSON feed parsing - `src/adapters/json-feed.ts`
+- Website extraction - `src/adapters/website.ts`
+- GitHub trending - `src/adapters/github-trending.ts`
+- Feed discovery - `src/adapters/feed-discovery.ts`
+- Collection - `src/pipeline/collect.ts`
+- URL normalization - `src/pipeline/normalize-url.ts`
+- Text normalization - `src/pipeline/normalize-text.ts`
+- Content extraction - `src/pipeline/extract-content.ts`
+- Exact deduplication - `src/pipeline/dedupe-exact.ts`
+- Near deduplication - `src/pipeline/dedupe-near.ts`
+- Filtering by pack - `src/pipeline/filter-by-pack.ts`
+- Filtering by topic - `src/pipeline/filter-by-topic.ts`
+- Ranking/scoring - `src/pipeline/rank.ts`
+- AI enrichment - `src/pipeline/enrich.ts`
+## Configuration
+- `next.config.mjs` - Next.js configuration
+- `tailwind.config.ts` - Tailwind CSS configuration
+- `postcss.config.mjs` - PostCSS configuration
+- `tsconfig.json` - TypeScript configuration
+- `eslint.config.js` - ESLint configuration
+- `vercel.json` - Vercel deployment config (includes cron schedules)
+- `.env.example` - Environment variable template
+- `.env` - Local environment (gitignored)
+## Testing
+- Bun (`bun test`) - Primary test runner
+- Vitest-compatible API (via Bun)
+- Co-located with source: `*.test.ts`
+- Examples:
+## Development Tools
+- TypeScript 5.8.2 (`tsc --noEmit`)
+- `pnpm check` - TypeScript check script
+- ESLint 9.22.0
+- `pnpm lint` - ESLint check
+- Prettier 3.5.0
+- `pnpm format` - Format code
+- `pnpm format:check` - Check formatting
+- tsx 4.21.0 - TypeScript execution
+- `pnpm diagnostics` - Custom diagnostic script
+## Platform Requirements
+- Node.js 18+ (implied by Next.js 18+)
+- pnpm package manager
+- PostgreSQL database (local or Supabase)
+- Vercel (configured in `vercel.json`)
+- PostgreSQL database (Supabase recommended)
+- AI API providers (Anthropic/Gemini/OpenAI)
+<!-- GSD:stack-end -->
+
+<!-- GSD:conventions-start source:CONVENTIONS.md -->
+## Conventions
+
+## TypeScript Strict Mode
+- `strict: true` - Enables all strict type-checking options
+- `noEmit: true` - TypeScript only checks, does not emit
+- `skipLibCheck: true` - Skips type checking of declaration files
+- `moduleResolution: Bundler` - Uses bundler-style module resolution
+- `paths` - Path aliases configured for `@/*`, `@/components/*`, `@/hooks/*`, `@/lib/*`
+- All code must pass TypeScript check (`pnpm check`)
+- `any` type is forbidden unless absolutely necessary
+- Shared types live in `lib/types.ts` or `src/types/`
+- Module-level types use `type` exports only
+## Naming Conventions
+- PascalCase for components: `TweetCard.tsx`, `Sidebar.tsx`
+- kebab-case for utilities and non-component modules: `date-utils.ts`, `social-post.ts`
+- co-located tests: `*.test.ts` suffix, e.g., `rank.test.ts`
+- camelCase for functions and variables: `useDaily()`, `fetchContent()`
+- PascalCase for types, interfaces, and classes: `ApiResponse<T>`, `ContentKind`
+- Suffix non-null assertions with `!` (non-null assertion operator)
+- Use `Record<string, unknown>` for arbitrary object maps, not `object`
+- Prisma models accessed via `prisma.modelName.findMany()`
+## Code Formatting
+## Component Patterns (shadcn/ui)
+- Use Tailwind CSS with `cn()` (clsx + tailwind-merge) for conditional classes
+- CVA for component-level variant switching
+- shadcn/ui components in `components/ui/`
+- `cn()` from `lib/utils` for merging Tailwind classes
+- `components/ui/skeleton.tsx` for loading placeholders
+- `components/loading-skeletons.tsx` for page-level skeletons
+## API Route Patterns
+- `success(data, meta?)` - Returns `{ success: true, data, meta? }`
+- `error(message, status, details?)` - Returns `{ success: false, error, details? }`
+- `parseBody(request)` - Throws `ParseError` on invalid JSON
+- `validateBody(body, schema)` - Returns `ValidationResult<T>`
+- `handlePrismaError(err, context)` - Maps Prisma error codes to responses
+- `toArticle()` - Converts Prisma content to Article type
+## Error Handling
+- Use `ParseError` for malformed requests (caught and returned as 400)
+- Use `handlePrismaError()` for database errors (P2002, P2003, P2025 mapped to appropriate status codes)
+- All other errors should throw and let Next.js handle 500
+- **NEVER use `alert()`** for user notifications
+- Use toast notifications via `useToast()` hook:
+- Toast variants: default, destructive
+## Time and Timezone Handling
+- **FORBIDDEN:** `setHours()`, `getHours()`, `getDay()`, `setDate()` (local time methods)
+- **REQUIRED:** `setUTCHours()`, `getUTCHours()`, `getUTCDay()`, `setUTCDate()` (UTC methods)
+- Use `beijingDayRange()` and `beijingWeekRange()` for report date range queries
+- Date format for API: ISO 8601 strings with `Z` suffix via `.toISOString()`
+- **FORBIDDEN:** Display raw ISO strings directly
+- **REQUIRED:** Use formatting functions based on `Intl.DateTimeFormat`:
+## Data Fetching Patterns
+- All data fetching MUST use SWR, not `useState` + `useEffect`
+- Standard config: `revalidateOnFocus: false, dedupingInterval: 5000`
+- Use `revalidateOnReconnect: true` when you need to refetch on network recovery
+- `useTopics()` - GET /api/topics
+- `useContent(params)` - GET /api/content with query params
+- `useDaily(date?)` - GET /api/daily
+- `useWeekly(week?)` - GET /api/weekly
+- `useReportSettings()` - GET /api/settings/reports
+- **NEVER** use plain text "加载中..."
+- Use Skeleton components from `components/loading-skeletons.tsx`:
+## Type Definitions
+- Cross-file shared types: `lib/types.ts` (frontend/backend common) or `src/types/` (backend only)
+- Module-local types: inline in the file
+- Prisma model types: accessed via `prisma.$ModelName`
+## Import Organization
+## Module Design
+- Use named exports for utilities and hooks
+- Avoid barrel files (index.ts re-exports) unless necessary
+- Types exported with `export type { TypeName }` syntax
+- Keep under 300 lines
+- Split by responsibility when exceeding limit
+- Extract types to `types.ts` in same directory
+- Extract constants/mappings to separate files
+<!-- GSD:conventions-end -->
+
+<!-- GSD:architecture-start source:ARCHITECTURE.md -->
+## Architecture
+
+## Pattern Overview
+- **Frontend:** Next.js 16 with React 19, App Router, Tailwind CSS, shadcn/ui components
+- **Backend Pipeline:** Modular stage-based pipeline (adapters -> normalize -> filter -> dedupe -> persist)
+- **Database:** PostgreSQL via Prisma ORM, Supabase hosting
+- **AI Integration:** Multi-provider AI client (Anthropic, OpenAI, Gemini) for content enrichment and report generation
+- **Package Manager:** pnpm
+## Layers
+### Frontend (app/, components/, hooks/)
+- `app/page.tsx` - Home page routing to daily/weekly/config/x
+- `app/api/*` - API routes for content, sources, topics, settings, cron jobs, diagnostics
+- `components/` - React components organized by feature (sidebar, config, daily-page, weekly-page, tweet-card, article-card)
+- `hooks/` - Custom hooks (use-api.ts for SWR data fetching, use-toast.ts for notifications)
+### Adapters Layer (src/adapters/)
+- `rss.ts` - RSS feed parsing
+- `json-feed.ts` - JSON Feed format support
+- `website.ts` - Generic website content extraction
+- `x-bird.ts` - X/Twitter social feed collection
+- `github-trending.ts` - GitHub Trending (intentionally excluded from collection pipeline per `UNSUPPORTED_SOURCE_KDS`)
+- `registry.ts` - Adapter family registration system for batch registration of adapters with shared auth config
+- `build-adapters.ts` - Factory that builds the adapter map used by the collection pipeline
+### Pipeline Layer (src/pipeline/)
+- `collect.ts` - Source collection with optional concurrency control, event reporting per source
+- `normalize.ts` - Normalize raw items (URL canonicalization, text normalization)
+- `normalize-url.ts` - URL normalization and deduplication key generation
+- `normalize-text.ts` - Text normalization utilities
+- `filter-by-topic.ts` - Classify items against topics using include/exclude rules, score items by topic
+- `filter-by-pack.ts` - Legacy pack-based filtering (deprecated, topic-centric model is current)
+- `dedupe-exact.ts` - Exact URL deduplication using normalized URL as key
+- `dedupe-near.ts` - Near-duplicate detection using text similarity
+- `enrich.ts` - AI content enrichment (extraction, key points, tagging) - called separately from collect pipeline
+- `rank.ts` - Ranking/scoring of content candidates
+- `extract-content.ts` - HTML content extraction from URLs
+- `run-collect-job.ts` - **Main orchestrator** combining all pipeline stages
+### Archive Layer (src/archive/)
+- `upsert-content-prisma.ts` - Main persistence functions (archiveContentItems, syncTopicsToPrisma, upsertSourcesBatch, recordSourcesSuccessBatch, recordSourceFailure)
+- `index.ts` - Re-exports all archive functions
+### AI Layer (src/ai/)
+- `client.ts` - Entry point exporting all AI types and factory functions
+- `providers/` - Provider implementations:
+- `prompts.ts` - General prompts
+- `prompts-filter.ts` - AI content filtering prompts
+- `prompts-enrichment.ts` - AI enrichment prompts (key points, tags)
+- `prompts-highlights.ts` - Highlights extraction prompts
+- `prompts-reports.ts` - Daily/weekly report prompts (topic clustering, summaries, editorial, pick reasons)
+- `prompts-daily-brief.ts` - Daily brief prompts
+- `prompts-x-analysis.ts` - X/Twitter analysis prompts
+- `concurrency.ts` - Concurrent processing utilities for AI operations
+- `config/schema.ts` - AI configuration schema
+- `config/load.ts` - AI config loading with caching
+- `types.ts` - AI-specific types (AiClient, TopicSuggestion, ArticleEnrichResult, etc.)
+### Reports Layer (src/reports/)
+- `daily.ts` - Daily report pipeline:
+- `weekly.ts` - Weekly report pipeline:
+- `report-candidate.ts` - Content to ReportCandidate mapping
+- `scoring/` - Runtime candidate scoring:
+### Configuration Layer (src/config/, config/packs/)
+- `src/config/source-id.ts` - Generate stable source IDs from URLs
+- `src/config/load-pack-prisma.ts` - Load topics/packs from Prisma with sources
+- `src/config/load-auth.ts` - Auth configuration loading
+- `config/packs/*.yaml` - Seed data YAML files (tech-news.yaml, karpathy-picks.yaml)
+### Cache Layer (src/cache/)
+- `content-cache.ts` - Content deduplication cache
+- `unified-cache.ts` - Unified caching interface
+### Diagnostics Layer (src/diagnostics/)
+- `runners/` - Test runners (collection, reports, full)
+- `collection/` - Collection validation (health, inventory, run-collection)
+- `reports/` - Report validation (config, verify-daily, verify-weekly)
+- `core/` - Shared utilities (guards, result formatting)
+### Shared Library (lib/)
+- `prisma.ts` - Prisma client singleton
+- `api-client.ts` - Typed fetch client for API calls
+- `api-response.ts` - Shared API response utilities (success, error, parseBody, validateBody, timing helpers)
+- `date-utils.ts` - Date/timezone utilities (beijingDayRange, beijingWeekRange, utcWeekNumber, formatUtcDate)
+- `format-date.ts` - Frontend date formatting using Intl.DateTimeFormat
+- `types.ts` - Shared domain types (Article, Tweet, Content, DailyReportData, WeeklyReportData)
+- `utils.ts` - General utilities
+- `tweet-utils.ts` - Tweet-specific utilities
+### Database (prisma/)
+- `Content` - Unified content model (replaced legacy Item/Tweet models)
+- `Topic` - Topic definitions with include/exclude rules
+- `Source` - Source definitions with kind, url, priority, defaultTopicIds
+- `SourceHealth` - Source health tracking (last success/failure, consecutive failures)
+- `DailyOverview` - Daily report overview with topic count
+- `DigestTopic` - Topic within daily report (contains contentIds array)
+- `DailyReportConfig` - Daily report configuration (topicIds, maxItems, minScore, prompts)
+- `WeeklyReport` - Weekly report with editorial
+- `WeeklyPick` - Weekly selected content with reason
+- `WeeklyReportConfig` - Weekly report configuration (days, pickCount, editorialPrompt, pickReasonPrompt)
+- `XPageConfig` - X/Twitter page configuration
+## Data Flow
+### Collection Pipeline
+```
+```
+### Daily Report Pipeline
+```
+```
+### Weekly Report Pipeline
+```
+```
+## Key Abstractions
+### RawItem
+```typescript
+```
+### NormalizedItem
+```typescript
+```
+### ReportCandidate
+```typescript
+```
+### Content (Database Model)
+```prisma
+```
+## Entry Points
+### API Routes (app/api/)
+| Endpoint | File | Purpose |
+|----------|------|---------|
+| POST /api/cron/collect | `app/api/cron/collect/route.ts` | Triggers content collection |
+| POST /api/cron/daily | `app/api/cron/daily/route.ts` | Triggers daily report generation |
+| POST /api/cron/weekly | `app/api/cron/weekly/route.ts` | Triggers weekly report generation |
+| GET/POST /api/daily | `app/api/daily/route.ts` | Get/create daily report |
+| GET/POST /api/weekly | `app/api/weekly/route.ts` | Get/create weekly report |
+| GET/POST /api/sources | `app/api/sources/route.ts` | List/create sources |
+| GET/PUT /api/settings/reports | `app/api/settings/reports/route.ts` | Report configuration |
+| GET /api/stats | `app/api/stats/route.ts` | System statistics |
+### Frontend Pages (app/)
+| Page | File | Purpose |
+|------|------|---------|
+| / | `app/page.tsx` | Home (redirects to /daily) |
+| /daily | `app/daily/page.tsx` | Daily report view |
+| /weekly | `app/weekly/page.tsx` | Weekly report view |
+| /config | `app/config/page.tsx` | Source configuration |
+| /x | `app/x/page.tsx` | X/Twitter feed |
+| /settings/reports | `app/settings/reports/page.tsx` | Report settings |
+## Error Handling
+## Cross-Cutting Concerns
+- Zod schemas in `src/api/schemas/query.ts` for API input validation
+- `lib/api-response.ts` `validateBody()` for Zod validation
+- Cron routes verify requests via `verifyCronRequest()` in `app/api/cron/_lib.ts`
+- Auth configs loaded per-source via `src/config/load-auth.ts`
+- All DateTime fields in Prisma use `@db.Timestamptz`
+- Backend uses UTC methods only (`setUTCHours()`, `getUTCDay()`, etc.)
+- Frontend converts via `lib/format-date.ts` using `Intl.DateTimeFormat`
+- Reports use Beijing timezone via `beijingDayRange()` / `beijingWeekRange()`
+<!-- GSD:architecture-end -->
+
+<!-- GSD:workflow-start source:GSD defaults -->
+## GSD Workflow Enforcement
+
+Before using Edit, Write, or other file-changing tools, start work through a GSD command so planning artifacts and execution context stay in sync.
+
+Use these entry points:
+- `/gsd:quick` for small fixes, doc updates, and ad-hoc tasks
+- `/gsd:debug` for investigation and bug fixing
+- `/gsd:execute-phase` for planned phase work
+
+Do not make direct repo edits outside a GSD workflow unless the user explicitly asks to bypass it.
+<!-- GSD:workflow-end -->
+
+<!-- GSD:profile-start -->
+## Developer Profile
+
+> Profile not yet configured. Run `/gsd:profile-user` to generate your developer profile.
+> This section is managed by `generate-claude-profile` -- do not edit manually.
+<!-- GSD:profile-end -->
