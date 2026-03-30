@@ -192,9 +192,9 @@ npx tsx scripts/diagnostics.ts full --run-collection --cleanup --confirm-cleanup
 | B-05 | Weekly days validation | days=10 返回 400 |
 | B-06 | Malformed body | 非法 JSON 返回 400 |
 | B-08 | Nullable prompts | filterPrompt 设值、topicPrompt=null 正确 |
-| 2 | Data inventory | 打印 items/tweets/daily/weekly 计数 |
+| 2 | Data inventory | 打印 content/daily/weekly 计数 |
 | 3 | Cleanup | 按 FK 顺序删除，无报错 |
-| 4 | Collection | POST 202, items 增长 > 0 |
+| 4 | Collection | POST 202, content 增长 > 0 |
 | 5 | Daily report | DailyOverview 创建，topicCount > 0 |
 | 6 | Daily verify | topics 非空、FK 全量通过、picks 不与 topics 重复 |
 | 7 | Weekly report | WeeklyReport 创建，editorial 非空 |
@@ -206,9 +206,9 @@ npx tsx scripts/diagnostics.ts full --run-collection --cleanup --confirm-cleanup
 | F-01 | DigestTopic FK | 无孤儿记录 |
 | F-03 | WeeklyPick FK | 无孤儿记录 |
 | F-04 | topicCount accuracy | 所有 overview 的 topicCount === 实际数 |
-| F-05 | Weekly item source | 周报 pick items ⊆ 日报 topic items |
-| F-06 | Item fields | 所有引用 items 的 title/url/sourceId 非空 |
-| F-07 | Tweet fields | 所有引用 tweets 的 text/authorHandle/url 非空 |
+| F-05 | Weekly content source | 周报 picks ⊆ 日报 topics content |
+| F-06 | Content fields (article) | 所有引用 content 的 title/url 非空 |
+| F-07 | Content fields (tweet) | 所有引用 content 的 body/authorLabel/url 非空 |
 
 **Step 4: 人工抽检（可选）**
 
