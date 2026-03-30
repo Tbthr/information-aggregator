@@ -255,10 +255,35 @@ async function migrateXPageConfigToSource(): Promise<{ migrated: number }> {
       continue;
     }
 
-    // Update sources that have matching tab info in their configJson
-    // This is a simplification - in practice, X sources would be matched differently
+    // Update X sources that have matching tab info
+    // Only update sources where kind indicates X/Twitter (kind contains "x" or "twitter")
+    // If no matching source exists, skip silently (X config may not have a corresponding source yet)
+    const xSourceMatch = await prisma.source.findFirst({
+      where: {
+        OR: [
+          { kind: { contains: "x" } },
+          { kind: { contains: "twitter" } },
+          { url: { contains: "twitter" } },
+          { url: { contains: "x.com" } },
+        ],
+      },
+    });
+
+    if (!xSourceMatch) {
+      log(`  Skipping XPageConfig ${config.tab} - no matching X source found`);
+      migrated++;
+      continue;
+    }
+
     await prisma.source.updateMany({
-      where: { /* TODO: match by some X-specific identifier */ },
+      where: {
+        OR: [
+          { kind: { contains: "x" } },
+          { kind: { contains: "twitter" } },
+          { url: { contains: "twitter" } },
+          { url: { contains: "x.com" } },
+        ],
+      },
       data: {
         configJson: JSON.stringify(configData),
       },
