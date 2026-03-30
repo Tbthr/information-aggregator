@@ -160,17 +160,14 @@ export async function runCollectJob(options: RunCollectJobOptions = {}): Promise
 
   const packs = options.packs ?? await loadAllTopicsFromDb();
 
-  // ── 2+3+10. Transaction-wrapped batch ops (syncTopics + upsertSources + archive) ─
-  // All three ops in one transaction — if any fails, entire job rolls back (D-01, D-02, D-03)
-  // Retry transient Prisma errors up to 3 times with exponential backoff (D-04, D-05)
-  let archiveResult: { newCount: number; updateCount: number } = { newCount: 0, updateCount: 0 };
-
+  // ── 2. Sync packs to DB ────────────────────────────────────────
   const packRecords = packs.map((p) => ({
     id: p.id,
     name: p.name,
     description: p.description,
   }));
 
+  // ── 3. Sync sources to DB ─────────────────────────────────────
   const allSources: Array<{
     id: string;
     kind: string;
@@ -193,44 +190,6 @@ export async function runCollectJob(options: RunCollectJobOptions = {}): Promise
         packId: pack.id,
       });
     }
-  }
-
-  try {
-    archiveResult = await withPrismaRetry(
-      async () => {
-        return await prisma.$transaction(
-          async (tx) => {
-            // Step 2: syncTopicsToPrisma
-            await syncTopicsToPrisma(packRecords, tx);
-
-            // Step 3: upsertSourcesBatch
-            await upsertSourcesBatch(allSources, tx);
-
-            // Step 10: archiveContentItems
-            const result = await archiveContentItems(archiveInput, tx);
-            return { newCount: result.newCount, updateCount: result.updateCount };
-          },
-          { timeout: 30000 } // 30s timeout for large batches (D-03)
-        );
-      },
-      { maxAttempts: 3, baseDelayMs: 100 }
-    );
-  } catch (err) {
-    // Classify error and log structured failure (D-07, D-08, D-09)
-    // Extract available context from the first source in the batch for error reporting
-    // retryCount is annotated on the error by withPrismaRetry (attempt - 1)
-    const firstSource = allSources[0];
-    const annotatedErr = err as { retryCount?: number };
-    logger?.error("Pipeline batch operation failed", {
-      sourceId: firstSource?.id ?? "unknown",
-      sourceUrl: firstSource?.url ?? "unknown",
-      sourceKind: firstSource?.kind ?? "unknown",
-      errorType: classifyError(err),
-      errorMessage: err instanceof Error ? err.message : String(err),
-      timestamp: new Date().toISOString(),
-      retryCount: annotatedErr.retryCount ?? 0,
-    });
-    throw err;
   }
 
   // ── 4. Resolve sources for collection (filters unsupported types) ─
@@ -388,6 +347,50 @@ export async function runCollectJob(options: RunCollectJobOptions = {}): Promise
     canonicalUrl: item.normalizedUrl,
     score: 0, // engagementScore removed from NormalizedItem
   }));
+
+  // ── 2+3+10. Transaction-wrapped batch ops (syncTopics + upsertSources + archive) ─
+  // All three ops in one transaction — if any fails, entire job rolls back (D-01, D-02, D-03)
+  // Retry transient Prisma errors up to 3 times with exponential backoff (D-04, D-05)
+  // Steps 2+3 must run first (sync packs/sources), then archive uses the collected data
+  let archiveResult: { newCount: number; updateCount: number } = { newCount: 0, updateCount: 0 };
+
+  try {
+    archiveResult = await withPrismaRetry(
+      async () => {
+        return await prisma.$transaction(
+          async (tx) => {
+            // Step 2: syncTopicsToPrisma
+            await syncTopicsToPrisma(packRecords, tx);
+
+            // Step 3: upsertSourcesBatch
+            await upsertSourcesBatch(allSources, tx);
+
+            // Step 10: archiveContentItems
+            const result = await archiveContentItems(archiveInput, tx);
+            return { newCount: result.newCount, updateCount: result.updateCount };
+          },
+          { timeout: 30000 } // 30s timeout for large batches (D-03)
+        );
+      },
+      { maxAttempts: 3, baseDelayMs: 100 }
+    );
+  } catch (err) {
+    // Classify error and log structured failure (D-07, D-08, D-09)
+    // Extract available context from the first source in the batch for error reporting
+    // retryCount is annotated on the error by withPrismaRetry (attempt - 1)
+    const firstSource = allSources[0];
+    const annotatedErr = err as { retryCount?: number };
+    logger?.error("Pipeline batch operation failed", {
+      sourceId: firstSource?.id ?? "unknown",
+      sourceUrl: firstSource?.url ?? "unknown",
+      sourceKind: firstSource?.kind ?? "unknown",
+      errorType: classifyError(err),
+      errorMessage: err instanceof Error ? err.message : String(err),
+      timestamp: new Date().toISOString(),
+      retryCount: annotatedErr.retryCount ?? 0,
+    });
+    throw err;
+  }
 
   log("Archived content", { newCount: archiveResult.newCount, updateCount: archiveResult.updateCount });
 
