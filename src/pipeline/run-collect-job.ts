@@ -28,6 +28,8 @@ import {
   recordSourcesSuccessBatch,
   recordSourceFailure,
 } from "../archive/upsert-content-prisma";
+import { prisma } from "../../lib/prisma";
+import { withPrismaRetry, classifyError } from "../utils/retry";
 import { buildAdapters } from "../adapters/build-adapters";
 import type { RawItem, NormalizedItem, SourceKind, ContentKind } from "../types/index";
 import type { Logger } from "../utils/logger";
