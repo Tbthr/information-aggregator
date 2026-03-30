@@ -8,12 +8,6 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-model Bookmark {
-  id           String   @id @default(cuid())
-  contentId    String?
-  bookmarkedAt DateTime @default(now()) @db.Timestamptz
-}
-
 model Content {
   id               String   @id @default(cuid())
   kind             String
@@ -40,28 +34,6 @@ model Content {
   @@index([sourceId])
   @@index([fetchedAt])
   @@index([publishedAt])
-}
-
-model CustomView {
-  id             String           @id @default(cuid())
-  name           String
-  icon           String
-  description    String?
-  createdAt      DateTime         @default(now()) @db.Timestamptz
-  filterJson     String?
-  updatedAt      DateTime         @db.Timestamptz
-  order          Int              @default(0)
-  customViewTopics CustomViewTopic[]
-}
-
-model CustomViewTopic {
-  id         String     @id @default(cuid())
-  viewId     String
-  topicId    String
-  view       CustomView @relation(fields: [viewId], references: [id], onDelete: Cascade)
-
-  @@unique([viewId, topicId])
-  @@index([viewId])
 }
 
 model DailyOverview {

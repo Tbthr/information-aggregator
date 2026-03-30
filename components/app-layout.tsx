@@ -1,19 +1,13 @@
 "use client"
 
-import { ReactNode } from "react"
+import { ReactNode, useCallback, useState } from "react"
 import { Sidebar, type NavId } from "@/components/sidebar"
 import { Topbar } from "@/components/topbar"
 import { ReadingPanel } from "@/components/reading-panel"
-import { SaveToast } from "@/components/save-toast"
 import { ScrollProgress } from "@/components/scroll-progress"
-import { useSaved } from "@/hooks/use-saved"
-import { useCustomViews, useTopics } from "@/hooks/use-api"
 import type { Article } from "@/lib/types"
-import { useCallback, useState, useMemo } from "react"
 
 interface PageProps {
-  isSaved: (id: string) => boolean
-  onToggleSave: (id: string) => void
   onOpenArticle: (article: Article) => void
 }
 
@@ -27,40 +21,6 @@ export function AppLayout({ children, activeNav, onNav }: AppLayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [openArticle, setOpenArticle] = useState<Article | null>(null)
   const [panelOpen, setPanelOpen] = useState(false)
-  const [toast, setToast] = useState<{ visible: boolean; message: string }>({
-    visible: false,
-    message: "",
-  })
-
-  const { savedIds, toggleSave, isSaved } = useSaved()
-  const { data: customViews } = useCustomViews()
-  const { data: topics = [] } = useTopics()
-
-  // Compute current view info
-  const viewInfo = useMemo(() => {
-    const view = customViews?.find((v) => v.id === activeNav)
-    if (!view) return undefined
-    // Look up topic names from topicIds
-    const topicNames = (view.topicIds || [])
-      .map((id) => topics.find((t) => t.id === id)?.name)
-      .filter(Boolean) as string[]
-    return {
-      name: view.name,
-      topicNames,
-    }
-  }, [customViews, topics, activeNav])
-
-  const handleToggleSave = useCallback(
-    (id: string) => {
-      const wasSaved = isSaved(id)
-      toggleSave(id)
-      setToast({
-        visible: true,
-        message: wasSaved ? "已取消收藏" : "已加入收藏夹",
-      })
-    },
-    [isSaved, toggleSave]
-  )
 
   const handleOpenArticle = useCallback((article: Article) => {
     setOpenArticle(article)
@@ -87,21 +47,16 @@ export function AppLayout({ children, activeNav, onNav }: AppLayoutProps) {
       <Sidebar
         activeNav={activeNav}
         onNav={handleNav}
-        savedCount={savedIds.size}
         collapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed((p) => !p)}
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar activeNav={activeNav} viewInfo={viewInfo} />
+        <Topbar activeNav={activeNav} />
 
         <main className="flex-1 overflow-y-auto" style={{ background: "var(--background)" }}>
           {typeof children === "function"
-            ? children({
-                isSaved,
-                onToggleSave: handleToggleSave,
-                onOpenArticle: handleOpenArticle,
-              })
+            ? children({ onOpenArticle: handleOpenArticle })
             : children}
         </main>
       </div>
@@ -110,14 +65,6 @@ export function AppLayout({ children, activeNav, onNav }: AppLayoutProps) {
         article={openArticle}
         open={panelOpen}
         onClose={handleClosePanel}
-        isSaved={isSaved}
-        onToggleSave={handleToggleSave}
-      />
-
-      <SaveToast
-        visible={toast.visible}
-        message={toast.message}
-        onClose={() => setToast((p) => ({ ...p, visible: false }))}
       />
     </div>
   )

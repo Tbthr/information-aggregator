@@ -2,17 +2,7 @@
 
 import { useMemo } from "react"
 import useSWR, { SWRConfiguration } from "swr"
-import type { Article, ApiResponse, DailyReportData, WeeklyReportData, Topic, Content } from "@/lib/types"
-
-// ============ Types ============
-
-interface CustomView {
-  id: string
-  name: string
-  icon: string
-  description?: string
-  topicIds?: string[]
-}
+import type { ApiResponse, DailyReportData, WeeklyReportData, Topic, Content } from "@/lib/types"
 
 // ============ Fetcher ============
 
@@ -108,23 +98,6 @@ export function useContent(params: FetchContentParams = {}) {
 
   const key = sp.toString() ? `/api/content?${sp.toString()}` : "/api/content"
   return useSWR<Content[]>(key, (url) => fetcher<ContentResponse>(url).then((d) => d.contents), defaultConfig)
-}
-
-interface CustomViewsResponse {
-  views: CustomView[]
-}
-
-export function useCustomViews() {
-  return useSWR<CustomView[]>("/api/custom-views", (url) => fetcher<CustomViewsResponse>(url).then((d) => d.views), defaultConfig)
-}
-
-interface BookmarksResponse {
-  items: Article[]
-  total: number
-}
-
-export function useBookmarks() {
-  return useSWR<Article[]>("/api/bookmarks", (url) => fetcher<BookmarksResponse>(url).then((d) => d.items), defaultConfig)
 }
 
 export function useDaily(date?: string) {

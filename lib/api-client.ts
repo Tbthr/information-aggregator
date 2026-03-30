@@ -1,173 +1,4 @@
-import type { Article, CustomView, Tweet, XPageConfigData, ApiResponse } from "./types"
-
-// Custom views API response type
-interface CustomViewsData {
-  views: Array<{
-    id: string
-    name: string
-    icon: string
-    description: string
-    topicIds?: string[]
-  }>
-}
-
-// Bookmarks API response type (legacy, items-based)
-interface BookmarksData {
-  items: Array<{
-    id: string
-    title: string
-    url: string
-    sourceName: string
-    sourceType: string
-    publishedAt: string | null
-    fetchedAt: string
-    summary: string | null
-    content: string | null
-    isBookmarked: boolean
-  }>
-  total: number
-}
-
-/**
- * Generic fetch wrapper with error handling
- */
-async function fetchApi<T>(url: string, options?: RequestInit): Promise<ApiResponse<T>> {
-  try {
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...options?.headers,
-      },
-    })
-
-    const data = await response.json()
-
-    if (!response.ok) {
-      return {
-        success: false,
-        error: data.error || `HTTP error: ${response.status}`,
-      }
-    }
-
-    return data as ApiResponse<T>
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Network error",
-    }
-  }
-}
-
-/**
- * Fetch bookmarks
- */
-export async function fetchBookmarks(): Promise<Article[]> {
-  const response = await fetchApi<BookmarksData>("/api/bookmarks")
-
-  if (!response.success || !response.data) {
-    return []
-  }
-
-  return response.data.items.map((item) => ({
-    id: item.id,
-    title: item.title,
-    source: item.sourceName || item.sourceType,
-    sourceUrl: item.url,
-    publishedAt: item.publishedAt || item.fetchedAt,
-    summary: item.summary || "",
-    content: item.content || "",
-    isBookmarked: item.isBookmarked,
-  }))
-}
-
-/**
- * Add a bookmark
- */
-export async function addBookmark(id: string): Promise<{ success: boolean; bookmarkedAt?: string }> {
-  const response = await fetchApi<{ bookmarkedAt: string }>(`/api/bookmarks/${encodeURIComponent(id)}`, {
-    method: "POST",
-  })
-
-  return {
-    success: response.success,
-    bookmarkedAt: response.data?.bookmarkedAt,
-  }
-}
-
-/**
- * Remove a bookmark
- */
-export async function removeBookmark(id: string): Promise<{ success: boolean }> {
-  const response = await fetchApi<unknown>(`/api/bookmarks/${encodeURIComponent(id)}`, {
-    method: "DELETE",
-  })
-
-  return {
-    success: response.success,
-  }
-}
-
-/**
- * Fetch custom views (list only, without articles)
- */
-export async function fetchCustomViews(): Promise<CustomViewsData["views"]> {
-  const response = await fetchApi<CustomViewsData>("/api/custom-views")
-
-  if (!response.success || !response.data) {
-    return []
-  }
-
-  return response.data.views
-}
-
-/**
- * Fetch content for a specific custom view
- * Uses the view's associated topicIds to filter content via Content API
- */
-export async function fetchCustomViewItems(
-  viewId: string,
-  params: { window?: "today" | "week" | "month"; sort?: "ranked" | "recent"; search?: string } = {}
-): Promise<{ items: Article[] }> {
-  // 1. Get the view's associated topic IDs
-  const viewsResponse = await fetchApi<CustomViewsData>("/api/custom-views")
-
-  if (!viewsResponse.success || !viewsResponse.data) {
-    return { items: [] }
-  }
-
-  const view = viewsResponse.data.views.find((v) => v.id === viewId)
-  if (!view) {
-    return { items: [] }
-  }
-
-  const topicIds = view.topicIds || []
-
-  // 2. If no associated topics, return empty
-  if (topicIds.length === 0) {
-    return { items: [] }
-  }
-
-  // 3. Fetch content via Content API using topicIds
-  const result = await fetchContent({
-    ...params,
-    topicIds: topicIds.join(","),
-  })
-
-  // 4. Map Content to Article format
-  const items = result.contents.map((c) => ({
-    id: c.id,
-    title: c.title || "",
-    source: c.authorLabel || c.sourceId,
-    sourceUrl: c.url,
-    publishedAt: c.publishedAt || c.fetchedAt,
-    summary: "",
-    content: c.body || "",
-    isBookmarked: false,
-  }))
-
-  return { items }
-}
+import type { Tweet, XPageConfigData, ApiResponse } from "./types"
 
 // ── Tweet API ──
 
@@ -204,32 +35,6 @@ export async function fetchTweets(params: FetchTweetsParams = {}): Promise<{
   }
 
   return { items: res.data.items, pagination: res.data.pagination };
-}
-
-export async function fetchTweetBookmarks(): Promise<Tweet[]> {
-  const res = await fetchApi<{ items: Tweet[] }>("/api/tweet-bookmarks");
-
-  if (!res.success || !res.data) {
-    return []
-  }
-
-  return res.data.items;
-}
-
-export async function addTweetBookmark(id: string): Promise<{ success: boolean; bookmarkedAt?: string }> {
-  const res = await fetchApi<{ bookmarkedAt: string }>(`/api/tweet-bookmarks/${id}`, {
-    method: "POST",
-  });
-
-  return {
-    success: res.success,
-    bookmarkedAt: res.data?.bookmarkedAt,
-  }
-}
-
-export async function removeTweetBookmark(id: string): Promise<{ success: boolean }> {
-  const res = await fetchApi<unknown>(`/api/tweet-bookmarks/${id}`, { method: "DELETE" });
-  return { success: res.success };
 }
 
 export async function fetchXConfig(tab?: string): Promise<XPageConfigData[]> {
@@ -384,4 +189,37 @@ export async function fetchContentById(id: string): Promise<ContentData | null> 
   }
 
   return res.data
+}
+
+// ── Internal ──
+
+/**
+ * Generic fetch wrapper with error handling
+ */
+async function fetchApi<T>(url: string, options?: RequestInit): Promise<ApiResponse<T>> {
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+      },
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: data.error || `HTTP error: ${response.status}`,
+      }
+    }
+
+    return data as ApiResponse<T>
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Network error",
+    }
+  }
 }

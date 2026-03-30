@@ -16,9 +16,6 @@ export default function DailyRoute() {
       case "weekly":
         router.push("/weekly")
         break
-      case "saved":
-        router.push("/saved")
-        break
       case "config":
         router.push("/config")
         break
@@ -35,10 +32,8 @@ export default function DailyRoute() {
 
   return (
     <AppLayout activeNav="daily" onNav={handleNav}>
-      {({ isSaved, onToggleSave, onOpenArticle }) => (
+      {({ onOpenArticle }) => (
         <DailyPage
-          isSaved={isSaved}
-          onToggleSave={onToggleSave}
           onOpenArticle={onOpenArticle}
         />
       )}

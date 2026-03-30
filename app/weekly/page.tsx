@@ -16,9 +16,6 @@ export default function WeeklyRoute() {
       case "weekly":
         router.push("/weekly")
         break
-      case "saved":
-        router.push("/saved")
-        break
       case "config":
         router.push("/config")
         break
@@ -35,10 +32,8 @@ export default function WeeklyRoute() {
 
   return (
     <AppLayout activeNav="weekly" onNav={handleNav}>
-      {({ isSaved, onToggleSave, onOpenArticle }) => (
+      {({ onOpenArticle }) => (
         <WeeklyPage
-          isSaved={isSaved}
-          onToggleSave={onToggleSave}
           onOpenArticle={onOpenArticle}
         />
       )}

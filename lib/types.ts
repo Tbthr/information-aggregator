@@ -32,15 +32,6 @@ export type Article = {
   publishedAt: string
   summary: string
   content: string
-  isBookmarked?: boolean
-}
-
-export type CustomView = {
-  id: string
-  name: string
-  icon: string
-  description: string
-  articles: Article[]
 }
 
 export type DigestTopic = {
@@ -128,7 +119,6 @@ export type Tweet = {
   bullets: string[]
   categories: string[]
   score?: number
-  isBookmarked?: boolean
   articleImageUrl?: string
   media?: Array<{
     type: "photo" | "video" | "animated_gif"

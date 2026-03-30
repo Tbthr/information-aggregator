@@ -37,7 +37,7 @@ export function XPage() {
   const [showConfig, setShowConfig] = useState(false)
 
   const { configs } = useXConfig()
-  const { items, total, loading, refetch, toggleSave, isSaved } = useTweets({
+  const { items, total, loading, refetch } = useTweets({
     tab: activeTab,
     sort: sortOrder,
     window: timeWindow,
@@ -173,8 +173,6 @@ export function XPage() {
             <TweetCard
               key={tweet.id}
               tweet={tweet}
-              isSaved={isSaved(tweet.id)}
-              onToggleSave={toggleSave}
             />
           ))
         )}

@@ -1,7 +1,7 @@
 "use client"
 
 import Image from "next/image"
-import { Heart, MessageCircle, Repeat2, Bookmark, ExternalLink } from "lucide-react"
+import { Heart, MessageCircle, Repeat2, ExternalLink } from "lucide-react"
 import { formatEngagement } from "@/lib/tweet-utils"
 import { formatDateTime } from "@/lib/format-date"
 import type { Tweet } from "@/lib/types"
@@ -9,11 +9,9 @@ import { TweetMediaGallery } from "@/components/tweet-media-gallery"
 
 interface TweetCardProps {
   tweet: Tweet
-  isSaved: boolean
-  onToggleSave: (id: string) => void
 }
 
-export function TweetCard({ tweet, isSaved, onToggleSave }: TweetCardProps) {
+export function TweetCard({ tweet }: TweetCardProps) {
   return (
     <div className="border rounded-xl p-4 bg-card">
       {/* Header */}
@@ -213,14 +211,6 @@ export function TweetCard({ tweet, isSaved, onToggleSave }: TweetCardProps) {
           {formatEngagement(tweet.retweetCount)}
         </span>
         <div className="ml-auto flex items-center gap-2">
-          <button
-            onClick={() => onToggleSave(tweet.id)}
-            className={`p-1 rounded-md transition-colors ${
-              isSaved ? "text-blue-500" : "hover:bg-muted"
-            }`}
-          >
-            <Bookmark className={`w-4 h-4 ${isSaved ? "fill-current" : ""}`} />
-          </button>
           <a
             href={tweet.url}
             target="_blank"

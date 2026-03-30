@@ -1,21 +1,18 @@
 "use client"
 
 import { useEffect } from "react"
-import { X, ExternalLink, Bookmark } from "lucide-react"
+import { X, ExternalLink } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatDateTime } from "@/lib/format-date"
 import type { Article } from "@/lib/types"
-import { SaveButton } from "@/components/save-button"
 
 interface ReadingPanelProps {
   article: Article | null
   open: boolean
   onClose: () => void
-  isSaved: (id: string) => boolean
-  onToggleSave: (id: string) => void
 }
 
-export function ReadingPanel({ article, open, onClose, isSaved, onToggleSave }: ReadingPanelProps) {
+export function ReadingPanel({ article, open, onClose }: ReadingPanelProps) {
   // 键盘关闭
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -70,23 +67,15 @@ export function ReadingPanel({ article, open, onClose, isSaved, onToggleSave }: 
           </div>
           <div className="flex items-center gap-1">
             {article && (
-              <>
-                <SaveButton
-                  articleId={article.id}
-                  isSaved={isSaved(article.id)}
-                  onToggle={onToggleSave}
-                  size="md"
-                />
-                <a
-                  href={article?.sourceUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-accent transition-colors"
-                  aria-label="查看原文"
-                >
-                  <ExternalLink className="w-4 h-4 text-muted-foreground" />
-                </a>
-              </>
+              <a
+                href={article?.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-accent transition-colors"
+                aria-label="查看原文"
+              >
+                <ExternalLink className="w-4 h-4 text-muted-foreground" />
+              </a>
             )}
             <button
               onClick={onClose}
@@ -161,13 +150,6 @@ export function ReadingPanel({ article, open, onClose, isSaved, onToggleSave }: 
                     <ExternalLink className="w-3 h-3" />
                   </a>
                 </div>
-                <SaveButton
-                  articleId={article.id}
-                  isSaved={isSaved(article.id)}
-                  onToggle={onToggleSave}
-                  size="md"
-                  className="border border-border"
-                />
               </div>
             </div>
           )}

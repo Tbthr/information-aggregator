@@ -1,19 +1,15 @@
 "use client"
 
-import { cn } from "@/lib/utils"
 import { formatRelative } from "@/lib/format-date"
-import { SaveButton } from "@/components/save-button"
 import type { Article } from "@/lib/types"
 
 interface ArticleCardProps {
   article: Article
-  isSaved: boolean
-  onToggleSave: (id: string) => void
   onClick: (article: Article) => void
   variant?: "grid" | "wide" | "compact"
 }
 
-export function ArticleCard({ article, isSaved, onToggleSave, onClick, variant = "grid" }: ArticleCardProps) {
+export function ArticleCard({ article, onClick, variant = "grid" }: ArticleCardProps) {
   if (variant === "compact") {
     return (
       <div
@@ -35,7 +31,6 @@ export function ArticleCard({ article, isSaved, onToggleSave, onClick, variant =
           </h3>
           <p className="mt-1 text-xs text-muted-foreground leading-relaxed line-clamp-2">{article.summary}</p>
         </div>
-        <SaveButton articleId={article.id} isSaved={isSaved} onToggle={onToggleSave} size="sm" className="shrink-0 mt-1" />
       </div>
     )
   }
@@ -61,7 +56,6 @@ export function ArticleCard({ article, isSaved, onToggleSave, onClick, variant =
               {article.title}
             </h3>
           </div>
-          <SaveButton articleId={article.id} isSaved={isSaved} onToggle={onToggleSave} size="md" className="shrink-0" />
         </div>
         <p className="text-sm font-sans text-muted-foreground leading-relaxed">{article.summary}</p>
       </div>
@@ -89,7 +83,6 @@ export function ArticleCard({ article, isSaved, onToggleSave, onClick, variant =
             {article.title}
           </h3>
         </div>
-        <SaveButton articleId={article.id} isSaved={isSaved} onToggle={onToggleSave} size="sm" className="shrink-0" />
       </div>
       <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{article.summary}</p>
     </div>

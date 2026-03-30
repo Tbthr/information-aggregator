@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react"
 import { ArticleListSkeleton } from "@/components/loading-skeletons"
-import { SaveButton } from "@/components/save-button"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -80,13 +79,9 @@ function getTodayStr(): string {
 
 function ReferenceLinkRow({
   item,
-  isSaved,
-  onToggleSave,
   onOpenArticle,
 }: {
   item: Content
-  isSaved: boolean
-  onToggleSave: (id: string) => void
   onOpenArticle: (article: Article) => void
 }) {
   return (
@@ -108,13 +103,6 @@ function ReferenceLinkRow({
         )}
       </a>
       <div className="flex items-center gap-2 shrink-0 mt-0.5">
-        <SaveButton
-          articleId={item.id}
-          isSaved={isSaved}
-          onToggle={onToggleSave}
-          size="sm"
-          className="shrink-0"
-        />
         <a
           href={item.url}
           target="_blank"
@@ -173,14 +161,10 @@ function DeletedReferenceRow() {
 function TopicCard({
   topic,
   contentMap,
-  isSaved,
-  onToggleSave,
   onOpenArticle,
 }: {
   topic: DigestTopic
   contentMap: Map<string, Content>
-  isSaved: (id: string) => boolean
-  onToggleSave: (id: string) => void
   onOpenArticle: (article: Article) => void
 }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -230,8 +214,6 @@ function TopicCard({
                     <ReferenceLinkRow
                       key={id}
                       item={content}
-                      isSaved={isSaved(id)}
-                      onToggleSave={onToggleSave}
                       onOpenArticle={onOpenArticle}
                     />
                   )
@@ -248,12 +230,10 @@ function TopicCard({
 // ── Main page component ──
 
 interface DailyPageProps {
-  isSaved: (id: string) => boolean
-  onToggleSave: (id: string) => void
   onOpenArticle: (article: Article) => void
 }
 
-export function DailyPage({ isSaved, onToggleSave, onOpenArticle }: DailyPageProps) {
+export function DailyPage({ onOpenArticle }: DailyPageProps) {
   const [currentDate, setCurrentDate] = useState(getTodayStr)
   const { data, isLoading, error } = useDaily(currentDate)
 
@@ -390,8 +370,6 @@ export function DailyPage({ isSaved, onToggleSave, onOpenArticle }: DailyPagePro
                 key={topic.id}
                 topic={topic}
                 contentMap={contentMap}
-                isSaved={isSaved}
-                onToggleSave={onToggleSave}
                 onOpenArticle={onOpenArticle}
               />
             ))}

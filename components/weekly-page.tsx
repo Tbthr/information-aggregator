@@ -5,15 +5,12 @@ import { ChevronLeft, ChevronRight, ExternalLink } from "lucide-react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { ArticleListSkeleton } from "@/components/loading-skeletons"
-import { SaveButton } from "@/components/save-button"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { useWeekly } from "@/hooks/use-api"
 import type { Article, WeeklyPick, Content } from "@/lib/types"
 
 interface WeeklyPageProps {
-  isSaved: (id: string) => boolean
-  onToggleSave: (id: string) => void
   onOpenArticle: (article: Article) => void
 }
 
@@ -62,15 +59,11 @@ function PickCard({
   pick,
   item,
   rank,
-  isSaved,
-  onToggleSave,
   onOpenArticle,
 }: {
   pick: WeeklyPick
   item: Content | undefined
   rank: number
-  isSaved: boolean
-  onToggleSave: (id: string) => void
   onOpenArticle: (article: Article) => void
 }) {
   const isDeleted = !item
@@ -78,20 +71,11 @@ function PickCard({
   return (
     <Card className="border-border rounded-2xl py-0 gap-0 overflow-hidden hover:border-primary/50 hover:shadow-md transition-all animate-card-hover">
       <CardContent className="p-6">
-        {/* Top row: rank, score, save */}
+        {/* Top row: rank */}
         <div className="flex items-center gap-2 mb-3">
           <span className="text-[10px] font-mono text-muted-foreground/60 w-5 shrink-0">
             {String(rank).padStart(2, "0")}
           </span>
-          {!isDeleted && (
-            <SaveButton
-              articleId={pick.contentId}
-              isSaved={isSaved}
-              onToggle={onToggleSave}
-              size="sm"
-              className="shrink-0"
-            />
-          )}
         </div>
 
         {/* Title */}
@@ -138,7 +122,7 @@ function PickCard({
   )
 }
 
-export function WeeklyPage({ isSaved, onToggleSave, onOpenArticle }: WeeklyPageProps) {
+export function WeeklyPage({ onOpenArticle }: WeeklyPageProps) {
   const currentWeek = useMemo(() => getCurrentWeek(), [])
   const [week, setWeek] = useState(currentWeek)
   const { data, isLoading, error } = useWeekly(week)
@@ -291,8 +275,6 @@ export function WeeklyPage({ isSaved, onToggleSave, onOpenArticle }: WeeklyPageP
                   pick={pick}
                   item={itemMap.get(pick.contentId)}
                   rank={i + 1}
-                  isSaved={isSaved(pick.contentId)}
-                  onToggleSave={onToggleSave}
                   onOpenArticle={onOpenArticle}
                 />
               </div>
