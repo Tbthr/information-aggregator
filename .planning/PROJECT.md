@@ -40,10 +40,13 @@ Existing codebase at `/Users/lyq/ai-enhance/information-aggregator`：
 - ✓ **周报 Pipeline** — `src/reports/weekly.ts` 实现：collect → editorial → picks → persist
 - ✓ **AI 多 provider 支持** — Anthropic/Gemini/OpenAI fallback
 - ✓ **前端 SWR 数据获取** — 统一使用 SWR hooks
+- ✓ **PIPELINE-01** — 数据采集所有 fetcher 的关键字段检查：RawItem 新增 author/content 字段，4个适配器全部添加 discard logging 和 discard summary (Phase 2)
 
 ### Active
 
-- [ ] **[PIPELINE-01]** 数据采集所有 fetcher 的关键字段检查 — RSS/JSON Feed/Website/X 适配器的 RawItem 字段完整性
+- [ ] **[PIPELINE-02]** 日报 AI 配置的初始 Topic 指定 — Supabase 中配置默认 topicIds 提高日报质量
+- [ ] **[PIPELINE-03]** 日报 AI 使用优化 — 分析 `prompts-reports.ts` 中 AI 调用效率和质量
+- [ ] **[PIPELINE-04]** 周报全流程梳理 — `src/reports/weekly.ts` 各阶段 AI 调用和输出质量
 - [ ] **[PIPELINE-02]** 日报 AI 配置的初始 Topic 指定 — Supabase 中配置默认 topicIds 提高日报质量
 - [ ] **[PIPELINE-03]** 日报 AI 使用优化 — 分析 `prompts-reports.ts` 中 AI 调用效率和质量
 - [ ] **[PIPELINE-04]** 周报全流程梳理 — `src/reports/weekly.ts` 各阶段 AI 调用和输出质量
