@@ -244,7 +244,7 @@ export async function runReportsDiagnostics(
         verbose,
         dailyOnly: isDailyOnly,
         weeklyOnly: isWeeklyOnly,
-        timeout: 900,
+        timeout: 1800,
         pollInterval: 3,
       });
       const weeklyDurationMs = Date.now() - weeklyStart;
