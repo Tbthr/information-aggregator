@@ -41,7 +41,7 @@ export async function runFullDiagnostics(
     const cleanupStart = Date.now();
     try {
       if (args.runCollection) {
-        await prisma.item.deleteMany({});
+        await prisma.content.deleteMany({});
       }
       if (!args.weeklyOnly) {
         await prisma.dailyOverview.deleteMany({});
