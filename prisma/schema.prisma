@@ -25,7 +25,7 @@ model Content {
   body             String?  @db.Text
   url              String
   authorLabel      String?
-  publishedAt      DateTime?              @db.Timestamptz
+  publishedAt      DateTime?              @db.Timestamptz // Nullable: 257 existing records have NULL (e.g. tweets without timestamps)
   fetchedAt        DateTime @default(now()) @db.Timestamptz
 
   engagementScore  Int?     // likes, retweets, replies combined
@@ -209,6 +209,7 @@ model Topic {
   id            String   @id @default(cuid())
   name          String   @unique
   description   String?
+  enabled       Boolean  @default(true) // 栏目总开关；关闭后既不参与分类，也不参与展示
 
   // NEW: topic matching rules
   includeRules  String[] @default([])  // Keywords/patterns that MUST match

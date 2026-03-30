@@ -341,9 +341,6 @@ async function persistResults(
           title: topic.title,
           summary: topic.summary,
           contentIds: topic.contentIds,
-          // Legacy fields - kept for migration compatibility
-          itemIds: [],
-          tweetIds: [],
         })),
       })
     }

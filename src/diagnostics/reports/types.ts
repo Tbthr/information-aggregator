@@ -51,8 +51,6 @@ export interface DailyReportData {
     order: number;
     title: string;
     summary: string;
-    itemIds: string[];
-    tweetIds: string[];
     contentIds: string[];
   }>;
   contents: Array<{

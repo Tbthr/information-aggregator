@@ -215,6 +215,7 @@ export async function runCollectJob(options: RunCollectJobOptions = {}): Promise
     id: pack.id,
     name: pack.name,
     description: pack.description,
+    enabled: true,
     includeRules: pack.includeRules,
     excludeRules: pack.excludeRules,
     scoreBoost: pack.scoreBoost,

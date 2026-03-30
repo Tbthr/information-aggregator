@@ -50,7 +50,6 @@ export async function GET(
       filterJson: view.filterJson,
       order: view.order,
       topicIds: view.customViewPacks.map((cvp) => cvp.packId),
-      customViewPacks: view.customViewPacks,
     })
   } catch (err) {
     console.error("Error fetching custom view:", err)
@@ -118,7 +117,6 @@ export async function PUT(
       filterJson: view.filterJson,
       order: view.order,
       topicIds: view.customViewPacks.map((cvp) => cvp.packId),
-      customViewPacks: view.customViewPacks,
     })
   } catch (err) {
     console.error("Error updating custom view:", err)

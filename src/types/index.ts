@@ -38,6 +38,7 @@ export interface Topic {
   id: string;
   name: string;
   description?: string;
+  enabled: boolean;
   includeRules: string[];
   excludeRules: string[];
   scoreBoost: number;

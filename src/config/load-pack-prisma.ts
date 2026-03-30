@@ -209,6 +209,7 @@ export async function loadAllTopicsFromDb(): Promise<TopicWithSources[]> {
       id: pack.id,
       name: pack.name,
       description: pack.description ?? undefined,
+      enabled: true,                  // Pack-based topics are always enabled
       includeRules: pack.mustInclude, // Pack.mustInclude maps to Topic.includeRules
       excludeRules: pack.exclude,     // Pack.exclude maps to Topic.excludeRules
       scoreBoost: 1.0,                // Default value
@@ -238,6 +239,7 @@ export async function loadTopicById(topicId: string): Promise<TopicWithSources |
     id: pack.id,
     name: pack.name,
     description: pack.description ?? undefined,
+    enabled: true,
     includeRules: pack.mustInclude,
     excludeRules: pack.exclude,
     scoreBoost: 1.0,
@@ -282,6 +284,7 @@ export async function loadTopicsByIds(topicIds: string[]): Promise<TopicWithSour
       id: pack.id,
       name: pack.name,
       description: pack.description ?? undefined,
+      enabled: true,
       includeRules: pack.mustInclude,
       excludeRules: pack.exclude,
       scoreBoost: 1.0,

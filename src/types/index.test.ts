@@ -49,6 +49,7 @@ describe("topic types", () => {
       id: "topic-1",
       name: "AI News",
       description: "Latest AI developments",
+      enabled: true,
       includeRules: ["AI", "LLM", "GPT"],
       excludeRules: ["crypto", "NFT"],
       scoreBoost: 1.5,

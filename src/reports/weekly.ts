@@ -158,15 +158,14 @@ async function persistResults(
 
     // Create new picks with contentId
     if (picks.length > 0) {
-      // Use individual creates to avoid createMany type issues with optional contentId
       for (let i = 0; i < picks.length; i++) {
         await tx.weeklyPick.create({
           data: {
             weeklyId: report.id,
             order: i,
             contentId: picks[i].contentId,
-            // Legacy field - itemId is required but we're migrating to contentId
-            itemId: `legacy-migration-${picks[i].contentId}`,
+            // Legacy field - kept for migration compatibility, Prisma default applies
+            itemId: picks[i].contentId,
             reason: picks[i].reason,
           },
         })

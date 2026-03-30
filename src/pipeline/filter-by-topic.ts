@@ -81,14 +81,20 @@ export function classifyByTopic(item: FilterableItem, topic: Topic): boolean {
 
 /**
  * Filter items based on multiple topics (OR logic - item passes if it matches any topic)
- * Only considers topics that are in the item's sourceDefaultTopicIds.
+ * Only considers topics that are in the item's sourceDefaultTopicIds and are enabled.
  */
 export function filterByTopics(items: FilterableItem[], topics: Topic[]): FilterableItem[] {
   if (topics.length === 0) {
     return items;
   }
 
-  const topicMap = new Map(topics.map((t) => [t.id, t]));
+  // Skip disabled topics
+  const enabledTopics = topics.filter((t) => t.enabled !== false);
+  if (enabledTopics.length === 0) {
+    return items;
+  }
+
+  const topicMap = new Map(enabledTopics.map((t) => [t.id, t]));
 
   return items.filter((item) => {
     const candidateTopics = getCandidateTopics(item, topicMap);
@@ -125,7 +131,13 @@ export function classifyItemTopics(item: FilterableItem, topics: Topic[]): strin
     return [];
   }
 
-  const topicMap = new Map(topics.map((t) => [t.id, t]));
+  // Skip disabled topics
+  const enabledTopics = topics.filter((t) => t.enabled !== false);
+  if (enabledTopics.length === 0) {
+    return [];
+  }
+
+  const topicMap = new Map(enabledTopics.map((t) => [t.id, t]));
   const candidateTopics = getCandidateTopics(item, topicMap);
 
   return candidateTopics
@@ -172,6 +184,9 @@ export function scoreItemByTopic(
 ): Record<string, number> {
   const scores: Record<string, number> = {};
 
+  // Skip disabled topics
+  const enabledTopics = topics.filter((t) => t.enabled !== false);
+
   // Only score topics within sourceDefaultTopicIds
   const defaultIds = item.sourceDefaultTopicIds;
   if (!defaultIds || defaultIds.length === 0) {
@@ -179,7 +194,7 @@ export function scoreItemByTopic(
   }
 
   const defaultIdSet = new Set(defaultIds);
-  const eligibleTopics = topics.filter((t) => defaultIdSet.has(t.id));
+  const eligibleTopics = enabledTopics.filter((t) => defaultIdSet.has(t.id));
 
   for (const topic of eligibleTopics) {
     let score = 0;
