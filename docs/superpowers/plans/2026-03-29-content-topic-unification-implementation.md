@@ -912,3 +912,42 @@ The following models, fields, and subsystems are NOT in scope for this refactor 
 | `XPageConfig.count` | `Source.configJson.count` | |
 | `XPageConfig` (model) | — | removed after fields merged into Source.configJson |
 
+---
+
+## Implementation Status
+
+**Last Updated:** 2026-03-30
+
+### Completion Status
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Task 1: Add new schema | ✅ Complete | Content model added, Source.type → Source.kind, Pack → Topic |
+| Task 2: Rewrite shared types | ✅ Complete | Content type, topic types, unified API contracts |
+| Task 3: Split fetchers | ✅ Complete | RSS, JSON Feed, Website adapters separated |
+| Task 4: Normalization contracts | ✅ Complete | URL normalization, text normalization, topic classification |
+| Task 5: Rewrite dedupe | ✅ Complete | Exact dedupe on Content.url, near dedupe on dedupeText |
+| Task 6: Content persistence | ✅ Complete | upsert-content-prisma.ts created, Content archived |
+| Task 7: Report generation | ✅ Complete | Daily/Weekly use contentIds, ContentRead backed |
+| Task 8: APIs/hooks migration | ✅ Complete | /api/daily, /api/weekly use Content |
+| Task 9: Data migration | ✅ Complete | 797 Items → Content, 8 DigestTopics, 6 WeeklyPicks, 102 Sources |
+| Task 10: Diagnostics update | ✅ Complete | Types updated to content terminology |
+| Task 11: Documentation | ✅ Complete | AGENTS.md updated, this plan marked complete |
+| Task 12: L5 acceptance | ⏳ Pending | Awaiting execution |
+
+### Migration Summary (2026-03-30)
+
+- **Step 1 (Item → Content):** 797 Items migrated to Content(kind="article"), 1 skipped (duplicate URL)
+- **Step 2 (Tweet → Content):** 0 Tweets in database
+- **Step 3 (XPageConfig):** 4 configs skipped (no X sources in database)
+- **Step 4 (DigestTopic):** 8 topics migrated to use contentIds
+- **Step 5 (WeeklyPick):** 6 picks migrated to use contentId
+- **Step 6 (Pack → Topic):** 8 packs processed (schema rename only)
+- **Step 7 (Source.packId):** 102 sources migrated to defaultTopicIds
+- **Step 8 (Bookmarks):** 0 legacy bookmarks to migrate
+
+### Remaining Work
+
+- Run L5 acceptance verification (`scripts/diagnostics.ts full --run-collection --cleanup`)
+- Legacy schema cleanup (remove DigestTopic.itemIds/tweetIds after verification)
+- Prisma schema updates for production migration
