@@ -194,13 +194,11 @@ async function collectData(now: Date) {
   return { contents }
 }
 
-/** Step 2: Filter by topic and keyword blacklist */
+/** Step 2: Filter by topic and excludeRules */
 async function filterContent(
   contents: Content[],
   config: DailyReportConfig
 ): Promise<{ filteredContents: Content[] }> {
-  const { keywordBlacklist } = config
-
   // Topic filtering: if topicIds specified, only include contents matching those topics
   let topicFilteredContents = contents
   if (config.topicIds.length > 0) {
@@ -212,14 +210,30 @@ async function filterContent(
     }
   }
 
-  const matchesBlacklist = (text: string): boolean => {
-    if (!keywordBlacklist.length) return false
-    return keywordBlacklist.some((keyword) => text.toLowerCase().includes(keyword.toLowerCase()))
+  // Load topics to get excludeRules
+  const { loadTopicsByIds } = await import("@/src/config/load-pack-prisma")
+  const topics = await loadTopicsByIds(config.topicIds)
+
+  // Build excludeRules map: topicId -> keywords[]
+  const excludeRulesMap = new Map<string, string[]>()
+  for (const topic of topics) {
+    if (topic.excludeRules.length > 0) {
+      excludeRulesMap.set(topic.id, topic.excludeRules)
+    }
   }
 
-  const filteredContents = topicFilteredContents.filter(
-    (content) => !matchesBlacklist((content.title ?? "") + " " + (content.body ?? ""))
-  )
+  // Filter: exclude content if any of its topic's excludeRules match content title+body
+  const filteredContents = topicFilteredContents.filter((content) => {
+    for (const tid of content.topicIds) {
+      const keywords = excludeRulesMap.get(tid)
+      if (!keywords) continue
+      const text = (content.title ?? "") + " " + (content.body ?? "")
+      if (keywords.some((kw) => text.toLowerCase().includes(kw.toLowerCase()))) {
+        return false // excluded
+      }
+    }
+    return true
+  })
 
   return { filteredContents }
 }
