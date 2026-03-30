@@ -38,12 +38,12 @@ Plans:
   1. RSS adapter correctly extracts Atom `<link href="...">` attribute links
   2. RSS adapter handles relative timestamps (converts to absolute)
   3. Discard rate is logged per source so abnormal losses are detectable
-  4. All four fetchers (RSS, JSON Feed, Website, X/Twitter) emit complete RawItem with title, url, publishedAt, and sourceType
+  4. All four fetchers (RSS, JSON Feed, Website, X/Twitter) emit complete RawItem with title, url, publishedAt, author, content, and sourceType
 **Plans**: 2 plans
 
 Plans:
-- [x] 01-01-PLAN.md — Fix `packs` → `topicIds` field mismatch in ReportSettingsPage
-- [ ] 01-02-PLAN.md — Create tabbed /settings page with routing redirects and sidebar nav update
+- [ ] 02-01-PLAN.md — Fix Website adapter (discard logging, top-level author/content, discard summary) + extend RawItem type
+- [ ] 02-02-PLAN.md — Fix X/Bird adapter (24h window, discard logging) + RSS/JSON Feed (top-level author/content, discard summary)
 
 ### Phase 3: Topic Configuration + AI Optimization
 
@@ -59,8 +59,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Fix `packs` → `topicIds` field mismatch in ReportSettingsPage
-- [ ] 01-02-PLAN.md — Create tabbed /settings page with routing redirects and sidebar nav update
+- [ ] 03-01-PLAN.md — Topic configuration and seeding
+- [ ] 03-02-PLAN.md — AI call optimization
 
 ### Phase 4: Pipeline Robustness
 
@@ -75,14 +75,14 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Fix `packs` → `topicIds` field mismatch in ReportSettingsPage
-- [ ] 01-02-PLAN.md — Create tabbed /settings page with routing redirects and sidebar nav update
+- [ ] 04-01-PLAN.md — Transaction wrapping
+- [ ] 04-02-PLAN.md — Retry logic and error logging
 
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Settings Consolidation | 1/2 | In Progress|  |
-| 2. Pipeline Field Quality | 0/N | Not started | - |
-| 3. Topic Config + AI Opt | 0/N | Not started | - |
-| 4. Pipeline Robustness | 0/N | Not started | - |
+| 1. Settings Consolidation | 2/2 | Complete | 2026-03-30 |
+| 2. Pipeline Field Quality | 0/2 | Not started | - |
+| 3. Topic Config + AI Opt | 0/2 | Not started | - |
+| 4. Pipeline Robustness | 0/2 | Not started | - |
