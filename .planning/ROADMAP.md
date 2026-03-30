@@ -23,7 +23,11 @@ This project audits and optimizes the Information Aggregator's data collection p
   2. User can select topics from a dropdown and save without the `packs` field error
   3. Settings API returns `topicIds` (not `packs`) and frontend correctly displays saved topics
   4. Sources configuration is accessible via a second tab on the same page
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Fix `packs` → `topicIds` field mismatch in ReportSettingsPage
+- [ ] 01-02-PLAN.md — Create tabbed /settings page with routing redirects and sidebar nav update
 
 ### Phase 2: Pipeline Field Quality Audit
 
@@ -35,7 +39,11 @@ This project audits and optimizes the Information Aggregator's data collection p
   2. RSS adapter handles relative timestamps (converts to absolute)
   3. Discard rate is logged per source so abnormal losses are detectable
   4. All four fetchers (RSS, JSON Feed, Website, X/Twitter) emit complete RawItem with title, url, publishedAt, and sourceType
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Fix `packs` → `topicIds` field mismatch in ReportSettingsPage
+- [ ] 01-02-PLAN.md — Create tabbed /settings page with routing redirects and sidebar nav update
 
 ### Phase 3: Topic Configuration + AI Optimization
 
@@ -48,7 +56,11 @@ This project audits and optimizes the Information Aggregator's data collection p
   3. Daily AI uses batched calls (1 request for clustering, not N per-item requests)
   4. Weekly picks generation uses a single batched AI call instead of 6 separate calls
   5. Model version is pinned to a specific version string for deterministic clustering
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Fix `packs` → `topicIds` field mismatch in ReportSettingsPage
+- [ ] 01-02-PLAN.md — Create tabbed /settings page with routing redirects and sidebar nav update
 
 ### Phase 4: Pipeline Robustness
 
@@ -60,7 +72,11 @@ This project audits and optimizes the Information Aggregator's data collection p
   2. Transient failures retry up to 3 times before surfacing error
   3. Failed operations log specific source identifiers for manual re-run
   4. All Prisma batch operations (`upsertSourcesBatch`, `syncTopicsToPrisma`) are wrapped in `$transaction`
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Fix `packs` → `topicIds` field mismatch in ReportSettingsPage
+- [ ] 01-02-PLAN.md — Create tabbed /settings page with routing redirects and sidebar nav update
 
 ## Progress
 
