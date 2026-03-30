@@ -4,7 +4,7 @@ import { createAiClient } from "../../../../src/ai/providers"
 import { generateWeeklyReport } from "../../../../src/reports/weekly"
 
 export const runtime = "nodejs"
-export const maxDuration = 1800
+export const maxDuration = 3600
 
 export async function POST(request: NextRequest) {
   if (!verifyCronRequest(request)) {
