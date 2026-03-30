@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label"
 import { Pencil, Loader2 } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 
-type Source = { id: string; name: string; url: string | null; type: string; enabled: boolean; packId: string | null; description?: string | null }
+type Source = { id: string; name: string; url: string | null; kind: string; enabled: boolean; defaultTopicIds: string[]; description?: string | null }
 
 interface SourceEditDialogProps {
   source: Source | null
@@ -103,7 +103,7 @@ export function SourceEditDialog({ source, open, onOpenChange, onSave }: SourceE
             </Label>
             <input
               type="text"
-              value={source?.type || ""}
+              value={source?.kind || ""}
               disabled
               className="w-full text-sm font-sans bg-muted border border-border rounded-lg px-3 py-2 text-muted-foreground cursor-not-allowed mt-1"
             />

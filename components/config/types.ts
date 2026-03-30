@@ -2,17 +2,19 @@ export type Source = {
   id: string
   name: string
   url: string | null
-  type: string
+  kind: string
   enabled: boolean
-  packId: string | null
+  defaultTopicIds: string[]
   description?: string | null
 }
 
-export type Pack = {
+export type TopicConfig = {
   id: string
   name: string
-  description: string | null
-  sourceCount: number
-  itemCount: number
-  latestItem: string | null
+  description?: string | null
+  includeRules: string[]
+  excludeRules: string[]
+  scoreBoost: number
+  displayOrder: number
+  maxItems: number
 }

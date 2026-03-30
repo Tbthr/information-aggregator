@@ -14,10 +14,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { PackListPanel } from "./config/pack-list-panel"
-import { PackDetailPanel } from "./config/pack-detail-panel"
+import { TopicListPanel } from "./config/topic-list-panel"
+import { TopicDetailPanel } from "./config/topic-detail-panel"
 import { AddSourceDialog } from "./config/add-source-dialog"
-import type { Source, Pack } from "./config/types"
+import type { Source, TopicConfig } from "./config/types"
 
 export function ConfigPage() {
   return (
@@ -38,37 +38,37 @@ export function ConfigPage() {
 }
 
 function EngineConfig() {
-  const [packs, setPacks] = useState<Pack[]>([])
+  const [topics, setTopics] = useState<TopicConfig[]>([])
   const [sources, setSources] = useState<Source[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedPack, setSelectedPack] = useState<Pack | null>(null)
-  const [expandedPacks, setExpandedPacks] = useState<Set<string>>(new Set())
+  const [selectedTopic, setSelectedTopic] = useState<TopicConfig | null>(null)
+  const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set())
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
-  const [newPackName, setNewPackName] = useState("")
-  const [addSourcePackId, setAddSourcePackId] = useState<string | null>(null)
+  const [newTopicName, setNewTopicName] = useState("")
+  const [addSourceTopicId, setAddSourceTopicId] = useState<string | null>(null)
   const [newSourceUrl, setNewSourceUrl] = useState("")
-  const [newSourceType, setNewSourceType] = useState("rss")
+  const [newSourceKind, setNewSourceKind] = useState("rss")
   const [creatingSource, setCreatingSource] = useState(false)
-  // 用于编辑 Pack 详情的本地状态
-  const [editingPackName, setEditingPackName] = useState("")
-  const [editingPackDescription, setEditingPackDescription] = useState("")
-  const [savingPack, setSavingPack] = useState(false)
+  // 用于编辑 Topic 详情的本地状态
+  const [editingTopicName, setEditingTopicName] = useState("")
+  const [editingTopicDescription, setEditingTopicDescription] = useState("")
+  const [savingTopic, setSavingTopic] = useState(false)
   const [editingSource, setEditingSource] = useState<Source | null>(null)
 
-  // Load packs and sources from database
+  // Load topics and sources from database
   const loadData = async () => {
     try {
-      const [packsRes, sourcesRes] = await Promise.all([
-        fetch("/api/packs"),
+      const [topicsRes, sourcesRes] = await Promise.all([
+        fetch("/api/topics"),
         fetch("/api/sources"),
       ])
-      const packsData = await packsRes.json()
+      const topicsData = await topicsRes.json()
       const sourcesData = await sourcesRes.json()
 
-      if (packsData.success) {
-        setPacks(packsData.data.packs)
-        if (packsData.data.packs.length > 0 && !selectedPack) {
-          setSelectedPack(packsData.data.packs[0])
+      if (topicsData.success) {
+        setTopics(topicsData.data.topics)
+        if (topicsData.data.topics.length > 0 && !selectedTopic) {
+          setSelectedTopic(topicsData.data.topics[0])
         }
       }
       if (sourcesData.success) {
@@ -86,51 +86,50 @@ function EngineConfig() {
   }, [])
 
   const toggleExpand = (id: string) => {
-    setExpandedPacks((prev) => {
+    setExpandedTopics((prev) => {
       const next = new Set(prev)
       next.has(id) ? next.delete(id) : next.add(id)
       return next
     })
   }
 
-  const selectPack = (pack: Pack) => {
-    setSelectedPack(pack)
-    setEditingPackName(pack.name)
-    setEditingPackDescription(pack.description || "")
+  const selectTopic = (topic: TopicConfig) => {
+    setSelectedTopic(topic)
+    setEditingTopicName(topic.name)
+    setEditingTopicDescription(topic.description || "")
   }
 
-  const deletePack = async (packId: string) => {
+  const deleteTopic = async (topicId: string) => {
     try {
-      const response = await fetch(`/api/packs/${packId}`, {
+      const response = await fetch(`/api/topics/${topicId}`, {
         method: "DELETE",
       })
 
       if (response.ok) {
-        setPacks((prev) => prev.filter((p) => p.id !== packId))
-        setSources((prev) => prev.filter((s) => s.packId !== packId))
-        if (selectedPack?.id === packId) {
-          setSelectedPack(packs.length > 1 ? packs.find((p) => p.id !== packId) || null : null)
+        setTopics((prev) => prev.filter((t) => t.id !== topicId))
+        if (selectedTopic?.id === topicId) {
+          setSelectedTopic(topics.length > 1 ? topics.find((t) => t.id !== topicId) || null : null)
         }
       } else {
         const data = await response.json()
-        toast({ title: data.error || "删除 Pack 失败", variant: "destructive" })
+        toast({ title: data.error || "删除 Topic 失败", variant: "destructive" })
       }
     } catch (error) {
-      console.error("Failed to delete pack:", error)
-      toast({ title: "删除 Pack 失败", variant: "destructive" })
+      console.error("Failed to delete topic:", error)
+      toast({ title: "删除 Topic 失败", variant: "destructive" })
     }
   }
 
-  const savePackConfig = async () => {
-    if (!selectedPack) return
-    setSavingPack(true)
+  const saveTopicConfig = async () => {
+    if (!selectedTopic) return
+    setSavingTopic(true)
     try {
-      const response = await fetch(`/api/packs/${selectedPack.id}`, {
+      const response = await fetch(`/api/topics/${selectedTopic.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: editingPackName,
-          description: editingPackDescription || null,
+          name: editingTopicName,
+          description: editingTopicDescription || null,
         }),
       })
       const data = await response.json()
@@ -138,30 +137,31 @@ function EngineConfig() {
         throw new Error(data.error || "保存失败")
       }
       // 更新本地状态
-      setPacks((prev) =>
-        prev.map((p) =>
-          p.id === selectedPack.id
-            ? { ...p, name: editingPackName, description: editingPackDescription }
-            : p
+      const updatedTopic = { ...selectedTopic, name: editingTopicName, description: editingTopicDescription }
+      setTopics((prev) =>
+        prev.map((t) =>
+          t.id === selectedTopic.id
+            ? updatedTopic
+            : t
         )
       )
-      setSelectedPack({ ...selectedPack, name: editingPackName, description: editingPackDescription })
+      setSelectedTopic(updatedTopic)
     } catch (error) {
       console.error("保存失败:", error)
       toast({ title: error instanceof Error ? error.message : "保存失败", variant: "destructive" })
     } finally {
-      setSavingPack(false)
+      setSavingTopic(false)
     }
   }
 
-  const resetPackConfig = () => {
-    if (!selectedPack) return
-    setEditingPackName(selectedPack.name)
-    setEditingPackDescription(selectedPack.description || "")
+  const resetTopicConfig = () => {
+    if (!selectedTopic) return
+    setEditingTopicName(selectedTopic.name)
+    setEditingTopicDescription(selectedTopic.description || "")
   }
 
   const createSource = async () => {
-    if (!addSourcePackId || !newSourceUrl.trim()) return
+    if (!addSourceTopicId || !newSourceUrl.trim()) return
 
     setCreatingSource(true)
     try {
@@ -169,10 +169,10 @@ function EngineConfig() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          type: newSourceType,
+          kind: newSourceKind,
           name: newSourceUrl,
           url: newSourceUrl,
-          packId: addSourcePackId,
+          defaultTopicIds: [addSourceTopicId],
           enabled: true,
         }),
       })
@@ -180,10 +180,10 @@ function EngineConfig() {
       const data = await response.json()
       if (response.ok && data.success) {
         setSources((prev) => [...prev, data.data])
-        setAddSourcePackId(null)
+        setAddSourceTopicId(null)
         setNewSourceUrl("")
-        setNewSourceType("rss")
-        // Reload packs to update source count
+        setNewSourceKind("rss")
+        // Reload topics to update state
         loadData()
       } else {
         toast({ title: data.error || "创建数据源失败", variant: "destructive" })
@@ -196,54 +196,51 @@ function EngineConfig() {
     }
   }
 
-  const createPack = async () => {
-    if (!newPackName.trim()) return
-
-    const id = newPackName
-      .toLowerCase()
-      .replace(/\s+/g, "-")
-      .replace(/[^a-z0-9-]/g, "")
-
-    if (!id) {
-      toast({ title: "请输入有效的名称（至少包含一个字母或数字）", variant: "destructive" })
-      return
-    }
+  const createTopic = async () => {
+    if (!newTopicName.trim()) return
 
     try {
-      const response = await fetch("/api/packs", {
+      const response = await fetch("/api/topics", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, name: newPackName }),
+        body: JSON.stringify({ name: newTopicName }),
       })
 
       const data = await response.json()
 
       if (response.ok && data.success) {
-        const newPack: Pack = {
+        const newTopic: TopicConfig = {
           id: data.data.id,
           name: data.data.name,
           description: data.data.description,
-          sourceCount: 0,
-          itemCount: 0,
-          latestItem: null,
+          includeRules: data.data.includeRules || [],
+          excludeRules: data.data.excludeRules || [],
+          scoreBoost: data.data.scoreBoost ?? 1.0,
+          displayOrder: data.data.displayOrder ?? 0,
+          maxItems: data.data.maxItems ?? 10,
         }
-        setPacks((prev) => [...prev, newPack])
-        setSelectedPack(newPack)
-        setExpandedPacks((prev) => new Set(prev).add(newPack.id))
+        setTopics((prev) => [...prev, newTopic])
+        setSelectedTopic(newTopic)
+        setExpandedTopics((prev) => new Set(prev).add(newTopic.id))
         setCreateDialogOpen(false)
-        setNewPackName("")
+        setNewTopicName("")
       } else {
-        toast({ title: data.error || "创建 Pack 失败", variant: "destructive" })
+        toast({ title: data.error || "创建 Topic 失败", variant: "destructive" })
       }
     } catch (error) {
-      console.error("Failed to create pack:", error)
-      toast({ title: "创建 Pack 失败", variant: "destructive" })
+      console.error("Failed to create topic:", error)
+      toast({ title: "创建 Topic 失败", variant: "destructive" })
     }
   }
 
-  const startCreatePack = () => {
-    setNewPackName("")
+  const startCreateTopic = () => {
+    setNewTopicName("")
     setCreateDialogOpen(true)
+  }
+
+  // Count sources per topic using defaultTopicIds
+  const getSourceCountForTopic = (topicId: string) => {
+    return sources.filter((s) => s.defaultTopicIds?.includes(topicId)).length
   }
 
   if (loading) {
@@ -259,70 +256,71 @@ function EngineConfig() {
 
   return (
     <div className="h-full flex">
-      {/* 左侧 Pack 列表 */}
-      <PackListPanel
-        packs={packs}
+      {/* 左侧 Topic 列表 */}
+      <TopicListPanel
+        topics={topics}
         sources={sources}
-        selectedPack={selectedPack}
-        expandedPacks={expandedPacks}
-        onSelectPack={selectPack}
+        selectedTopic={selectedTopic}
+        expandedTopics={expandedTopics}
+        onSelectTopic={selectTopic}
         onToggleExpand={toggleExpand}
-        onCreatePack={startCreatePack}
-        onAddSource={setAddSourcePackId}
+        onCreateTopic={startCreateTopic}
+        onAddSource={setAddSourceTopicId}
         onEditSource={setEditingSource}
       />
 
       {/* 右侧详情配置 */}
-      <PackDetailPanel
-        selectedPack={selectedPack}
-        editingPackName={editingPackName}
-        editingPackDescription={editingPackDescription}
-        savingPack={savingPack}
-        onEditingPackNameChange={setEditingPackName}
-        onEditingPackDescriptionChange={setEditingPackDescription}
-        onSave={savePackConfig}
-        onReset={resetPackConfig}
-        onDeletePack={deletePack}
+      <TopicDetailPanel
+        selectedTopic={selectedTopic}
+        editingTopicName={editingTopicName}
+        editingTopicDescription={editingTopicDescription}
+        savingTopic={savingTopic}
+        sourceCount={selectedTopic ? getSourceCountForTopic(selectedTopic.id) : 0}
+        onEditingTopicNameChange={setEditingTopicName}
+        onEditingTopicDescriptionChange={setEditingTopicDescription}
+        onSave={saveTopicConfig}
+        onReset={resetTopicConfig}
+        onDeleteTopic={deleteTopic}
       />
 
-      {/* 创建 Pack 对话框 */}
+      {/* 创建 Topic 对话框 */}
       <AlertDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>新建 Pack</AlertDialogTitle>
+            <AlertDialogTitle>新建 Topic</AlertDialogTitle>
             <AlertDialogDescription>
-              输入 Pack 名称，系统将自动生成 ID。
+              输入 Topic 名称，系统将自动生成 ID。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <input
             type="text"
-            value={newPackName}
-            onChange={(e) => setNewPackName(e.target.value)}
+            value={newTopicName}
+            onChange={(e) => setNewTopicName(e.target.value)}
             placeholder="例如：技术博客、新闻资讯"
             className="w-full text-sm font-sans bg-card border border-border rounded-lg px-3 py-2 text-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow mt-2"
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault()
-                createPack()
+                createTopic()
               }
             }}
           />
           <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction onClick={createPack}>创建</AlertDialogAction>
+            <AlertDialogAction onClick={createTopic}>创建</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
       {/* 添加数据源对话框 */}
       <AddSourceDialog
-        open={!!addSourcePackId}
-        onOpenChange={(open) => { if (!open) setAddSourcePackId(null) }}
-        packName={packs.find(p => p.id === addSourcePackId)?.name ?? ""}
-        newSourceType={newSourceType}
+        open={!!addSourceTopicId}
+        onOpenChange={(open) => { if (!open) setAddSourceTopicId(null) }}
+        topicName={topics.find(t => t.id === addSourceTopicId)?.name ?? ""}
+        newSourceKind={newSourceKind}
         newSourceUrl={newSourceUrl}
         creatingSource={creatingSource}
-        onSourceTypeChange={setNewSourceType}
+        onSourceKindChange={setNewSourceKind}
         onSourceUrlChange={setNewSourceUrl}
         onCreate={createSource}
       />

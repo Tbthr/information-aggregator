@@ -17,11 +17,11 @@ import { SOURCE_TYPE_CATEGORIES } from "./source-type-categories"
 interface AddSourceDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  packName: string
-  newSourceType: string
+  topicName: string
+  newSourceKind: string
   newSourceUrl: string
   creatingSource: boolean
-  onSourceTypeChange: (value: string) => void
+  onSourceKindChange: (value: string) => void
   onSourceUrlChange: (value: string) => void
   onCreate: () => void
 }
@@ -29,11 +29,11 @@ interface AddSourceDialogProps {
 export function AddSourceDialog({
   open,
   onOpenChange,
-  packName,
-  newSourceType,
+  topicName,
+  newSourceKind,
   newSourceUrl,
   creatingSource,
-  onSourceTypeChange,
+  onSourceKindChange,
   onSourceUrlChange,
   onCreate,
 }: AddSourceDialogProps) {
@@ -43,7 +43,7 @@ export function AddSourceDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>添加数据源</AlertDialogTitle>
           <AlertDialogDescription>
-            为 {packName} 添加新的数据源。
+            为 {topicName} 添加新的数据源。
           </AlertDialogDescription>
         </AlertDialogHeader>
         <div className="space-y-4 py-2">
@@ -62,17 +62,17 @@ export function AddSourceDialog({
                       <button
                         key={type.value}
                         type="button"
-                        onClick={() => onSourceTypeChange(type.value)}
+                        onClick={() => onSourceKindChange(type.value)}
                         className={cn(
                           "relative flex flex-col items-center gap-1.5 p-2.5 rounded-xl border transition-all duration-200",
-                          newSourceType === type.value
+                          newSourceKind === type.value
                             ? "border-primary bg-primary/5 shadow-md ring-2 ring-primary/20"
                             : "border-border/50 bg-card/50 hover:border-primary/30 hover:bg-card hover:shadow-sm"
                         )}
                       >
                         <div className={cn(
                           "w-7 h-7 rounded-full flex items-center justify-center transition-colors",
-                          newSourceType === type.value
+                          newSourceKind === type.value
                             ? "bg-primary text-primary-foreground"
                             : "bg-muted text-muted-foreground"
                         )}>
@@ -82,11 +82,11 @@ export function AddSourceDialog({
                         </div>
                         <p className={cn(
                           "text-[10px] font-medium text-center leading-tight",
-                          newSourceType === type.value ? "text-primary" : "text-foreground"
+                          newSourceKind === type.value ? "text-primary" : "text-foreground"
                         )}>
                           {type.label}
                         </p>
-                        {newSourceType === type.value && (
+                        {newSourceKind === type.value && (
                           <div className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full bg-primary flex items-center justify-center">
                             <Check className="w-2 h-2 text-primary-foreground" />
                           </div>

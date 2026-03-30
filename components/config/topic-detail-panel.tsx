@@ -1,8 +1,7 @@
 "use client"
 
 import { Settings2, Trash2 } from "lucide-react"
-import { formatDate } from "@/lib/format-date"
-import type { Pack } from "./types"
+import type { TopicConfig } from "./types"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,37 +14,39 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
-interface PackDetailPanelProps {
-  selectedPack: Pack | null
-  editingPackName: string
-  editingPackDescription: string
-  savingPack: boolean
-  onEditingPackNameChange: (value: string) => void
-  onEditingPackDescriptionChange: (value: string) => void
+interface TopicDetailPanelProps {
+  selectedTopic: TopicConfig | null
+  editingTopicName: string
+  editingTopicDescription: string
+  savingTopic: boolean
+  sourceCount: number
+  onEditingTopicNameChange: (value: string) => void
+  onEditingTopicDescriptionChange: (value: string) => void
   onSave: () => void
   onReset: () => void
-  onDeletePack: (packId: string) => void
+  onDeleteTopic: (topicId: string) => void
 }
 
-export function PackDetailPanel({
-  selectedPack,
-  editingPackName,
-  editingPackDescription,
-  savingPack,
-  onEditingPackNameChange,
-  onEditingPackDescriptionChange,
+export function TopicDetailPanel({
+  selectedTopic,
+  editingTopicName,
+  editingTopicDescription,
+  savingTopic,
+  sourceCount,
+  onEditingTopicNameChange,
+  onEditingTopicDescriptionChange,
   onSave,
   onReset,
-  onDeletePack,
-}: PackDetailPanelProps) {
+  onDeleteTopic,
+}: TopicDetailPanelProps) {
   return (
     <div className="flex-1 overflow-y-auto p-8">
-      {selectedPack ? (
+      {selectedTopic ? (
         <div className="max-w-xl">
           <div className="flex items-center gap-2 mb-6">
             <Settings2 className="w-4 h-4 text-primary" />
             <h2 className="font-sans font-semibold text-base text-foreground">
-              Pack 详情 · <span className="text-primary">{selectedPack.name}</span>
+              Topic 详情 · <span className="text-primary">{selectedTopic.name}</span>
             </h2>
           </div>
 
@@ -57,7 +58,7 @@ export function PackDetailPanel({
               </label>
               <input
                 type="text"
-                value={selectedPack.id}
+                value={selectedTopic.id}
                 disabled
                 className="w-full text-sm font-mono bg-muted border border-border rounded-lg px-3 py-2 text-muted-foreground cursor-not-allowed"
               />
@@ -69,8 +70,8 @@ export function PackDetailPanel({
               </label>
               <input
                 type="text"
-                value={editingPackName}
-                onChange={(e) => onEditingPackNameChange(e.target.value)}
+                value={editingTopicName}
+                onChange={(e) => onEditingTopicNameChange(e.target.value)}
                 className="w-full text-sm font-sans bg-card border border-border rounded-lg px-3 py-2 text-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow"
               />
             </div>
@@ -81,30 +82,26 @@ export function PackDetailPanel({
               </label>
               <textarea
                 rows={3}
-                value={editingPackDescription}
-                onChange={(e) => onEditingPackDescriptionChange(e.target.value)}
-                placeholder="可选的 Pack 描述..."
+                value={editingTopicDescription}
+                onChange={(e) => onEditingTopicDescriptionChange(e.target.value)}
+                placeholder="可选的 Topic 描述..."
                 className="w-full text-sm font-sans bg-card border border-border rounded-lg px-3 py-2 text-foreground outline-none focus:ring-2 focus:ring-ring resize-none transition-shadow"
               />
             </div>
 
-            {/* 统计信息 */}
+            {/* Topic 配置信息 */}
             <div className="grid grid-cols-3 gap-4 p-4 rounded-lg border border-border bg-card">
               <div className="text-center">
-                <div className="text-2xl font-semibold text-foreground">{selectedPack.sourceCount}</div>
+                <div className="text-2xl font-semibold text-foreground">{sourceCount}</div>
                 <div className="text-xs text-muted-foreground">数据源</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-semibold text-foreground">{selectedPack.itemCount}</div>
-                <div className="text-xs text-muted-foreground">条目数</div>
+                <div className="text-2xl font-semibold text-foreground">{selectedTopic.maxItems}</div>
+                <div className="text-xs text-muted-foreground">最大条目数</div>
               </div>
               <div className="text-center">
-                <div className="text-sm font-medium text-foreground">
-                  {selectedPack.latestItem
-                    ? formatDate(selectedPack.latestItem)
-                    : "-"}
-                </div>
-                <div className="text-xs text-muted-foreground">最新更新</div>
+                <div className="text-2xl font-semibold text-foreground">{selectedTopic.scoreBoost}</div>
+                <div className="text-xs text-muted-foreground">分数权重</div>
               </div>
             </div>
 
@@ -112,7 +109,7 @@ export function PackDetailPanel({
             <div className="flex gap-3 pt-2">
               <button
                 onClick={onSave}
-                disabled={savingPack}
+                disabled={savingTopic}
                 className="px-5 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-sans font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
               >
                 保存配置
@@ -132,15 +129,15 @@ export function PackDetailPanel({
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>删除 Pack</AlertDialogTitle>
+                    <AlertDialogTitle>删除 Topic</AlertDialogTitle>
                     <AlertDialogDescription>
-                      确定要删除 "{selectedPack.name}" 吗？此操作将同时删除该 Pack 下的所有数据源，且无法撤销。
+                      确定要删除 &quot;{selectedTopic.name}&quot; 吗？此操作将同时解除关联的数据源，且无法撤销。
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>取消</AlertDialogCancel>
                     <AlertDialogAction
-                      onClick={() => onDeletePack(selectedPack.id)}
+                      onClick={() => onDeleteTopic(selectedTopic.id)}
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     >
                       删除
@@ -155,7 +152,7 @@ export function PackDetailPanel({
         <div className="h-full flex items-center justify-center text-muted-foreground">
           <div className="text-center">
             <Settings2 className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p className="text-sm font-sans">选择或创建一个 Pack 开始配置</p>
+            <p className="text-sm font-sans">选择或创建一个 Topic 开始配置</p>
           </div>
         </div>
       )}
