@@ -94,6 +94,8 @@ export interface RawItem {
   fetchedAt: string;
   metadataJson: string;
   publishedAt?: string;
+  author?: string;        // Top-level author field (D-06)
+  content?: string;       // Top-level content field (D-07)
   // Runtime filter context (not stored in DB, set at collection time)
   filterContext?: FilterContext;
 }
