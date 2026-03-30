@@ -76,7 +76,7 @@ Plans:
 
 Plans:
 - [x] 04-01-PLAN.md — Transaction wrapping
-- [ ] 04-02-PLAN.md — Retry logic and error logging
+- [x] 04-02-PLAN.md — Retry logic and error logging
 
 ## Progress
 
