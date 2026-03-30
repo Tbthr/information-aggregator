@@ -1,41 +1,5 @@
-"use client"
-
-import { useRouter } from "next/navigation"
-import { AppLayout } from "@/components/app-layout"
-import { ConfigPage } from "@/components/config-page"
-import type { NavId } from "@/components/sidebar"
+import { redirect } from "next/navigation"
 
 export default function ConfigRoute() {
-  const router = useRouter()
-
-  const handleNav = (navId: NavId) => {
-    switch (navId) {
-      case "daily":
-        router.push("/daily")
-        break
-      case "weekly":
-        router.push("/weekly")
-        break
-      case "saved":
-        router.push("/saved")
-        break
-      case "config":
-        router.push("/config")
-        break
-      case "x":
-        router.push("/x")
-        break
-      case "settings/reports":
-        router.push("/settings/reports")
-        break
-      default:
-        router.push("/")
-    }
-  }
-
-  return (
-    <AppLayout activeNav="config" onNav={handleNav}>
-      <ConfigPage />
-    </AppLayout>
-  )
+  redirect("/settings?tab=sources")
 }
