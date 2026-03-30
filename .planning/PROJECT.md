@@ -41,6 +41,7 @@ Existing codebase at `/Users/lyq/ai-enhance/information-aggregator`：
 - ✓ **AI 多 provider 支持** — Anthropic/Gemini/OpenAI fallback
 - ✓ **前端 SWR 数据获取** — 统一使用 SWR hooks
 - ✓ **PIPELINE-01** — 数据采集所有 fetcher 的关键字段检查：RawItem 新增 author/content 字段，4个适配器全部添加 discard logging 和 discard summary (Phase 2)
+- ✓ **PIPELINE-02** — 采集管道事务与重试机制：`withPrismaRetry` + 事务包装 + 结构化错误日志 (Phase 4)
 
 ### Active
 
@@ -92,4 +93,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ---
 
-*Last updated: 2026-03-30 after Phase 1 completion (settings-consolidation)*
+*Last updated: 2026-03-31 after Phase 4 completion (pipeline-robustness)*
