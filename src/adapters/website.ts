@@ -74,6 +74,9 @@ export function parseWebsiteItems(
   const jobStart = new Date(jobStartedAt);
   const cutoffTime = new Date(jobStart.getTime() - 24 * 60 * 60 * 1000);
 
+  let discardCount = 0;
+  let itemFetched = false;
+
   const { title, description, author, publishedTime } = extractMetadata(html);
   const content = extractTextContent(html);
 
@@ -81,9 +84,46 @@ export function parseWebsiteItems(
   let publishedAt: string | undefined;
   if (publishedTime) {
     const parsed = new Date(publishedTime);
-    if (!isNaN(parsed.getTime()) && parsed >= cutoffTime) {
-      publishedAt = parsed.toISOString();
+    if (!isNaN(parsed.getTime())) {
+      if (parsed >= cutoffTime) {
+        publishedAt = parsed.toISOString();
+      } else {
+        // Item outside 24h window — log and discard
+        logger.warn("Discarding item outside 24h window", {
+          sourceId,
+          sourceType: "website",
+          title: title || "unknown",
+          url,
+          rawTime: publishedTime,
+          discardReason: `published at ${parsed.toISOString()} is before cutoff ${cutoffTime.toISOString()}`,
+        });
+        discardCount++;
+        return []; // Discard this item
+      }
+    } else {
+      // Unparseable publishedTime — log and discard
+      logger.warn("Discarding item with unparseable publishedTime", {
+        sourceId,
+        sourceType: "website",
+        title: title || "unknown",
+        url,
+        rawTime: publishedTime,
+        discardReason: "publishedTime could not be parsed as a date",
+      });
+      discardCount++;
+      return []; // Discard this item
     }
+  } else {
+    // No publishedTime attribute — log and discard
+    logger.warn("Discarding item without publishedTime", {
+      sourceId,
+      sourceType: "website",
+      title: title || "unknown",
+      url,
+      discardReason: "no publishedTime attribute found",
+    });
+    discardCount++;
+    return []; // Discard this item
   }
 
   const metadataJson = JSON.stringify({
@@ -101,9 +141,13 @@ export function parseWebsiteItems(
     sourceId,
     title: title || extractTextContent(html).substring(0, 100),
     url,
+    author: author,           // D-06: top-level author field
+    content: content,         // D-07: top-level content field
     fetchedAt: new Date().toISOString(),
     metadataJson,
   };
+
+  itemFetched = true;
 
   if (publishedAt) {
     item.publishedAt = publishedAt;
@@ -112,6 +156,17 @@ export function parseWebsiteItems(
   if (filterContext) {
     item.filterContext = filterContext;
   }
+
+  // Log discard summary per source (D-04, D-05)
+  logger.info("Source fetch completed", {
+    sourceId,
+    sourceType: "website",
+    fetched: itemFetched ? 1 : 0,
+    discarded: discardCount,
+    discardRate: itemFetched || discardCount > 0
+      ? `${((discardCount / (1 + discardCount)) * 100).toFixed(1)}%`
+      : "0%",
+  });
 
   return [item];
 }
