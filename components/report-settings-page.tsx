@@ -184,7 +184,12 @@ function NumberField({
 
 // ── Main Component ──
 
-export function ReportSettingsPage() {
+interface ReportSettingsPageProps {
+  /** Controls which section to show: 'daily', 'weekly', or 'all' (default) */
+  activeTab?: 'daily' | 'weekly' | 'all'
+}
+
+export function ReportSettingsPage({ activeTab = 'all' }: ReportSettingsPageProps) {
   const { data: settings, isLoading, mutate } = useReportSettings()
   const { data: topics } = useTopics()
 
@@ -299,18 +304,24 @@ export function ReportSettingsPage() {
     return <PageSkeleton />
   }
 
+  const showDaily = activeTab === 'all' || activeTab === 'daily'
+  const showWeekly = activeTab === 'all' || activeTab === 'weekly'
+
   return (
     <div className="max-w-3xl mx-auto px-6 py-8 space-y-8">
-      {/* Page header */}
-      <div className="mb-2">
-        <h1 className="text-xl font-semibold text-foreground">报告设置</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          配置日报和周报的生成参数与 AI Prompt
-        </p>
-      </div>
+      {/* Page header - only show when viewing both sections */}
+      {activeTab === 'all' && (
+        <div className="mb-2">
+          <h1 className="text-xl font-semibold text-foreground">报告设置</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            配置日报和周报的生成参数与 AI Prompt
+          </p>
+        </div>
+      )}
 
       {/* ── 日报配置 ── */}
-      <Card>
+      {showDaily && (
+      <Card data-section="daily">
         <CardHeader>
           <div className="flex items-center gap-2">
             <Newspaper className="w-4 h-4 text-primary" />
@@ -464,9 +475,11 @@ export function ReportSettingsPage() {
           </div>
         </CardContent>
       </Card>
+      )}
 
       {/* ── 周报配置 ── */}
-      <Card>
+      {showWeekly && (
+      <Card data-section="weekly">
         <CardHeader>
           <div className="flex items-center gap-2">
             <CalendarDays className="w-4 h-4 text-primary" />
@@ -530,6 +543,7 @@ export function ReportSettingsPage() {
           </div>
         </CardContent>
       </Card>
+      )}
 
       {/* ── Save Button ── */}
       <div className="flex justify-end pb-8">
