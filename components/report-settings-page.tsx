@@ -19,7 +19,6 @@ interface DailyConfig {
   topicIds: string[]
   maxItems: number
   minScore: number
-  keywordBlacklist: string[]
   filterPrompt: string
   topicPrompt: string
   topicSummaryPrompt: string
@@ -197,7 +196,6 @@ export function ReportSettingsPage({ activeTab = 'all' }: ReportSettingsPageProp
     topicIds: [],
     maxItems: 50,
     minScore: 0,
-    keywordBlacklist: [],
     filterPrompt: "",
     topicPrompt: "",
     topicSummaryPrompt: "",
@@ -222,7 +220,6 @@ export function ReportSettingsPage({ activeTab = 'all' }: ReportSettingsPageProp
         topicIds: (d.topicIds as string[]) ?? prev.topicIds,
         maxItems: (d.maxItems as number) ?? prev.maxItems,
         minScore: (d.minScore as number) ?? prev.minScore,
-        keywordBlacklist: (d.keywordBlacklist as string[]) ?? prev.keywordBlacklist,
         filterPrompt: (d.filterPrompt as string) ?? prev.filterPrompt,
         topicPrompt: (d.topicPrompt as string) ?? prev.topicPrompt,
         topicSummaryPrompt: (d.topicSummaryPrompt as string) ?? prev.topicSummaryPrompt,
@@ -261,7 +258,6 @@ export function ReportSettingsPage({ activeTab = 'all' }: ReportSettingsPageProp
             topicIds: daily.topicIds,
             maxItems: daily.maxItems,
             minScore: daily.minScore,
-            keywordBlacklist: daily.keywordBlacklist,
             filterPrompt: daily.filterPrompt,
             topicPrompt: daily.topicPrompt,
             topicSummaryPrompt: daily.topicSummaryPrompt,
@@ -373,20 +369,6 @@ export function ReportSettingsPage({ activeTab = 'all' }: ReportSettingsPageProp
               max={10}
               value={daily.minScore}
               onChange={(v) => setDaily((prev) => ({ ...prev, minScore: v }))}
-            />
-          </div>
-
-          {/* 关键词黑名单 */}
-          <div className="space-y-1.5">
-            <Label className="text-sm font-medium">关键词黑名单</Label>
-            <p className="text-xs text-muted-foreground">
-              包含这些关键词的内容将被过滤掉
-            </p>
-            <TagInput
-              tags={daily.keywordBlacklist}
-              onChange={(tags) =>
-                setDaily((prev) => ({ ...prev, keywordBlacklist: tags }))
-              }
             />
           </div>
 
