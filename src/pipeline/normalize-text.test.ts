@@ -3,19 +3,19 @@ import { normalizeTitle, normalizeSummary, normalizeContent, normalizeWhitespace
 
 describe("normalizeTitle", () => {
   test("removes RT @xxx: prefix", () => {
-    expect(normalizeTitle("RT @user: This is a tweet")).toBe("this is a tweet");
+    expect(normalizeTitle("RT @user: This is a tweet")).toBe("This is a tweet");
   });
 
   test("removes trailing | SiteName pattern", () => {
-    expect(normalizeTitle("Article Title | SiteName")).toBe("article title");
+    expect(normalizeTitle("Article Title | SiteName")).toBe("Article Title");
   });
 
   test("removes trailing | Site Name with spaces", () => {
-    expect(normalizeTitle("Article Title | Example Site")).toBe("article title");
+    expect(normalizeTitle("Article Title | Example Site")).toBe("Article Title");
   });
 
   test("removes multiple pipe patterns", () => {
-    expect(normalizeTitle("Title | Site | Another")).toBe("title");
+    expect(normalizeTitle("Title | Site | Another")).toBe("Title");
   });
 
   test("removes punctuation for dedup (deprecated behavior)", () => {
@@ -27,15 +27,15 @@ describe("normalizeTitle", () => {
   });
 
   test("collapses whitespace", () => {
-    expect(normalizeTitle("  Hello   World  ")).toBe("hello world");
+    expect(normalizeTitle("  Hello   World  ")).toBe("Hello World");
   });
 
-  test("lowercases text", () => {
-    expect(normalizeTitle("UPPERCASE TITLE")).toBe("uppercase title");
+  test("preserves original casing", () => {
+    expect(normalizeTitle("UPPERCASE TITLE")).toBe("UPPERCASE TITLE");
   });
 
   test("handles combined cases", () => {
-    expect(normalizeTitle("RT @elonmusk: SpaceX Launch | Space News!")).toBe("spacex launch");
+    expect(normalizeTitle("RT @elonmusk: SpaceX Launch | Space News!")).toBe("SpaceX Launch");
   });
 });
 
@@ -71,15 +71,15 @@ describe("normalizeSummary", () => {
 
 describe("normalizeContent", () => {
   test("removes HTML tags", () => {
-    expect(normalizeContent("This is <b>bold</b> text")).toBe("this is bold text");
+    expect(normalizeContent("This is <b>bold</b> text")).toBe("This is bold text");
   });
 
   test("decodes HTML entities", () => {
-    expect(normalizeContent("Hello &amp; goodbye &lt;world&gt;")).toBe("hello & goodbye <world>");
+    expect(normalizeContent("Hello &amp; goodbye &lt;world&gt;")).toBe("Hello & goodbye <world>");
   });
 
   test("compresses whitespace", () => {
-    expect(normalizeContent("Hello    world   test")).toBe("hello world test");
+    expect(normalizeContent("Hello    world   test")).toBe("Hello world test");
   });
 
   test("truncates to 500 characters", () => {
@@ -94,7 +94,7 @@ describe("normalizeContent", () => {
   });
 
   test("preserves sentence structure", () => {
-    expect(normalizeContent("First sentence. Second sentence! Third?")).toBe("first sentence. second sentence! third?");
+    expect(normalizeContent("First sentence. Second sentence! Third?")).toBe("First sentence. Second sentence! Third?");
   });
 });
 
