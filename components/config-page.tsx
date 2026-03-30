@@ -19,16 +19,20 @@ import { TopicDetailPanel } from "./config/topic-detail-panel"
 import { AddSourceDialog } from "./config/add-source-dialog"
 import type { Source, TopicConfig } from "./config/types"
 
+export function ConfigPageHeader() {
+  return (
+    <div className="border-b border-border bg-sidebar px-6 py-3 flex gap-6">
+      <span className="text-sm font-sans font-semibold text-primary">
+        数据源配置
+      </span>
+    </div>
+  )
+}
+
 export function ConfigPage() {
   return (
     <div className="h-full flex flex-col">
-      {/* Tab 标题 */}
-      <div className="border-b border-border bg-sidebar px-6 py-3 flex gap-6">
-        <span className="text-sm font-sans font-semibold text-primary">
-          数据源配置
-        </span>
-      </div>
-
+      <ConfigPageHeader />
       {/* 内容 */}
       <div className="flex-1 overflow-hidden">
         <EngineConfig />
