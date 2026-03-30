@@ -1,19 +1,16 @@
 "use client"
 
 import { useRouter, useSearchParams } from "next/navigation"
-import { Suspense, useState } from "react"
+import { Suspense } from "react"
 import { AppLayout } from "@/components/app-layout"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { ReportSettingsPage } from "@/components/report-settings-page"
 import { ConfigPage } from "@/components/config-page"
 
-function SettingsContent() {
+function SettingsInner({ activeNav }: { activeNav: string }) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const tab = searchParams.get("tab") ?? "daily"
-
-  // Map tab to sidebar nav ID for active highlighting
-  const activeNav = tab === "sources" ? "settings-sources" : "settings-daily"
 
   const handleTabChange = (newTab: string) => {
     router.replace(`/settings?tab=${newTab}`)
@@ -52,16 +49,23 @@ function SettingsContent() {
   )
 }
 
-export default function SettingsRoute() {
+function SettingsWithNav() {
   const searchParams = useSearchParams()
   const tab = searchParams.get("tab") ?? "daily"
   const activeNav = tab === "sources" ? "settings-sources" : "settings-daily"
-
   return (
     <AppLayout activeNav={activeNav}>
       <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">加载中...</div>}>
-        <SettingsContent />
+        <SettingsInner activeNav={activeNav} />
       </Suspense>
     </AppLayout>
+  )
+}
+
+export default function SettingsRoute() {
+  return (
+    <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">加载中...</div>}>
+      <SettingsWithNav />
+    </Suspense>
   )
 }
