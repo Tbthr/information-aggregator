@@ -75,7 +75,9 @@ function buildProviderConfig(
   providerName: AiProviderType,
 ): ProviderConfig | null {
   const keys = parseCsv(keysEnv);
-  const model = modelEnv?.trim();
+  // D-15: AI_DEFAULT_MODEL env var support for deterministic clustering
+  // Provider-specific model (ANTHROPIC_MODEL etc.) overrides the default if set
+  const model = modelEnv?.trim() || process.env.AI_DEFAULT_MODEL?.trim();
 
   if (keys.length === 0 || !model) return null;
 
