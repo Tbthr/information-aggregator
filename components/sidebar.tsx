@@ -123,16 +123,16 @@ export function Sidebar({ activeNav, onNav, collapsed, onToggleCollapse }: Sideb
       {/* 底部工具区 */}
       <div className="border-t border-sidebar-border py-3">
         <NavButton
-          active={activeNav === "settings/reports"}
+          active={activeNav === "settings-daily"}
           collapsed={collapsed}
-          onClick={() => onNav("settings/reports")}
+          onClick={() => onNav("settings-daily")}
           icon={<FileText className="w-4 h-4 shrink-0" />}
           label="报告设置"
         />
         <NavButton
-          active={activeNav === "config"}
+          active={activeNav === "settings-sources"}
           collapsed={collapsed}
-          onClick={() => onNav("config")}
+          onClick={() => onNav("settings-sources")}
           icon={<Settings className="w-4 h-4 shrink-0" />}
           label="设置"
         />

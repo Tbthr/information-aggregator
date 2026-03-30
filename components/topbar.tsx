@@ -11,6 +11,9 @@ const PAGE_TITLES: Record<string, { title: string; subtitle?: string }> = {
   config: { title: "引擎配置", subtitle: "数据源与处理规则" },
   x: { title: "X / Twitter", subtitle: "Social Feed" },
   "settings/reports": { title: "报告设置", subtitle: "日报和周报生成参数" },
+  "settings-daily": { title: "设置", subtitle: "报告设置" },
+  "settings-sources": { title: "设置", subtitle: "数据源配置" },
+  settings: { title: "设置", subtitle: "统一设置" },
 }
 
 interface ViewInfo {
