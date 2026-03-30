@@ -10,9 +10,8 @@
 //   F-04: DailyOverview.topicCount === actual DigestTopic count
 //   F-05: Every WeeklyPick.contentId appears in some DigestTopic.contentIds
 //         (weekly only consumes what daily produced)
-//   F-06: Content referenced by DigestTopic.contentIds has non-null url/kind
-//   F-07: (Legacy) Items referenced by DigestTopic.itemIds have non-null title/url/sourceId
-//   F-08: (Legacy) Tweets referenced by DigestTopic.tweetIds have non-null text/authorHandle/url
+//   F-06: Content (article) referenced by DigestTopic.contentIds has non-null title/url
+//   F-07: Content (tweet) referenced by DigestTopic.contentIds has non-null body/authorLabel/url
 
 import { prisma } from "@/lib/prisma";
 import { formatUtcDate } from "@/lib/date-utils";
@@ -192,7 +191,7 @@ export async function runIntegrityAssertions(
     });
   }
 
-  // ── F-06: Referenced content has non-null core fields ─
+  // ── F-06: Content (article) has non-null title/url ─
 
   const f06Start = Date.now();
   const allTopicsForF06 = await prisma.digestTopic.findMany();
@@ -210,99 +209,61 @@ export async function runIntegrityAssertions(
     });
   } else {
     const f06Content = await prisma.content.findMany({
-      where: { id: { in: Array.from(f06ContentIds) } },
-      select: { id: true, url: true, kind: true },
+      where: { id: { in: Array.from(f06ContentIds) }, kind: "article" },
+      select: { id: true, title: true, url: true },
     });
     let f06InvalidCount = 0;
     for (const c of f06Content) {
-      if (!c.url || !c.kind) f06InvalidCount++;
+      if (!c.title || !c.url) f06InvalidCount++;
     }
     const f06Ok = f06InvalidCount === 0;
-    verboseLog(`  F-06 content field completeness: ${f06Content.length - f06InvalidCount}/${f06Content.length} valid`);
+    verboseLog(`  F-06 article field completeness: ${f06Content.length - f06InvalidCount}/${f06Content.length} valid`);
 
     assertions.push({
       id: "F-06",
       category: "reports",
       status: f06Ok ? "PASS" : "FAIL",
       blocking: false,
-      message: f06Ok ? "all content have required fields (url, kind)" : `${f06InvalidCount} content missing required fields`,
+      message: f06Ok ? `all ${f06Content.length} articles have required fields (title, url)` : `${f06InvalidCount}/${f06Content.length} articles missing required fields`,
       evidence: { validCount: f06Content.length - f06InvalidCount, invalidCount: f06InvalidCount, totalCount: f06Content.length },
     });
   }
 
-  // ── F-07: (Legacy) Referenced items have non-null core fields ─
+  // ── F-07: Content (tweet) has non-null body/authorLabel/url ─
 
   const f07Start = Date.now();
   const allTopicsForF07 = await prisma.digestTopic.findMany();
-  const f07ItemIds = new Set<string>();
-  for (const t of allTopicsForF07) for (const id of t.itemIds) f07ItemIds.add(id);
+  const f07ContentIds = new Set<string>();
+  for (const t of allTopicsForF07) for (const id of t.contentIds) f07ContentIds.add(id);
 
-  if (f07ItemIds.size === 0) {
+  if (f07ContentIds.size === 0) {
     assertions.push({
       id: "F-07",
       category: "reports",
       status: "SKIP",
       blocking: false,
-      message: "no referenced legacy items to verify",
-      evidence: { itemCount: 0 },
+      message: "no referenced content to verify",
+      evidence: { contentCount: 0 },
     });
   } else {
-    const f07Items = await prisma.item.findMany({
-      where: { id: { in: Array.from(f07ItemIds) } },
-      select: { id: true, title: true, url: true, sourceId: true },
+    const f07Content = await prisma.content.findMany({
+      where: { id: { in: Array.from(f07ContentIds) }, kind: "tweet" },
+      select: { id: true, body: true, authorLabel: true, url: true },
     });
     let f07InvalidCount = 0;
-    for (const item of f07Items) {
-      if (!item.title || !item.url || !item.sourceId) f07InvalidCount++;
+    for (const c of f07Content) {
+      if (!c.body || !c.authorLabel || !c.url) f07InvalidCount++;
     }
     const f07Ok = f07InvalidCount === 0;
-    verboseLog(`  F-07 legacy item field completeness: ${f07Items.length - f07InvalidCount}/${f07Items.length} valid`);
+    verboseLog(`  F-07 tweet field completeness: ${f07Content.length - f07InvalidCount}/${f07Content.length} valid`);
 
     assertions.push({
       id: "F-07",
       category: "reports",
       status: f07Ok ? "PASS" : "FAIL",
       blocking: false,
-      message: f07Ok ? "all legacy items have required fields (title, url, sourceId)" : `${f07InvalidCount} legacy items missing required fields`,
-      evidence: { validCount: f07Items.length - f07InvalidCount, invalidCount: f07InvalidCount, totalCount: f07Items.length },
-    });
-  }
-
-  // ── F-08: (Legacy) Referenced tweets have valid fields ─────────
-
-  const f08Start = Date.now();
-  const allTopicsForF08 = await prisma.digestTopic.findMany();
-  const f08TweetIds = new Set<string>();
-  for (const t of allTopicsForF08) for (const id of t.tweetIds) f08TweetIds.add(id);
-
-  if (f08TweetIds.size === 0) {
-    assertions.push({
-      id: "F-08",
-      category: "reports",
-      status: "SKIP",
-      blocking: false,
-      message: "no referenced legacy tweets to verify",
-      evidence: { tweetCount: 0 },
-    });
-  } else {
-    const f08Tweets = await prisma.tweet.findMany({
-      where: { id: { in: Array.from(f08TweetIds) } },
-      select: { id: true, text: true, authorHandle: true, url: true },
-    });
-    let f08InvalidCount = 0;
-    for (const tweet of f08Tweets) {
-      if (!tweet.text || !tweet.authorHandle || !tweet.url) f08InvalidCount++;
-    }
-    const f08Ok = f08InvalidCount === 0;
-    verboseLog(`  F-08 legacy tweet field completeness: ${f08Tweets.length - f08InvalidCount}/${f08Tweets.length} valid`);
-
-    assertions.push({
-      id: "F-08",
-      category: "reports",
-      status: f08Ok ? "PASS" : "FAIL",
-      blocking: false,
-      message: f08Ok ? "all legacy tweets have required fields (text, authorHandle, url)" : `${f08InvalidCount} legacy tweets missing required fields`,
-      evidence: { validCount: f08Tweets.length - f08InvalidCount, invalidCount: f08InvalidCount, totalCount: f08Tweets.length },
+      message: f07Ok ? `all ${f07Content.length} tweets have required fields (body, authorLabel, url)` : `${f07InvalidCount}/${f07Content.length} tweets missing required fields`,
+      evidence: { validCount: f07Content.length - f07InvalidCount, invalidCount: f07InvalidCount, totalCount: f07Content.length },
     });
   }
 

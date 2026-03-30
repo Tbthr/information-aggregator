@@ -48,14 +48,14 @@ describe("runIntegrityAssertions", () => {
     expect(f05?.category).toBe("reports");
   }, DB_TIMEOUT);
 
-  test("returns F-06 Item fields assertion", async () => {
+  test("returns F-06 Content (article) fields assertion", async () => {
     const assertions = await runIntegrityAssertions({ apiUrl: "http://localhost:3000", verbose: false });
     const f06 = assertions.find((a) => a.id === "F-06");
     expect(f06).toBeDefined();
     expect(f06?.category).toBe("reports");
   }, DB_TIMEOUT);
 
-  test("returns F-07 Tweet fields assertion", async () => {
+  test("returns F-07 Content (tweet) fields assertion", async () => {
     const assertions = await runIntegrityAssertions({ apiUrl: "http://localhost:3000", verbose: false });
     const f07 = assertions.find((a) => a.id === "F-07");
     expect(f07).toBeDefined();
