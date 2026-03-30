@@ -7,7 +7,7 @@ This project audits and optimizes the Information Aggregator's data collection p
 ## Phases
 
 - [ ] **Phase 1: Settings Consolidation** - Fix `packs` vs `topicIds` mismatch, consolidate settings pages
-- [ ] **Phase 2: Pipeline Field Quality Audit** - RSS/Atom field completeness, timestamp handling
+- [x] **Phase 2: Pipeline Field Quality Audit** - RSS/Atom field completeness, timestamp handling (completed 2026-03-30)
 - [ ] **Phase 3: Topic Configuration + AI Optimization** - Initial topic seed, batch AI calls for daily/weekly
 - [ ] **Phase 4: Pipeline Robustness** - Transaction wrapping, retry logic, failure logging
 
@@ -42,8 +42,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — Fix Website adapter (discard logging, top-level author/content, discard summary) + extend RawItem type
-- [ ] 02-02-PLAN.md — Fix X/Bird adapter (24h window, discard logging) + RSS/JSON Feed (top-level author/content, discard summary)
+- [x] 02-01-PLAN.md — Fix Website adapter (discard logging, top-level author/content, discard summary) + extend RawItem type
+- [x] 02-02-PLAN.md — Fix X/Bird adapter (24h window, discard logging) + RSS/JSON Feed (top-level author/content, discard summary)
 
 ### Phase 3: Topic Configuration + AI Optimization
 
@@ -83,6 +83,6 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Settings Consolidation | 2/2 | Complete | 2026-03-30 |
-| 2. Pipeline Field Quality | 0/2 | Not started | - |
+| 2. Pipeline Field Quality | 2/2 | Complete   | 2026-03-30 |
 | 3. Topic Config + AI Opt | 0/2 | Not started | - |
 | 4. Pipeline Robustness | 0/2 | Not started | - |
