@@ -241,7 +241,7 @@ model WeeklyPick {
   weekly      WeeklyReport  @relation(fields: [weeklyId], references: [id], onDelete: Cascade)
 
   order       Int
-  itemId      String   // LEGACY: Kept for migration
+  itemId      String?  // LEGACY: phased out, use contentId
   contentId   String?  // NEW: unified pick target (additive for migration)
   reason      String
   createdAt   DateTime      @default(now()) @db.Timestamptz

@@ -164,8 +164,6 @@ async function persistResults(
             weeklyId: report.id,
             order: i,
             contentId: picks[i].contentId,
-            // Legacy field - kept for migration compatibility, Prisma default applies
-            itemId: picks[i].contentId,
             reason: picks[i].reason,
           },
         })
