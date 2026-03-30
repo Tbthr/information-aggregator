@@ -73,7 +73,6 @@ model DailyReportConfig {
   maxItems           Int      @default(50)
   minScore           Int      @default(0)
 
-  keywordBlacklist   String[]
   filterPrompt       String?
   topicPrompt        String
   topicSummaryPrompt String
