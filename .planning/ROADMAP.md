@@ -27,7 +27,7 @@ This project audits and optimizes the Information Aggregator's data collection p
 
 Plans:
 - [x] 01-01-PLAN.md — Fix `packs` → `topicIds` field mismatch in ReportSettingsPage
-- [ ] 01-02-PLAN.md — Create tabbed /settings page with routing redirects and sidebar nav update
+- [x] 01-02-PLAN.md — Create tabbed /settings page with routing redirects and sidebar nav update
 
 ### Phase 2: Pipeline Field Quality Audit
 
@@ -42,7 +42,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Fix `packs` → `topicIds` field mismatch in ReportSettingsPage
+- [x] 01-01-PLAN.md — Fix `packs` → `topicIds` field mismatch in ReportSettingsPage
 - [ ] 01-02-PLAN.md — Create tabbed /settings page with routing redirects and sidebar nav update
 
 ### Phase 3: Topic Configuration + AI Optimization
