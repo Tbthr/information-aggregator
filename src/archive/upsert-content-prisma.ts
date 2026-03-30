@@ -21,7 +21,7 @@ export interface ContentArchiveInput {
   body: string | null;
   url: string;
   authorLabel: string | null;
-  publishedAt: string | null;
+  publishedAt: string;
   fetchedAt: string;
   engagementScore: number | null;
   topicIds: string[];
@@ -89,7 +89,7 @@ export async function archiveContentItems(
       body: item.body,
       url: item.url,
       authorLabel: item.authorLabel,
-      publishedAt: item.publishedAt ? new Date(item.publishedAt) : null,
+      publishedAt: new Date(item.publishedAt),
       fetchedAt: new Date(item.fetchedAt),
       engagementScore: item.engagementScore,
       topicIds: item.topicIds,

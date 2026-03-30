@@ -328,7 +328,7 @@ export async function runCollectJob(options: RunCollectJobOptions = {}): Promise
       body: item.normalizedContent || null,
       url: item.normalizedUrl,
       authorLabel,
-      publishedAt: item.publishedAt ?? null,
+      publishedAt: item.publishedAt ?? jobStartedAt,
       fetchedAt: jobStartedAt,
       engagementScore: item.engagementScore ?? null,
       topicIds: item.filterContext?.topicIds ?? [],
