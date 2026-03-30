@@ -16,7 +16,7 @@ import { PageSkeleton } from "@/components/loading-skeletons"
 // ── Types ──
 
 interface DailyConfig {
-  packs: string[]
+  topicIds: string[]
   maxItems: number
   minScore: number
   keywordBlacklist: string[]
@@ -186,10 +186,10 @@ function NumberField({
 
 export function ReportSettingsPage() {
   const { data: settings, isLoading, mutate } = useReportSettings()
-  const { data: packs } = useTopics()
+  const { data: topics } = useTopics()
 
   const [daily, setDaily] = useState<DailyConfig>({
-    packs: [],
+    topicIds: [],
     maxItems: 50,
     minScore: 0,
     keywordBlacklist: [],
@@ -214,7 +214,7 @@ export function ReportSettingsPage() {
       const d = settings.daily as Record<string, unknown>
       setDaily((prev) => ({
         ...prev,
-        packs: (d.packs as string[]) ?? prev.packs,
+        topicIds: (d.topicIds as string[]) ?? prev.topicIds,
         maxItems: (d.maxItems as number) ?? prev.maxItems,
         minScore: (d.minScore as number) ?? prev.minScore,
         keywordBlacklist: (d.keywordBlacklist as string[]) ?? prev.keywordBlacklist,
@@ -236,12 +236,12 @@ export function ReportSettingsPage() {
     }
   }, [settings])
 
-  const togglePack = useCallback((packId: string) => {
+  const toggleTopicId = useCallback((topicId: string) => {
     setDaily((prev) => ({
       ...prev,
-      packs: prev.packs.includes(packId)
-        ? prev.packs.filter((id) => id !== packId)
-        : [...prev.packs, packId],
+      topicIds: prev.topicIds.includes(topicId)
+        ? prev.topicIds.filter((id) => id !== topicId)
+        : [...prev.topicIds, topicId],
     }))
   }, [])
 
@@ -253,7 +253,7 @@ export function ReportSettingsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           daily: escapePrompts({
-            packs: daily.packs,
+            topicIds: daily.topicIds,
             maxItems: daily.maxItems,
             minScore: daily.minScore,
             keywordBlacklist: daily.keywordBlacklist,
@@ -321,29 +321,29 @@ export function ReportSettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* 数据源 Pack 选择 */}
+          {/* 数据源 Topic 选择 */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium">数据源 Pack</Label>
+            <Label className="text-sm font-medium">数据源 Topic</Label>
             <p className="text-xs text-muted-foreground">
-              选择用于日报数据收集的 Pack（不选则使用所有 Pack）
+              选择用于日报数据收集的 Topic（不选则使用所有 Topic）
             </p>
-            {packs && packs.length > 0 ? (
+            {topics && topics.length > 0 ? (
               <div className="grid grid-cols-2 gap-2 mt-1">
-                {packs.map((pack) => (
+                {topics.map((topic) => (
                   <label
-                    key={pack.id}
+                    key={topic.id}
                     className="flex items-center gap-2 text-sm cursor-pointer rounded-lg px-3 py-2 hover:bg-accent transition-colors"
                   >
                     <Checkbox
-                      checked={daily.packs.includes(pack.id)}
-                      onCheckedChange={() => togglePack(pack.id)}
+                      checked={daily.topicIds.includes(topic.id)}
+                      onCheckedChange={() => toggleTopicId(topic.id)}
                     />
-                    <span className="truncate">{pack.name}</span>
+                    <span className="truncate">{topic.name}</span>
                   </label>
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-muted-foreground">暂无可用 Pack</p>
+              <p className="text-xs text-muted-foreground">暂无可用 Topic</p>
             )}
           </div>
 
