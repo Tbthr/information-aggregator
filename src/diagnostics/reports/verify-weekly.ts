@@ -175,7 +175,9 @@ export async function runWeeklyAssertions(
           }
 
           // Full reference integrity: check ALL contentIds
-          const contentIdSet = new Set(report.picks.map((p) => p.contentId).filter(Boolean));
+          const contentIdSet = new Set<string>(
+            report.picks.map((p) => p.contentId).filter((id): id is string => id !== null)
+          );
           if (contentIdSet.size > 0) {
             const existingContentCount = await prisma.content.count({
               where: { id: { in: Array.from(contentIdSet) } },

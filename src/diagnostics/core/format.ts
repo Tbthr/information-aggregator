@@ -86,8 +86,7 @@ export function formatDiagnosticsRun(result: DiagnosticsRunResult): string {
         const col = result.sections.collection;
         lines.push("  Collection:");
         if (col.inventory) {
-          lines.push(`    Items     : ${col.inventory.itemCount}`);
-          lines.push(`    Tweets    : ${col.inventory.tweetCount}`);
+          lines.push(`    Content   : ${col.inventory.contentCount}`);
           lines.push(`    Sources   : ${col.inventory.sourceCount} (${col.inventory.unhealthySourceCount} unhealthy)`);
         }
         if (col.run) {
@@ -100,8 +99,8 @@ export function formatDiagnosticsRun(result: DiagnosticsRunResult): string {
         const rep = result.sections.reports;
         lines.push("  Reports:");
         if (rep.inventory) {
-          lines.push(`    Items     : ${rep.inventory.items}`);
-          lines.push(`    Tweets    : ${rep.inventory.tweets}`);
+          lines.push(`    Content   : ${rep.inventory.contents}`);
+          lines.push(`    Topics    : ${rep.inventory.topics}`);
           lines.push(`    Daily Rpts: ${rep.inventory.dailyReports}`);
           lines.push(`    Weekly Rpts: ${rep.inventory.weeklyReports}`);
         }

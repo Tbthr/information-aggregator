@@ -121,10 +121,10 @@ export async function runReportsDiagnostics(
         status: "PASS",
         durationMs: inventoryDurationMs,
         data: {
-          items: inventory.items,
-          tweets: inventory.tweets,
+          contents: inventory.contents,
           dailyReports: inventory.dailyReports,
           weeklyReports: inventory.weeklyReports,
+          topics: inventory.topics,
         },
       });
 
@@ -139,15 +139,15 @@ export async function runReportsDiagnostics(
         category: "reports",
         status: "PASS",
         blocking: false,
-        message: `inventory: ${inventory.items} items, ${inventory.tweets} tweets, ${inventory.dailyReports} daily, ${inventory.weeklyReports} weekly reports`,
+        message: `inventory: ${inventory.contents} content, ${inventory.topics} topics, ${inventory.dailyReports} daily, ${inventory.weeklyReports} weekly reports`,
         evidence: {
-          items: inventory.items,
-          tweets: inventory.tweets,
+          contents: inventory.contents,
+          topics: inventory.topics,
           dailyReports: inventory.dailyReports,
           weeklyReports: inventory.weeklyReports,
         },
       });
-      log(`inventory stage complete: ${inventory.items} items`);
+      log(`inventory stage complete: ${inventory.contents} content`);
     } catch (err) {
       const inventoryDurationMs = Date.now() - inventoryStart;
       stages.push({

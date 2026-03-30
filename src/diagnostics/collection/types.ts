@@ -45,39 +45,29 @@ export interface SourceHealthSummary {
  * Collection inventory statistics
  */
 export interface CollectionInventory {
-  itemCount: number;
-  tweetCount: number;
+  contentCount: number;
   sourceCount: number;
   unhealthySourceCount: number;
 }
 
 /**
- * Persisted summary item (from database)
+ * Persisted summary content (from database)
  */
-export interface PersistedItemSummary {
+export interface PersistedContentSummary {
   id: string;
-  title: string;
-  sourceName: string;
-  publishedAt?: string;
-}
-
-/**
- * Persisted summary tweet (from database)
- */
-export interface PersistedTweetSummary {
-  id: string;
-  authorHandle: string;
-  text: string;
-  score?: number;
-  publishedAt?: string;
+  kind: string;
+  title?: string | null;
+  url: string;
+  authorLabel?: string | null;
+  publishedAt?: string | null;
+  qualityScore?: number | null;
 }
 
 /**
  * Persisted summary built from archived content in the database
  */
 export interface PersistedSummary {
-  topItems: PersistedItemSummary[];
-  topTweets: PersistedTweetSummary[];
+  topContent: PersistedContentSummary[];
 }
 
 /**

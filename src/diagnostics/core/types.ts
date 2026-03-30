@@ -60,8 +60,7 @@ export interface DiagnosticsAssertion {
 
 export interface CollectionDiagnosticsSection {
   inventory?: {
-    itemCount: number;
-    tweetCount: number;
+    contentCount: number;
     sourceCount: number;
     unhealthySourceCount: number;
   };
@@ -93,19 +92,14 @@ export interface CollectionDiagnosticsSection {
     };
   };
   persistedSummary?: {
-    topItems: Array<{
+    topContent: Array<{
       id: string;
-      title: string;
-      sourceName: string;
-      score?: number;
-      publishedAt?: string;
-    }>;
-    topTweets: Array<{
-      id: string;
-      authorHandle: string;
-      text: string;
-      score?: number;
-      publishedAt?: string;
+      kind: string;
+      title?: string | null;
+      url: string;
+      authorLabel?: string | null;
+      publishedAt?: string | null;
+      qualityScore?: number | null;
     }>;
   };
   runCandidateSummary?: {
@@ -125,10 +119,10 @@ export interface ReportsDiagnosticsSection {
     weekly: Record<string, unknown>;
   };
   inventory?: {
-    items: number;
-    tweets: number;
+    contents: number;
     dailyReports: number;
     weeklyReports: number;
+    topics: number;
   };
   resolvedTargets?: {
     dailyDate?: string;

@@ -2,15 +2,14 @@
 
 import { prisma } from "@/lib/prisma";
 import { classifySourceHealth } from "./health";
-import type { CollectionInventory, PersistedSummary, PersistedItemSummary, PersistedTweetSummary, SourceHealthSummary } from "./types";
+import type { CollectionInventory, PersistedSummary, PersistedContentSummary, SourceHealthSummary } from "./types";
 
 /**
  * Loads collection inventory counts from the database.
  */
 export async function loadCollectionInventory(): Promise<CollectionInventory> {
-  const [itemCount, tweetCount, sourceCount, unhealthyRecords] = await Promise.all([
-    prisma.item.count(),
-    prisma.tweet.count(),
+  const [contentCount, sourceCount, unhealthyRecords] = await Promise.all([
+    prisma.content.count(),
     prisma.source.count(),
     // Count unhealthy sources (consecutiveFailures > 0)
     prisma.sourceHealth.count({
@@ -19,68 +18,46 @@ export async function loadCollectionInventory(): Promise<CollectionInventory> {
   ]);
 
   return {
-    itemCount,
-    tweetCount,
+    contentCount,
     sourceCount,
     unhealthySourceCount: unhealthyRecords,
   };
 }
 
 /**
- * Builds a persisted summary of top items and tweets from the database.
+ * Builds a persisted summary of top content from the database.
  *
- * @param topN - Number of top items/tweets to include (default 20)
+ * @param topN - Number of top content items to include (default 20)
  */
 export async function buildPersistedSummary(topN: number = 20): Promise<PersistedSummary> {
-  const [topItems, topTweets] = await Promise.all([
-    // Get top items by recency, with source name
-    prisma.item.findMany({
-      orderBy: [
-        { publishedAt: "desc" },
-        { fetchedAt: "desc" },
-      ],
-      take: topN,
-      select: {
-        id: true,
-        title: true,
-        sourceName: true,
-        publishedAt: true,
-      },
-    }),
-    // Get top tweets by score (Tweet model retains score)
-    prisma.tweet.findMany({
-      orderBy: [
-        { score: "desc" },
-        { publishedAt: "desc" },
-      ],
-      take: topN,
-      select: {
-        id: true,
-        authorHandle: true,
-        text: true,
-        score: true,
-        publishedAt: true,
-      },
-    }),
-  ]);
+  const topContent = await prisma.content.findMany({
+    orderBy: [
+      { qualityScore: "desc" },
+      { fetchedAt: "desc" },
+    ],
+    take: topN,
+    select: {
+      id: true,
+      kind: true,
+      title: true,
+      url: true,
+      authorLabel: true,
+      publishedAt: true,
+      qualityScore: true,
+    },
+  });
 
-  const persistedItems: PersistedItemSummary[] = topItems.map((item) => ({
-    id: item.id,
-    title: item.title,
-    sourceName: item.sourceName,
-    publishedAt: item.publishedAt?.toISOString(),
-  }));
-
-  const persistedTweets: PersistedTweetSummary[] = topTweets.map((tweet) => ({
-    id: tweet.id,
-    authorHandle: tweet.authorHandle,
-    text: tweet.text,
-    score: tweet.score,
-    publishedAt: tweet.publishedAt?.toISOString(),
+  const persistedContent: PersistedContentSummary[] = topContent.map((c) => ({
+    id: c.id,
+    kind: c.kind,
+    title: c.title,
+    url: c.url,
+    authorLabel: c.authorLabel,
+    publishedAt: c.publishedAt?.toISOString() ?? null,
+    qualityScore: c.qualityScore,
   }));
 
   return {
-    topItems: persistedItems,
-    topTweets: persistedTweets,
+    topContent: persistedContent,
   };
 }

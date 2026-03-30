@@ -132,8 +132,7 @@ export async function runCollectionDiagnostics(
       status: "PASS",
       durationMs: inventoryDurationMs,
       data: {
-        itemCount: inventory.itemCount,
-        tweetCount: inventory.tweetCount,
+        contentCount: inventory.contentCount,
         sourceCount: inventory.sourceCount,
         unhealthySourceCount: inventory.unhealthySourceCount,
       },
@@ -141,7 +140,7 @@ export async function runCollectionDiagnostics(
 
     collectionSection.inventory = inventory;
 
-    // Persisted summary (top items/tweets)
+    // Persisted summary (top content)
     const persistedSummary = await buildPersistedSummary(20);
     collectionSection.persistedSummary = persistedSummary;
 
@@ -150,10 +149,10 @@ export async function runCollectionDiagnostics(
       category: "collection",
       status: "PASS",
       blocking: false,
-      message: `inventory: ${inventory.itemCount} items, ${inventory.tweetCount} tweets, ${inventory.sourceCount} sources`,
-      evidence: { itemCount: inventory.itemCount, tweetCount: inventory.tweetCount, sourceCount: inventory.sourceCount },
+      message: `inventory: ${inventory.contentCount} content, ${inventory.sourceCount} sources`,
+      evidence: { contentCount: inventory.contentCount, sourceCount: inventory.sourceCount },
     });
-    log(`inventory stage complete: ${inventory.itemCount} items`);
+    log(`inventory stage complete: ${inventory.contentCount} content`);
   } catch (err) {
     const inventoryDurationMs = Date.now() - inventoryStart;
     stages.push({
