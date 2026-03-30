@@ -33,6 +33,8 @@ Existing codebase at `/Users/lyq/ai-enhance/information-aggregator`：
 ### Validated
 
 - ✓ **Content/Topic 统一 schema** — `Content` 和 `Topic` 模型已迁移完成
+- ✓ **FRONTEND-01** — 前端 `packs` → `topicIds` 字段修复，ReportSettingsPage 与 API schema 对齐 (Phase 1)
+- ✓ **FRONTEND-02** — 统一 Tabbed `/settings` 页面，合并日报/周报/数据源配置，旧 URL 重定向 (Phase 1)
 - ✓ **Collection Pipeline** — `src/pipeline/run-collect-job.ts` 实现：adapters → normalize → filter → dedupe → persist
 - ✓ **日报 Pipeline** — `src/reports/daily.ts` 实现：collect → score → cluster → summarize → persist
 - ✓ **周报 Pipeline** — `src/reports/weekly.ts` 实现：collect → editorial → picks → persist
@@ -45,8 +47,10 @@ Existing codebase at `/Users/lyq/ai-enhance/information-aggregator`：
 - [ ] **[PIPELINE-02]** 日报 AI 配置的初始 Topic 指定 — Supabase 中配置默认 topicIds 提高日报质量
 - [ ] **[PIPELINE-03]** 日报 AI 使用优化 — 分析 `prompts-reports.ts` 中 AI 调用效率和质量
 - [ ] **[PIPELINE-04]** 周报全流程梳理 — `src/reports/weekly.ts` 各阶段 AI 调用和输出质量
-- [ ] **[FRONTEND-01]** 前端报告设置页面同步 — 确保 `/settings/reports` 与最新实现同步
-- [ ] **[FRONTEND-02]** Pack 概念删除后的前端重构 — 将 Pack 配置改为 Source + Topic 配置，考虑与报告设置合并
+- [ ] **[PIPELINE-01]** 数据采集所有 fetcher 的关键字段检查 — RSS/JSON Feed/Website/X 适配器的 RawItem 字段完整性
+- [ ] **[PIPELINE-02]** 日报 AI 配置的初始 Topic 指定 — Supabase 中配置默认 topicIds 提高日报质量
+- [ ] **[PIPELINE-03]** 日报 AI 使用优化 — 分析 `prompts-reports.ts` 中 AI 调用效率和质量
+- [ ] **[PIPELINE-04]** 周报全流程梳理 — `src/reports/weekly.ts` 各阶段 AI 调用和输出质量
 
 ### Out of Scope
 
@@ -85,4 +89,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ---
 
-*Last updated: 2026-03-30 after initialization*
+*Last updated: 2026-03-30 after Phase 1 completion (settings-consolidation)*
