@@ -1,12 +1,18 @@
 import type { FilterContext, Topic } from "../types/index";
 
-interface FilterableItem {
+export interface FilterableItem {
   normalizedTitle: string;
   normalizedSummary: string;
   normalizedContent: string;
   sourceKind?: string;
   engagementScore?: number | null;
   qualityScore?: number | null;
+  /**
+   * Topic IDs from the source's defaultTopicIds.
+   * Only topics in this list are considered during classification.
+   * If empty, the item is not classified into any topic.
+   */
+  sourceDefaultTopicIds?: string[];
 }
 
 /**
@@ -75,13 +81,56 @@ export function classifyByTopic(item: FilterableItem, topic: Topic): boolean {
 
 /**
  * Filter items based on multiple topics (OR logic - item passes if it matches any topic)
+ * Only considers topics that are in the item's sourceDefaultTopicIds.
  */
 export function filterByTopics(items: FilterableItem[], topics: Topic[]): FilterableItem[] {
   if (topics.length === 0) {
     return items;
   }
 
-  return items.filter((item) => topics.some((topic) => classifyByTopic(item, topic)));
+  const topicMap = new Map(topics.map((t) => [t.id, t]));
+
+  return items.filter((item) => {
+    const candidateTopics = getCandidateTopics(item, topicMap);
+    return candidateTopics.some((topic) => classifyByTopic(item, topic));
+  });
+}
+
+/**
+ * Get candidate topics for an item based on its sourceDefaultTopicIds.
+ * If sourceDefaultTopicIds is empty/undefined, returns an empty array (no topics).
+ */
+function getCandidateTopics(item: FilterableItem, topicMap: Map<string, Topic>): Topic[] {
+  const defaultIds = item.sourceDefaultTopicIds;
+  if (!defaultIds || defaultIds.length === 0) {
+    return [];
+  }
+  const candidates: Topic[] = [];
+  for (const id of defaultIds) {
+    const topic = topicMap.get(id);
+    if (topic) {
+      candidates.push(topic);
+    }
+  }
+  return candidates;
+}
+
+/**
+ * Classify an item against all eligible topics (based on sourceDefaultTopicIds)
+ * and return matched topic IDs.
+ * Returns an array of topic IDs that the item qualifies for.
+ */
+export function classifyItemTopics(item: FilterableItem, topics: Topic[]): string[] {
+  if (topics.length === 0) {
+    return [];
+  }
+
+  const topicMap = new Map(topics.map((t) => [t.id, t]));
+  const candidateTopics = getCandidateTopics(item, topicMap);
+
+  return candidateTopics
+    .filter((topic) => classifyByTopic(item, topic))
+    .map((topic) => topic.id);
 }
 
 /**
@@ -113,8 +162,9 @@ export function filterByPack(item: FilterableItem, context: FilterContext): bool
 }
 
 /**
- * Score item against a topic and return topic match scores.
+ * Score item against eligible topics (based on sourceDefaultTopicIds) and return topic match scores.
  * Returns Record<topicId, baseMatchScore> for topicScoresJson.
+ * Only scores topics that are in the item's sourceDefaultTopicIds.
  */
 export function scoreItemByTopic(
   item: FilterableItem,
@@ -122,7 +172,16 @@ export function scoreItemByTopic(
 ): Record<string, number> {
   const scores: Record<string, number> = {};
 
-  for (const topic of topics) {
+  // Only score topics within sourceDefaultTopicIds
+  const defaultIds = item.sourceDefaultTopicIds;
+  if (!defaultIds || defaultIds.length === 0) {
+    return scores;
+  }
+
+  const defaultIdSet = new Set(defaultIds);
+  const eligibleTopics = topics.filter((t) => defaultIdSet.has(t.id));
+
+  for (const topic of eligibleTopics) {
     let score = 0;
 
     // Base score: 1.0 if passes classification, 0 if not

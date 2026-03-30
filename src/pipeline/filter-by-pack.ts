@@ -5,5 +5,6 @@ export {
   filterByPack,
   filterByTopics,
   classifyByTopic,
+  classifyItemTopics,
   scoreItemByTopic,
 } from "./filter-by-topic";

@@ -13,10 +13,11 @@
  */
 
 import { loadAllTopicsFromDb, type TopicWithSources } from "../config/load-pack-prisma";
+import type { Topic } from "../types/index";
 import { generateSourceId } from "../config/source-id";
 import { collectSources, type CollectDependencies, type CollectSourceEvent, type AdapterFn } from "./collect";
 import { normalizeItems } from "./normalize";
-import { filterByPack } from "./filter-by-topic";
+import { classifyItemTopics, scoreItemByTopic, type FilterableItem } from "./filter-by-topic";
 import { dedupeExact } from "./dedupe-exact";
 import { dedupeNear } from "./dedupe-near";
 import {
@@ -194,6 +195,33 @@ export async function runCollectJob(options: RunCollectJobOptions = {}): Promise
   // ── 4. Resolve sources for collection (filters unsupported types) ─
   const sources = resolveSourcesForCollection(packs);
 
+  // Build sourceId -> defaultTopicIds mapping from all packs
+  const sourceDefaultTopicIdsMap = new Map<string, string[]>();
+  for (const pack of packs) {
+    for (const source of pack.sources) {
+      const sourceId = generateSourceId(source.url);
+      // Use source's defaultTopicIds if available; fallback to pack ID during migration
+      const defaultTopicIds = source.defaultTopicIds?.length
+        ? source.defaultTopicIds
+        : [pack.id];
+      if (!sourceDefaultTopicIdsMap.has(sourceId)) {
+        sourceDefaultTopicIdsMap.set(sourceId, defaultTopicIds);
+      }
+    }
+  }
+
+  // Build flat Topic[] list from packs for classification
+  const allTopics: Topic[] = packs.map((pack) => ({
+    id: pack.id,
+    name: pack.name,
+    description: pack.description,
+    includeRules: pack.includeRules,
+    excludeRules: pack.excludeRules,
+    scoreBoost: pack.scoreBoost,
+    displayOrder: pack.displayOrder,
+    maxItems: pack.maxItems,
+  }));
+
   log("Collecting from sources", { count: sources.length });
 
   // Build sourceNameMap for later use
@@ -230,11 +258,29 @@ export async function runCollectJob(options: RunCollectJobOptions = {}): Promise
   const normalized = normalizeItems(rawItems);
   log("Normalized items", { count: normalized.length });
 
-  // ── 7. Filter by pack (topic-based during migration) ─────────────
-  // items without filterContext are kept (no filtering)
+  // ── 7. Classify by topic (sourceDefaultTopicIds gating) ─────────────
+  // Enrich items with sourceDefaultTopicIds, then classify against eligible topics.
+  // Items without sourceDefaultTopicIds are kept (no filtering) for backward compat.
   const afterTopicFilter = normalized.filter((item) => {
-    if (!item.filterContext) return true;
-    return filterByPack(item, item.filterContext);
+    const defaultTopicIds = sourceDefaultTopicIdsMap.get(item.sourceId);
+    if (!defaultTopicIds || defaultTopicIds.length === 0) {
+      // No topic association - keep item for backward compatibility
+      return true;
+    }
+    // Build FilterableItem and classify against eligible topics only
+    const filterable: FilterableItem = {
+      normalizedTitle: item.normalizedTitle,
+      normalizedSummary: item.normalizedSummary,
+      normalizedContent: item.normalizedContent,
+      sourceDefaultTopicIds: defaultTopicIds,
+    };
+    const matchedTopicIds = classifyItemTopics(filterable, allTopics);
+    // Attach topic classification results for later use (archive step reads filterContext.topicIds)
+    item.filterContext = {
+      topicIds: matchedTopicIds,
+    };
+    // Keep item if it matches at least one topic
+    return matchedTopicIds.length > 0;
   });
   log("After topic filter", { before: normalized.length, after: afterTopicFilter.length });
 
@@ -258,6 +304,22 @@ export async function runCollectJob(options: RunCollectJobOptions = {}): Promise
       authorLabel = null;
     }
 
+    // Compute topic scores for classified items
+    const defaultTopicIds = sourceDefaultTopicIdsMap.get(item.sourceId);
+    let topicScoresJson: string | null = null;
+    if (defaultTopicIds && defaultTopicIds.length > 0 && allTopics.length > 0) {
+      const filterable: FilterableItem = {
+        normalizedTitle: item.normalizedTitle,
+        normalizedSummary: item.normalizedSummary,
+        normalizedContent: item.normalizedContent,
+        sourceDefaultTopicIds: defaultTopicIds,
+      };
+      const scores = scoreItemByTopic(filterable, allTopics);
+      if (Object.keys(scores).length > 0) {
+        topicScoresJson = JSON.stringify(scores);
+      }
+    }
+
     return {
       id: item.id,
       kind: item.contentType as ContentKind,
@@ -269,7 +331,7 @@ export async function runCollectJob(options: RunCollectJobOptions = {}): Promise
       fetchedAt: jobStartedAt,
       engagementScore: item.engagementScore ?? null,
       topicIds: item.filterContext?.topicIds ?? [],
-      topicScoresJson: null,
+      topicScoresJson,
       metadataJson: item.metadataJson,
       sourceId: item.sourceId,
     };
