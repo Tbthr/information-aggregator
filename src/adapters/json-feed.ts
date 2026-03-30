@@ -115,6 +115,7 @@ export function parseJsonFeedItems(
   const cutoffTime = new Date(jobStart.getTime() - 24 * 60 * 60 * 1000);
 
   const items: RawItem[] = [];
+  let discardCount = 0;
 
   for (let index = 0; index < payload.items.length; index++) {
     const item = payload.items[index];
@@ -163,6 +164,7 @@ export function parseJsonFeedItems(
         rawTime: timestampFailure.rawPublishedAt,
         discardReason: `timestamp is ${timestampFailure.reason}: ${timestampFailure.rawPublishedAt}`,
       });
+      discardCount++;
       continue;
     }
 
@@ -180,6 +182,7 @@ export function parseJsonFeedItems(
           rawTime: parsedTimestamp.rawPublishedAt,
           discardReason: `published at ${parsedTimestamp.date.toISOString()} is before cutoff ${cutoffTime.toISOString()}`,
         });
+        discardCount++;
         continue;
       }
     }
@@ -211,6 +214,8 @@ export function parseJsonFeedItems(
       sourceId,
       title: item.title ?? `Untitled ${index + 1}`,
       url,
+      author: authorName,
+      content: content,
       fetchedAt: new Date().toISOString(),
       metadataJson,
     };
@@ -225,6 +230,17 @@ export function parseJsonFeedItems(
 
     items.push(rawItem);
   }
+
+  // Log discard summary per source (D-04, D-05)
+  logger.info("Source fetch completed", {
+    sourceId,
+    sourceType: "json-feed",
+    fetched: items.length,
+    discarded: discardCount,
+    discardRate: items.length + discardCount > 0
+      ? `${((discardCount / (items.length + discardCount)) * 100).toFixed(1)}%`
+      : "0%",
+  });
 
   return items;
 }
