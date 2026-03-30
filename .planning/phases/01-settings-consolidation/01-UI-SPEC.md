@@ -67,7 +67,9 @@ Exceptions: none — use 8pt grid consistently.
 | Page heading | 20px | 600 | 1.2 | Sora |
 | Prompt/mono | 12px | 400 | 1.5 | JetBrains Mono |
 
-Pre-populated from: globals.css (--font-sans, --font-mono, article-body at 17px/1.85)
+**4 unique sizes:** 12 / 14 / 16 / 20 px — within the 4-size maximum.
+
+Pre-populated from: globals.css (--font-sans, --font-mono)
 
 ---
 
@@ -90,6 +92,19 @@ Color roles are defined by the existing globals.css design tokens (oklch-based).
 - Badge backgrounds (variant="secondary")
 
 Pre-populated from: globals.css CSS custom properties.
+
+---
+
+## Visual Hierarchy
+
+| Priority | Element | Rationale |
+|----------|---------|-----------|
+| 1st (primary focal) | Page heading (20px, 600 weight) | User orientation — what page am I on |
+| 2nd | Tab bar | Primary navigation between Daily/Weekly/Sources |
+| 3rd | Card titles (16px, 600 weight) | Section grouping within each tab |
+| 4th | Form fields, badges | Interactive/input elements |
+
+Icon-only actions: none in Phase 1 settings page. All interactive elements have visible labels.
 
 ---
 
