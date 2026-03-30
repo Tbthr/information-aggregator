@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyCronRequest, unauthorizedResponse } from "../cron/_lib";
-import { getArchiveStats } from "../../../src/archive/upsert-prisma";
+import { getArchiveStats } from "../../../src/archive/upsert-content-prisma";
 
 export const runtime = "nodejs";
 

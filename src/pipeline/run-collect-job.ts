@@ -23,7 +23,7 @@ import { dedupeNear } from "./dedupe-near";
 import {
   archiveContentItems,
   type ContentArchiveInput,
-  syncPacksToPrisma,
+  syncTopicsToPrisma,
   upsertSourcesBatch,
   recordSourcesSuccessBatch,
   recordSourceFailure,
@@ -164,7 +164,7 @@ export async function runCollectJob(options: RunCollectJobOptions = {}): Promise
     name: p.name,
     description: p.description,
   }));
-  await syncPacksToPrisma(packRecords);
+  await syncTopicsToPrisma(packRecords);
 
   // ── 3. Sync sources to DB ─────────────────────────────────────
   const allSources: Array<{

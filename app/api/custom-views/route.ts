@@ -20,16 +20,12 @@ export async function GET() {
   try {
     const views = await prisma.customView.findMany({
       include: {
-        customViewPacks: {
-          include: {
-            pack: true,
-          },
-        },
+        customViewTopics: true,
       },
       orderBy: { order: "asc" },
     })
 
-    // Transform to use topicIds instead of packIds in response
+    // Transform to use topicIds in response
     const transformedViews = views.map((view) => ({
       id: view.id,
       name: view.name,
@@ -37,7 +33,7 @@ export async function GET() {
       description: view.description,
       filterJson: view.filterJson,
       order: view.order,
-      topicIds: view.customViewPacks.map((cvp) => cvp.packId),
+      topicIds: view.customViewTopics.map((cvt) => cvt.topicId),
     }))
 
     return success({ views: transformedViews })
@@ -69,16 +65,12 @@ export async function POST(request: Request) {
         description: parsedData.description,
         filterJson: parsedData.filterJson,
         updatedAt: new Date(),
-        customViewPacks: {
-          create: parsedData.topicIds.map((topicId) => ({ packId: topicId })),
+        customViewTopics: {
+          create: parsedData.topicIds.map((topicId) => ({ topicId })),
         },
       },
       include: {
-        customViewPacks: {
-          include: {
-            pack: true,
-          },
-        },
+        customViewTopics: true,
       },
     })
 
@@ -89,7 +81,7 @@ export async function POST(request: Request) {
       description: view.description,
       filterJson: view.filterJson,
       order: view.order,
-      topicIds: view.customViewPacks.map((cvp) => cvp.packId),
+      topicIds: view.customViewTopics.map((cvt) => cvt.topicId),
     })
   } catch (err) {
     console.error("Error creating custom view:", err)

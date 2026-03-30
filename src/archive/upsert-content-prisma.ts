@@ -6,7 +6,7 @@
  */
 
 import { prisma } from "../../lib/prisma";
-import type { Content, ContentKind } from "../types/index";
+import type { ContentKind } from "../types/index";
 
 // 批量操作的分批大小
 const BATCH_SIZE = 30;
@@ -156,28 +156,43 @@ export async function archiveContentItems(
 // ─── Source management functions ─────────────────────────────────────────────
 
 /**
- * 同步 Packs 到数据库（批量）
+ * 同步 Topics 到数据库（批量）
  */
-export async function syncPacksToPrisma(
-  packs: Array<{
+export async function syncTopicsToPrisma(
+  topics: Array<{
     id: string;
     name: string;
     description?: string | null;
+    includeRules?: string[];
+    excludeRules?: string[];
+    scoreBoost?: number;
+    displayOrder?: number;
+    maxItems?: number;
   }>,
 ): Promise<void> {
-  if (packs.length === 0) return;
+  if (topics.length === 0) return;
 
-  const upsertPromises = packs.map((pack) =>
-    prisma.pack.upsert({
-      where: { id: pack.id },
+  const upsertPromises = topics.map((topic) =>
+    prisma.topic.upsert({
+      where: { id: topic.id },
       create: {
-        id: pack.id,
-        name: pack.name,
-        description: pack.description,
+        id: topic.id,
+        name: topic.name,
+        description: topic.description,
+        includeRules: topic.includeRules ?? [],
+        excludeRules: topic.excludeRules ?? [],
+        scoreBoost: topic.scoreBoost ?? 1.0,
+        displayOrder: topic.displayOrder ?? 0,
+        maxItems: topic.maxItems ?? 10,
       },
       update: {
-        name: pack.name,
-        description: pack.description,
+        name: topic.name,
+        description: topic.description,
+        includeRules: topic.includeRules ?? [],
+        excludeRules: topic.excludeRules ?? [],
+        scoreBoost: topic.scoreBoost ?? 1.0,
+        displayOrder: topic.displayOrder ?? 0,
+        maxItems: topic.maxItems ?? 10,
       },
     }),
   );
@@ -200,40 +215,33 @@ export async function upsertSourcesBatch(
     enabled: boolean;
     url?: string;
     configJson?: string;
-    packId?: string;
+    defaultTopicIds?: string[];
   }>,
 ): Promise<void> {
   if (sources.length === 0) return;
 
-  // Deduplicate by (packId, url) — keep first occurrence, ignore duplicates
+  // Deduplicate by url — keep first occurrence, ignore duplicates
   const seen = new Set<string>();
   const deduped = sources.filter((s) => {
-    const key = `${s.packId ?? ""}|${s.url ?? ""}`;
+    const key = s.url ?? "";
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
 
-  // Step 1: Query existing sources by (packId, url) to handle the case where
-  // a (packId, url) combo exists with a different id than source.id
-  const packUrlKeys = deduped.map((s) => ({ packId: s.packId ?? null, url: s.url ?? "" }));
-  const existingByPackUrl = await prisma.source.findMany({
-    where: {
-      OR: packUrlKeys.map((k) => ({ packId: k.packId, url: { equals: k.url } })),
-    },
-    select: { id: true, packId: true, url: true },
+  // Step 1: Query existing sources by url
+  const urls = deduped.map((s) => s.url ?? "");
+  const existingByUrl = await prisma.source.findMany({
+    where: { url: { in: urls } },
+    select: { id: true, url: true },
   });
-  const packUrlToId = new Map(
-    existingByPackUrl.map((e) => [`${e.packId ?? ""}|${e.url}`, e.id]),
-  );
+  const urlToId = new Map(existingByUrl.map((e) => [e.url, e.id]));
 
-  // Step 2: Build upsert operations — use id if exists, otherwise use (packId, url)
+  // Step 2: Build upsert operations
   const upsertPromises = deduped.map((source) => {
-    const key = `${source.packId ?? ""}|${source.url ?? ""}`;
-    const existingId = packUrlToId.get(key);
+    const existingId = urlToId.get(source.url ?? "");
 
     if (existingId) {
-      // (packId, url) exists — upsert by id to update it
       return prisma.source.upsert({
         where: { id: existingId },
         create: {
@@ -243,7 +251,7 @@ export async function upsertSourcesBatch(
           url: source.url || "",
           enabled: source.enabled,
           configJson: source.configJson,
-          packId: source.packId,
+          defaultTopicIds: source.defaultTopicIds ?? [],
         },
         update: {
           kind: source.kind,
@@ -251,11 +259,10 @@ export async function upsertSourcesBatch(
           url: source.url || "",
           enabled: source.enabled,
           configJson: source.configJson,
-          packId: source.packId,
+          defaultTopicIds: source.defaultTopicIds ?? [],
         },
       });
     } else {
-      // No existing (packId, url) — upsert by id (will create new)
       return prisma.source.upsert({
         where: { id: source.id },
         create: {
@@ -265,7 +272,7 @@ export async function upsertSourcesBatch(
           url: source.url || "",
           enabled: source.enabled,
           configJson: source.configJson,
-          packId: source.packId,
+          defaultTopicIds: source.defaultTopicIds ?? [],
         },
         update: {
           kind: source.kind,
@@ -273,7 +280,7 @@ export async function upsertSourcesBatch(
           url: source.url || "",
           enabled: source.enabled,
           configJson: source.configJson,
-          packId: source.packId,
+          defaultTopicIds: source.defaultTopicIds ?? [],
         },
       });
     }
@@ -341,4 +348,245 @@ export async function recordSourceFailure(
       updatedAt: new Date(),
     },
   });
+}
+
+/**
+ * 获取归档统计（基于 Content）
+ */
+export async function getArchiveStats(): Promise<{
+  totalItems: number;
+  oldestItem: Date | null;
+  newestItem: Date | null;
+  bySource: Array<{ sourceId: string; count: bigint }>;
+}> {
+  const totalItems = await prisma.content.count();
+
+  const oldestNewest = await prisma.content.findFirst({
+    orderBy: { fetchedAt: "asc" },
+    select: { fetchedAt: true },
+  });
+
+  const newestItem = await prisma.content.findFirst({
+    orderBy: { fetchedAt: "desc" },
+    select: { fetchedAt: true },
+  });
+
+  const bySource = await prisma.content.groupBy({
+    by: ["sourceId"],
+    _count: { id: true },
+    orderBy: { _count: { id: "desc" } },
+  });
+
+  return {
+    totalItems,
+    oldestItem: oldestNewest?.fetchedAt ?? null,
+    newestItem: newestItem?.fetchedAt ?? null,
+    bySource: bySource.map((s) => ({
+      sourceId: s.sourceId,
+      count: BigInt(s._count.id),
+    })),
+  };
+}
+
+// ─── Tweet archival functions ─────────────────────────────────────────────────
+
+/**
+ * RawItem from bird adapter
+ */
+interface RawItem {
+  id: string;
+  sourceId: string;
+  title: string;
+  url: string;
+  fetchedAt: string;
+  metadataJson: string;
+  publishedAt?: string;
+  author?: string;
+  content?: string;
+}
+
+/**
+ * Parsed metadata from bird adapter
+ */
+interface ParsedMetadata {
+  tweetId?: string;
+  authorName?: string;
+  authorId?: string;
+  expandedUrl?: string;
+  conversationId?: string;
+  engagement?: {
+    score?: number;
+    comments?: number;
+    reactions?: number;
+  };
+  media?: unknown;
+  quote?: unknown;
+  thread?: unknown;
+  parent?: unknown;
+  article?: unknown;
+}
+
+/**
+ * Archive result for tweets
+ */
+export interface ArchiveTweetsResult {
+  newCount: number;
+  updateCount: number;
+  totalCount: number;
+  newContentIds: string[];
+}
+
+/**
+ * 计算 engagement score for tweets
+ * Formula: min(100, floor((likeCount * 1 + replyCount * 2 + retweetCount * 3) / 10))
+ */
+function computeTweetEngagementScore(likeCount: number, replyCount: number, retweetCount: number): number {
+  return Math.min(100, Math.floor((likeCount * 1 + replyCount * 2 + retweetCount * 3) / 10));
+}
+
+/**
+ * Parse RawItem metadata
+ */
+function parseMetadata(metadataJson: string | undefined): ParsedMetadata {
+  if (!metadataJson) return {};
+  try {
+    return JSON.parse(metadataJson) as ParsedMetadata;
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Archive tweets as Content(kind="tweet")
+ * Uses expandedUrl for deduplication (URL dedup is the standard dedup strategy for Content)
+ */
+export async function archiveTweetsAsContent(
+  items: RawItem[],
+  tab: string,
+): Promise<ArchiveTweetsResult> {
+  if (items.length === 0) {
+    return { newCount: 0, updateCount: 0, totalCount: 0, newContentIds: [] };
+  }
+
+  const now = new Date();
+
+  // Convert RawItem[] to Content data
+  const contentDataList = items.map((item) => {
+    const metadata = parseMetadata(item.metadataJson);
+    const engagement = metadata.engagement ?? {};
+    const likeCount = engagement.score ?? 0;
+    const replyCount = engagement.comments ?? 0;
+    const retweetCount = engagement.reactions ?? 0;
+
+    // quotedTweet: quote || quotedTweet
+    const quotedTweet = (metadata as Record<string, unknown>).quotedTweet ?? metadata.quote;
+
+    // Build metadata JSON for Content
+    const contentMetadata = {
+      tweetId: metadata.tweetId || item.id,
+      tab,
+      likeCount,
+      replyCount,
+      retweetCount,
+      media: metadata.media,
+      quotedTweet,
+      thread: metadata.thread,
+      parent: metadata.parent,
+      article: metadata.article,
+    };
+
+    return {
+      id: item.id,
+      kind: "tweet" as ContentKind,
+      sourceId: item.sourceId || "twitter",
+      title: null, // tweets don't have a separate title
+      body: item.content || item.title,
+      url: metadata.expandedUrl || item.url, // Use expandedUrl for deduplication
+      authorLabel: item.author || metadata.authorName || "",
+      publishedAt: item.publishedAt ? new Date(item.publishedAt) : now,
+      fetchedAt: item.fetchedAt ? new Date(item.fetchedAt) : now,
+      engagementScore: computeTweetEngagementScore(likeCount, replyCount, retweetCount),
+      topicIds: [] as string[],
+      topicScoresJson: null,
+      metadataJson: JSON.stringify(contentMetadata),
+    };
+  });
+
+  // Query existing URLs for deduplication
+  const allUrls = contentDataList.map((c) => c.url);
+  const existingContents = await prisma.content.findMany({
+    where: { url: { in: allUrls }, kind: "tweet" },
+    select: { id: true, url: true, topicIds: true },
+  });
+  const existingUrlSet = new Set(existingContents.map((c) => c.url));
+  const existingUrlToContent = new Map(existingContents.map((c) => [c.url, c]));
+
+  // Separate new and update
+  const newItems = [];
+  const updateItems: Array<{ item: typeof contentDataList[0]; existingId: string }> = [];
+
+  for (const item of contentDataList) {
+    if (existingUrlSet.has(item.url)) {
+      updateItems.push({ item, existingId: existingUrlToContent.get(item.url)!.id });
+    } else {
+      newItems.push(item);
+    }
+  }
+
+  let newCount = 0;
+  let updateCount = 0;
+  let newContentIds: string[] = [];
+
+  // Batch create new records
+  if (newItems.length > 0) {
+    for (let i = 0; i < newItems.length; i += BATCH_SIZE) {
+      const batch = newItems.slice(i, i + BATCH_SIZE);
+      await prisma.content.createMany({
+        data: batch,
+        skipDuplicates: true,
+      });
+      newCount += batch.length;
+    }
+
+    // Query newly created content IDs
+    const newUrls = newItems.map((c) => c.url);
+    const createdContents = await prisma.content.findMany({
+      where: { url: { in: newUrls }, kind: "tweet" },
+      select: { id: true, url: true },
+    });
+    const existingUrls = new Set(existingContents.map((c) => c.url));
+    newContentIds = createdContents.filter((c) => !existingUrls.has(c.url)).map((c) => c.id);
+  }
+
+  // Batch update existing records
+  if (updateItems.length > 0) {
+    const updatePromises = updateItems.map(({ item, existingId }) => {
+      const existing = existingUrlToContent.get(item.url);
+      const mergedTopicIds = existing
+        ? Array.from(new Set([...existing.topicIds, ...item.topicIds]))
+        : item.topicIds;
+
+      return prisma.content.update({
+        where: { id: existingId },
+        data: {
+          fetchedAt: item.fetchedAt,
+          engagementScore: item.engagementScore,
+          topicIds: mergedTopicIds,
+        },
+      });
+    });
+
+    for (let i = 0; i < updatePromises.length; i += BATCH_SIZE) {
+      const batch = updatePromises.slice(i, i + BATCH_SIZE);
+      await Promise.all(batch);
+      updateCount += batch.length;
+    }
+  }
+
+  return {
+    newCount,
+    updateCount,
+    totalCount: items.length,
+    newContentIds,
+  };
 }

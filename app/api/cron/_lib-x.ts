@@ -1,7 +1,5 @@
 import { collectXBirdSource } from "../../../src/adapters/x-bird";
-import { archiveTweets } from "../../../src/archive/upsert-tweet-prisma";
-import { enrichTweets } from "../../../src/archive/enrich-tweet-prisma";
-import { enrichTweetDetails } from "../../../src/archive/enrich-tweet-details";
+import { archiveTweetsAsContent } from "../../../src/archive/upsert-content-prisma";
 import { createAiClient } from "../../../src/ai/providers";
 import { prisma } from "../../../lib/prisma";
 import { createLogger } from "../../../src/utils/logger";
@@ -37,7 +35,7 @@ export async function runCollectXCron(options: CollectXOptions): Promise<void> {
   const aiClient = skipAiEnrich ? null : createAiClient();
   let totalCollected = 0;
   let totalNew = 0;
-  const allNewTweetIds: string[] = [];
+  const allNewContentIds: string[] = [];
 
   for (const config of configs) {
     try {
@@ -78,10 +76,10 @@ export async function runCollectXCron(options: CollectXOptions): Promise<void> {
       for (const source of sources) {
         try {
           const rawItems = await collectXBirdSource(source as never);
-          const result = await archiveTweets(rawItems, config.tab);
+          const result = await archiveTweetsAsContent(rawItems, config.tab);
           totalCollected += result.totalCount;
           totalNew += result.newCount;
-          allNewTweetIds.push(...result.newTweetIds);
+          allNewContentIds.push(...result.newContentIds);
           logger.info(`[${label}/${config.tab}] Collected ${result.totalCount}, new ${result.newCount}`);
         } catch (err) {
           logger.error(`[${label}/${config.tab}] Collection failed:`, { error: err instanceof Error ? err.message : String(err) });
@@ -92,28 +90,8 @@ export async function runCollectXCron(options: CollectXOptions): Promise<void> {
     }
   }
 
-  // 始终执行 detail enrichment（引用推文 article + X Articles）
-  if (allNewTweetIds.length > 0) {
-    const enrichResult = await enrichTweetDetails(allNewTweetIds, {
-      authToken,
-      ct0,
-    });
-    logger.info(`[${label}] Enriched ${enrichResult.enriched} tweet details (${enrichResult.skipped} skipped, ${enrichResult.failed} failed)`);
-  }
-
-  // AI enrichment（仅 feed cron 执行）
-  if (!skipAiEnrich && aiClient && allNewTweetIds.length > 0) {
-    const mainConfig = configs.find((c: { enrichEnabled: boolean }) => c.enrichEnabled);
-    if (mainConfig) {
-      const result = await enrichTweets(allNewTweetIds, aiClient, {
-        scoring: mainConfig.enrichScoring,
-        keyPoints: mainConfig.enrichKeyPoints,
-        tagging: mainConfig.enrichTagging,
-        filterPrompt: mainConfig.filterPrompt ?? undefined,
-      });
-      logger.info(`[${label}] AI enriched ${result.successCount}/${result.totalCount} tweets`);
-    }
-  }
+  // Tweet enrichment is temporarily disabled - requires refactoring to Content model
+  // TODO: Re-enable tweet enrichment with Content-based approach
 
   logger.info(`[${label}] Total: collected ${totalCollected}, new ${totalNew}`);
 }

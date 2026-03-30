@@ -1,51 +1,50 @@
 /**
- * Pack 配置缓存模块
- * 从数据库加载 Pack 配置并缓存
+ * Topic 配置缓存模块
+ * 从数据库加载 Topic 配置并缓存
  */
 
-import type { SourcePack } from "../types/index";
-import { loadAllPacksFromDb } from "./load-pack-prisma";
+import { loadAllTopicsFromDb, type TopicWithSources } from "./load-pack-prisma";
 
-let packsCache: SourcePack[] | null = null;
+let topicsCache: TopicWithSources[] | null = null;
 let cacheTime = 0;
 const DEFAULT_CACHE_TTL = 60_000; // 1 分钟
 
 /**
- * 获取缓存的 packs 配置
+ * 获取缓存的 topics 配置
  * @param ttlMs 缓存 TTL（毫秒），默认 60000
  */
-export async function getPacks(
+export async function getTopics(
   ttlMs = DEFAULT_CACHE_TTL
-): Promise<SourcePack[]> {
+): Promise<TopicWithSources[]> {
   const now = Date.now();
 
   // 缓存有效，直接返回
-  if (packsCache && (now - cacheTime) < ttlMs) {
-    return packsCache;
+  if (topicsCache && (now - cacheTime) < ttlMs) {
+    return topicsCache;
   }
 
   // 从数据库重新加载
-  packsCache = await loadAllPacksFromDb();
+  topicsCache = await loadAllTopicsFromDb();
   cacheTime = now;
 
-  return packsCache;
+  return topicsCache;
 }
 
 /**
- * 获取缓存的 pack（按 ID）
+ * 获取缓存的 topic（按 ID）
  */
-export async function getPackById(
-  packId: string
-): Promise<SourcePack | undefined> {
-  const packs = await getPacks();
-  return packs.find((p) => p.id === packId);
+export async function getTopicById(
+  topicId: string
+): Promise<TopicWithSources | undefined> {
+  const topics = await getTopics();
+  return topics.find((t) => t.id === topicId);
 }
 
 /**
  * 使缓存失效，下次调用会重新加载
  */
-export function invalidatePacksCache(): void {
-  packsCache = null;
+export function invalidateTopicsCache(): void {
+  topicsCache = null;
   cacheTime = 0;
 }
 
@@ -55,11 +54,11 @@ export function invalidatePacksCache(): void {
 export function getCacheStatus(): {
   cached: boolean;
   cachedAt: number | null;
-  packCount: number;
+  topicCount: number;
 } {
   return {
-    cached: packsCache !== null,
+    cached: topicsCache !== null,
     cachedAt: cacheTime || null,
-    packCount: packsCache?.length ?? 0,
+    topicCount: topicsCache?.length ?? 0,
   };
 }

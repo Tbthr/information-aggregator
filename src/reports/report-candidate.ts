@@ -11,7 +11,7 @@ export function contentToReportCandidate(content: Content): ReportCandidate {
   const isTweet = content.kind === "tweet";
   const bodyText = content.body ?? "";
 
-  // For tweets, derive title from body text (like tweetToReportCandidate does)
+  // For tweets, derive title from body text
   const title = isTweet ? extractTweetTitle(bodyText) : (content.title ?? "");
   // For tweets, bodyText becomes summary; for articles, content becomes content field
   const articleContent = isTweet ? "" : bodyText;
@@ -38,58 +38,6 @@ export function contentToReportCandidate(content: Content): ReportCandidate {
     rawRef: {
       id: content.id,
       sourceId: content.sourceId,
-    },
-  };
-}
-
-/**
- * @deprecated Use contentToReportCandidate instead. Item is deprecated in favor of Content.
- */
-export function itemToReportCandidate(item: { id: string; title: string; summary: string | null; content: string | null; publishedAt: Date | null; sourceName: string; url: string; sourceId: string; packId: string | null }): ReportCandidate {
-  const candidate = {
-    id: item.id,
-    kind: "article" as const,
-    topicId: item.packId ?? "", // Legacy - packId maps to topicId
-    title: item.title,
-    summary: item.summary ?? "",
-    content: item.content ?? "",
-    url: item.url,
-    publishedAt: item.publishedAt?.toISOString(),
-    sourceLabel: item.sourceName,
-    normalizedUrl: item.url,
-    normalizedTitle: normalizeTitleForComparison(item.title),
-    rawRef: {
-      id: item.id,
-      sourceId: item.sourceId,
-    },
-  };
-  // @ts-ignore - packId is deprecated but needed for backward compatibility
-  return candidate;
-}
-
-/**
- * @deprecated Use contentToReportCandidate instead. Tweet is deprecated in favor of Content.
- */
-export function tweetToReportCandidate(tweet: { id: string; text: string | null; publishedAt: Date | null; authorHandle: string; expandedUrl: string | null; url: string }): ReportCandidate {
-  const mainText = tweet.text ?? "";
-  const title = extractTweetTitle(mainText);
-  const summary = mainText;
-
-  return {
-    id: tweet.id,
-    kind: "tweet",
-    topicId: "", // Legacy - no topic mapping
-    title,
-    summary,
-    content: "",
-    url: tweet.expandedUrl ?? tweet.url,
-    publishedAt: tweet.publishedAt?.toISOString(),
-    sourceLabel: `@${tweet.authorHandle}`,
-    normalizedUrl: tweet.expandedUrl ?? tweet.url,
-    normalizedTitle: normalizeTitleForComparison(title),
-    rawRef: {
-      id: tweet.id,
-      sourceId: "twitter",
     },
   };
 }

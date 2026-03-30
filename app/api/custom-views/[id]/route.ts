@@ -25,15 +25,7 @@ export async function GET(
     const view = await prisma.customView.findUnique({
       where: { id },
       include: {
-        customViewPacks: {
-          include: {
-            pack: {
-              include: {
-                sources: true,
-              },
-            },
-          },
-        },
+        customViewTopics: true,
       },
     })
 
@@ -41,7 +33,7 @@ export async function GET(
       return error("Custom view not found", 404)
     }
 
-    // Transform to use topicIds instead of packIds in response
+    // Transform to use topicIds in response
     return success({
       id: view.id,
       name: view.name,
@@ -49,7 +41,7 @@ export async function GET(
       description: view.description,
       filterJson: view.filterJson,
       order: view.order,
-      topicIds: view.customViewPacks.map((cvp) => cvp.packId),
+      topicIds: view.customViewTopics.map((cvt) => cvt.topicId),
     })
   } catch (err) {
     console.error("Error fetching custom view:", err)
@@ -91,9 +83,9 @@ export async function PUT(
       updateData.filterJson = parsedData.filterJson
     }
     if (parsedData.topicIds !== undefined) {
-      updateData.customViewPacks = {
+      updateData.customViewTopics = {
         deleteMany: {},
-        create: parsedData.topicIds.map((topicId) => ({ packId: topicId })),
+        create: parsedData.topicIds.map((topicId) => ({ topicId })),
       }
     }
 
@@ -101,11 +93,7 @@ export async function PUT(
       where: { id },
       data: updateData,
       include: {
-        customViewPacks: {
-          include: {
-            pack: true,
-          },
-        },
+        customViewTopics: true,
       },
     })
 
@@ -116,7 +104,7 @@ export async function PUT(
       description: view.description,
       filterJson: view.filterJson,
       order: view.order,
-      topicIds: view.customViewPacks.map((cvp) => cvp.packId),
+      topicIds: view.customViewTopics.map((cvt) => cvt.topicId),
     })
   } catch (err) {
     console.error("Error updating custom view:", err)

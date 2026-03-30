@@ -1,8 +1,10 @@
 export {
-  archiveRawItems,
-  syncPacksToPrisma,
+  archiveContentItems,
+  syncTopicsToPrisma,
   upsertSourcesBatch,
   recordSourcesSuccessBatch,
+  recordSourceFailure,
   getArchiveStats,
-  type ArchiveResult,
-} from "./upsert-prisma";
+  type ContentArchiveResult,
+  type ContentArchiveInput,
+} from "./upsert-content-prisma";

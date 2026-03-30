@@ -15,21 +15,11 @@ export async function GET(
   try {
     const startTime = Date.now()
 
-    // Get custom view with pack associations
+    // Get custom view with topic associations
     const view = await prisma.customView.findUnique({
       where: { id },
       include: {
-        customViewPacks: {
-          include: {
-            pack: {
-              include: {
-                sources: {
-                  where: { enabled: true },
-                },
-              },
-            },
-          },
-        },
+        customViewTopics: true,
       },
     })
 
@@ -40,10 +30,8 @@ export async function GET(
       )
     }
 
-    // Extract source IDs
-    const sourceIds = view.customViewPacks.flatMap((p: { pack: { sources: Array<{ id: string }> } }) =>
-      p.pack.sources.map((s: { id: string }) => s.id)
-    )
+    // Extract topic IDs
+    const topicIds = view.customViewTopics.map((cvt) => cvt.topicId)
 
     // Parse filter JSON with bounds validation
     let filters: Record<string, unknown> = {}
@@ -53,26 +41,18 @@ export async function GET(
       // Malformed filterJson in DB, use defaults
     }
     const days = Math.max(1, Math.min(365, Number(filters.days) || 7))
-    const minScore = Math.max(0, Math.min(10, Number(filters.minScore) || 0))
     const limit = Math.max(1, Math.min(200, Number(filters.limit) || 50))
 
     // Calculate date threshold
     const dateThreshold = utcDaysAgo(days)
 
-    // Query items from all sources
-    const items = await prisma.item.findMany({
+    // Query contents from all sources associated with topics
+    // Note: This is a simplified implementation - full Topic-based filtering
+    // would require joining through Source.defaultTopicIds
+    const contents = await prisma.content.findMany({
       where: {
-        sourceId: { in: sourceIds },
+        topicIds: { hasSome: topicIds },
         fetchedAt: { gte: dateThreshold },
-      },
-      include: {
-        source: {
-          select: {
-            id: true,
-            name: true,
-            kind: true,
-          },
-        },
       },
       orderBy: { publishedAt: "desc" },
       take: limit,
@@ -87,8 +67,8 @@ export async function GET(
           icon: view.icon,
           description: view.description,
         },
-        items,
-        total: items.length,
+        contents,
+        total: contents.length,
       },
       meta: {
         timing: {

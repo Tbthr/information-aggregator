@@ -10,29 +10,27 @@ datasource db {
 
 model Bookmark {
   id           String   @id @default(cuid())
-  itemId       String   @unique
-  contentId    String?  // NEW: unified bookmark target (additive for migration)
+  contentId    String?
   bookmarkedAt DateTime @default(now()) @db.Timestamptz
-  item         Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
 }
 
 model Content {
   id               String   @id @default(cuid())
-  kind             String   // "article" | "tweet" | "video" | etc.
+  kind             String
   sourceId         String
 
   title            String?
   body             String?  @db.Text
   url              String
   authorLabel      String?
-  publishedAt      DateTime               @db.Timestamptz
+  publishedAt      DateTime @db.Timestamptz
   fetchedAt        DateTime @default(now()) @db.Timestamptz
 
-  engagementScore  Int?     // likes, retweets, replies combined
-  qualityScore    Float?   // AI-computed quality
+  engagementScore  Int?
+  qualityScore     Float?
 
-  topicIds         String[] // associated Topic ids
-  topicScoresJson  String?  @db.Text // JSON: { topicId: score }
+  topicIds         String[]
+  topicScoresJson  String?  @db.Text
   metadataJson     String?  @db.Text
 
   createdAt        DateTime @default(now()) @db.Timestamptz
@@ -53,17 +51,16 @@ model CustomView {
   filterJson     String?
   updatedAt      DateTime         @db.Timestamptz
   order          Int              @default(0)
-  customViewPacks CustomViewPack[]
+  customViewTopics CustomViewTopic[]
 }
 
-model CustomViewPack {
+model CustomViewTopic {
   id         String     @id @default(cuid())
   viewId     String
-  packId     String
-  pack       Pack       @relation(fields: [packId], references: [id], onDelete: Cascade)
+  topicId    String
   view       CustomView @relation(fields: [viewId], references: [id], onDelete: Cascade)
 
-  @@unique([viewId, packId])
+  @@unique([viewId, topicId])
   @@index([viewId])
 }
 
@@ -91,9 +88,7 @@ model DigestTopic {
   order       Int
   title       String
   summary     String
-  itemIds     String[]  // LEGACY: Kept for migration
-  tweetIds    String[]  // LEGACY: Kept for migration
-  contentIds  String[]  // NEW: unified content references
+  contentIds  String[]
   createdAt   DateTime      @default(now()) @db.Timestamptz
 
   @@index([dailyId])
@@ -102,8 +97,7 @@ model DigestTopic {
 model DailyReportConfig {
   id                 String   @id @default("default")
 
-  packs              String[]  // LEGACY: Kept for migration
-  topicIds           String[]  // NEW: topic-based config (additive for migration)
+  topicIds           String[]
   maxItems           Int      @default(50)
   minScore           Int      @default(0)
 
@@ -112,86 +106,29 @@ model DailyReportConfig {
   topicPrompt        String
   topicSummaryPrompt String
 
-  // Daily-config kind preferences for article vs tweet base scoring (additive for migration)
-  // Stored as JSON: { articles?: number, tweets?: number }
   kindPreferences    String?  @db.Text
 
   createdAt          DateTime @default(now()) @db.Timestamptz
   updatedAt          DateTime @updatedAt @db.Timestamptz
 }
 
-model Item {
-  id           String   @id @default(cuid())
-  title        String
-  url          String
-  sourceId     String
-  sourceName   String
-  sourceType   String
-  publishedAt  DateTime?              @db.Timestamptz
-  fetchedAt    DateTime @default(now()) @db.Timestamptz
-  author       String?
-  summary      String?  @db.Text
-  content      String?  @db.Text
-  metadataJson String?  @db.Text
-
-  // Pack reference (additive for migration - allows items to be associated with packs)
-  packId       String?
-  pack         Pack?    @relation(fields: [packId], references: [id])
-
-  source       Source        @relation(fields: [sourceId], references: [id])
-  bookmarks    Bookmark[]
-
-  createdAt    DateTime @default(now()) @db.Timestamptz
-  updatedAt    DateTime @updatedAt    @db.Timestamptz
-
-  @@unique([url])
-  @@index([sourceId])
-  @@index([fetchedAt])
-  @@index([publishedAt])
-  @@index([packId])
-}
-
-model Pack {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-
-  // Pack-level filter config (additive for migration)
-  mustInclude String[] @default([])  // Required keywords for items in this pack
-  exclude     String[] @default([])  // Excluded keywords for items in this pack
-
-  sources     Source[]
-  customViews CustomViewPack[]
-  items       Item[]    // Reverse relation for items in this pack
-
-  createdAt   DateTime @default(now()) @db.Timestamptz
-  updatedAt   DateTime @updatedAt    @db.Timestamptz
-}
-
 model Source {
   id               String   @id @default(cuid())
-  kind             String   // RENAMED: was "type", unified source kind (rss, x, youtube, etc.)
+  kind             String
   name             String
   url              String
   description      String?
   enabled          Boolean  @default(true)
   configJson       String?  @db.Text
-  packId           String?
 
-  // NEW fields for topic unification
-  priority         Int      @default(0)  // Higher = more important source
-  defaultTopicIds  String[] @default([]) // Default topics to assign
-  authRef          String?  // Authentication reference (API key name, OAuth token id, etc.)
+  priority         Int      @default(0)
+  defaultTopicIds  String[] @default([])
+  authRef          String?
 
-  pack             Pack?    @relation(fields: [packId], references: [id])
-  items            Item[]
   health           SourceHealth?
 
   createdAt        DateTime @default(now()) @db.Timestamptz
   updatedAt        DateTime @updatedAt    @db.Timestamptz
-
-  @@unique([packId, url])
-  @@index([packId])
 }
 
 model SourceHealth {
@@ -209,14 +146,13 @@ model Topic {
   id            String   @id @default(cuid())
   name          String   @unique
   description   String?
-  enabled       Boolean  @default(true) // 栏目总开关；关闭后既不参与分类，也不参与展示
+  enabled       Boolean  @default(true)
 
-  // NEW: topic matching rules
-  includeRules  String[] @default([])  // Keywords/patterns that MUST match
-  excludeRules  String[] @default([])  // Keywords/patterns that MUST NOT match
-  scoreBoost    Float    @default(1.0) // Multiplier for this topic's score contribution
-  displayOrder  Int      @default(0)   // Order when displaying topic list
-  maxItems      Int      @default(10)  // Max items to include per report
+  includeRules  String[] @default([])
+  excludeRules  String[] @default([])
+  scoreBoost    Float    @default(1.0)
+  displayOrder  Int      @default(0)
+  maxItems      Int      @default(10)
 
   createdAt     DateTime @default(now()) @db.Timestamptz
   updatedAt     DateTime @updatedAt    @db.Timestamptz
@@ -241,8 +177,7 @@ model WeeklyPick {
   weekly      WeeklyReport  @relation(fields: [weeklyId], references: [id], onDelete: Cascade)
 
   order       Int
-  itemId      String?  // LEGACY: phased out, use contentId
-  contentId   String?  // NEW: unified pick target (additive for migration)
+  contentId   String?
   reason      String
   createdAt   DateTime      @default(now()) @db.Timestamptz
 
@@ -261,51 +196,6 @@ model WeeklyReportConfig {
 
   createdAt          DateTime @default(now()) @db.Timestamptz
   updatedAt          DateTime @updatedAt @db.Timestamptz
-}
-
-model Tweet {
-  id               String          @id @default(cuid())
-  tweetId          String          @unique
-  tab              String
-  text             String          @db.Text
-  url              String
-  expandedUrl      String?
-  publishedAt      DateTime?       @db.Timestamptz
-  fetchedAt        DateTime        @default(now()) @db.Timestamptz
-  authorHandle     String
-  authorName       String?
-  authorId         String?
-  conversationId   String?
-  likeCount        Int             @default(0)
-  replyCount       Int             @default(0)
-  retweetCount     Int             @default(0)
-  summary          String?         @db.Text
-  bullets          String[]
-  categories       String[]
-  score            Float           @default(5.0)
-  mediaJson        String?         @db.Text
-  quotedTweetJson  String?         @db.Text
-  threadJson       String?         @db.Text
-  parentJson       String?         @db.Text
-  articleJson      String?         @db.Text
-  bookmarks        TweetBookmark[]
-  createdAt        DateTime        @default(now()) @db.Timestamptz
-  updatedAt        DateTime        @updatedAt @db.Timestamptz
-
-  @@index([tab])
-  @@index([fetchedAt])
-  @@index([score])
-  @@index([authorHandle])
-  @@index([publishedAt])
-}
-
-model TweetBookmark {
-  id           String   @id @default(cuid())
-  tweetId      String   @unique
-  bookmarkedAt DateTime @default(now()) @db.Timestamptz
-  tweet        Tweet    @relation(fields: [tweetId], references: [id], onDelete: Cascade)
-
-  @@index([bookmarkedAt])
 }
 
 model XPageConfig {
