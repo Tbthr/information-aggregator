@@ -241,6 +241,7 @@ export interface ReportCandidate {
   };
   // Quadrant-aware pipeline fields
   topicIds?: string[]; // Content.topicIds copy for preset Topic grouping
+  sourceKind?: SourceKind; // Source.kind this content was collected from
   freshnessTier?: "热点" | "趋势" | "经典";
   productivityDistance?: "近" | "中" | "远";
 }
