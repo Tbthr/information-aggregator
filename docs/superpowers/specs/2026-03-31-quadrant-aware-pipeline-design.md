@@ -49,13 +49,13 @@
 ```
 filterContent(topicIds过滤 + excludeRules)
     ↓
+collectCandidates(Content → ReportCandidate[])
+    ↓
 [NEW] classifyProductivityDistance()     ← 分类：近/中/远
     ↓
 [NEW] classifyFreshness()               ← 分类：热点/趋势/经典
     ↓
 [NEW] filterByQuadrant()                ← 左下角噪音过滤
-    ↓
-collectCandidates(Content → ReportCandidate[])
     ↓
 scoreCandidates(多阶段评分)
     ↓
