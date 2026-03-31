@@ -175,6 +175,25 @@ export class JsonArticleStore implements ArticleStore {
 daily:
   maxItems: 50          # 输入 AI 的候选数量上限（降低 AI 成本）
   minScore: 0           # 最终分数门槛，低于此分数的内容被过滤
+  quadrantPrompt: |
+    你是一位信息分类分析师。请将以下内容分配到对应的象限。
+
+    象限定义：
+    - 尝试：贴近工作、时效性强的内容（近+热点/趋势），适合快速尝试
+    - 深度：贴近工作、经典/系统性内容（近+经典），适合深入研究
+    - 地图感：与工作有距离但有参考价值（远+趋势/经典），扩展视野
+
+    分类标准：
+    - 生产力距离：内容与"你当前工作"的距离（近=直接相关，中=间接相关，远=噪音/八卦）
+    - 保鲜期：内容过时速度（热点=突发新闻，中=趋势变化，远=经典教程）
+    - 象限 = 生产力距离 × 保鲜期 组合
+
+    请以 JSON 格式输出：
+    {
+      "quadrant": "尝试" | "深度" | "地图感",
+      "reason": "分类理由"
+    }
+
   topicSummaryPrompt: |
     你是一位专业的信息分析师。请分析以下话题下的内容，生成一段话题摘要和核心要点。
 
@@ -190,6 +209,16 @@ daily:
       "keyPoints": ["要点1", "要点2", "要点3"]
     }
 
+    示例：
+    {
+      "summary": "本周 AI 编程领域迎来多项重磅更新，Claude 4 在复杂推理任务上超越 GPT-4，GitHub Copilot 新增自然语言代码重构功能，各家 IDE 纷纷集成 AI 辅助开发能力。",
+      "keyPoints": [
+        "Claude 4 发布，多模态能力大幅提升",
+        "GitHub Copilot Enterprise 支持自然语言代码重构",
+        "Cursor 集成新 AI 模型，代码补全延迟降低 40%"
+      ]
+    }
+
   quadrantBonus:
     near: 1.3    # 近：评分加成
     mid: 1.0     # 中：评分不变
@@ -200,6 +229,8 @@ daily:
 |------|------|
 | `maxItems` | 截断数量，降低 AI 成本 |
 | `minScore` | 分数门槛，低于此分数的内容被过滤 |
+| `quadrantPrompt` | AI 分类 prompt，将内容分配到尝试/深度/地图感 |
+| `topicSummaryPrompt` | 生成话题摘要 + 核心要点（带 few-shot 示例） |
 | `quadrantBonus.near/mid/far` | 象限评分加成倍数 |
 
 ## AI 配置方案
@@ -315,7 +346,9 @@ jobs:
 | `serve/index.html` | 静态导航页 |
 | `src/pipeline/collect.ts` | 数据收集 |
 | `src/pipeline/enrich.ts` | 内容充实 |
-| `src/pipeline/rank.ts` | 候选排序 |
+| `src/pipeline/rank.ts` | 候选排序（评分维度：quadrantBonus 加成） |
+| `src/pipeline/enrich.ts` | 内容充实（正文提取） |
+| `src/pipeline/extract-content.ts` | 正文内容提取（使用 Mozilla Readability） |
 | `src/pipeline/normalize.ts` | 内容标准化 |
 | `src/pipeline/normalize-url.ts` | URL 标准化 |
 | `src/pipeline/dedupe-exact.ts` | 精确去重 |
@@ -350,9 +383,9 @@ export function resolveEnvVars<T>(obj: T): T {
 
 1. **创建 JSON store** — `src/archive/json-store.ts` 实现存档接口
 2. **改造日报逻辑** — 修改 `src/reports/daily.ts`，移除 Prisma 依赖，改用 JSON store 读写数据
-   - 按 quadrant（尝试/深度/地图感）分组组织内容
+   - 按 quadrant（尝试/深度/地图感）AI 分类分组组织内容
    - 实现 `minScore` 分数门槛过滤
-   - 更新 `topicSummaryPrompt`：生成摘要 + 动态要点
+   - 更新 `topicSummaryPrompt`：生成摘要 + 动态要点（带 few-shot 示例）
 3. **创建 CLI 入口** — `src/cli/run.ts`，聚合收集 + 日报生成 + 详细日志输出
 4. **配置 GitHub Actions** — `.github/workflows/run.yml`
 5. **更新依赖** — `package.json` 移除 Next.js/Prisma/Radix，添加 CLI 必要依赖（`js-yaml` 等）
