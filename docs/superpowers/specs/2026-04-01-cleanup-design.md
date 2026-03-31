@@ -138,6 +138,70 @@ export class JsonArticleStore implements ArticleStore {
 }
 ```
 
+## 日报结构
+
+日报按四象限（Quadrant）分为三个固定分类：
+
+```
+## 尝试 ⓘ
+   [悬浮说明：贴近工作、时效性强的内容，适合快速尝试]
+   [无内容 | 话题1 → 话题摘要 + 核心要点 + 引用文章]
+   [话题2 → 话题摘要 + 核心要点 + 引用文章]
+
+## 深度 ⓘ
+   [悬浮说明：贴近工作、经典/系统性内容，适合深入研究]
+   [无内容 | 话题1 → 话题摘要 + 核心要点 + 引用文章]
+
+## 地图感 ⓘ
+   [悬浮说明：与工作有距离但有参考价值，扩展视野]
+   [无内容 | 话题1 → 话题摘要 + 核心要点 + 引用文章]
+```
+
+每个话题下包含：
+- **话题标题**
+- **话题摘要**：综合分析，100-200字
+- **核心要点**：AI 生成，动态数量（2-5条），每条一句话
+- **引用文章**：标题、链接、作者、来源
+
+**引用文章格式**：
+```
+- [文章标题](https://...) — 作者 / 来源名称
+```
+
+## 报表配置
+
+```yaml
+# config/reports.yaml
+daily:
+  maxItems: 50          # 输入 AI 的候选数量上限（降低 AI 成本）
+  minScore: 0           # 最终分数门槛，低于此分数的内容被过滤
+  topicSummaryPrompt: |
+    你是一位专业的信息分析师。请分析以下话题下的内容，生成一段话题摘要和核心要点。
+
+    要求：
+    1. 话题摘要：提炼该话题的核心信息和关键趋势，100-200字
+    2. 核心要点：列出该话题最重要的 2-5 个要点，每个要点用一句话概括
+    3. 不要简单罗列内容标题，要综合分析提炼
+    4. 用中文撰写
+
+    请以 JSON 格式输出：
+    {
+      "summary": "话题摘要文本",
+      "keyPoints": ["要点1", "要点2", "要点3"]
+    }
+
+  quadrantBonus:
+    near: 1.3    # 近：评分加成
+    mid: 1.0     # 中：评分不变
+    far: 0.8     # 远：评分降低
+```
+
+| 参数 | 说明 |
+|------|------|
+| `maxItems` | 截断数量，降低 AI 成本 |
+| `minScore` | 分数门槛，低于此分数的内容被过滤 |
+| `quadrantBonus.near/mid/far` | 象限评分加成倍数 |
+
 ## AI 配置方案
 
 `config/ai.yaml` + `.env` 分工：
@@ -286,6 +350,9 @@ export function resolveEnvVars<T>(obj: T): T {
 
 1. **创建 JSON store** — `src/archive/json-store.ts` 实现存档接口
 2. **改造日报逻辑** — 修改 `src/reports/daily.ts`，移除 Prisma 依赖，改用 JSON store 读写数据
+   - 按 quadrant（尝试/深度/地图感）分组组织内容
+   - 实现 `minScore` 分数门槛过滤
+   - 更新 `topicSummaryPrompt`：生成摘要 + 动态要点
 3. **创建 CLI 入口** — `src/cli/run.ts`，聚合收集 + 日报生成 + 详细日志输出
 4. **配置 GitHub Actions** — `.github/workflows/run.yml`
 5. **更新依赖** — `package.json` 移除 Next.js/Prisma/Radix，添加 CLI 必要依赖（`js-yaml` 等）
