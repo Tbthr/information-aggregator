@@ -28,12 +28,12 @@ information-aggregator/
 │   ├── sources.yaml          # 数据源配置
 │   ├── topics.yaml           # Topic 配置
 │   ├── reports.yaml          # 报表配置
-│   ├── ai.yaml              # AI provider/model/retry 配置
-│   └── packs/               # Pack 数据
+│   └── ai.yaml              # AI provider/model/retry 配置
 ├── reports/daily/           # 生成的日报 Markdown
 ├── serve/index.html         # 静态导航页（GitHub Pages 托管）
 ├── src/
 │   ├── cli/                  # CLI 入口点
+│   │   └── run.ts           # aggregator run 入口
 │   ├── pipeline/             # 收集管道
 │   ├── adapters/             # 数据源适配器（RSS, JSON Feed, X/Twitter）
 │   ├── ai/                  # AI client + prompts
@@ -43,6 +43,7 @@ information-aggregator/
 │   │   ├── index.ts         # 接口定义
 │   │   └── json-store.ts    # JSON 实现（新增）
 │   ├── config/              # YAML 配置加载
+│   │   └── resolve-env.ts   # env var 替换
 │   ├── types/               # 类型定义
 │   └── utils/               # 工具函数
 ├── .github/workflows/        # GitHub Actions
@@ -55,16 +56,28 @@ information-aggregator/
 ## Archive 适配器设计
 
 ```typescript
-// src/archive/index.ts — 接口保持不变
+// src/archive/index.ts — 接口（日报场景所需方法）
 export interface ArticleStore {
   save(articles: Article[]): Promise<void>
   findByUrl(url: string): Promise<Article | null>
+  findAllByDate(date: string): Promise<Article[]>
 }
 
 // src/archive/json-store.ts — 新 JSON 实现
 export class JsonArticleStore implements ArticleStore {
   constructor(private dataDir: string = 'data') {}
-  // 读写 data/*.json 文件
+
+  async save(articles: Article[]): Promise<void> {
+    // 追加写入 data/YYYY-MM-DD.json
+  }
+
+  async findByUrl(url: string): Promise<Article | null> {
+    // 扫描 data/*.json 查找
+  }
+
+  async findAllByDate(date: string): Promise<Article[]> {
+    // 读取指定日期的 data/YYYY-MM-DD.json
+  }
 }
 ```
 
@@ -97,6 +110,8 @@ CLI 启动时解析 `${VAR}` 从 `process.env` 注入。
 
 ## GitHub Actions Workflow
 
+使用 `bun` 直接运行 TypeScript，无需预编译二进制：
+
 ```yaml
 # .github/workflows/run.yml
 name: Run Aggregator
@@ -111,15 +126,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup aggregator
-        run: |
-          curl -L https://github.com/user/aggregator/releases/latest/download/aggregator-linux-amd64 -o aggregator
-          chmod +x aggregator
+      - name: Setup bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install
 
       - name: Run
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: ./aggregator run
+        run: bun run src/cli/run.ts
 
       - name: Commit report
         uses: stefanzweifel/git-auto-commit-action@v5
@@ -127,6 +143,8 @@ jobs:
           commit_message: "report: daily $(date +%Y-%m-%d)"
           file_pattern: "reports/daily/*.md"
 ```
+
+**注**：`src/cli/run.ts` 为 CLI 入口点，聚合收集 + 日报生成 + 详细日志输出。
 
 ## 删除清单
 
@@ -150,9 +168,12 @@ jobs:
 ### 报表（周报已移除）
 - `src/reports/weekly.ts` — 周报逻辑（随 Prisma 依赖移除）
 
+### Pack 配置（已废弃）
+- `config/packs/` — Pack YAML 数据（迁移自 DB，随 Prisma 移除）
+
 ### 其他
 - `.env.example`
-- `scripts/diagnostics.ts`（逻辑内嵌到 run 命令）
+- `scripts/diagnostics.ts`（逻辑内嵌到 run 命令，详细日志即诊断）
 
 ### 保留的工具函数
 - `lib/utils.ts` — 通用工具（无 Next.js 依赖）
@@ -168,11 +189,10 @@ jobs:
 | `config/topics.yaml` | Topic 配置 |
 | `config/reports.yaml` | 报表配置 |
 | `config/ai.yaml` | AI 配置 |
-| `config/packs/` | Pack 数据 |
 | `reports/daily/` | 日报输出 |
 | `serve/index.html` | 导航页 |
 | `src/pipeline/` | 收集管道（不含 Prisma 依赖部分） |
-| `src/adapters/` | 数据源适配器 |
+| `src/adapters/` | 数据源适配器（RSS, JSON Feed, X/Twitter） |
 | `src/ai/` | AI client + prompts |
 | `src/reports/daily.ts` | 改造后无 Prisma |
 | `src/archive/json-store.ts` | JSON 存档实现 |
@@ -183,6 +203,19 @@ jobs:
 | `lib/tweet-utils.ts` | Tweet 工具 |
 | `lib/date-utils.ts` | 日期工具 |
 | `.env` | 本地 secrets |
+
+## AI 配置解析
+
+`config/ai.yaml` 使用 `${VAR_NAME}` 语法引用环境变量。使用 `js-yaml` 加载后，通过自定义函数替换：
+
+```typescript
+// src/config/resolve-env.ts
+export function resolveEnvVars<T>(obj: T): T {
+  const str = JSON.stringify(obj)
+  const resolved = str.replace(/\$\{(\w+)\}/g, (_, key) => process.env[key] ?? '')
+  return JSON.parse(resolved)
+}
+```
 
 ## 实现步骤
 
