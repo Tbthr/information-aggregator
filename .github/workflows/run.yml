@@ -1,0 +1,31 @@
+# .github/workflows/run.yml
+name: Run Aggregator
+on:
+  schedule:
+    - cron: "0 23 * * *"  # 每天 23:00 UTC = 7:00 北京时间
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Run
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: bun run src/cli/run.ts
+
+      - name: Commit report
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "report: daily $(date +%Y-%m-%d)"
+          file_pattern: "reports/daily/*.md"
