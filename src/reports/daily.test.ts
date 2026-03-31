@@ -5,8 +5,6 @@ import {
   collectCandidates,
   scoreCandidates,
   trimTopN,
-  candidatesToTopicClusterItems,
-  candidatesToTopicContents,
   parseKindPreferences,
   type ScoredCandidate,
 } from "./daily";
@@ -359,100 +357,6 @@ describe("trimTopN", () => {
     const scored: ScoredCandidate[] = [makeScored("a", 5)];
     const trimmed = trimTopN(scored, 0);
     expect(trimmed).toHaveLength(0);
-  });
-});
-
-// ============================================================
-// candidatesToTopicClusterItems
-// ============================================================
-
-describe("candidatesToTopicClusterItems", () => {
-  test("maps candidates to TopicClusterItem format for AI", () => {
-    const candidates: ReportCandidate[] = [
-      {
-        id: "content-1",
-        kind: "article",
-        topicId: "topic-1",
-        title: "Article Title",
-        summary: "Article summary",
-        content: "",
-        sourceLabel: "Source",
-        normalizedUrl: "https://example.com/a",
-        normalizedTitle: "article title",
-        rawRef: { id: "content-1", sourceId: "source-1" },
-      },
-      {
-        id: "tweet-1",
-        kind: "tweet",
-        topicId: "",
-        title: "Tweet Title",
-        summary: "Tweet text here",
-        content: "",
-        sourceLabel: "@user",
-        normalizedUrl: "https://twitter.com/user/1",
-        normalizedTitle: "tweet title",
-        rawRef: { id: "tweet-1", sourceId: "twitter" },
-      },
-    ];
-
-    const clusterItems = candidatesToTopicClusterItems(candidates);
-
-    expect(clusterItems).toHaveLength(2);
-    expect(clusterItems[0].type).toBe("item");
-    expect(clusterItems[0].title).toBe("Article Title");
-    expect(clusterItems[0].index).toBe(0);
-
-    expect(clusterItems[1].type).toBe("tweet");
-    expect(clusterItems[1].title).toBe("@user");
-    expect(clusterItems[1].index).toBe(1);
-  });
-
-  test("separates article and tweet indexes for AI clustering", () => {
-    const candidates: ReportCandidate[] = [
-      { id: "content-1", kind: "article", topicId: "t1", title: "A", summary: "S", content: "", sourceLabel: "Src", normalizedUrl: "https://a.com/1", normalizedTitle: "a", rawRef: { id: "content-1", sourceId: "s1" } },
-      { id: "content-2", kind: "article", topicId: "t1", title: "B", summary: "S", content: "", sourceLabel: "Src", normalizedUrl: "https://a.com/2", normalizedTitle: "b", rawRef: { id: "content-2", sourceId: "s1" } },
-      { id: "tweet-1", kind: "tweet", topicId: "", title: "T", summary: "S", content: "", sourceLabel: "@u", normalizedUrl: "https://t.com/1", normalizedTitle: "t", rawRef: { id: "tweet-1", sourceId: "twitter" } },
-    ];
-
-    const clusterItems = candidatesToTopicClusterItems(candidates);
-
-    expect(clusterItems).toHaveLength(3);
-    // Articles have type "item", tweets have type "tweet"
-    const itemClusterItems = clusterItems.filter((c) => c.type === "item");
-    const tweetClusterItems = clusterItems.filter((c) => c.type === "tweet");
-    expect(itemClusterItems).toHaveLength(2);
-    expect(tweetClusterItems).toHaveLength(1);
-  });
-});
-
-// ============================================================
-// candidatesToTopicContents
-// ============================================================
-
-describe("candidatesToTopicContents", () => {
-  test("maps candidate subset to topic summary contents", () => {
-    const candidates: ReportCandidate[] = [
-      { id: "content-1", kind: "article", topicId: "t1", title: "Article A", summary: "Summary A", content: "", sourceLabel: "Source", normalizedUrl: "https://a.com/1", normalizedTitle: "article a", rawRef: { id: "content-1", sourceId: "s1" } },
-      { id: "tweet-1", kind: "tweet", topicId: "", title: "Tweet Title", summary: "Tweet text", content: "", sourceLabel: "@user", normalizedUrl: "https://t.com/1", normalizedTitle: "tweet", rawRef: { id: "tweet-1", sourceId: "twitter" } },
-    ];
-
-    // Simulate AI clustering result: item index 0 and tweet index 1 (absolute index)
-    const contents = candidatesToTopicContents(candidates, [0], [1]);
-
-    expect(contents).toHaveLength(2);
-    expect(contents[0].type).toBe("item");
-    expect(contents[0].title).toBe("Article A");
-    expect(contents[1].type).toBe("tweet");
-    expect(contents[1].title).toBe("@user");
-  });
-
-  test("returns empty when no indexes match", () => {
-    const candidates: ReportCandidate[] = [
-      { id: "content-1", kind: "article", topicId: "t1", title: "A", summary: "S", content: "", sourceLabel: "Src", normalizedUrl: "https://a.com/1", normalizedTitle: "a", rawRef: { id: "content-1", sourceId: "s1" } },
-    ];
-
-    const contents = candidatesToTopicContents(candidates, [], []);
-    expect(contents).toHaveLength(0);
   });
 });
 

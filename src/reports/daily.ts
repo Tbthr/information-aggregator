@@ -1,17 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import type { Content, DailyReportConfig } from "@prisma/client"
-import type { AiClient } from "@/src/ai/types"
 import type { ReportCandidate, ScoreBreakdown, SignalScores } from "@/src/types/index"
 import { formatUtcDate, formatUtcDayLabel, beijingDayRange } from "@/lib/date-utils"
-import {
-  buildTopicClusteringPrompt,
-  parseTopicClusteringResult,
-  buildTopicSummaryPrompt,
-  parseTopicSummaryResult,
-  buildFilterPrompt,
-  parseFilterResult,
-  type TopicClusterItem,
-} from "@/src/ai/prompts-reports"
 import { contentToReportCandidate } from "./report-candidate"
 import {
   applyBaseStage,
@@ -22,9 +12,6 @@ import {
   type KindPreferences,
   type ScoredCandidate as ScoringScoredCandidate,
 } from "./scoring"
-
-const SUMMARY_TRUNCATE_LENGTH = 500
-const PARALLEL_CONCURRENCY = 3
 
 export interface DailyGenerateResult {
   date: string
@@ -132,51 +119,6 @@ export function trimTopN(scored: ScoredCandidate[], n: number): ScoredCandidate[
  * Converts ReportCandidate[] to TopicClusterItem[] for AI clustering.
  * Articles use type="item", tweets use type="tweet" with @handle as title.
  */
-export function candidatesToTopicClusterItems(candidates: ReportCandidate[]): TopicClusterItem[] {
-  return candidates.map((c, index) => ({
-    title: c.kind === "tweet" ? c.sourceLabel : c.title,
-    summary: c.summary.slice(0, SUMMARY_TRUNCATE_LENGTH),
-    type: (c.kind === "tweet" ? "tweet" : "item") as "item" | "tweet",
-    index,
-  }))
-}
-
-/**
- * Converts a subset of candidates (by absolute index) to topic summary contents.
- * Used when building per-topic summary prompts from AI clustering results.
- */
-export function candidatesToTopicContents(
-  candidates: ReportCandidate[],
-  itemIndexes: number[],
-  tweetIndexes: number[]
-): { title: string; summary: string; type: "item" | "tweet" }[] {
-  const contents: { title: string; summary: string; type: "item" | "tweet" }[] = []
-
-  for (const idx of itemIndexes) {
-    const c = candidates[idx]
-    if (c && c.kind === "article") {
-      contents.push({
-        title: c.title,
-        summary: c.summary.slice(0, SUMMARY_TRUNCATE_LENGTH),
-        type: "item",
-      })
-    }
-  }
-
-  for (const idx of tweetIndexes) {
-    const c = candidates[idx]
-    if (c && c.kind === "tweet") {
-      contents.push({
-        title: c.sourceLabel,
-        summary: c.summary.slice(0, SUMMARY_TRUNCATE_LENGTH),
-        type: "tweet",
-      })
-    }
-  }
-
-  return contents
-}
-
 // ============================================================
 // Internal pipeline steps (async, DB-dependent)
 // ============================================================
@@ -238,85 +180,7 @@ async function filterContent(
   return { filteredContents }
 }
 
-/** Step 3: Optional AI pre-filter (operates on trimmed candidates) */
-async function aiFilter(
-  candidates: ScoredCandidate[],
-  config: DailyReportConfig,
-  aiClient: AiClient
-): Promise<ScoredCandidate[]> {
-  if (!config.filterPrompt) return candidates
-
-  try {
-    const clusterItems = candidatesToTopicClusterItems(candidates)
-    const prompt = buildFilterPrompt(clusterItems, config.filterPrompt)
-    const result = await aiClient.generateText(prompt)
-    const { keep } = parseFilterResult(result)
-
-    return candidates.filter((_, i) => keep.includes(i))
-  } catch {
-    // AI filter failure -> pass all through
-    return candidates
-  }
-}
-
-/** Step 4: AI topic clustering (operates on trimmed candidates) */
-async function topicClustering(
-  candidates: ScoredCandidate[],
-  aiClient: AiClient,
-  config: DailyReportConfig
-) {
-  const clusterItems = candidatesToTopicClusterItems(candidates)
-  const prompt = buildTopicClusteringPrompt(clusterItems, config.topicPrompt)
-  const result = await aiClient.generateText(prompt)
-  return parseTopicClusteringResult(result)
-}
-
-/** Step 5: Generate summary for each topic (parallel) */
-async function generateTopicSummaries(
-  clusteringResult: ReturnType<typeof parseTopicClusteringResult>,
-  candidates: ScoredCandidate[],
-  aiClient: AiClient,
-  config: DailyReportConfig
-) {
-  const { topics } = clusteringResult
-
-  const results: { title: string; summary: string; contentIds: string[] }[] = []
-  for (let i = 0; i < topics.length; i += PARALLEL_CONCURRENCY) {
-    const batch = topics.slice(i, i + PARALLEL_CONCURRENCY)
-    const batchResults = await Promise.allSettled(
-      batch.map(async (topic) => {
-        const contents = candidatesToTopicContents(candidates, topic.itemIndexes, topic.tweetIndexes)
-        if (contents.length === 0) return null
-
-        const prompt = buildTopicSummaryPrompt(topic.title, contents, config.topicSummaryPrompt)
-        const result = await aiClient.generateText(prompt)
-        const parsed = parseTopicSummaryResult(result)
-
-        // Extract contentIds from the candidates referenced in this topic
-        const topicContentIds = [...topic.itemIndexes, ...topic.tweetIndexes]
-          .map((idx) => candidates[idx])
-          .filter((c) => !!c)
-          .map((c) => c!.id)
-
-        return {
-          title: topic.title,
-          summary: parsed.summary,
-          contentIds: topicContentIds,
-        }
-      })
-    )
-
-    for (const r of batchResults) {
-      if (r.status === "fulfilled" && r.value) {
-        results.push(r.value)
-      }
-    }
-  }
-
-  return results
-}
-
-/** Step 6: Persist results */
+/** Step 3: Persist results */
 async function persistResults(
   date: string,
   dayLabel: string,
@@ -399,13 +263,10 @@ function fallbackCategoryGrouping(candidates: ScoredCandidate[]): { title: strin
  * 3. Map to ReportCandidate[]
  * 4. Score candidates (base -> signal -> merge -> history penalty)
  * 5. Trim to top N (before AI, to reduce cost)
- * 6. Optional AI pre-filter
- * 7. AI topic clustering + summary generation
- * 8. Persist results
+ * 6. Persist results (category grouping as fallback)
  */
 export async function generateDailyReport(
-  now: Date,
-  aiClient: AiClient
+  now: Date
 ): Promise<DailyGenerateResult> {
   const date = formatUtcDate(now)
   const dayLabel = formatUtcDayLabel(now)
@@ -491,53 +352,17 @@ export async function generateDailyReport(
 
   // Step 5: Trim to top N before AI
   const maxItems = config.maxItems ?? 50
-  const trimmed = trimTopN(scored, maxItems)
+  const finalCandidates = trimTopN(scored, maxItems)
 
-  if (trimmed.length === 0) {
+  if (finalCandidates.length === 0) {
     await persistResults(date, dayLabel, [], "评分后无内容", errorSteps)
     return { date, topicCount: 0, errorSteps }
   }
 
-  // Step 6: Optional AI pre-filter (on trimmed candidates)
-  let finalCandidates = trimmed
-  if (config.filterPrompt) {
-    finalCandidates = await aiFilter(trimmed, config, aiClient)
-  }
+  // Step 6: Group candidates by category (fallback approach)
+  const topics = fallbackCategoryGrouping(finalCandidates)
 
-  if (finalCandidates.length === 0) {
-    await persistResults(date, dayLabel, [], "AI过滤后无内容", errorSteps)
-    return { date, topicCount: 0, errorSteps }
-  }
-
-  // Step 7: AI topic clustering + summaries
-  let topics: { title: string; summary: string; contentIds: string[] }[] = []
-  try {
-    const clusteringResult = await topicClustering(finalCandidates, aiClient, config)
-
-    // Step 7b: Topic summaries
-    try {
-      topics = await generateTopicSummaries(clusteringResult, finalCandidates, aiClient, config)
-    } catch {
-      errorSteps.push("topicSummary")
-      // Fallback: use clustering titles with first candidate summary
-      topics = clusteringResult.topics.map((topic) => ({
-        title: topic.title,
-        summary: topic.itemIndexes[0] !== undefined
-          ? finalCandidates[topic.itemIndexes[0]]?.summary ?? ""
-          : "",
-        contentIds: [...topic.itemIndexes, ...topic.tweetIndexes]
-          .map((idx) => finalCandidates[idx])
-          .filter((c): c is ScoredCandidate => !!c)
-          .map((c) => c!.id),
-      }))
-    }
-  } catch {
-    errorSteps.push("topicClustering")
-    // Fallback: group by source
-    topics = fallbackCategoryGrouping(finalCandidates)
-  }
-
-  // Step 8: Persist
+  // Step 7: Persist
   try {
     await persistResults(date, dayLabel, topics, errorSteps.length > 0 ? "部分步骤失败" : undefined, errorSteps)
   } catch {

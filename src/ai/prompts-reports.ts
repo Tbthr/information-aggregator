@@ -2,23 +2,6 @@
 // Types
 // ============================================================
 
-export interface TopicClusterItem {
-  title: string
-  summary: string
-  type: "item" | "tweet"
-  index: number
-}
-
-export interface TopicCluster {
-  title: string
-  itemIndexes: number[]
-  tweetIndexes: number[]
-}
-
-export interface TopicClusteringResult {
-  topics: TopicCluster[]
-}
-
 export interface TopicSummaryResult {
   summary: string
 }
@@ -29,28 +12,6 @@ export interface PickReasonResult {
 
 export interface EditorialResult {
   editorial: string
-}
-
-// ============================================================
-// Topic Clustering (Step 3)
-// ============================================================
-
-export function buildTopicClusteringPrompt(
-  items: TopicClusterItem[],
-  prompt: string
-): string {
-  const contentList = items
-    .map((item, i) => `[${i}] [${item.type === "item" ? "文章" : "推文"}] ${item.title}\n    ${item.summary}`)
-    .join("\n\n")
-
-  return `${prompt}\n\n---\n\n以下是需要分类的内容列表：\n\n${contentList}`
-}
-
-export function parseTopicClusteringResult(text: string): TopicClusteringResult {
-  const jsonMatch = text.match(/\{[\s\S]*\}/)
-  if (!jsonMatch) throw new Error("AI response does not contain valid JSON for topic clustering")
-  const parsed = JSON.parse(jsonMatch[0])
-  return parsed as TopicClusteringResult
 }
 
 // ============================================================
@@ -71,28 +32,6 @@ export function buildTopicSummaryPrompt(
 
 export function parseTopicSummaryResult(text: string): TopicSummaryResult {
   return { summary: text.trim() }
-}
-
-// ============================================================
-// AI Filter (Step 2, optional)
-// ============================================================
-
-export function buildFilterPrompt(
-  items: TopicClusterItem[],
-  prompt: string
-): string {
-  const safePrompt = prompt ?? ""
-  const contentList = items
-    .map((item, i) => `[${i}] [${item.type === "item" ? "文章" : "推文"}] ${item.title}\n    ${item.summary}`)
-    .join("\n\n")
-
-  return `${safePrompt}\n\n---\n\n以下是需要过滤的内容列表：\n\n${contentList}`
-}
-
-export function parseFilterResult(text: string): { keep: number[]; discard: number[] } {
-  const jsonMatch = text.match(/\{[\s\S]*\}/)
-  if (!jsonMatch) throw new Error("AI response does not contain valid JSON for filtering")
-  return JSON.parse(jsonMatch[0])
 }
 
 // ============================================================
