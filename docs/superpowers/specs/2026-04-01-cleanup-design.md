@@ -147,6 +147,9 @@ jobs:
 - `src/config/load-pack-prisma.ts` + `.test.ts`
 - `src/pipeline/run-collect-job.ts`
 
+### 报表（周报已移除）
+- `src/reports/weekly.ts` — 周报逻辑（随 Prisma 依赖移除）
+
 ### 其他
 - `.env.example`
 - `scripts/diagnostics.ts`（逻辑内嵌到 run 命令）
@@ -175,16 +178,18 @@ jobs:
 | `src/archive/json-store.ts` | JSON 存档实现 |
 | `src/types/` | 类型定义 |
 | `src/utils/` | 工具函数 |
+| `lib/utils.ts` | 通用工具（无 Next.js 依赖） |
+| `lib/format-date.ts` | 日期格式化 |
+| `lib/tweet-utils.ts` | Tweet 工具 |
+| `lib/date-utils.ts` | 日期工具 |
 | `.env` | 本地 secrets |
 
 ## 实现步骤
 
-1. 创建 `src/archive/json-store.ts` 实现存档接口
-2. 修改 `src/reports/daily.ts` 使用 JSON store
-3. 删除 Prisma 相关文件
-4. 删除 Next.js 前端代码
-5. 创建 CLI 入口点 `src/cli/index.ts`
-6. 配置 `.github/workflows/run.yml`
-7. 更新 `package.json`（移除 Next.js/Prisma/Radix 依赖）
-8. 更新 `.gitignore`
-9. 删除废弃文件
+1. **创建 JSON store** — `src/archive/json-store.ts` 实现存档接口
+2. **改造日报逻辑** — 修改 `src/reports/daily.ts` 使用 JSON store，移除 Prisma 依赖
+3. **创建 CLI 入口** — `src/cli/index.ts`，聚合收集 + 日报生成 + 日志输出
+4. **配置 GitHub Actions** — `.github/workflows/run.yml`
+5. **更新依赖** — `package.json` 移除 Next.js/Prisma/Radix，添加 CLI 必要依赖
+6. **更新 .gitignore** — 确保 `.next/`, `node_modules/`, `.env` 等正确排除
+7. **删除废弃文件** — 清理 Next.js/Prisma/Supabase 相关代码
