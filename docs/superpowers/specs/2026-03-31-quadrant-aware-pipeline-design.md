@@ -63,11 +63,34 @@ scoreCandidates(多阶段评分)
     ↓
 trimTopN(maxItems)
     ↓
-aiFilter() [可选]
+[REMOVE] aiFilter - 象限过滤已足够，无需额外 AI 筛选
+[REMOVE] topicClustering - 使用预设 Topic 替代 AI 聚类
     ↓
-topicClustering()                       ← AI 聚类（不限 token）
-    ↓
-generateTopicSummaries()               ← AI 摘要（不限 token）
+generateTopicSummaries()               ← AI 摘要（按预设 Topic 分组，不再聚类）
+
+#### generateTopicSummaries 变更说明
+
+旧逻辑（AI 聚类）：
+- AI 先将内容聚类成 3-8 个 topics
+- 再对每个 cluster 生成摘要
+
+新逻辑（预设 Topic）：
+- `filterContent` 阶段已按 `topicIds`（预设 Topic ID 列表）过滤
+- 内容通过 `Content.topicIds` 直接知道自己属于哪个预设 Topic
+- 生成摘要时，按**预设 Topic** 分组遍历
+- 每个有内容的预设 Topic → 一个 DigestTopic
+- 不再需要 AI 聚类，DigestTopic 直接对应 Topic 表中的 Topic
+
+```typescript
+// 新逻辑示意
+for (const topicId of config.topicIds) {
+  const topicCandidates = candidates.filter(c => c.topicIds.includes(topicId))
+  if (topicCandidates.length === 0) continue  // 跳过无内容的 Topic
+
+  const summary = await aiSummarize(topicCandidates)  // 只生成摘要，不聚类
+  results.push({ topicId, summary, contentIds: topicCandidates.map(c => c.id) })
+}
+```
     ↓
 [NEW] logDistribution()                ← 输出分布统计
     ↓
@@ -209,7 +232,8 @@ const FRESHNESS_KEYWORDS = {
 
 | 文件 | 变更类型 |
 |------|----------|
-| `src/reports/daily.ts` | 新增 classifyProductivityDistance, classifyFreshness, filterByQuadrant, logDistribution |
+| `src/reports/daily.ts` | 新增 classifyProductivityDistance, classifyFreshness, filterByQuadrant, logDistribution；移除 aiFilter、topicClustering 调用 |
+| `src/ai/prompts-reports.ts` | 移除 buildTopicClusteringPrompt、parseTopicClusteringResult；generateTopicSummaries 改为按预设 Topic 遍历 |
 | `src/reports/scoring/merge-stage.ts` | 新增 applyProductivityBonus |
 | `prisma/schema.prisma` | DigestTopic 新增 freshnessTier, productivityDistance 字段 |
 | `src/types/index.ts` | ReportCandidate 新增 freshnessTier?, productivityDistance? |
