@@ -338,7 +338,7 @@ jobs:
 | 文件/目录 | 说明 |
 |-----------|------|
 | `config/sources.yaml` | 数据源配置 |
-| `config/topics.yaml` | Topic 配置 |
+| `config/topics.yaml` | Topic 配置（保留现有结构，无需迁移） |
 | `config/reports.yaml` | 报表配置（仅含日报，无周报） |
 | `config/ai.yaml` | AI 配置 |
 | `data/` | 收集的 JSON 数据（用于历史去重，rank 阶段需要） |
@@ -347,7 +347,7 @@ jobs:
 | `src/pipeline/collect.ts` | 数据收集 |
 | `src/pipeline/enrich.ts` | 内容充实（正文提取） |
 | `src/pipeline/extract-content.ts` | 正文提取（使用 Mozilla Readability） |
-| `src/pipeline/rank.ts` | 候选排序（评分维度：quadrantBonus 加成） |
+| `src/pipeline/rank.ts` | 候选排序（使用现有评分算法，quadrantBonus 作为加成因子） |
 | `src/pipeline/normalize.ts` | 内容标准化 |
 | `src/pipeline/normalize-url.ts` | URL 标准化 |
 | `src/pipeline/dedupe-exact.ts` | 精确去重 |
@@ -446,9 +446,12 @@ export function resolveEnvVars<T>(obj: T): T {
 ```
 
 **5. Quadrant 分类阶段 (quadrant)**
+
+分类失败处理：重试 3 次，失败后丢弃并输出告警。
 ```json
-{"level":"info","stage":"quadrant","msg":"Quadrant 分布","data":{"尝试":35,"深度":28,"地图感":25,"未分类":3}}
-{"level":"warn","stage":"quadrant","msg":"内容未分类","data":{"id":"xxx","title":"..."}}
+{"level":"info","stage":"quadrant","msg":"Quadrant 分布","data":{"尝试":35,"深度":28,"地图感":25}}
+{"level":"warn","stage":"quadrant","msg":"分类失败（已重试3次），丢弃内容","data":{"id":"xxx","title":"...","error":"AI返回无效值"}}
+{"level":"info","stage":"quadrant","msg":"Quadrant 分类完成","data":{"total":111,"分布":{"尝试":35,"深度":28,"地图感":48,"failed":0}}}
 ```
 
 **6. 话题生成阶段 (topic)**
