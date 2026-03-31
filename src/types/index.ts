@@ -239,6 +239,10 @@ export interface ReportCandidate {
     id: string;
     sourceId: string;
   };
+  // Quadrant-aware pipeline fields
+  topicIds?: string[]; // Content.topicIds copy for preset Topic grouping
+  freshnessTier?: "热点" | "趋势" | "经典";
+  productivityDistance?: "近" | "中" | "远";
 }
 
 // Score breakdown types for runtime scoring

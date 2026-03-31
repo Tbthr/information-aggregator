@@ -35,6 +35,7 @@ export function contentToReportCandidate(content: Content): ReportCandidate {
     normalizedTitle: normalizeTitleForComparison(title),
     engagementScore: content.engagementScore ?? undefined,
     qualityScore: content.qualityScore ?? undefined,
+    topicIds: content.topicIds, // Pass through topicIds for preset Topic grouping
     rawRef: {
       id: content.id,
       sourceId: content.sourceId,
