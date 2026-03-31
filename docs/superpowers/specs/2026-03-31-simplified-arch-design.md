@@ -58,6 +58,9 @@ sources:
     handle: karpathy
     enabled: true
     topics: [ai, ml]
+    auth:
+      authToken: ${TWITTER_AUTH_TOKEN}
+      ct0: ${TWITTER_CT0}
 ```
 
 ### 2. config/topics.yaml — Topic 配置
@@ -440,7 +443,7 @@ jobs:
 
 ## 前端渲染
 
-### serve/index.html
+### serve/index.html（当前方案）
 
 纯静态 HTML + Vanilla JS + markdown-it：
 
@@ -449,10 +452,18 @@ jobs:
 - **布局**：左侧导航 + 右侧内容
 - **导航**：最近 7 天日报 + 最近 4 周周报
 - **动效**：staggered 渐显动画
+- **渲染**：markdown-it 浏览器端解析
 
-### Zola 配置（可选）
+### Zola（未来可选）
 
-如需更强大的静态站点能力，可选 Zola：
+如需 RSS 订阅、主题系统、全文搜索等能力，可切换 Zola：
+
+```bash
+# 切换时
+zola init
+cp serve/index.html themes/custom/templates/index.html
+zola build
+```
 
 ```toml
 # zola.toml
@@ -462,9 +473,19 @@ theme = "hyde"
 
 ## 迁移路径
 
+### 数据迁移：Supabase → YAML
+
+| Supabase 模型 | YAML 文件 | 迁移说明 |
+|---------------|-----------|----------|
+| `Source` | `config/sources.yaml` | kind, name, url, enabled, configJson → 各字段；X 鉴权 → `auth` 字段 |
+| `Topic` | `config/topics.yaml` | name, includeRules, excludeRules, scoreBoost, displayOrder, maxItems |
+| `DailyReportConfig` | `config/reports.yaml` | topicIds, maxItems, minScore, filterPrompt, topicPrompt, topicSummaryPrompt |
+| `WeeklyReportConfig` | `config/reports.yaml` | days, editorialPrompt, pickReasonPrompt, pickCount |
+| `.env` AI 配置 | `config/ai.yaml` | apiKeys, models, baseUrls |
+
 ### Phase 1: 基础设施
 - [ ] 创建 CLI 项目脚手架
-- [ ] 迁移 config/sources.yaml
+- [ ] 迁移 config/sources.yaml（含 X auth）
 - [ ] 迁移 config/topics.yaml
 - [ ] 迁移 config/reports.yaml
 - [ ] 创建 config/ai.yaml
