@@ -190,7 +190,7 @@ jobs:
 | `config/reports.yaml` | 报表配置 |
 | `config/ai.yaml` | AI 配置 |
 | `reports/daily/` | 日报输出 |
-| `serve/index.html` | 导航页 |
+| `serve/index.html` | 静态导航页（详情见 `2026-03-31-simplified-arch-design.md`） |
 | `src/pipeline/` | 收集管道（不含 Prisma 依赖部分） |
 | `src/adapters/` | 数据源适配器（RSS, JSON Feed, X/Twitter） |
 | `src/ai/` | AI client + prompts |
@@ -220,9 +220,20 @@ export function resolveEnvVars<T>(obj: T): T {
 ## 实现步骤
 
 1. **创建 JSON store** — `src/archive/json-store.ts` 实现存档接口
-2. **改造日报逻辑** — 修改 `src/reports/daily.ts` 使用 JSON store，移除 Prisma 依赖
-3. **创建 CLI 入口** — `src/cli/index.ts`，聚合收集 + 日报生成 + 日志输出
+2. **改造日报逻辑** — 修改 `src/reports/daily.ts` 使用 JSON store，移除 Prisma 依赖。改造范围参考 `docs/superpowers/specs/2026-03-31-simplified-arch-design.md` 中的日报功能说明
+3. **创建 CLI 入口** — `src/cli/run.ts`，聚合收集 + 日报生成 + 详细日志输出
 4. **配置 GitHub Actions** — `.github/workflows/run.yml`
-5. **更新依赖** — `package.json` 移除 Next.js/Prisma/Radix，添加 CLI 必要依赖
+5. **更新依赖** — `package.json` 移除 Next.js/Prisma/Radix，添加 CLI 必要依赖（`js-yaml` 等）
 6. **更新 .gitignore** — 确保 `.next/`, `node_modules/`, `.env` 等正确排除
 7. **删除废弃文件** — 清理 Next.js/Prisma/Supabase 相关代码
+
+**数据迁移**：现有 Supabase 数据库中的数据无需迁移，日报生成改用 JSON 文件输入。
+
+## CLI 错误处理
+
+`aggregator run` 退出码：
+- `0` — 成功
+- `1` — 收集失败（网络错误、数据源不可用）
+- `2` — 日报生成失败（AI 调用失败、写入错误）
+
+日志输出到 stdout/stderr，失败时输出完整错误信息。
