@@ -401,6 +401,75 @@ export function resolveEnvVars<T>(obj: T): T {
 
 日志输出到 stdout/stderr，失败时输出完整错误信息便于调试。
 
+## Pipeline 日志规范
+
+全阶段结构化 JSON 日志，便于 AI 诊断问题。每个阶段打印关键指标：
+
+### 日志格式
+
+```json
+{
+  "level": "info" | "warn" | "error",
+  "ts": "2026-04-01T14:00:00.000Z",
+  "stage": "collect" | "enrich" | "dedupe" | "score" | "quadrant" | "topic" | "output",
+  "msg": "描述信息",
+  "data": { ... }
+}
+```
+
+### 各阶段日志
+
+**1. 收集阶段 (collect)**
+```json
+{"level":"info","stage":"collect","msg":"开始收集","data":{"sources":["infoq-cn","buzzing"],"date":"2026-04-01"}}
+{"level":"info","stage":"collect","msg":"收集完成","data":{"source":"infoq-cn","items":42}}
+{"level":"info","stage":"collect","msg":"所有来源收集完成","data":{"totalItems":128,"durationMs":3200}}
+```
+
+**2. 内容充实阶段 (enrich)**
+```json
+{"level":"info","stage":"enrich","msg":"开始内容提取","data":{"total":128}}
+{"level":"warn","stage":"enrich","msg":"内容提取失败","data":{"url":"https://...","error":"timeout"}}
+{"level":"info","stage":"enrich","msg":"内容提取完成","data":{"success":95,"failed":3,"durationMs":4500}}
+```
+
+**3. 去重阶段 (dedupe)**
+```json
+{"level":"info","stage":"dedupe","msg":"去重完成","data":{"input":128,"duplicates":12,"unique":116}}
+{"level":"info","stage":"dedupe","msg":"URL 去重","data":{"input":116,"duplicates":5,"unique":111}}
+```
+
+**4. 评分阶段 (score)**
+```json
+{"level":"info","stage":"score","msg":"评分完成","data":{"candidates":111,"minScore":0,"maxScore":9.8,"avgScore":4.2}}
+{"level":"info","stage":"score","msg":"minScore 过滤","data":{"input":111,"filtered":8,"remaining":103}}
+```
+
+**5. Quadrant 分类阶段 (quadrant)**
+```json
+{"level":"info","stage":"quadrant","msg":"Quadrant 分布","data":{"尝试":35,"深度":28,"地图感":25,"未分类":3}}
+{"level":"warn","stage":"quadrant","msg":"内容未分类","data":{"id":"xxx","title":"..."}}
+```
+
+**6. 话题生成阶段 (topic)**
+```json
+{"level":"info","stage":"topic","msg":"开始生成话题","data":{"quadrant":"尝试","candidates":35}}
+{"level":"info","stage":"topic","msg":"话题生成完成","data":{"quadrant":"尝试","topics":4,"durationMs":12000}}
+{"level":"error","stage":"topic","msg":"话题生成失败","data":{"quadrant":"深度","error":"AI API rate limit"}}
+```
+
+**7. 最终输出 (output)**
+```json
+{"level":"info","stage":"output","msg":"日报生成完成","data":{"date":"2026-04-01","topics":{"尝试":4,"深度":3,"地图感":2},"totalReferences":47,"durationMs":45000}}
+```
+
+### 错误日志格式
+
+```json
+{"level":"error","stage":"collect","msg":"收集失败","data":{"source":"infoq-cn","error":"Network timeout","url":"https://..."}}
+{"level":"error","stage":"topic","msg":"AI 调用失败","data":{"attempt":3,"maxRetries":3,"error":"Invalid API key"}}
+```
+
 ## GitHub Pages Workflow
 
 `serve/index.html` 直接托管于 GitHub Pages，与 `run.yml` 分离：
