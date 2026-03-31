@@ -470,6 +470,7 @@ git commit -m "feat(log): add logDistribution for quadrant statistics"
 - `buildFilterPrompt`
 - `parseFilterResult`
 - `candidatesToTopicClusterItems`（在 `daily.ts` 中定义，供聚类使用，聚类移除后不再需要）
+- `candidatesToTopicContents`（在 `daily.ts` 中定义，仅被 `generateTopicSummaries` 调用，后者被替换后成为死代码）
 
 需要保留：
 - `buildTopicSummaryPrompt`（仍用于按预设 Topic 生成摘要）
@@ -479,7 +480,9 @@ git commit -m "feat(log): add logDistribution for quadrant statistics"
 
 在 `src/ai/prompts-reports.ts` 中删除上述 4 个函数及其相关类型（如 `TopicClusterItem`）。
 
-在 `src/reports/daily.ts` 中删除 `candidatesToTopicClusterItems` 函数定义。
+在 `src/reports/daily.ts` 中删除以下死代码：
+- `candidatesToTopicClusterItems` 函数定义
+- `candidatesToTopicContents` 函数定义
 
 - [ ] **Step 3: 验证构建**
 
