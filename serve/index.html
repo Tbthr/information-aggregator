@@ -542,6 +542,41 @@
 
     // Initial render
     renderReport();
+
+    // Dynamic loading from serve command
+    const { dailyFiles, weeklyFiles } = window.__REPORTS_CONFIG || { dailyFiles: [], weeklyFiles: [] }
+
+    // 渲染导航列表
+    function renderNav(files, type) {
+      const nav = document.getElementById(`${type}-nav`)
+      if (!nav) return
+      nav.innerHTML = files.map(f => {
+        const date = f.replace('.md', '')
+        return `<li class="nav-item"><a href="#" class="nav-link" data-type="${type}" data-file="${f}">${date}</a></li>`
+      }).join('')
+    }
+
+    renderNav(dailyFiles, 'daily')
+    renderNav(weeklyFiles, 'weekly')
+
+    // 点击导航加载对应 Markdown
+    document.addEventListener('click', async (e) => {
+      const link = e.target.closest('.nav-link')
+      if (!link) return
+
+      e.preventDefault()
+      const { type, file } = link.dataset
+
+      // 加载 Markdown
+      const resp = await fetch(`/reports/${type}/${file}`)
+      const markdown = await resp.text()
+
+      // 渲染
+      if (typeof md !== 'undefined') {
+        const html = md.render(markdown)
+        document.getElementById('report-content').innerHTML = html
+      }
+    })
   </script>
 </body>
 </html>
