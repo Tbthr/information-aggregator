@@ -225,7 +225,7 @@ git commit -m "feat(cli): initial CLI scaffold with TypeScript"
 - Create: `config/reports.yaml`
 - Create: `config/ai.yaml`
 
-- [ ] **Step 1: 创建 src/cli/lib/yaml-env.ts（环境变量替换）**
+- [x] **Step 1: 创建 src/cli/lib/yaml-env.ts（环境变量替换）**
 
 ```typescript
 /**
@@ -251,7 +251,7 @@ export function resolveEnvVars(obj: unknown): unknown {
 }
 ```
 
-- [ ] **Step 2: 创建 src/cli/config/loader.ts**
+- [x] **Step 2: 创建 src/cli/config/loader.ts**
 
 ```typescript
 import fs from 'fs'
@@ -289,7 +289,7 @@ export function loadConfig(): AggregatorConfig {
 }
 ```
 
-- [ ] **Step 3: 创建 config/sources.yaml（从 Prisma Source 迁移）**
+- [x] **Step 3: 创建 config/sources.yaml（从 Prisma Source 迁移）**
 
 ```yaml
 sources:
@@ -321,7 +321,7 @@ sources:
       ct0: ${TWITTER_CT0}
 ```
 
-- [ ] **Step 4: 创建 config/topics.yaml（从 Prisma Topic 迁移）**
+- [x] **Step 4: 创建 config/topics.yaml（从 Prisma Topic 迁移）**
 
 ```yaml
 topics:
@@ -355,7 +355,7 @@ topics:
     displayOrder: 2
 ```
 
-- [ ] **Step 5: 创建 config/reports.yaml（从 DailyReportConfig + WeeklyReportConfig 迁移）**
+- [x] **Step 5: 创建 config/reports.yaml（从 DailyReportConfig + WeeklyReportConfig 迁移）**
 
 ```yaml
 daily:
@@ -376,7 +376,7 @@ weekly:
     为每条精选写一句话理由，20字以内。
 ```
 
-- [ ] **Step 6: 创建 config/ai.yaml（从 .env 迁移）**
+- [x] **Step 6: 创建 config/ai.yaml（从 .env 迁移）**
 
 ```yaml
 default: anthropic
@@ -403,7 +403,7 @@ batch:
   concurrency: 2
 ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/cli/config/ src/cli/lib/ config/
@@ -420,7 +420,7 @@ git commit -m "feat(config): add YAML config files and loader"
 - Create: `src/cli/lib/date-utils.ts`
 - Modify: `src/cli/index.ts`（添加 --date 参数）
 
-- [ ] **Step 1: 创建 src/cli/lib/date-utils.ts**
+- [x] **Step 1: 创建 src/cli/lib/date-utils.ts**
 
 ```typescript
 /**
@@ -472,7 +472,7 @@ export function parseDate(dateStr?: string): string {
 }
 ```
 
-- [ ] **Step 2: 创建 src/cli/data/writer.ts**
+- [x] **Step 2: 创建 src/cli/data/writer.ts**
 
 ```typescript
 import fs from 'fs'
@@ -513,7 +513,7 @@ export function writeDailyData(date: string, data: DailyData): void {
 }
 ```
 
-- [ ] **Step 3: 创建 src/cli/commands/collect.ts**
+- [x] **Step 3: 创建 src/cli/commands/collect.ts**
 
 ```typescript
 import { loadConfig } from '../config/loader.js'
@@ -585,7 +585,7 @@ async function fetchTwitter(handle: string): Promise<CollectedItem[]> {
 }
 ```
 
-- [ ] **Step 4: 更新 src/cli/index.ts 添加参数支持**
+- [x] **Step 4: 更新 src/cli/index.ts 添加参数支持**
 
 ```typescript
 program
@@ -596,7 +596,7 @@ program
   .action(collect)
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/cli/commands/collect.ts src/cli/data/ src/cli/lib/date-utils.ts
