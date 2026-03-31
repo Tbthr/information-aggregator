@@ -57,22 +57,75 @@ information-aggregator/
 └── .gitignore
 ```
 
+## 数据文件格式
+
+```json
+// data/YYYY-MM-DD.json
+{
+  "date": "2026-03-31",
+  "collectedAt": "2026-03-31T14:00:00Z",
+  "items": [
+    {
+      "id": "infoq-xxx",
+      "sourceId": "infoq-cn",
+      "sourceName": "InfoQ 中文",
+      "title": "文章标题",
+      "url": "https://...",
+      "author": "作者",
+      "publishedAt": "2026-03-31T10:00:00Z",
+      "kind": "article",
+      "content": "..."
+    }
+  ],
+  "totalItems": 42
+}
+```
+
+| 字段 | 说明 |
+|------|------|
+| `date` | 数据归属日期（北京时间） |
+| `collectedAt` | 收集完成时间（UTC） |
+| `items` | 展平后的内容列表 |
+| `items[].id` | 内容 ID（来源提供或生成） |
+| `items[].sourceId` | 来源标识 |
+| `items[].sourceName` | 来源名称 |
+| `items[].title` | 标题 |
+| `items[].url` | 原文链接 |
+| `items[].author` | 作者 |
+| `items[].publishedAt` | 发布时间 |
+| `items[].kind` | 类型（article/tweet） |
+| `items[].content` | 全文内容 |
+
+**用途**：`url` 用于历史去重，`content` 用于 AI 摘要生成。
+
 ## Archive 适配器设计
 
 ```typescript
 // src/archive/index.ts — 接口（日报场景所需方法）
 export interface ArticleStore {
-  save(articles: Article[]): Promise<void>
+  save(date: string, items: Article[]): Promise<void>
   findByUrl(url: string): Promise<Article | null>
   findAllByDate(date: string): Promise<Article[]>
+}
+
+export interface Article {
+  id: string
+  sourceId: string
+  sourceName: string
+  title: string
+  url: string
+  author: string
+  publishedAt: string
+  kind: 'article' | 'tweet'
+  content: string
 }
 
 // src/archive/json-store.ts — 新 JSON 实现
 export class JsonArticleStore implements ArticleStore {
   constructor(private dataDir: string = 'data') {}
 
-  async save(articles: Article[]): Promise<void> {
-    // 追加写入 data/YYYY-MM-DD.json
+  async save(date: string, items: Article[]): Promise<void> {
+    // 写入 data/YYYY-MM-DD.json
   }
 
   async findByUrl(url: string): Promise<Article | null> {
@@ -80,7 +133,7 @@ export class JsonArticleStore implements ArticleStore {
   }
 
   async findAllByDate(date: string): Promise<Article[]> {
-    // 读取指定日期的 data/YYYY-MM-DD.json
+    // 读取 data/YYYY-MM-DD.json
   }
 }
 ```
