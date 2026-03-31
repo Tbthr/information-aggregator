@@ -29,6 +29,8 @@ information-aggregator/
 │   ├── topics.yaml           # Topic 配置
 │   ├── reports.yaml          # 报表配置
 │   └── ai.yaml              # AI provider/model/retry 配置
+├── data/                    # 收集的 JSON 数据（用于历史去重）
+│   └── YYYY-MM-DD.json
 ├── reports/daily/           # 生成的日报 Markdown
 ├── serve/index.html         # 静态导航页（GitHub Pages 托管）
 ├── src/
@@ -191,7 +193,8 @@ jobs:
 | `config/topics.yaml` | Topic 配置 |
 | `config/reports.yaml` | 报表配置（仅含日报，无周报） |
 | `config/ai.yaml` | AI 配置 |
-| `reports/daily/` | 日报输出 |
+| `data/` | 收集的 JSON 数据（用于历史去重，rank 阶段需要） |
+| `reports/daily/` | 日报 Markdown 输出 |
 | `serve/index.html` | 静态导航页 |
 | `src/pipeline/collect.ts` | 数据收集 |
 | `src/pipeline/enrich.ts` | 内容充实 |
