@@ -47,6 +47,8 @@ information-aggregator/
 │   ├── types/               # 类型定义
 │   └── utils/               # 工具函数
 ├── .github/workflows/        # GitHub Actions
+│   ├── run.yml             # 收集 + 生成日报
+│   └── pages.yml           # GitHub Pages 部署
 ├── package.json
 ├── tsconfig.json
 ├── .env                     # 本地 secrets（gitignore）
@@ -229,11 +231,55 @@ export function resolveEnvVars<T>(obj: T): T {
 
 **数据迁移**：现有 Supabase 数据库中的数据无需迁移，日报生成改用 JSON 文件输入。
 
-## CLI 错误处理
+## 与 2026-03-31 简化架构设计的关系
+
+本文档是清理执行计划，聚焦于**删除废弃代码**。与 `2026-03-31-simplified-arch-design.md` 的差异（CLI 合并为 `run`、移除周报、删除 `aggregator serve` 命令）是简化决策的结果，以本文档为准。目录结构、Archive 适配器、AI 配置等保留原设计。
 
 `aggregator run` 退出码：
 - `0` — 成功
 - `1` — 收集失败（网络错误、数据源不可用）
 - `2` — 日报生成失败（AI 调用失败、写入错误）
 
-日志输出到 stdout/stderr，失败时输出完整错误信息。
+日志输出到 stdout/stderr，失败时输出完整错误信息便于调试。
+
+## GitHub Pages Workflow
+
+`serve/index.html` 直接托管于 GitHub Pages，与 `run.yml` 分离：
+
+```yaml
+# .github/workflows/pages.yml
+name: Deploy to Pages
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'serve/**'
+      - 'reports/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'serve/'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+```
+
+**注**：`serve/index.html` 为纯静态页面，直接作为 Pages 根目录部署；`reports/daily/` 下的 Markdown 文件通过相对路径引用。
