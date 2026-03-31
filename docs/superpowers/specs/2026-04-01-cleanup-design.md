@@ -189,11 +189,17 @@ jobs:
 |-----------|------|
 | `config/sources.yaml` | 数据源配置 |
 | `config/topics.yaml` | Topic 配置 |
-| `config/reports.yaml` | 报表配置 |
+| `config/reports.yaml` | 报表配置（仅含日报，无周报） |
 | `config/ai.yaml` | AI 配置 |
 | `reports/daily/` | 日报输出 |
-| `serve/index.html` | 静态导航页（详情见 `2026-03-31-simplified-arch-design.md`） |
-| `src/pipeline/` | 收集管道（不含 Prisma 依赖部分） |
+| `serve/index.html` | 静态导航页 |
+| `src/pipeline/collect.ts` | 数据收集 |
+| `src/pipeline/enrich.ts` | 内容充实 |
+| `src/pipeline/rank.ts` | 候选排序 |
+| `src/pipeline/normalize.ts` | 内容标准化 |
+| `src/pipeline/normalize-url.ts` | URL 标准化 |
+| `src/pipeline/dedupe-exact.ts` | 精确去重 |
+| `src/pipeline/extract-content.ts` | 内容提取 |
 | `src/adapters/` | 数据源适配器（RSS, JSON Feed, X/Twitter） |
 | `src/ai/` | AI client + prompts |
 | `src/reports/daily.ts` | 改造后无 Prisma |
@@ -223,7 +229,7 @@ export function resolveEnvVars<T>(obj: T): T {
 ## 实现步骤
 
 1. **创建 JSON store** — `src/archive/json-store.ts` 实现存档接口
-2. **改造日报逻辑** — 修改 `src/reports/daily.ts` 使用 JSON store，移除 Prisma 依赖。改造范围参考 `docs/superpowers/specs/2026-03-31-simplified-arch-design.md` 中的日报功能说明
+2. **改造日报逻辑** — 修改 `src/reports/daily.ts`，移除 Prisma 依赖，改用 JSON store 读写数据
 3. **创建 CLI 入口** — `src/cli/run.ts`，聚合收集 + 日报生成 + 详细日志输出
 4. **配置 GitHub Actions** — `.github/workflows/run.yml`
 5. **更新依赖** — `package.json` 移除 Next.js/Prisma/Radix，添加 CLI 必要依赖（`js-yaml` 等）
@@ -232,11 +238,7 @@ export function resolveEnvVars<T>(obj: T): T {
 
 **数据迁移**：现有 Supabase 数据库中的数据无需迁移，日报生成改用 JSON 文件输入。
 
-## 与 2026-03-31 简化架构设计的关系
-
-本文档是清理执行计划，聚焦于**删除废弃代码**。与 `2026-03-31-simplified-arch-design.md` 的差异（CLI 合并为 `run`、移除周报、删除 `aggregator serve` 命令）是简化决策的结果，以本文档为准。目录结构、Archive 适配器、AI 配置等保留原设计。
-
-**关于 `serve/index.html`**：参考 `2026-03-31` 文档了解导航页的内容设计（HTML 结构、样式、渲染逻辑）；但 GitHub Pages 部署方式以本文档 `pages.yml` 为准——纯静态文件上传，无需 Zola。
+## CLI 错误处理
 
 `aggregator run` 退出码：
 - `0` — 成功
