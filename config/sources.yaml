@@ -1,0 +1,27 @@
+sources:
+  # RSS 源示例
+  - type: rss
+    id: infoq-cn
+    name: InfoQ 中文
+    url: https://www.infoq.cn/feed
+    enabled: true
+    topics: [tech]
+
+  # JSON Feed 示例
+  - type: json-feed
+    id: buzzing
+    name: Buzzing
+    url: https://www.buzzing.cc/feed.json
+    enabled: true
+    topics: [news, tech]
+
+  # Twitter/X 示例（需要 auth）
+  - type: twitter
+    id: karpathy
+    name: Andrej Karpathy
+    handle: karpathy
+    enabled: false
+    topics: [ai, ml]
+    auth:
+      authToken: ${TWITTER_AUTH_TOKEN}
+      ct0: ${TWITTER_CT0}

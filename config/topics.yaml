@@ -1,0 +1,29 @@
+topics:
+  - id: ai
+    name: AI 与大模型
+    description: AI、机器学习、大模型相关
+    includeRules:
+      - AI
+      - LLM
+      - GPT
+      - Claude
+      - Gemini
+    excludeRules:
+      - 广告
+      - 推广
+    maxItems: 10
+    scoreBoost: 1.5
+    displayOrder: 1
+
+  - id: tech
+    name: 技术趋势
+    description: 编程语言、框架、开源
+    includeRules:
+      - Rust
+      - Go
+      - Kubernetes
+      - React
+    excludeRules:
+      - 广告
+    maxItems: 10
+    displayOrder: 2

@@ -1,0 +1,16 @@
+daily:
+  maxItems: 50
+  minScore: 0
+  topicPrompt: |
+    将以下内容按主题分类，每个主题给出一句话摘要。
+
+  topicSummaryPrompt: |
+    为每个主题写一段 20 字以内的摘要。
+
+weekly:
+  days: 7
+  pickCount: 6
+  editorialPrompt: |
+    写一段本周的社评，总结重点趋势，100字以内。
+  pickReasonPrompt: |
+    为每条精选写一句话理由，20字以内。
