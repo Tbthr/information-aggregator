@@ -30,6 +30,10 @@ program
   .option('--input <path>', 'Input JSON path (default: data/)')
   .option('--output <path>', 'Output directory')
   .action(weekly)
-program.command('serve').action(serve)
+program
+  .command('serve')
+  .option('--port <number>', 'Port to listen on', '3000')
+  .option('--reports <path>', 'Reports directory')
+  .action(serve)
 
 program.parse()

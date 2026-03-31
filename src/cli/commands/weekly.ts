@@ -2,11 +2,66 @@ import fs from 'fs'
 import path from 'path'
 import { getWeekNumber, getWeekDates } from '../lib/date-utils.js'
 import { generateWeeklyMarkdown, type WeeklyReport } from '../reports/weekly.js'
+import { createAiClient } from '../../ai/client.js'
+import type { AiClient } from '../../ai/client.js'
+import type { CollectedItem } from '../data/writer.js'
+import type { Topic, WeeklyConfig, AIConfig } from '../config/types.js'
 
 interface WeeklyOptions {
   week?: string
   input?: string
   output?: string
+}
+
+/**
+ * Stub function for AI-based weekly report generation.
+ * TODO (Task 8): Implement full AI selection and editorial generation
+ * using src/ai/prompts-reports.ts and the AI client.
+ */
+async function generateWeeklyReport(
+  items: CollectedItem[],
+  weekStr: string,
+  weekDates: string[],
+  config: { topics: Topic[]; weekly: WeeklyConfig; ai: AIConfig }
+): Promise<WeeklyReport> {
+  // Create AI client from config
+  let client: AiClient | null = null
+  try {
+    const providerConfig = config.ai.providers[config.ai.default]
+    if (providerConfig?.apiKey) {
+      client = createAiClient(config.ai.default as 'anthropic' | 'gemini' | 'openai')
+    }
+  } catch (err) {
+    console.warn('Failed to create AI client, using stub report:', err)
+  }
+
+  if (!client) {
+    // Return stub report if no AI client available
+    return {
+      week: weekStr,
+      weekLabel: `${weekStr} 周报`,
+      startDate: weekDates[0],
+      endDate: weekDates[6],
+      editorial: 'AI 报告生成中...',
+      picks: [],
+    }
+  }
+
+  // TODO: Implement full AI weekly report using:
+  // - buildEditorialPrompt() from prompts-reports.ts
+  // - buildPickReasonPrompt() from prompts-reports.ts
+  // - client.generateText()
+
+  // For now, return a placeholder
+  console.log(`AI client available, ${items.length} items to process`)
+  return {
+    week: weekStr,
+    weekLabel: `${weekStr} 周报 (stub)`,
+    startDate: weekDates[0],
+    endDate: weekDates[6],
+    editorial: '本周重要更新...',
+    picks: [],
+  }
 }
 
 export async function weekly(options: WeeklyOptions): Promise<void> {

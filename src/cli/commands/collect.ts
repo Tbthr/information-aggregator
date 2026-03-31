@@ -2,6 +2,9 @@ import { loadConfig } from '../config/loader.js'
 import { parseDate } from '../lib/date-utils.js'
 import { writeDailyData } from '../data/writer.js'
 import type { CollectedItem, SourceData } from '../data/writer.js'
+import { buildAdapters } from '../../adapters/build-adapters.js'
+import type { RawItem, Source } from '../../types/index.js'
+import type { Source as ConfigSource } from '../config/types.js'
 
 interface CollectOptions {
   date?: string
@@ -43,25 +46,76 @@ export async function collect(options: CollectOptions): Promise<void> {
   console.log(`Done. Total: ${totalItems} items from ${sources.length} sources`)
 }
 
-async function fetchSource(source: { type: string; id: string; url?: string; handle?: string }): Promise<CollectedItem[]> {
-  switch (source.type) {
-    case 'rss':
-    case 'json-feed':
-      return fetchFeed(source.url!)
-    case 'twitter':
-      return fetchTwitter(source.handle!)
-    default:
-      throw new Error(`Unknown source type: ${source.type}`)
+/**
+ * Convert RawItem from adapters to CollectedItem for CLI output
+ */
+function rawItemToCollectedItem(raw: RawItem): CollectedItem {
+  let kind = 'unknown'
+  try {
+    const metadata = raw.metadataJson ? JSON.parse(raw.metadataJson) : {}
+    kind = metadata.contentType ?? metadata.provider ?? 'unknown'
+    // Normalize kind values
+    if (kind === 'social_post') kind = 'tweet'
+    else if (kind === 'article' && metadata.provider === 'bird') kind = 'tweet'
+  } catch {
+    // Use default 'unknown' if parsing fails
+  }
+
+  return {
+    id: raw.id,
+    title: raw.title,
+    url: raw.url,
+    author: raw.author,
+    publishedAt: raw.publishedAt ?? raw.fetchedAt,
+    kind,
+    content: raw.content,
   }
 }
 
-async function fetchFeed(url: string): Promise<CollectedItem[]> {
-  // 在 Task 8 中复用 src/adapters/rss.ts 实现
-  // 此处先用 throw 提示必须完成 Task 8
-  throw new Error('fetchFeed not implemented - complete Task 8 first')
-}
+async function fetchSource(source: ConfigSource): Promise<CollectedItem[]> {
+  const adapters = buildAdapters()
+  const jobStartedAt = new Date().toISOString()
 
-async function fetchTwitter(handle: string): Promise<CollectedItem[]> {
-  // 在 Task 8 中复用 src/adapters/x-bird.ts 实现
-  throw new Error('fetchTwitter not implemented - complete Task 8 first')
+  switch (source.type) {
+    case 'rss': {
+      const items = await adapters.rss({ id: source.id, url: source.url }, fetch, jobStartedAt)
+      return items.map(rawItemToCollectedItem)
+    }
+    case 'json-feed': {
+      const items = await adapters['json-feed']({ id: source.id, url: source.url }, fetch, jobStartedAt)
+      return items.map(rawItemToCollectedItem)
+    }
+    case 'twitter': {
+      // Construct Source object for x-bird adapter
+      const birdSource: Source = {
+        id: source.id,
+        kind: 'x',
+        url: source.url ?? '',
+        configJson: JSON.stringify({
+          birdMode: 'user-tweets',
+          username: source.handle,
+          authToken: source.auth?.authToken,
+          ct0: source.auth?.ct0,
+        }),
+      }
+      const items = await adapters.x(birdSource, async (cmd: string[]) => {
+        // Execute bird CLI command
+        const { spawn } = await import('node:child_process')
+        return new Promise<string>((resolve, reject) => {
+          const proc = spawn(cmd[0], cmd.slice(1), { stdio: ['ignore', 'pipe', 'pipe'] })
+          let stdout = ''
+          let stderr = ''
+          proc.stdout?.on('data', (chunk: Buffer) => stdout += chunk.toString())
+          proc.stderr?.on('data', (chunk: Buffer) => stderr += chunk.toString())
+          proc.on('close', (code) => {
+            if (code === 0) resolve(stdout)
+            else reject(new Error(stderr || `bird CLI exited with code ${code}`))
+          })
+        })
+      }, jobStartedAt)
+      return items.map(rawItemToCollectedItem)
+    }
+    default:
+      throw new Error(`Unknown source type: ${source.type}`)
+  }
 }
