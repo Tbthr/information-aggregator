@@ -203,7 +203,7 @@ Example:
 
 **功能：**
 1. 读取本周所有日的 JSON
-2. 合并去重
+2. **合并去重**：基于 `url` 字段做 exact dedupe，保留最早发布的条目
 3. AI 选 6 条周精选
 4. 生成社评
 5. 输出 Markdown 文件
@@ -226,9 +226,10 @@ Example:
 
 **功能：**
 1. 扫描 `reports/daily/` 和 `reports/weekly/`
-2. 提供列表索引页
-3. 渲染 Markdown 为 HTML
+2. 构建日期/周索引（按文件名解析）
+3. 使用 **markdown-it** 渲染 Markdown 内容
 4. 提供日期/周导航
+5. 浏览器端 SPA 路由（无刷新切换）
 
 ## GitHub Workflows
 
@@ -249,15 +250,14 @@ jobs:
 
       - name: Setup aggregator
         run: |
-          # 下载 aggregator CLI
           curl -L https://github.com/user/aggregator/releases/latest/download/aggregator-linux-amd64 -o aggregator
           chmod +x aggregator
 
-      - name: Collect
+      - name: Collect (defaults to today)
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          ./aggregator collect --date ${{ env.DATE }}
+          ./aggregator collect
 
       - name: Commit data
         uses: stefanzweifel/git-auto-commit-action@v5
@@ -339,6 +339,9 @@ name: Build and Deploy to Pages
 on:
   push:
     branches: [main]
+    paths:
+      - 'reports/**'
+      - 'serve/**'
   workflow_dispatch:
 
 jobs:
@@ -355,6 +358,8 @@ jobs:
       - name: Deploy to Pages
         uses: actions/deploy-pages@v4
 ```
+
+**说明：** 通过 `paths` 过滤，只在 `reports/` 或 `serve/` 变更时触发，避免与 daily/weekly commit 竞争。
 
 ## 数据文件格式
 
@@ -476,6 +481,33 @@ theme = "hyde"
 - [ ] 实现列表导航
 
 ### Phase 4: CI/CD
+- [ ] 配置 GitHub Workflows
+- [ ] 配置 GitHub Pages
+- [ ] 端到端测试
+
+### 数据保留策略
+
+```yaml
+# data/ 目录：保留最近 90 天
+# reports/daily/：保留所有历史
+# reports/weekly/：保留所有历史
+```
+
+可通过 `.github/workflows/cleanup.yml` 定时清理旧 data 文件。
+
+### 跨源去重策略
+
+同一新闻事件可能被多个 RSS 源报道。配置级别去重规则：
+
+```yaml
+# config/reports.yaml
+dedupe:
+  strategy: url-host   # 按 URL 域名去重，保留权威来源
+  hostPriority:        # 域名优先级
+    - zhihu.com
+    - infoq.cn
+    - 36kr.com
+```
 - [ ] 配置 GitHub Workflows
 - [ ] 配置 GitHub Pages
 - [ ] 端到端测试
