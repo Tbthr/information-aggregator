@@ -171,7 +171,7 @@ jobs:
 - `src/reports/weekly.ts` — 周报逻辑（随 Prisma 依赖移除）
 
 ### Pack 配置（已废弃）
-- `config/packs/` — Pack YAML 数据（迁移自 DB，随 Prisma 移除）
+- `config/packs/` — Pack YAML 数据（由 `src/config/load-pack-prisma.ts` 加载，随 Prisma 移除）
 
 ### 其他
 - `.env.example`
@@ -198,6 +198,7 @@ jobs:
 | `src/ai/` | AI client + prompts |
 | `src/reports/daily.ts` | 改造后无 Prisma |
 | `src/archive/json-store.ts` | JSON 存档实现 |
+| `src/config/resolve-env.ts` | YAML 中 `${VAR}` 语法解析 |
 | `src/types/` | 类型定义 |
 | `src/utils/` | 工具函数 |
 | `lib/utils.ts` | 通用工具（无 Next.js 依赖） |
@@ -234,6 +235,8 @@ export function resolveEnvVars<T>(obj: T): T {
 ## 与 2026-03-31 简化架构设计的关系
 
 本文档是清理执行计划，聚焦于**删除废弃代码**。与 `2026-03-31-simplified-arch-design.md` 的差异（CLI 合并为 `run`、移除周报、删除 `aggregator serve` 命令）是简化决策的结果，以本文档为准。目录结构、Archive 适配器、AI 配置等保留原设计。
+
+**关于 `serve/index.html`**：参考 `2026-03-31` 文档了解导航页的内容设计（HTML 结构、样式、渲染逻辑）；但 GitHub Pages 部署方式以本文档 `pages.yml` 为准——纯静态文件上传，无需 Zola。
 
 `aggregator run` 退出码：
 - `0` — 成功
