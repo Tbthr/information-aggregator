@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
-import type { Content, DailyReportConfig } from "@prisma/client"
+import type { Content, DailyReportConfig, DigestTopic } from "@prisma/client"
 import type { ReportCandidate, ScoreBreakdown, SignalScores } from "@/src/types/index"
+import type { AiClient } from "@/src/ai/types"
 import { formatUtcDate, formatUtcDayLabel, beijingDayRange } from "@/lib/date-utils"
 import { contentToReportCandidate } from "./report-candidate"
 import {
@@ -12,6 +13,12 @@ import {
   type KindPreferences,
   type ScoredCandidate as ScoringScoredCandidate,
 } from "./scoring"
+import { classifyProductivityDistance, type CandidateWithDistance } from "./classify-productivity"
+import { classifyFreshness, type CandidateWithFreshness, type FreshnessTier } from "./classify-freshness"
+import { filterByQuadrant } from "./filter-quadrant"
+import { logDistribution } from "./log-distribution"
+import { buildTopicSummaryPrompt, parseTopicSummaryResult } from "@/src/ai/prompts-reports"
+import { loadTopicsByIds } from "@/src/config/load-pack-prisma"
 
 export interface DailyGenerateResult {
   date: string
@@ -21,6 +28,12 @@ export interface DailyGenerateResult {
 
 // Re-export ScoredCandidate from scoring types for external consumers
 export type ScoredCandidate = ScoringScoredCandidate
+
+// Extended topic interface for in-memory pipeline (includes enrichment fields)
+export interface DigestTopicWithEnrichment extends DigestTopic {
+  freshnessTier?: FreshnessTier
+  productivityDistance?: CandidateWithDistance["distance"]
+}
 
 // ============================================================
 // Pure pipeline functions (exported for testing)
@@ -115,10 +128,6 @@ export function trimTopN(scored: ScoredCandidate[], n: number): ScoredCandidate[
   return [...scored].sort((a, b) => b.breakdown.finalScore - a.breakdown.finalScore).slice(0, n)
 }
 
-/**
- * Converts ReportCandidate[] to TopicClusterItem[] for AI clustering.
- * Articles use type="item", tweets use type="tweet" with @handle as title.
- */
 // ============================================================
 // Internal pipeline steps (async, DB-dependent)
 // ============================================================
@@ -153,7 +162,6 @@ async function filterContent(
   }
 
   // Load topics to get excludeRules
-  const { loadTopicsByIds } = await import("@/src/config/load-pack-prisma")
   const topics = await loadTopicsByIds(config.topicIds)
 
   // Build excludeRules map: topicId -> keywords[]
@@ -180,11 +188,105 @@ async function filterContent(
   return { filteredContents }
 }
 
+/** Step 10: Generate topic summaries grouped by preset topics */
+async function generateTopicSummariesByPresetTopics(
+  scored: ScoredCandidate[],
+  aiClient: AiClient,
+  config: DailyReportConfig,
+  candidatesWithDistance: CandidateWithDistance[],
+  candidatesWithFreshness: CandidateWithFreshness[]
+): Promise<DigestTopicWithEnrichment[]> {
+  // Build lookup maps for distance and freshness by content id
+  const distanceMap = new Map(candidatesWithDistance.map(c => [c.candidate.id, c.distance]))
+  const freshnessMap = new Map(candidatesWithFreshness.map(c => [c.candidate.id, c.freshness]))
+
+  // Load preset topics from DB
+  const presetTopics = await loadTopicsByIds(config.topicIds)
+  if (presetTopics.length === 0) {
+    console.warn("[daily-report] no preset topics found, using empty grouping")
+    return []
+  }
+
+  // Group candidates by preset topic id
+  const candidatesByTopic = new Map<string, ScoredCandidate[]>()
+  for (const candidate of scored) {
+    for (const tid of candidate.topicIds ?? []) {
+      if (config.topicIds.includes(tid)) {
+        if (!candidatesByTopic.has(tid)) {
+          candidatesByTopic.set(tid, [])
+        }
+        candidatesByTopic.get(tid)!.push(candidate)
+        break // each candidate belongs to one preset topic
+      }
+    }
+  }
+
+  const topics: DigestTopicWithEnrichment[] = []
+
+  for (const topic of presetTopics) {
+    const topicCandidates = candidatesByTopic.get(topic.id) ?? []
+
+    // Determine freshness tier and productivity distance for this topic
+    // Uses the first matching candidate's classification (each candidate belongs to exactly one preset topic)
+    const freshnessTier: FreshnessTier = topicCandidates.length > 0
+      ? (freshnessMap.get(topicCandidates[0].id) ?? "趋势")
+      : "趋势"
+    const productivityDistance: CandidateWithDistance["distance"] = topicCandidates.length > 0
+      ? (distanceMap.get(topicCandidates[0].id) ?? "中")
+      : "中"
+
+    if (topicCandidates.length === 0) {
+      // No candidates for this topic, skip AI call
+      continue
+    }
+
+    // Build content list for prompt
+    const contents = topicCandidates.map(c => ({
+      title: c.title ?? "",
+      summary: c.summary ?? "",
+      type: c.kind,
+    }))
+
+    // Build prompt and call AI
+    const promptText = buildTopicSummaryPrompt(
+      topic.name,
+      contents,
+      config.topicSummaryPrompt ?? ""
+    )
+
+    let summaryText: string
+    try {
+      const result = await aiClient.generateText(promptText)
+      const parsed = parseTopicSummaryResult(result)
+      summaryText = parsed.summary
+    } catch {
+      // Fallback: concatenate summaries
+      summaryText = topicCandidates.map(c => c.summary).join(" ")
+    }
+
+    const topicWithEnrichment: DigestTopicWithEnrichment = {
+      id: "",
+      dailyId: "",
+      order: topics.length,
+      title: topic.name,
+      summary: summaryText,
+      contentIds: topicCandidates.map(c => c.id),
+      createdAt: new Date(),
+      freshnessTier,
+      productivityDistance,
+    }
+
+    topics.push(topicWithEnrichment)
+  }
+
+  return topics
+}
+
 /** Step 3: Persist results */
 async function persistResults(
   date: string,
   dayLabel: string,
-  topics: { title: string; summary: string; contentIds: string[] }[],
+  topics: DigestTopicWithEnrichment[],
   errorMessage?: string,
   errorSteps?: string[]
 ) {
@@ -228,45 +330,29 @@ async function persistResults(
 }
 
 // ============================================================
-// Fallback: Category-based grouping when AI clustering fails
-// ============================================================
-
-function fallbackCategoryGrouping(candidates: ScoredCandidate[]): { title: string; summary: string; contentIds: string[] }[] {
-  const articleCandidates = candidates.filter((c) => c.kind === "article")
-  if (articleCandidates.length === 0) return []
-
-  // Group by sourceLabel as fallback when AI clustering fails
-  const groups = new Map<string, ScoredCandidate[]>()
-  for (const c of articleCandidates) {
-    const key = c.sourceLabel || "其他"
-    if (!groups.has(key)) groups.set(key, [])
-    groups.get(key)!.push(c)
-  }
-
-  return Array.from(groups.entries()).map(([groupKey, groupItems]) => ({
-    title: groupKey.slice(0, 20),
-    summary: groupItems[0].summary,
-    contentIds: groupItems.map((c) => c.id),
-  }))
-}
-
-// ============================================================
 // Main Pipeline
 // ============================================================
 
 /**
- * Generates a daily report using the new runtime candidates pipeline.
+ * Generates a daily report using the quadrant-aware pipeline.
  *
  * Pipeline order:
  * 1. Collect items + tweets from DB (Beijing day range)
- * 2. Filter by pack, blacklist, min score (DB-level)
+ * 2. Filter by topic/excludeRules
  * 3. Map to ReportCandidate[]
- * 4. Score candidates (base -> signal -> merge -> history penalty)
- * 5. Trim to top N (before AI, to reduce cost)
- * 6. Persist results (category grouping as fallback)
+ * 4. Classify productivity distance
+ * 5. Classify freshness
+ * 6. Quadrant filter (远+热点 → 丢弃)
+ * 7. Score candidates
+ * 8. Productivity bonus (inline)
+ * 9. Trim to top N
+ * 10. Generate topic summaries by preset topics
+ * 11. Log distribution
+ * 12. Persist results
  */
 export async function generateDailyReport(
-  now: Date
+  now: Date,
+  aiClient: AiClient
 ): Promise<DailyGenerateResult> {
   const date = formatUtcDate(now)
   const dayLabel = formatUtcDayLabel(now)
@@ -276,43 +362,13 @@ export async function generateDailyReport(
   let config = await prisma.dailyReportConfig.findUnique({ where: { id: "default" } })
   if (!config) {
     // This fallback should not happen in production since DB has defaults
-    // These prompts include JSON output instructions as a safety measure
-    const defaultTopicPrompt = `你是一位专业的信息分析师。请将以下内容列表按照话题进行聚类分组。
-
-要求：
-1. 分成 3-8 个话题
-2. 每个话题内的内容应该高度相关
-3. 每条内容只能属于一个话题
-4. 不要遗漏重要内容
-5. 话题标题简洁有力（中文，10字以内）
-
-请以 JSON 格式输出：
-
-{
-  "topics": [
-    {
-      "title": "话题标题",
-      "itemIndexes": [0, 1, 2],
-      "tweetIndexes": []
-    }
-  ]
-}`
-    const defaultTopicSummaryPrompt = `你是一位专业的信息分析师。请为以下话题下的内容生成一段综合总结。
-
-要求：
-1. 总结应该提炼核心信息和关键趋势
-2. 200-400字
-3. 用中文撰写
-4. 不要简单罗列，要综合分析
-
-请直接输出总结文本，不要包含 JSON 格式或额外标记。`
     config = await prisma.dailyReportConfig.upsert({
       where: { id: "default" },
       create: {
         id: "default",
         filterPrompt: "",
-        topicPrompt: defaultTopicPrompt,
-        topicSummaryPrompt: defaultTopicSummaryPrompt,
+        topicPrompt: "",
+        topicSummaryPrompt: "",
       },
       update: {},
     })
@@ -340,29 +396,77 @@ export async function generateDailyReport(
   // Step 3: Map to ReportCandidate[]
   const candidates = collectCandidates(filteredContents)
 
-  // Step 4: Score all candidates
-  const kindPreferences = parseKindPreferences(config.kindPreferences)
-  let scored = scoreCandidates(candidates, { kindPreferences })
+  // Step 4: Classify productivity distance
+  const candidatesWithDistance = classifyProductivityDistance(candidates)
 
-  // Step 4b: Apply minScore filter from config (on runtime finalScore)
-  const minScore = config.minScore ?? 0
-  if (minScore > 0) {
-    scored = scored.filter((s) => s.breakdown.finalScore >= minScore)
+  // Step 5: Classify freshness
+  const candidatesWithFreshness = classifyFreshness(candidates)
+
+  // Step 6: Quadrant filter (远+热点 → 丢弃)
+  const filteredByQuadrant = filterByQuadrant(candidatesWithDistance, candidatesWithFreshness)
+  const filteredCandidates = filteredByQuadrant.map(c => c.candidate)
+
+  if (filteredCandidates.length === 0) {
+    await persistResults(date, dayLabel, [], "象限过滤后无内容", errorSteps)
+    return { date, topicCount: 0, errorSteps }
   }
 
-  // Step 5: Trim to top N before AI
-  const maxItems = config.maxItems ?? 50
-  const finalCandidates = trimTopN(scored, maxItems)
+  // Step 7: Score all candidates
+  const kindPreferences = parseKindPreferences(config.kindPreferences)
+  let scored = scoreCandidates(filteredCandidates, { kindPreferences })
 
-  if (finalCandidates.length === 0) {
+  // Step 8: Productivity bonus (inline)
+  const distanceMap = new Map(
+    candidatesWithDistance.map(c => [c.candidate.id, c.distance])
+  )
+  scored = scored.map(c => {
+    const distance = distanceMap.get(c.id) ?? "中"
+    const bonus = distance === "近" ? 1.3 : distance === "远" ? 0.8 : 1.0
+    return {
+      ...c,
+      breakdown: {
+        ...c.breakdown,
+        finalScore: c.breakdown.finalScore * bonus
+      }
+    }
+  })
+
+  // Step 9: Trim to top N before AI
+  const maxItems = config.maxItems ?? 50
+  const trimmed = trimTopN(scored, maxItems)
+
+  if (trimmed.length === 0) {
     await persistResults(date, dayLabel, [], "评分后无内容", errorSteps)
     return { date, topicCount: 0, errorSteps }
   }
 
-  // Step 6: Group candidates by category (fallback approach)
-  const topics = fallbackCategoryGrouping(finalCandidates)
+  // Step 10: Generate topic summaries by preset topics
+  let topics: DigestTopicWithEnrichment[]
+  try {
+    topics = await generateTopicSummariesByPresetTopics(
+      trimmed,
+      aiClient,
+      config,
+      candidatesWithDistance,
+      candidatesWithFreshness
+    )
+  } catch {
+    errorSteps.push("topicSummary")
+    topics = []
+  }
 
-  // Step 7: Persist
+  // Step 11: Log distribution
+  const allClassified = candidatesWithDistance.map((c, i) => ({
+    ...c,
+    ...candidatesWithFreshness[i],
+  }))
+  logDistribution(
+    allClassified as (CandidateWithDistance & CandidateWithFreshness)[],
+    filteredByQuadrant,
+    topics as DigestTopic[]
+  )
+
+  // Step 12: Persist
   try {
     await persistResults(date, dayLabel, topics, errorSteps.length > 0 ? "部分步骤失败" : undefined, errorSteps)
   } catch {
