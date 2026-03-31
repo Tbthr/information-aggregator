@@ -1,0 +1,22 @@
+name: Build and Deploy to Pages
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'reports/**'
+      - 'serve/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Zola
+        uses: cmwylie19/zola-deploy@latest
+        with:
+          args: build --base-url ${{ vars.BASE_URL }}
+
+      - name: Deploy to Pages
+        uses: actions/deploy-pages@v4

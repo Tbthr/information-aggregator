@@ -1,0 +1,38 @@
+name: Generate Weekly Report
+on:
+  schedule:
+    - cron: "0 0 * * 1"  # 每周一 00:00 UTC = 8:00 北京时间
+  workflow_dispatch:
+
+jobs:
+  weekly:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build CLI
+        run: pnpm build
+
+      - name: Generate Weekly
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: node dist/cli/index.js weekly
+
+      - name: Commit report
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "report: weekly $(date +%Y-W%V)"
+          file_pattern: "reports/weekly/*.md"
