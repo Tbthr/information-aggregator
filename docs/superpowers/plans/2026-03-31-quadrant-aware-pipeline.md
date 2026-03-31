@@ -23,48 +23,13 @@
   src/reports/daily.ts                     # 串联新步骤，移除 aiFilter/topicClustering，内联评分加权
   src/reports/scoring/types.ts             # ScoredCandidate 新增字段
   src/ai/prompts-reports.ts                # 移除聚类/过滤相关 prompt 函数
-  src/types/index.ts                        # ReportCandidate 新增 freshnessTier/productivityDistance
-  prisma/schema.prisma                      # DigestTopic 新增 freshnessTier/productivityDistance
+  src/types/index.ts                        # ReportCandidate 新增 topicIds/freshnessTier/productivityDistance
+  src/reports/report-candidate.ts          # contentToReportCandidate 新增 topicIds 传递
 ```
 
 ---
 
-## Task 1: Prisma Schema 变更
-
-**Files:**
-- Modify: `prisma/schema.prisma`
-
-- [ ] **Step 1: 添加 DigestTopic 新字段**
-
-修改 `prisma/schema.prisma` 中 DigestTopic 模型：
-
-```prisma
-model DigestTopic {
-  // ... existing fields (id, dailyId, order, title, summary, contentIds) ...
-
-  freshnessTier         String?  // "热点" | "趋势" | "经典"
-  productivityDistance  String?  // "近" | "中" | "远"
-}
-```
-
-- [ ] **Step 2: 执行数据库变更**
-
-```bash
-npx prisma db push
-```
-
-验证：`npx prisma db pull` 后检查 schema 是否包含新字段
-
-- [ ] **Step 3: 提交**
-
-```bash
-git add prisma/schema.prisma
-git commit -m "feat(schema): add freshnessTier and productivityDistance to DigestTopic"
-```
-
----
-
-## Task 2: 类型定义变更
+## Task 1: 类型定义变更
 
 **Files:**
 - Modify: `src/types/index.ts`
@@ -118,7 +83,7 @@ git commit -m "feat(types): add topicIds, freshnessTier, productivityDistance to
 
 ---
 
-## Task 3: 创建 classifyProductivityDistance
+## Task 2: 创建 classifyProductivityDistance
 
 **Files:**
 - Create: `src/reports/classify-productivity.ts`
@@ -217,7 +182,7 @@ git commit -m "feat(classify): add classifyProductivityDistance function"
 
 ---
 
-## Task 4: 创建 classifyFreshness
+## Task 3: 创建 classifyFreshness
 
 **Files:**
 - Create: `src/reports/classify-freshness.ts`
@@ -332,7 +297,7 @@ git commit -m "feat(classify): add classifyFreshness function"
 
 ---
 
-## Task 5: 创建 filterByQuadrant
+## Task 4: 创建 filterByQuadrant
 
 **Files:**
 - Create: `src/reports/filter-quadrant.ts`
@@ -389,7 +354,7 @@ git commit -m "feat(filter): add filterByQuadrant for quadrant-based filtering"
 
 ---
 
-## Task 6: 创建 logDistribution
+## Task 5: 创建 logDistribution
 
 **Files:**
 - Create: `src/reports/log-distribution.ts`
@@ -446,7 +411,7 @@ git commit -m "feat(log): add logDistribution for quadrant statistics"
 
 ---
 
-## Task 7: 评分加权（内联实现）
+## Task 6: 评分加权（内联实现）
 
 **Files:**
 - Modify: `src/reports/daily.ts`（在 Task 9 中一并处理）
@@ -457,7 +422,7 @@ git commit -m "feat(log): add logDistribution for quadrant statistics"
 
 ---
 
-## Task 8: 更新 prompts-reports.ts（移除废弃函数）
+## Task 7: 更新 prompts-reports.ts（移除废弃函数）
 
 **Files:**
 - Modify: `src/ai/prompts-reports.ts`
@@ -501,7 +466,7 @@ git commit -m "feat(prompts): remove unused clustering and filter prompts"
 
 ---
 
-## Task 9: 重构 daily.ts
+## Task 8: 重构 daily.ts
 
 **Files:**
 - Modify: `src/reports/daily.ts`
@@ -713,7 +678,7 @@ git commit -m "feat(daily): integrate quadrant-aware pipeline, remove aiFilter/t
 
 ---
 
-## Task 10: 全量验证
+## Task 9: 全量验证
 
 - [ ] **Step 1: 运行 TypeScript 检查**
 

@@ -169,19 +169,6 @@ function applyProductivityBonus(
 // - "远"：finalScore * 0.8（-20%，但不丢弃）
 ```
 
-## 持久化变更
-
-### DigestTopic 新增字段
-
-```prisma
-model DigestTopic {
-  // ... 现有字段
-
-  freshnessTier    String?  // "热点" | "趋势" | "经典"
-  productivityDistance String?  // "近" | "中" | "远"
-}
-```
-
 ## 日志输出
 
 ### logDistribution
@@ -235,8 +222,8 @@ const FRESHNESS_KEYWORDS = {
 | `src/reports/daily.ts` | 新增 classifyProductivityDistance, classifyFreshness, filterByQuadrant, logDistribution；移除 aiFilter、topicClustering 调用 |
 | `src/ai/prompts-reports.ts` | 移除 buildTopicClusteringPrompt、parseTopicClusteringResult；generateTopicSummaries 改为按预设 Topic 遍历 |
 | `src/reports/scoring/merge-stage.ts` | 新增 applyProductivityBonus |
-| `prisma/schema.prisma` | DigestTopic 新增 freshnessTier, productivityDistance 字段 |
-| `src/types/index.ts` | ReportCandidate 新增 freshnessTier?, productivityDistance? |
+| `src/types/index.ts` | ReportCandidate 新增 topicIds?, freshnessTier?, productivityDistance? |
+| `src/reports/report-candidate.ts` | contentToReportCandidate 新增 topicIds 传递 |
 
 ## 验收标准
 
