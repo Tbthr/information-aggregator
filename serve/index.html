@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Daily Brief</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #1a1a1a;
+      --paper: #faf8f5;
+      --terra: #c45d3a;
+      --terra-light: #e8d5cf;
+      --gray: #6b6b6b;
+      --gray-light: #e5e5e5;
+      --sidebar-w: 240px;
+      --content-max: 720px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'IBM Plex Sans', sans-serif;
+      background: var(--paper);
+      color: var(--ink);
+      line-height: 1.7;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 64px;
+      background: var(--paper);
+      border-bottom: 1px solid var(--gray-light);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+      z-index: 100;
+    }
+
+    .logo {
+      font-family: 'Newsreader', serif;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .logo span {
+      color: var(--terra);
+    }
+
+    .nav-tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--gray-light);
+      padding: 4px;
+      border-radius: 8px;
+    }
+
+    .nav-tab {
+      padding: 8px 20px;
+      border: none;
+      background: transparent;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--gray);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .nav-tab.active {
+      background: white;
+      color: var(--ink);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    /* Layout */
+    .layout {
+      display: flex;
+      margin-top: 64px;
+      min-height: calc(100vh - 64px);
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: var(--sidebar-w);
+      position: fixed;
+      top: 64px;
+      left: 0;
+      bottom: 0;
+      padding: 32px 24px;
+      border-right: 1px solid var(--gray-light);
+      overflow-y: auto;
+    }
+
+    .sidebar-section {
+      margin-bottom: 32px;
+    }
+
+    .sidebar-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--gray);
+      margin-bottom: 12px;
+      padding-left: 12px;
+    }
+
+    .nav-list {
+      list-style: none;
+    }
+
+    .nav-item {
+      margin-bottom: 2px;
+    }
+
+    .nav-link {
+      display: block;
+      padding: 8px 12px;
+      font-size: 14px;
+      color: var(--gray);
+      text-decoration: none;
+      border-radius: 6px;
+      transition: all 0.15s ease;
+      border-left: 2px solid transparent;
+    }
+
+    .nav-link:hover {
+      color: var(--ink);
+      background: var(--terra-light);
+      border-left-color: var(--terra);
+    }
+
+    .nav-link.active {
+      color: var(--terra);
+      background: var(--terra-light);
+      border-left-color: var(--terra);
+      font-weight: 500;
+    }
+
+    /* Main Content */
+    .main {
+      flex: 1;
+      margin-left: var(--sidebar-w);
+      padding: 48px;
+    }
+
+    .content {
+      max-width: var(--content-max);
+      margin: 0 auto;
+      opacity: 0;
+      animation: fadeIn 0.4s ease forwards;
+    }
+
+    @keyframes fadeIn {
+      to { opacity: 1; }
+    }
+
+    /* Report Header */
+    .report-header {
+      margin-bottom: 48px;
+      padding-bottom: 32px;
+      border-bottom: 2px solid var(--ink);
+    }
+
+    .report-date {
+      font-family: 'Newsreader', serif;
+      font-size: 14px;
+      color: var(--terra);
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .report-title {
+      font-family: 'Newsreader', serif;
+      font-size: 42px;
+      font-weight: 700;
+      line-height: 1.2;
+      letter-spacing: -1px;
+      margin-bottom: 16px;
+    }
+
+    .report-meta {
+      font-size: 14px;
+      color: var(--gray);
+    }
+
+    /* Topic Section */
+    .topic {
+      margin-bottom: 48px;
+      opacity: 0;
+      animation: slideUp 0.5s ease forwards;
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .topic:nth-child(1) { animation-delay: 0.1s; }
+    .topic:nth-child(2) { animation-delay: 0.2s; }
+    .topic:nth-child(3) { animation-delay: 0.3s; }
+    .topic:nth-child(4) { animation-delay: 0.4s; }
+    .topic:nth-child(5) { animation-delay: 0.5s; }
+
+    .topic-title {
+      font-family: 'Newsreader', serif;
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--ink);
+    }
+
+    .topic-summary {
+      font-size: 15px;
+      color: var(--gray);
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--gray-light);
+    }
+
+    /* Pick Item */
+    .pick {
+      display: flex;
+      gap: 16px;
+      padding: 16px;
+      margin-bottom: 12px;
+      background: white;
+      border-radius: 8px;
+      border: 1px solid var(--gray-light);
+      transition: all 0.2s ease;
+    }
+
+    .pick:hover {
+      border-color: var(--terra);
+      box-shadow: 0 2px 8px rgba(196, 93, 58, 0.1);
+    }
+
+    .pick-number {
+      font-family: 'Newsreader', serif;
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--terra);
+      line-height: 1;
+      min-width: 32px;
+    }
+
+    .pick-content {
+      flex: 1;
+    }
+
+    .pick-title {
+      font-weight: 600;
+      font-size: 15px;
+      margin-bottom: 4px;
+    }
+
+    .pick-title a {
+      color: var(--ink);
+      text-decoration: none;
+    }
+
+    .pick-title a:hover {
+      color: var(--terra);
+    }
+
+    .pick-reason {
+      font-size: 13px;
+      color: var(--gray);
+      font-style: italic;
+    }
+
+    /* Weekly specific */
+    .weekly .report-title {
+      font-size: 36px;
+    }
+
+    .editorial {
+      font-family: 'Newsreader', serif;
+      font-size: 18px;
+      line-height: 1.8;
+      color: var(--ink);
+      margin-bottom: 48px;
+      padding: 24px;
+      background: var(--terra-light);
+      border-radius: 8px;
+      border-left: 4px solid var(--terra);
+    }
+
+    /* Empty state */
+    .empty {
+      text-align: center;
+      padding: 80px 32px;
+      color: var(--gray);
+    }
+
+    .empty-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+
+    /* Mobile */
+    @media (max-width: 768px) {
+      .sidebar {
+        display: none;
+      }
+
+      .main {
+        margin-left: 0;
+        padding: 24px;
+      }
+
+      .report-title {
+        font-size: 32px;
+      }
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--gray-light);
+      border-radius: 3px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--gray);
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="logo">THE <span>DAILY</span> BRIEF</div>
+    <div class="nav-tabs">
+      <button class="nav-tab active" data-view="daily">日报</button>
+      <button class="nav-tab" data-view="weekly">周报</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-title">日期</div>
+        <ul class="nav-list" id="daily-nav">
+          <li class="nav-item"><a href="#" class="nav-link active" data-date="2026-03-31">03-31</a></li>
+          <li class="nav-item"><a href="#" class="nav-link" data-date="2026-03-30">03-30</a></li>
+          <li class="nav-item"><a href="#" class="nav-link" data-date="2026-03-29">03-29</a></li>
+          <li class="nav-item"><a href="#" class="nav-link" data-date="2026-03-28">03-28</a></li>
+        </ul>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-title">周</div>
+        <ul class="nav-list" id="weekly-nav" style="display:none">
+          <li class="nav-item"><a href="#" class="nav-link" data-week="W13">W13 · 03-24 ~ 03-30</a></li>
+          <li class="nav-item"><a href="#" class="nav-link" data-week="W12">W12 · 03-17 ~ 03-23</a></li>
+          <li class="nav-item"><a href="#" class="nav-link" data-week="W11">W11 · 03-10 ~ 03-16</a></li>
+        </ul>
+      </div>
+    </aside>
+
+    <main class="main">
+      <article class="content" id="report-content">
+        <!-- Dynamic content here -->
+      </article>
+    </main>
+  </div>
+
+  <script>
+    // Sample data - in production this would be fetched from files
+    const reports = {
+      daily: {
+        '2026-03-31': {
+          date: '2026年3月31日',
+          title: '今日简报',
+          topics: [
+            {
+              title: 'AI 与大模型',
+              summary: 'Claude 4 发布，GPT-5 进展，Gemini 2.0 更新',
+              picks: [
+                { n: 1, title: 'Anthropic 发布 Claude 4 系列模型', reason: '多模态能力大幅提升，在复杂推理任务上超越 GPT-4' },
+                { n: 2, title: 'Google 公布 Gemini 2.0 技术细节', reason: '长上下文窗口达到 2M tokens，适合超长文档处理' },
+                { n: 3, title: 'OpenAI CEO 透露 GPT-5 进展', reason: '预计下半年发布，重点优化推理效率和成本' }
+              ]
+            },
+            {
+              title: '技术趋势',
+              summary: 'Rust 继续流行，云原生进入 2.0 时代',
+              picks: [
+                { n: 1, title: 'Rust 连续第八年成为最受开发者喜爱的语言', reason: '内存安全特性在系统编程领域越来越受重视' },
+                { n: 2, title: 'CNCF 发布云原生成熟度模型 2.0', reason: '新增 AI/ML 工作负载支持，定义新一代云原生标准' }
+              ]
+            }
+          ]
+        }
+      },
+      weekly: {
+        'W13': {
+          week: 'W13 · 03-24 ~ 03-30',
+          title: '本周精选',
+          editorial: '本周 AI 领域迎来重要更新，各家大模型厂商纷纷发布新一代产品。技术圈对 AI Safety 的讨论持续升温，同时也出现了一些关于 AI 监管的新观点。开源社区依然活跃，多个优质项目获得关注。',
+          picks: [
+            { n: 1, title: 'Claude 4 系列发布', reason: '重新定义多模态 AI 标准' },
+            { n: 2, title: 'GitHub Copilot Enterprise 重大更新', reason: '支持自然语言重构代码' },
+            { n: 3, title: 'Linux 6.8 发布', reason: 'Rust 驱动进入主线' },
+            { n: 4, title: 'React 19 RC 候选发布', reason: 'Server Components 稳定化' }
+          ]
+        }
+      }
+    };
+
+    let currentView = 'daily';
+    let currentDate = '2026-03-31';
+
+    function renderReport() {
+      const content = document.getElementById('report-content');
+      const data = currentView === 'daily'
+        ? reports.daily[currentDate]
+        : reports.weekly[currentDate === '2026-03-31' ? 'W13' : currentDate];
+
+      if (!data) {
+        content.innerHTML = `
+          <div class="empty">
+            <div class="empty-icon">📭</div>
+            <p>暂无 ${currentView === 'daily' ? currentDate : currentDate} 的内容</p>
+          </div>
+        `;
+        return;
+      }
+
+      if (currentView === 'weekly') {
+        content.innerHTML = `
+          <header class="report-header weekly">
+            <div class="report-date">${data.week}</div>
+            <h1 class="report-title">${data.title}</h1>
+          </header>
+          ${data.editorial ? `<div class="editorial">${data.editorial}</div>` : ''}
+          ${data.picks.map((pick, i) => `
+            <section class="topic" style="animation-delay: ${(i+1) * 0.1}s">
+              <div class="topic-title">${pick.n}. ${pick.title}</div>
+              <div class="topic-summary">${pick.reason}</div>
+            </section>
+          `).join('')}
+        `;
+      } else {
+        content.innerHTML = `
+          <header class="report-header">
+            <div class="report-date">${data.date}</div>
+            <h1 class="report-title">${data.title}</h1>
+            <div class="report-meta">共 ${data.topics.reduce((acc, t) => acc + t.picks.length, 0)} 条精选</div>
+          </header>
+          ${data.topics.map((topic, i) => `
+            <section class="topic" style="animation-delay: ${(i+1) * 0.15}s">
+              <h2 class="topic-title"># ${topic.title}</h2>
+              <p class="topic-summary">${topic.summary}</p>
+              ${topic.picks.map(pick => `
+                <div class="pick">
+                  <div class="pick-number">${pick.n}</div>
+                  <div class="pick-content">
+                    <div class="pick-title"><a href="#">${pick.title}</a></div>
+                    <div class="pick-reason">" ${pick.reason} "</div>
+                  </div>
+                </div>
+              `).join('')}
+            </section>
+          `).join('')}
+        `;
+      }
+
+      // Reset animation
+      content.style.animation = 'none';
+      content.offsetHeight; // Trigger reflow
+      content.style.animation = 'fadeIn 0.4s ease forwards';
+    }
+
+    // Tab switching
+    document.querySelectorAll('.nav-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        currentView = tab.dataset.view;
+
+        document.getElementById('daily-nav').style.display = currentView === 'daily' ? '' : 'none';
+        document.getElementById('weekly-nav').style.display = currentView === 'weekly' ? '' : 'none';
+
+        // Reset active state
+        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+        if (currentView === 'weekly') {
+          document.querySelector('#weekly-nav .nav-link').classList.add('active');
+          currentDate = 'W13';
+        } else {
+          document.querySelector('#daily-nav .nav-link').classList.add('active');
+          currentDate = '2026-03-31';
+        }
+
+        renderReport();
+      });
+    });
+
+    // Navigation clicking
+    document.querySelectorAll('.nav-link').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+        link.classList.add('active');
+
+        if (currentView === 'daily') {
+          currentDate = link.dataset.date;
+        } else {
+          currentDate = link.dataset.week;
+        }
+
+        renderReport();
+      });
+    });
+
+    // Initial render
+    renderReport();
+  </script>
+</body>
+</html>
