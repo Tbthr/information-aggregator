@@ -345,14 +345,12 @@ jobs:
 | `reports/daily/` | 日报 Markdown 输出 |
 | `serve/index.html` | 静态导航页 |
 | `src/pipeline/collect.ts` | 数据收集 |
-| `src/pipeline/enrich.ts` | 内容充实 |
-| `src/pipeline/rank.ts` | 候选排序（评分维度：quadrantBonus 加成） |
 | `src/pipeline/enrich.ts` | 内容充实（正文提取） |
-| `src/pipeline/extract-content.ts` | 正文内容提取（使用 Mozilla Readability） |
+| `src/pipeline/extract-content.ts` | 正文提取（使用 Mozilla Readability） |
+| `src/pipeline/rank.ts` | 候选排序（评分维度：quadrantBonus 加成） |
 | `src/pipeline/normalize.ts` | 内容标准化 |
 | `src/pipeline/normalize-url.ts` | URL 标准化 |
 | `src/pipeline/dedupe-exact.ts` | 精确去重 |
-| `src/pipeline/extract-content.ts` | 内容提取 |
 | `src/adapters/` | 数据源适配器（RSS, JSON Feed, X/Twitter） |
 | `src/ai/` | AI client + prompts |
 | `src/reports/daily.ts` | 改造后无 Prisma |
