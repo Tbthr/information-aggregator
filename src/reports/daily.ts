@@ -1,24 +1,32 @@
-import { prisma } from "@/lib/prisma"
-import type { Content, DailyReportConfig, DigestTopic } from "@prisma/client"
-import type { ReportCandidate, ScoreBreakdown, SignalScores } from "@/src/types/index"
-import type { AiClient } from "@/src/ai/types"
-import { formatUtcDate, formatUtcDayLabel, beijingDayRange } from "@/lib/date-utils"
-import { contentToReportCandidate } from "./report-candidate"
+/**
+ * Daily Report Generator — JSON-based pipeline (no Prisma)
+ *
+ * Architecture:
+ * 1. Read articles from JsonArticleStore (data/YYYY-MM-DD.json)
+ * 2. Classify each article into a quadrant (尝试/深度/地图感) using AI
+ * 3. Group articles by quadrant
+ * 4. Within each quadrant, cluster articles into topics using AI
+ * 5. Generate summary + key points for each topic using AI
+ * 6. Output to Markdown (reports/daily/YYYY-MM-DD.md)
+ */
+
+import fs from 'fs'
+import path from 'path'
+import yaml from 'js-yaml'
+import { JsonArticleStore } from '../archive/json-store.js'
 import {
-  applyBaseStage,
-  applyTweetSignalScoring,
-  applyItemSignalScoring,
-  applyMergeStage,
-  applyHistoryPenaltyStage,
-  type KindPreferences,
-  type ScoredCandidate as ScoringScoredCandidate,
-} from "./scoring"
-import { classifyProductivityDistance, type CandidateWithDistance } from "./classify-productivity"
-import { classifyFreshness, type CandidateWithFreshness, type FreshnessTier } from "./classify-freshness"
-import { filterByQuadrant } from "./filter-quadrant"
-import { logDistribution } from "./log-distribution"
-import { buildTopicSummaryPrompt, parseTopicSummaryResult } from "@/src/ai/prompts-reports"
-import { loadTopicsByIds } from "@/src/config/load-pack-prisma"
+  QUADRANT_PROMPT,
+  TOPIC_CLUSTER_PROMPT,
+  parseQuadrantResult,
+  parseTopicClusterResult,
+} from '../ai/prompts-reports.js'
+import type { Article } from '../archive/index.js'
+import type { AiClient } from '../ai/types.js'
+import { formatUtcDate, formatUtcDayLabel } from '../../lib/date-utils.js'
+
+// ============================================================
+// Types
+// ============================================================
 
 export interface DailyGenerateResult {
   date: string
@@ -26,307 +34,203 @@ export interface DailyGenerateResult {
   errorSteps: string[]
 }
 
-// Re-export ScoredCandidate from scoring types for external consumers
-export type ScoredCandidate = ScoringScoredCandidate
+interface TopicGroup {
+  title: string
+  summary: string
+  keyPoints: string[]
+  articles: ArticleForReport[]
+}
 
-// Extended topic interface for in-memory pipeline (includes enrichment fields)
-export interface DigestTopicWithEnrichment extends DigestTopic {
-  freshnessTier?: FreshnessTier
-  productivityDistance?: CandidateWithDistance["distance"]
+interface ArticleForReport {
+  title: string
+  url: string
+  sourceName: string
+}
+
+interface DailyReportData {
+  date: string
+  dateLabel: string
+  quadrantGroups: QuadrantGroup[]
+}
+
+type Quadrant = '尝试' | '深度' | '地图感'
+
+interface QuadrantGroup {
+  quadrant: Quadrant
+  topics: TopicGroup[]
 }
 
 // ============================================================
-// Pure pipeline functions (exported for testing)
+// Config
 // ============================================================
 
-/**
- * Maps DB Content records to unified ReportCandidate[].
- * Content is the unified content model that replaces Item and Tweet.
- */
-export function collectCandidates(contents: Content[]): ReportCandidate[] {
-  return contents.map(contentToReportCandidate)
+interface DailyConfig {
+  maxItems: number
+  minScore: number
+  topicSummaryPrompt?: string
 }
 
-/**
- * Parses kindPreferences from DailyReportConfig JSON field.
- * Returns empty object for null, empty, or invalid JSON.
- */
-export function parseKindPreferences(raw: string | null | undefined): KindPreferences {
-  if (!raw) return {}
-  try {
-    const parsed = JSON.parse(raw)
-    if (typeof parsed === "object" && parsed !== null) return parsed
-    return {}
-  } catch {
-    return {}
-  }
-}
-
-/**
- * Runs the full scoring pipeline on candidates.
- *
- * Stages:
- * 1. Base stage: apply kind preferences
- * 2. Signal stage: tweet engagement signals / item signals
- * 3. Merge stage: combine into runtimeScore
- * 4. History penalty stage: penalize recently seen items/tweets
- */
-export function scoreCandidates(
-  candidates: ReportCandidate[],
-  options: {
-    kindPreferences: KindPreferences
-    recentCandidates?: ReportCandidate[]
-    tweetEngagements?: Map<string, { likeCount?: number; replyCount?: number; retweetCount?: number }>
-  }
-): ScoredCandidate[] {
-  const { kindPreferences, recentCandidates = [], tweetEngagements } = options
-
-  return candidates.map((candidate) => {
-    // Stage 1: Base
-    const { baseScore } = applyBaseStage({ candidate, kindPreferences })
-
-    // Stage 2: Signals (kind-specific)
-    let signalScores: SignalScores
-    if (candidate.kind === "tweet") {
-      const engagement = tweetEngagements?.get(candidate.id)
-      const tweetResult = applyTweetSignalScoring({ candidate, engagement })
-      signalScores = tweetResult.signalScores
-    } else {
-      const itemResult = applyItemSignalScoring({ candidate })
-      signalScores = itemResult.signalScores
-    }
-
-    // Stage 3: Merge
-    const { runtimeScore } = applyMergeStage({ baseScore, signalScores })
-
-    // Stage 4: History penalty
-    const { historyPenalty, finalScore } = applyHistoryPenaltyStage({
-      runtimeScore,
-      candidate,
-      recentCandidates,
-    })
-
-    const breakdown: ScoreBreakdown = {
-      baseScore,
-      signalScores,
-      runtimeScore,
-      historyPenalty,
-      finalScore,
-    }
-
-    return { ...candidate, breakdown }
-  })
-}
-
-/**
- * Trims scored candidates to top N by finalScore (descending).
- * This reduces AI cost by sending fewer items to the clustering prompt.
- */
-export function trimTopN(scored: ScoredCandidate[], n: number): ScoredCandidate[] {
-  if (n <= 0) return []
-  if (scored.length <= n) return scored
-  return [...scored].sort((a, b) => b.breakdown.finalScore - a.breakdown.finalScore).slice(0, n)
+function loadReportsConfig(): DailyConfig {
+  const configPath = path.join(process.cwd(), 'config', 'reports.yaml')
+  const content = fs.readFileSync(configPath, 'utf-8')
+  const raw = yaml.load(content) as { daily: DailyConfig }
+  return raw.daily
 }
 
 // ============================================================
-// Internal pipeline steps (async, DB-dependent)
+// Scoring
 // ============================================================
 
-/** Step 1: Collect Content records from the target Beijing day range */
-async function collectData(now: Date) {
-  const dateStr = formatUtcDate(now)
-  const { start, end } = beijingDayRange(dateStr)
-
-  const contents = await prisma.content.findMany({
-    where: { publishedAt: { gte: start, lte: end } },
-    orderBy: { publishedAt: "desc" },
-  })
-
-  return { contents }
+const QUADRANT_BONUS: Record<Quadrant, number> = {
+  '尝试': 1.3,
+  '深度': 1.0,
+  '地图感': 0.8,
 }
 
-/** Step 2: Filter by topic and excludeRules */
-async function filterContent(
-  contents: Content[],
-  config: DailyReportConfig
-): Promise<{ filteredContents: Content[] }> {
-  // Topic filtering: if topicIds specified, only include contents matching those topics
-  let topicFilteredContents = contents
-  if (config.topicIds.length > 0) {
-    topicFilteredContents = contents.filter((content) =>
-      content.topicIds.some((tid) => config.topicIds.includes(tid))
-    )
-    if (topicFilteredContents.length === 0) {
-      console.warn(`[daily-report] topicIds ${config.topicIds.join(", ")} 下无内容，所有条目将被过滤`)
-    }
-  }
+function computeBaseScore(article: Article): number {
+  // Base score from engagement + quality (each contributes up to 0.25)
+  // Note: Article type has engagementScore/qualityScore via enrichment
+  const engagementBonus = Math.min((article as Article & { engagementScore?: number }).engagementScore ?? 0, 0.25)
+  const qualityBonus = Math.min((article as Article & { qualityScore?: number }).qualityScore ?? 0, 0.25)
+  return 0.5 + engagementBonus + qualityBonus
+}
 
-  // Load topics to get excludeRules
-  const topics = await loadTopicsByIds(config.topicIds)
+// ============================================================
+// Quadrant Classification
+// ============================================================
 
-  // Build excludeRules map: topicId -> keywords[]
-  const excludeRulesMap = new Map<string, string[]>()
-  for (const topic of topics) {
-    if (topic.excludeRules.length > 0) {
-      excludeRulesMap.set(topic.id, topic.excludeRules)
-    }
-  }
+async function classifyArticleQuadrant(
+  article: Article,
+  aiClient: AiClient
+): Promise<Quadrant> {
+  const text = buildQuadrantPromptText(article)
 
-  // Filter: exclude content if any of its topic's excludeRules match content title+body
-  const filteredContents = topicFilteredContents.filter((content) => {
-    for (const tid of content.topicIds) {
-      const keywords = excludeRulesMap.get(tid)
-      if (!keywords) continue
-      const text = (content.title ?? "") + " " + (content.body ?? "")
-      if (keywords.some((kw) => text.toLowerCase().includes(kw.toLowerCase()))) {
-        return false // excluded
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const result = await aiClient.generateText(text)
+      const parsed = parseQuadrantResult(result)
+      if (parsed) {
+        return parsed.quadrant
       }
+    } catch {
+      // retry
     }
-    return true
-  })
+  }
 
-  return { filteredContents }
+  // Fallback: default to 地图感
+  return '地图感'
 }
 
-/** Step 10: Generate topic summaries grouped by preset topics */
-async function generateTopicSummariesByPresetTopics(
-  scored: ScoredCandidate[],
+function buildQuadrantPromptText(article: Article): string {
+  const summary = article.content?.slice(0, 300) ?? ''
+  return `${QUADRANT_PROMPT}\n\n内容标题：${article.title}\n内容摘要：${summary}`
+}
+
+// ============================================================
+// Topic Clustering
+// ============================================================
+
+async function generateTopicGroups(
+  articles: Article[],
   aiClient: AiClient,
-  config: DailyReportConfig,
-  candidatesWithDistance: CandidateWithDistance[],
-  candidatesWithFreshness: CandidateWithFreshness[]
-): Promise<DigestTopicWithEnrichment[]> {
-  // Build lookup maps for distance and freshness by content id
-  const distanceMap = new Map(candidatesWithDistance.map(c => [c.candidate.id, c.distance]))
-  const freshnessMap = new Map(candidatesWithFreshness.map(c => [c.candidate.id, c.freshness]))
+  _config: DailyConfig
+): Promise<TopicGroup[]> {
+  if (articles.length === 0) return []
 
-  // Load preset topics from DB
-  const presetTopics = await loadTopicsByIds(config.topicIds)
-  if (presetTopics.length === 0) {
-    console.warn("[daily-report] no preset topics found, using empty grouping")
-    return []
-  }
+  const contentList = articles.map((a, i) => {
+    const summary = a.content?.slice(0, 200) ?? ''
+    return `[${i}] [${a.kind === 'tweet' ? '推文' : '文章'}] ${a.title}: ${summary}`
+  })
 
-  // Group candidates by preset topic id
-  const candidatesByTopic = new Map<string, ScoredCandidate[]>()
-  for (const candidate of scored) {
-    for (const tid of candidate.topicIds ?? []) {
-      if (config.topicIds.includes(tid)) {
-        if (!candidatesByTopic.has(tid)) {
-          candidatesByTopic.set(tid, [])
-        }
-        candidatesByTopic.get(tid)!.push(candidate)
-        break // each candidate belongs to one preset topic
+  const prompt = `${TOPIC_CLUSTER_PROMPT}\n\n内容列表：\n${contentList.join('\n')}`
+
+  try {
+    const result = await aiClient.generateText(prompt)
+    const parsed = parseTopicClusterResult(result)
+
+    if (parsed && Array.isArray(parsed.topics) && parsed.topics.length > 0) {
+      // Build TopicGroup for each cluster returned by AI
+      const groups: TopicGroup[] = parsed.topics
+        .filter(t => Array.isArray(t.articleIndexes) && t.articleIndexes.length > 0)
+        .map(t => ({
+          title: t.title || '未命名话题',
+          summary: t.summary || '',
+          keyPoints: Array.isArray(t.keyPoints) ? t.keyPoints : [],
+          articles: t.articleIndexes
+            .filter(idx => idx >= 0 && idx < articles.length)
+            .map(idx => ({
+              title: articles[idx].title,
+              url: articles[idx].url,
+              sourceName: articles[idx].sourceName,
+            })),
+        }))
+
+      if (groups.length > 0) {
+        return groups
       }
     }
+  } catch {
+    // Fall through to fallback
   }
 
-  const topics: DigestTopicWithEnrichment[] = []
+  // Fallback: single topic with all articles
+  return [{
+    title: '今日内容',
+    summary: `共 ${articles.length} 条内容`,
+    keyPoints: [],
+    articles: articles.map(a => ({
+      title: a.title,
+      url: a.url,
+      sourceName: a.sourceName,
+    })),
+  }]
+}
 
-  for (const topic of presetTopics) {
-    const topicCandidates = candidatesByTopic.get(topic.id) ?? []
+// ============================================================
+// Markdown Output
+// ============================================================
 
-    // Determine freshness tier and productivity distance for this topic
-    // Uses the first matching candidate's classification (each candidate belongs to exactly one preset topic)
-    const freshnessTier: FreshnessTier = topicCandidates.length > 0
-      ? (freshnessMap.get(topicCandidates[0].id) ?? "趋势")
-      : "趋势"
-    const productivityDistance: CandidateWithDistance["distance"] = topicCandidates.length > 0
-      ? (distanceMap.get(topicCandidates[0].id) ?? "中")
-      : "中"
+export function generateDailyMarkdown(report: DailyReportData): string {
+  const lines: string[] = []
 
-    if (topicCandidates.length === 0) {
-      // No candidates for this topic, skip AI call
+  lines.push(`# ${report.dateLabel}`)
+  lines.push('')
+  lines.push('本报告由 AI 自动生成')
+  lines.push('')
+
+  for (const group of report.quadrantGroups) {
+    lines.push(`## ${group.quadrant} ⓘ`)
+    lines.push('')
+
+    if (group.topics.length === 0) {
+      lines.push('无内容')
+      lines.push('')
       continue
     }
 
-    // Build content list for prompt
-    const contents = topicCandidates.map(c => ({
-      title: c.title ?? "",
-      summary: c.summary ?? "",
-      type: c.kind,
-    }))
+    for (const topic of group.topics) {
+      lines.push(`### ${topic.title}`)
+      lines.push('')
+      lines.push(topic.summary)
+      lines.push('')
 
-    // Build prompt and call AI
-    const promptText = buildTopicSummaryPrompt(
-      topic.name,
-      contents,
-      config.topicSummaryPrompt ?? ""
-    )
+      if (topic.keyPoints.length > 0) {
+        lines.push('**核心要点：**')
+        for (const point of topic.keyPoints) {
+          lines.push(`- ${point}`)
+        }
+        lines.push('')
+      }
 
-    let summaryText: string
-    try {
-      const result = await aiClient.generateText(promptText)
-      const parsed = parseTopicSummaryResult(result)
-      summaryText = parsed.summary
-    } catch {
-      // Fallback: concatenate summaries
-      summaryText = topicCandidates.map(c => c.summary).join(" ")
+      lines.push('**引用文章：**')
+      for (const article of topic.articles) {
+        lines.push(`- [${article.title}](${article.url}) (${article.sourceName})`)
+      }
+      lines.push('')
     }
-
-    const topicWithEnrichment: DigestTopicWithEnrichment = {
-      id: "",
-      dailyId: "",
-      order: topics.length,
-      title: topic.name,
-      summary: summaryText,
-      contentIds: topicCandidates.map(c => c.id),
-      createdAt: new Date(),
-      freshnessTier,
-      productivityDistance,
-    }
-
-    topics.push(topicWithEnrichment)
   }
 
-  return topics
-}
-
-/** Step 3: Persist results */
-async function persistResults(
-  date: string,
-  dayLabel: string,
-  topics: DigestTopicWithEnrichment[],
-  errorMessage?: string,
-  errorSteps?: string[]
-) {
-  return prisma.$transaction(async (tx) => {
-    // Upsert DailyOverview
-    const overview = await tx.dailyOverview.upsert({
-      where: { date },
-      create: {
-        date,
-        dayLabel,
-        topicCount: topics.length,
-        errorMessage,
-        errorSteps: errorSteps ?? [],
-      },
-      update: {
-        dayLabel,
-        topicCount: topics.length,
-        errorMessage,
-        errorSteps: errorSteps ?? [],
-      },
-    })
-
-    // Delete old topics
-    await tx.digestTopic.deleteMany({ where: { dailyId: overview.id } })
-
-    // Create new topics with contentIds
-    if (topics.length > 0) {
-      await tx.digestTopic.createMany({
-        data: topics.map((topic, index) => ({
-          dailyId: overview.id,
-          order: index,
-          title: topic.title,
-          summary: topic.summary,
-          contentIds: topic.contentIds,
-        })),
-      })
-    }
-
-    return overview
-  })
+  return lines.join('\n')
 }
 
 // ============================================================
@@ -336,142 +240,106 @@ async function persistResults(
 /**
  * Generates a daily report using the quadrant-aware pipeline.
  *
- * Pipeline order:
- * 1. Collect items + tweets from DB (Beijing day range)
- * 2. Filter by topic/excludeRules
- * 3. Map to ReportCandidate[]
- * 4. Classify productivity distance
- * 5. Classify freshness
- * 6. Quadrant filter (远+热点 → 丢弃)
- * 7. Score candidates
- * 8. Productivity bonus (inline)
- * 9. Trim to top N
- * 10. Generate topic summaries by preset topics
- * 11. Log distribution
- * 12. Persist results
+ * Pipeline:
+ * 1. Read articles from JsonArticleStore (data/YYYY-MM-DD.json)
+ * 2. Score and classify each article into a quadrant using AI
+ * 3. Group by quadrant
+ * 4. Cluster articles into topics within each quadrant
+ * 5. Generate summary + key points for each topic
+ * 6. Output to Markdown
  */
 export async function generateDailyReport(
   now: Date,
   aiClient: AiClient
 ): Promise<DailyGenerateResult> {
-  const date = formatUtcDate(now)
+  const dateStr = formatUtcDate(now)
   const dayLabel = formatUtcDayLabel(now)
   const errorSteps: string[] = []
 
   // Load config
-  let config = await prisma.dailyReportConfig.findUnique({ where: { id: "default" } })
-  if (!config) {
-    // This fallback should not happen in production since DB has defaults
-    config = await prisma.dailyReportConfig.upsert({
-      where: { id: "default" },
-      create: {
-        id: "default",
-        filterPrompt: "",
-        topicPrompt: "",
-        topicSummaryPrompt: "",
-      },
-      update: {},
-    })
-  }
-
-  // Step 1: Collect data from DB
-  let contents: Content[]
+  let config: DailyConfig
   try {
-    const result = await collectData(now)
-    contents = result.contents
+    config = loadReportsConfig()
   } catch {
-    errorSteps.push("dataCollection")
-    await persistResults(date, dayLabel, [], "数据收集失败", errorSteps)
-    return { date, topicCount: 0, errorSteps }
+    config = { maxItems: 50, minScore: 0 }
   }
 
-  // Step 2: Topic-level filtering (topicIds, blacklist, min score)
-  const { filteredContents } = await filterContent(contents, config)
-
-  if (filteredContents.length === 0) {
-    await persistResults(date, dayLabel, [], "过去24小时无内容", errorSteps)
-    return { date, topicCount: 0, errorSteps }
+  // Step 1: Read articles from JSON store
+  const store = new JsonArticleStore('data')
+  let articles: Article[]
+  try {
+    articles = await store.findAllByDate(dateStr)
+  } catch {
+    errorSteps.push('dataCollection')
+    return { date: dateStr, topicCount: 0, errorSteps }
   }
 
-  // Step 3: Map to ReportCandidate[]
-  const candidates = collectCandidates(filteredContents)
-
-  // Step 4: Classify productivity distance
-  const candidatesWithDistance = classifyProductivityDistance(candidates)
-
-  // Step 5: Classify freshness
-  const candidatesWithFreshness = classifyFreshness(candidates)
-
-  // Step 6: Quadrant filter (远+热点 → 丢弃)
-  const filteredByQuadrant = filterByQuadrant(candidatesWithDistance, candidatesWithFreshness)
-  const filteredCandidates = filteredByQuadrant.map(c => c.candidate)
-
-  if (filteredCandidates.length === 0) {
-    await persistResults(date, dayLabel, [], "象限过滤后无内容", errorSteps)
-    return { date, topicCount: 0, errorSteps }
+  if (articles.length === 0) {
+    return { date: dateStr, topicCount: 0, errorSteps }
   }
 
-  // Step 7: Score all candidates
-  const kindPreferences = parseKindPreferences(config.kindPreferences)
-  let scored = scoreCandidates(filteredCandidates, { kindPreferences })
+  // Step 2: Score and classify each article by quadrant
+  const scoredArticles: { article: Article; score: number; quadrant: Quadrant }[] = []
 
-  // Step 8: Productivity bonus (inline)
-  const distanceMap = new Map(
-    candidatesWithDistance.map(c => [c.candidate.id, c.distance])
-  )
-  scored = scored.map(c => {
-    const distance = distanceMap.get(c.id) ?? "中"
-    const bonus = distance === "近" ? 1.3 : distance === "远" ? 0.8 : 1.0
-    return {
-      ...c,
-      breakdown: {
-        ...c.breakdown,
-        finalScore: c.breakdown.finalScore * bonus
-      }
+  for (const article of articles) {
+    const baseScore = computeBaseScore(article)
+    const quadrant = await classifyArticleQuadrant(article, aiClient)
+    const finalScore = baseScore * QUADRANT_BONUS[quadrant]
+    scoredArticles.push({ article, score: finalScore, quadrant })
+  }
+
+  // Step 3: Filter by minScore and sort by score desc
+  const filtered = scoredArticles
+    .filter(c => c.score >= config.minScore)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, config.maxItems)
+
+  if (filtered.length === 0) {
+    return { date: dateStr, topicCount: 0, errorSteps }
+  }
+
+  // Step 4: Group by quadrant (preserving order)
+  const byQuadrant = new Map<Quadrant, Article[]>()
+  for (const { article, quadrant } of filtered) {
+    const list = byQuadrant.get(quadrant) ?? []
+    list.push(article)
+    byQuadrant.set(quadrant, list)
+  }
+
+  // Step 5: Generate topic groups for each quadrant
+  const quadrantGroups: QuadrantGroup[] = []
+  let totalTopics = 0
+
+  for (const quadrant of (['尝试', '深度', '地图感'] as Quadrant[])) {
+    const quadrantArticles = byQuadrant.get(quadrant) ?? []
+
+    if (quadrantArticles.length === 0) {
+      quadrantGroups.push({ quadrant, topics: [] })
+      continue
     }
-  })
 
-  // Step 9: Trim to top N before AI
-  const maxItems = config.maxItems ?? 50
-  const trimmed = trimTopN(scored, maxItems)
-
-  if (trimmed.length === 0) {
-    await persistResults(date, dayLabel, [], "评分后无内容", errorSteps)
-    return { date, topicCount: 0, errorSteps }
+    const topics = await generateTopicGroups(quadrantArticles, aiClient, config)
+    totalTopics += topics.length
+    quadrantGroups.push({ quadrant, topics })
   }
 
-  // Step 10: Generate topic summaries by preset topics
-  let topics: DigestTopicWithEnrichment[]
+  // Step 6: Write Markdown output
+  const reportData: DailyReportData = {
+    date: dateStr,
+    dateLabel: `${dayLabel} 日报`,
+    quadrantGroups,
+  }
+
+  const markdown = generateDailyMarkdown(reportData)
+  const outputDir = path.join(process.cwd(), 'reports', 'daily')
+  const outputPath = path.join(outputDir, `${dateStr}.md`)
+
   try {
-    topics = await generateTopicSummariesByPresetTopics(
-      trimmed,
-      aiClient,
-      config,
-      candidatesWithDistance,
-      candidatesWithFreshness
-    )
+    fs.mkdirSync(outputDir, { recursive: true })
+    fs.writeFileSync(outputPath, markdown, 'utf-8')
   } catch {
-    errorSteps.push("topicSummary")
-    topics = []
+    errorSteps.push('writeOutput')
   }
 
-  // Step 11: Log distribution
-  const allClassified = candidatesWithDistance.map((c, i) => ({
-    ...c,
-    ...candidatesWithFreshness[i],
-  }))
-  logDistribution(
-    allClassified as (CandidateWithDistance & CandidateWithFreshness)[],
-    filteredByQuadrant,
-    topics as DigestTopic[]
-  )
-
-  // Step 12: Persist
-  try {
-    await persistResults(date, dayLabel, topics, errorSteps.length > 0 ? "部分步骤失败" : undefined, errorSteps)
-  } catch {
-    errorSteps.push("persist")
-  }
-
-  return { date, topicCount: topics.length, errorSteps }
+  return { date: dateStr, topicCount: totalTopics, errorSteps }
 }

@@ -141,3 +141,52 @@ export function parseTopicSummaryResult(raw: string): { summary: string; keyPoin
   } catch { /* ignore */ }
   return null
 }
+
+// ============================================================
+// Topic Clustering (daily report - group articles into topics)
+// ============================================================
+
+export interface TopicCluster {
+  title: string
+  summary: string
+  keyPoints: string[]
+  articleIndexes: number[]
+}
+
+export interface TopicClusterResult {
+  topics: TopicCluster[]
+}
+
+export const TOPIC_CLUSTER_PROMPT = `你是一位专业的信息分析师。请将以下内容列表分成多个话题组。
+
+要求：
+1. 分成 2-5 个话题，每个话题内的内容应该高度相关
+2. 每条内容只能属于一个话题
+3. 不要遗漏重要内容
+4. 话题标题简洁有力（中文，10字以内）
+5. 每个话题需要生成：
+   - 话题摘要：提炼该话题的核心信息和关键趋势，100-200字
+   - 核心要点：列出该话题最重要的 2-5 个要点
+6. 用中文撰写
+
+请以 JSON 格式输出：
+{
+  "topics": [
+    {
+      "title": "话题标题",
+      "summary": "话题摘要",
+      "keyPoints": ["要点1", "要点2"],
+      "articleIndexes": [0, 2, 5]
+    }
+  ]
+}`
+
+export function parseTopicClusterResult(raw: string): TopicClusterResult | null {
+  try {
+    const parsed = JSON.parse(raw)
+    if (Array.isArray(parsed.topics)) {
+      return parsed as TopicClusterResult
+    }
+  } catch { /* ignore */ }
+  return null
+}
