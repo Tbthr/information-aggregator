@@ -78,16 +78,30 @@ git commit -m "feat(schema): add freshnessTier and productivityDistance to Diges
 export interface ReportCandidate {
   // ... existing fields ...
 
+  // 新增
+  topicIds?: string[]  // Content.topicIds 的副本，用于按预设 Topic 分组
   freshnessTier?:        "热点" | "趋势" | "经典"
   productivityDistance?: "近" | "中" | "远"
 }
 ```
 
-- [ ] **Step 2: ScoredCandidate 透传新字段**
+- [ ] **Step 2: 更新 contentToReportCandidate 传递 topicIds**
+
+在 `src/reports/report-candidate.ts` 的 `contentToReportCandidate` 函数中，给返回对象添加：
+
+```typescript
+return {
+  // ... existing fields ...
+  topicIds: content.topicIds,  // 新增：传递 topicIds 数组
+  // ... existing fields ...
+}
+```
+
+- [ ] **Step 3: ScoredCandidate 透传新字段**
 
 在 `src/reports/scoring/types.ts` 中，`ScoredCandidate` 继承 `ReportCandidate`，会自动获得新字段。如需显式声明可检查是否需要修改。
 
-- [ ] **Step 3: 验证类型**
+- [ ] **Step 4: 验证类型**
 
 ```bash
 pnpm check
@@ -95,11 +109,11 @@ pnpm check
 
 预期：PASS（无类型错误）
 
-- [ ] **Step 4: 提交**
+- [ ] **Step 5: 提交**
 
 ```bash
-git add src/types/index.ts
-git commit -m "feat(types): add freshnessTier and productivityDistance to ReportCandidate"
+git add src/types/index.ts src/reports/report-candidate.ts
+git commit -m "feat(types): add topicIds, freshnessTier, productivityDistance to ReportCandidate"
 ```
 
 ---
@@ -224,7 +238,7 @@ export interface CandidateWithFreshness {
 }
 
 const FRESHNESS_KEYWORDS = {
-  热点: ["发布", "更新", "紧急", "融资", "收购", "上线", "发布日", "发布"],
+  热点: ["发布", "更新", "紧急", "融资", "收购", "上线", "发布日"],
   经典: ["教程", "指南", "原理", "分析", "解读", "详解", "深入", "完全指南", "入门", "一步一步"],
 }
 
@@ -455,6 +469,7 @@ git commit -m "feat(log): add logDistribution for quadrant statistics"
 - `parseTopicClusteringResult`
 - `buildFilterPrompt`
 - `parseFilterResult`
+- `candidatesToTopicClusterItems`（在 `daily.ts` 中定义，供聚类使用，聚类移除后不再需要）
 
 需要保留：
 - `buildTopicSummaryPrompt`（仍用于按预设 Topic 生成摘要）
@@ -463,6 +478,8 @@ git commit -m "feat(log): add logDistribution for quadrant statistics"
 - [ ] **Step 2: 移除废弃函数并清理 exports**
 
 在 `src/ai/prompts-reports.ts` 中删除上述 4 个函数及其相关类型（如 `TopicClusterItem`）。
+
+在 `src/reports/daily.ts` 中删除 `candidatesToTopicClusterItems` 函数定义。
 
 - [ ] **Step 3: 验证构建**
 
@@ -666,7 +683,7 @@ async function persistResults(
     summary: string
     contentIds: string[]
     topicId: string
-    freshness?: string
+    freshnessTier?: string
     productivityDistance?: string
   }[],
   errorMessage?: string,
