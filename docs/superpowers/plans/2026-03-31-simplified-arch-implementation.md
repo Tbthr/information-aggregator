@@ -1195,7 +1195,7 @@ git commit -m "ci: add GitHub workflows for collect, daily, weekly, pages"
 - Modify: `src/cli/commands/daily.ts`（导入现有 AI client）
 - Modify: `src/cli/commands/weekly.ts`（导入现有 AI client）
 
-- [ ] **Step 1: 在 collect.ts 中复用 src/adapters/**
+- [x] **Step 1: 在 collect.ts 中复用 src/adapters/**
 
 ```typescript
 import { buildAdapters } from '../../adapters/build-adapters.js'
@@ -1220,7 +1220,7 @@ async function fetchSource(source: ConfigSource): Promise<CollectedItem[]> {
 }
 ```
 
-- [ ] **Step 2: 在 daily.ts 中复用 src/ai/client.ts**
+- [x] **Step 2: 在 daily.ts 中复用 src/ai/client.ts**
 
 ```typescript
 import { createClient } from '../../ai/client.js'
@@ -1242,7 +1242,7 @@ async function classifyAndSummarize(
 }
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/cli/commands/collect.ts src/cli/commands/daily.ts src/cli/commands/weekly.ts
