@@ -731,6 +731,14 @@ sources:
     enabled: true
     topics: [ai-news, tech-news]
 
+  # attentionvc: 追踪 X/Twitter 热门文章排行榜（24h AI 分类）
+  - type: attentionvc
+    id: attentionvc-ai-24h
+    name: AttentionVC AI
+    url: https://attentionvc.ai
+    enabled: true
+    topics: [ai-news]
+
   # === Twitter/X (需要 auth) ===
   # - type: twitter
   #   id: karpathy
