@@ -1,4 +1,5 @@
-import type { NormalizedItem, RawItem, ContentKind, SourceKind } from "../types/index";
+import type { RawItem, SourceKind } from "../types/index";
+import type { normalizedArticle } from "../types/index";
 import { normalizeTitle, normalizeSummary, normalizeContent, deriveDedupeText } from "./normalize-text";
 import { normalizeUrlWithExpansion } from "./normalize-url";
 import { createLogger } from "../utils/logger";
@@ -104,10 +105,10 @@ function buildBody(metadata: RawItemMetadata, sourceKind: SourceKind): string {
 }
 
 /**
- * Normalize a RawItem into a NormalizedItem with content-kind awareness.
+ * Normalize a RawItem into a normalizedArticle.
  * Uses sourceKind (not sourceType) for discriminated union.
  */
-export function normalizeItem(item: RawItem): NormalizedItem | null {
+export function normalizeItem(item: RawItem): normalizedArticle | null {
   const metadata = parseMetadata(item.metadataJson);
 
   // Get sourceKind - prefer new field, fall back to legacy sourceType for migration
@@ -147,8 +148,14 @@ export function normalizeItem(item: RawItem): NormalizedItem | null {
   // Normalize URL (with expansion for X/Twitter)
   const normalizedUrl = normalizeUrlWithExpansion(item.url, expandedUrl);
 
-  // Calculate engagement score
-  const engagementScore = calculateEngagementScore(metadata, sourceKind);
+  // Calculate engagement score (existing logic)
+  const engagementScore = calculateEngagementScore(metadata, sourceKind) ?? 0;
+
+  // Extract topicIds from filterContext
+  const topicIds = item.filterContext?.topicIds ?? [];
+
+  // sourceWeightScore will be assigned in pipeline assembly (Task 6)
+  const sourceWeightScore = 0;
 
   return {
     id: item.id,
@@ -156,25 +163,21 @@ export function normalizeItem(item: RawItem): NormalizedItem | null {
     title: item.title,
     publishedAt: item.publishedAt,
     sourceKind,
-    contentType: contentType as NormalizedItem["contentType"],
+    contentType: "article",
     normalizedUrl,
     normalizedTitle,
     normalizedSummary: normalizeSummary(metadata.summary || ""),
     normalizedContent,
     metadataJson: item.metadataJson,
-    filterContext: item.filterContext,
-    // Engagement score (null -> undefined for type compatibility)
-    engagementScore: engagementScore ?? undefined,
-    // Legacy fields (deprecated)
-    rawItemId: item.id,
-    url: item.url,
-    content: metadata.content,
+    topicIds,
+    sourceWeightScore,
+    engagementScore,
   };
 }
 
 /**
- * @deprecated Use normalizeItem for new code. This produces article-only items.
+ * @deprecated Use normalizeItem instead
  */
-export function normalizeItems(items: RawItem[]): NormalizedItem[] {
-  return items.map(normalizeItem).filter((item): item is NormalizedItem => item !== null);
+export function normalizeItems(items: RawItem[]): normalizedArticle[] {
+  return items.map(normalizeItem).filter((item): item is normalizedArticle => item !== null);
 }
