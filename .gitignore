@@ -1,8 +1,5 @@
-node_modules/
-.next/
 dist/
 tsconfig.tsbuildinfo
-next-env.d.ts
 coverage/
 .worktrees/
 .env
@@ -18,6 +15,4 @@ tmp/
 # Brainstorm mockups
 .superpowers/
 
-config/
 # next-agents-md
-.next-docs/
