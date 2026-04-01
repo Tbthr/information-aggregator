@@ -16,4 +16,3 @@ export interface ArticleStore {
   findAllByDate(date: string): Promise<Article[]>
 }
 
-export { JsonArticleStore } from "./json-store";
