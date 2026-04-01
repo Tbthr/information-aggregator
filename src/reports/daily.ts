@@ -21,7 +21,7 @@ import {
 } from '../ai/prompts-reports.js'
 import type { AiClient } from '../ai/types.js'
 import { formatUtcDate, formatUtcDayLabel } from '../../lib/date-utils.js'
-import type { RankedCandidate } from '../types/index.js'
+import type { normalizedArticle } from '../types/index.js'
 
 // ============================================================
 // Types
@@ -67,6 +67,13 @@ interface DailyConfig {
   maxItems: number
   minScore: number
   topicSummaryPrompt?: string
+  quadrantPrompts: QuadrantPromptConfig
+}
+
+interface QuadrantPromptConfig {
+  map: string
+  try: string
+  deep: string
 }
 
 function loadReportsConfig(): DailyConfig {
@@ -76,21 +83,22 @@ function loadReportsConfig(): DailyConfig {
   return raw.daily
 }
 
+function loadQuadrantPrompts(): QuadrantPromptConfig {
+  const configPath = path.join(process.cwd(), 'config', 'reports.yaml')
+  const content = fs.readFileSync(configPath, 'utf-8')
+  const raw = yaml.load(content) as { daily: { quadrantPrompts: QuadrantPromptConfig } }
+  return raw.daily.quadrantPrompts
+}
+
 // ============================================================
 // Scoring
 // ============================================================
 
-const QUADRANT_BONUS: Record<Quadrant, number> = {
-  '尝试': 1.3,
-  '深度': 1.0,
-  '地图感': 0.8,
-}
-
-function computeBaseScore(article: RankedCandidate): number {
-  // Base score from engagement + quality (each contributes up to 0.25)
+function computeBaseScore(article: normalizedArticle): number {
+  // Base score from engagement + source weight (each contributes up to 0.25)
   const engagementBonus = Math.min(article.engagementScore ?? 0, 0.25)
-  const qualityBonus = Math.min(article.contentQualityAi ?? 0, 0.25)
-  return 0.5 + engagementBonus + qualityBonus
+  const sourceBonus = Math.min(article.sourceWeightScore ?? 0, 0.25)
+  return 0.5 + engagementBonus + sourceBonus
 }
 
 // ============================================================
@@ -98,7 +106,7 @@ function computeBaseScore(article: RankedCandidate): number {
 // ============================================================
 
 async function classifyArticleQuadrant(
-  article: RankedCandidate,
+  article: normalizedArticle,
   aiClient: AiClient
 ): Promise<Quadrant> {
   const text = buildQuadrantPromptText(article)
@@ -119,8 +127,8 @@ async function classifyArticleQuadrant(
   return '地图感'
 }
 
-function buildQuadrantPromptText(article: RankedCandidate): string {
-  const summary = (article.normalizedText || '')?.slice(0, 300) ?? ''
+function buildQuadrantPromptText(article: normalizedArticle): string {
+  const summary = (article.normalizedSummary || '')?.slice(0, 300) ?? ''
   const title = article.title || article.normalizedTitle || ''
   return `${QUADRANT_PROMPT}\n\n内容标题：${title}\n内容摘要：${summary}`
 }
@@ -130,20 +138,19 @@ function buildQuadrantPromptText(article: RankedCandidate): string {
 // ============================================================
 
 async function generateTopicGroups(
-  articles: RankedCandidate[],
+  articles: normalizedArticle[],
   aiClient: AiClient,
-  _config: DailyConfig
+  quadrantPrompt: string
 ): Promise<TopicGroup[]> {
   if (articles.length === 0) return []
 
   const contentList = articles.map((a, i) => {
-    const summary = (a.normalizedText || '')?.slice(0, 200) ?? ''
+    const summary = (a.normalizedSummary || '')?.slice(0, 200) ?? ''
     const title = a.title || a.normalizedTitle || ''
-    const kind = a.contentType === 'tweet' ? '推文' : '文章'
-    return `[${i}] [${kind}] ${title}: ${summary}`
+    return `[${i}] [文章] ${title}: ${summary}`
   })
 
-  const prompt = `${TOPIC_CLUSTER_PROMPT}\n\n内容列表：\n${contentList.join('\n')}`
+  const prompt = `${quadrantPrompt}\n\n${TOPIC_CLUSTER_PROMPT}\n\n内容列表：\n${contentList.join('\n')}`
 
   try {
     const result = await aiClient.generateText(prompt)
@@ -161,8 +168,8 @@ async function generateTopicGroups(
             .filter(idx => idx >= 0 && idx < articles.length)
             .map(idx => ({
               title: articles[idx].title || articles[idx].normalizedTitle || '',
-              url: articles[idx].url || articles[idx].canonicalUrl || '',
-              sourceName: articles[idx].sourceName || '',
+              url: articles[idx].normalizedUrl || '',
+              sourceName: articles[idx].sourceId || '',
             })),
         }))
 
@@ -181,8 +188,8 @@ async function generateTopicGroups(
     keyPoints: [],
     articles: articles.map(a => ({
       title: a.title || a.normalizedTitle || '',
-      url: a.url || a.canonicalUrl || '',
-      sourceName: a.sourceName || '',
+      url: a.normalizedUrl || '',
+      sourceName: a.sourceId || '',
     })),
   }]
 }
@@ -242,7 +249,7 @@ export function generateDailyMarkdown(report: DailyReportData): string {
  * Generates a daily report using the quadrant-aware pipeline.
  *
  * Pipeline:
- * 1. Accept pre-processed articles (RankedCandidate[] from pipeline)
+ * 1. Accept pre-processed articles (normalizedArticle[] from pipeline)
  * 2. Score and classify each article into a quadrant using AI
  * 3. Group by quadrant
  * 4. Cluster articles into topics within each quadrant
@@ -252,7 +259,7 @@ export function generateDailyMarkdown(report: DailyReportData): string {
 export async function generateDailyReport(
   now: Date,
   aiClient: AiClient,
-  articles: RankedCandidate[]
+  articles: normalizedArticle[]
 ): Promise<DailyGenerateResult> {
   const dateStr = formatUtcDate(now)
   const dayLabel = formatUtcDayLabel(now)
@@ -260,10 +267,13 @@ export async function generateDailyReport(
 
   // Load config
   let config: DailyConfig
+  let quadrantPrompts: QuadrantPromptConfig
   try {
     config = loadReportsConfig()
+    quadrantPrompts = config.quadrantPrompts
   } catch {
-    config = { maxItems: 50, minScore: 0 }
+    quadrantPrompts = { map: '', try: '', deep: '' }
+    config = { maxItems: 50, minScore: 0, quadrantPrompts }
   }
 
   if (articles.length === 0) {
@@ -271,13 +281,12 @@ export async function generateDailyReport(
   }
 
   // Step 2: Score and classify each article by quadrant
-  const scoredArticles: { article: RankedCandidate; score: number; quadrant: Quadrant }[] = []
+  const scoredArticles: { article: normalizedArticle; score: number; quadrant: Quadrant }[] = []
 
   for (const article of articles) {
     const baseScore = computeBaseScore(article)
     const quadrant = await classifyArticleQuadrant(article, aiClient)
-    const finalScore = baseScore * QUADRANT_BONUS[quadrant]
-    scoredArticles.push({ article, score: finalScore, quadrant })
+    scoredArticles.push({ article, score: baseScore, quadrant })
   }
 
   // Step 3: Filter by minScore and sort by score desc
@@ -291,11 +300,18 @@ export async function generateDailyReport(
   }
 
   // Step 4: Group by quadrant (preserving order)
-  const byQuadrant = new Map<Quadrant, RankedCandidate[]>()
+  const byQuadrant = new Map<Quadrant, normalizedArticle[]>()
   for (const { article, quadrant } of filtered) {
     const list = byQuadrant.get(quadrant) ?? []
     list.push(article)
     byQuadrant.set(quadrant, list)
+  }
+
+  // Map quadrant to its prompt key
+  const promptMap: Record<Quadrant, keyof QuadrantPromptConfig> = {
+    '尝试': 'try',
+    '深度': 'deep',
+    '地图感': 'map',
   }
 
   // Step 5: Generate topic groups for each quadrant
@@ -310,7 +326,8 @@ export async function generateDailyReport(
       continue
     }
 
-    const topics = await generateTopicGroups(quadrantArticles, aiClient, config)
+    const quadrantPrompt = quadrantPrompts[promptMap[quadrant]]
+    const topics = await generateTopicGroups(quadrantArticles, aiClient, quadrantPrompt)
     totalTopics += topics.length
     quadrantGroups.push({ quadrant, topics })
   }
