@@ -2,16 +2,12 @@
   "name": "@ai-enhance/aggregator-cli",
   "version": "1.0.0",
   "type": "module",
-  "bin": {
-    "aggregator": "./dist/cli/index.js"
-  },
   "scripts": {
     "build": "tsc",
     "prepublish": "npm run build"
   },
   "dependencies": {
     "@mozilla/readability": "^0.6.0",
-    "commander": "^12.0.0",
     "js-yaml": "^4.1.0",
     "linkedom": "^0.18.12",
     "markdown-it": "^14.0.0"
