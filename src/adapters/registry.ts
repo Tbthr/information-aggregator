@@ -42,10 +42,10 @@ export function registerAdapterFamily(
   getAuth?: () => Record<string, unknown> | undefined,
 ): Record<string, AdapterFn> {
   // 创建合并 auth 后的 collector
-  const collector: AdapterFn = (source: Source) => {
+  const collector: AdapterFn = (source: Source, options) => {
     const authConfig = getAuth?.();
     const merged = authConfig ? mergeAuthConfig(source, authConfig) : source;
-    return family.collect(merged);
+    return family.collect(merged, options);
   };
 
   // 存储到注册表（用于后续查找）

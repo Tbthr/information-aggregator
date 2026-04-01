@@ -66,11 +66,11 @@ export interface InlineSource {
   authRef?: string;
 }
 
-// Source 类型别名，用于 adapter 函数签名
-export type Source = InlineSource & { id: string };
+// Source 类型，用于 adapter 函数签名
+export type Source = InlineSource & { id: string; topicIds: string[]; sourceWeightScore: number };
 
 // Adapter 函数类型
-export type AdapterFn = (source: Source) => Promise<RawItem[]>;
+export type AdapterFn = (source: Source, options: { timeWindow: number }) => Promise<RawItem[]>;
 
 // FilterContext - runtime context for filtering items (topic-centric for migration)
 export interface FilterContext {
@@ -192,6 +192,25 @@ export interface NormalizedItem {
   url?: string;
   engagementScore?: number;
   content?: string;
+}
+
+// normalizedArticle - pipeline 中统一使用的文章类型
+export interface normalizedArticle {
+  id: string;
+  sourceId: string;
+  title: string;
+  publishedAt?: string;
+  sourceKind: SourceKind;
+  contentType: "article";
+  normalizedUrl: string;
+  normalizedTitle: string;
+  normalizedSummary: string;
+  normalizedContent: string;
+  metadataJson: string;
+  // Pipeline 运行时字段
+  topicIds: string[];
+  sourceWeightScore: number;
+  engagementScore: number;
 }
 
 // Content - unified content model for normalized items

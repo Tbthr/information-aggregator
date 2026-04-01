@@ -32,6 +32,7 @@ interface YamlSource {
   enabled?: boolean
   topics?: string[]
   handle?: string
+  sourceWeightScore?: number
   auth?: {
     authToken?: string
     ct0?: string
@@ -56,6 +57,8 @@ function loadSourcesConfig(): Source[] {
       description: s.name,
       enabled: true,
       configJson: s.auth ? JSON.stringify(s.auth) : undefined,
+      topicIds: s.topics ?? [],
+      sourceWeightScore: s.sourceWeightScore ?? 1.0,
     }))
 }
 
@@ -96,6 +99,7 @@ async function main() {
   // 2. 收集数据
   const items: Article[] = []
   const sourceNames: Record<string, string> = {}
+  const timeWindow = 24 // hours, default value
 
   for (const source of sources) {
     // 从 sources.yaml 获取 source name
@@ -112,7 +116,7 @@ async function main() {
         continue
       }
 
-      const rawItems = await adapter(source)
+      const rawItems = await adapter(source, { timeWindow })
       const articles = rawItems.map(item => rawItemToArticle(item, sourceNames[source.id]))
       items.push(...articles)
 
