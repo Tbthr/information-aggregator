@@ -53,10 +53,10 @@ interface AttentionvcResponse {
 
 export async function collectAttentionvcSource(
   source: Source,
-  fetchImpl: typeof fetch = fetch,
-  jobStartedAt?: string,
+  options: { timeWindow: number; fetchImpl?: typeof fetch } = { timeWindow: 24 * 60 * 60 * 1000 },
   filterContext?: FilterContext,
 ): Promise<RawItem[]> {
+  const { fetchImpl = fetch } = options;
   const url = `${API_BASE}/leaderboard?window=1d&category=ai&sortBy=views&limit=20`;
   const startTime = Date.now();
 

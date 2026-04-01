@@ -101,15 +101,14 @@ function extractItemsFromBlocks(
 
 export async function collectNewsnowSource(
   source: Source,
-  fetchImpl: typeof fetch = fetch,
-  jobStartedAt?: string,
+  options: { timeWindow: number; fetchImpl?: typeof fetch } = { timeWindow: 24 * 60 * 60 * 1000 },
   filterContext?: FilterContext,
 ): Promise<RawItem[]> {
   const baseUrl = "https://newsnow.busiyi.world";
   const startTime = Date.now();
-  const cutoffMs = jobStartedAt
-    ? new Date(jobStartedAt).getTime() - 24 * 60 * 60 * 1000
-    : Date.now() - 24 * 60 * 60 * 1000;
+  const { timeWindow, fetchImpl = fetch } = options;
+  const jobStartedAt = new Date().toISOString();
+  const cutoffMs = new Date(jobStartedAt).getTime() - timeWindow;
 
   logger.info("Fetching newsnow", { sourceId: source.id });
 

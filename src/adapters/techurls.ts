@@ -37,13 +37,13 @@ function parseRelativeTime(timeHint: string, now: Date): Date | null {
   return new Date(now.getTime() - value * (msMap[unit] ?? 3600000));
 }
 
-function extractItems(html: string, sourceId: string, jobStartedAt: string): RawItem[] {
+function extractItems(html: string, sourceId: string, jobStartedAt: string, timeWindow: number): RawItem[] {
   // @ts-ignore - linkedom global
   const parser = new LinkedomDOMParser();
   const document = parser.parseFromString(html, "text/html");
 
   const out: RawItem[] = [];
-  const cutoffMs = new Date(jobStartedAt).getTime() - 24 * 60 * 60 * 1000;
+  const cutoffMs = new Date(jobStartedAt).getTime() - timeWindow;
 
   for (const block of document.querySelectorAll("div.publisher-block")) {
     const primary = getText(block, ".publisher-text .primary");
@@ -85,13 +85,13 @@ function extractItems(html: string, sourceId: string, jobStartedAt: string): Raw
 
 export async function collectTechurlsSource(
   source: Source,
-  fetchImpl: typeof fetch = fetch,
-  jobStartedAt?: string,
+  options: { timeWindow: number; fetchImpl?: typeof fetch } = { timeWindow: 24 * 60 * 60 * 1000 },
   filterContext?: FilterContext,
 ): Promise<RawItem[]> {
   const url = source.url || "https://techurls.com/";
   const startTime = Date.now();
-  const effectiveJobStartedAt = jobStartedAt ?? new Date().toISOString();
+  const { timeWindow, fetchImpl = fetch } = options;
+  const jobStartedAt = new Date().toISOString();
 
   logger.info("Fetching techurls", { url, sourceId: source.id });
 
@@ -107,7 +107,7 @@ export async function collectTechurlsSource(
     const html = await response.text();
     logger.info("Techurls fetch completed", { size: html.length, elapsed });
 
-    const items = extractItems(html, source.id, effectiveJobStartedAt);
+    const items = extractItems(html, source.id, jobStartedAt, timeWindow);
     logger.info("Techurls collect completed", { sourceId: source.id, count: items.length });
 
     if (filterContext) {

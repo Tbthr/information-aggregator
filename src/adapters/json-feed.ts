@@ -97,22 +97,23 @@ function parseDate(dateStr: string): ParseDateResult {
 
 export interface ParseJsonFeedItemsOptions {
   jobStartedAt: string;
+  timeWindow: number;
   filterContext?: FilterContext;
 }
 
 export function parseJsonFeedItems(
   payload: JsonFeedPayload,
   sourceId: string,
-  jobStartedAt: string,
-  filterContext?: FilterContext,
+  options: ParseJsonFeedItemsOptions,
 ): RawItem[] {
+  const { jobStartedAt, timeWindow, filterContext } = options;
   if (!Array.isArray(payload.items)) {
     throw new Error("Invalid JSON Feed payload");
   }
 
-  // Calculate the 24h cutoff
+  // Calculate the cutoff using timeWindow
   const jobStart = new Date(jobStartedAt);
-  const cutoffTime = new Date(jobStart.getTime() - 24 * 60 * 60 * 1000);
+  const cutoffTime = new Date(jobStart.getTime() - timeWindow);
 
   const items: RawItem[] = [];
   let discardCount = 0;
@@ -247,13 +248,13 @@ export function parseJsonFeedItems(
 
 export async function collectJsonFeedSource(
   source: { id: string; url?: string },
-  fetchImpl: typeof fetch = fetch,
-  jobStartedAt?: string,
+  options: { timeWindow: number; fetchImpl?: typeof fetch } = { timeWindow: 24 * 60 * 60 * 1000 },
   filterContext?: FilterContext,
 ): Promise<RawItem[]> {
   const url = source.url ?? "";
   const startTime = Date.now();
-  const effectiveJobStartedAt = jobStartedAt ?? new Date().toISOString();
+  const { timeWindow, fetchImpl = fetch } = options;
+  const jobStartedAt = new Date().toISOString();
 
   logger.info("Fetching JSON Feed", { url, sourceId: source.id });
 
@@ -282,7 +283,7 @@ export async function collectJsonFeedSource(
       preview: truncateWithLength(responseStr, 500),
     });
 
-    return parseJsonFeedItems(payload, source.id, effectiveJobStartedAt, filterContext);
+    return parseJsonFeedItems(payload, source.id, { jobStartedAt, timeWindow, filterContext });
   } catch (error) {
     const elapsed = Date.now() - startTime;
     logger.error("JSON Feed fetch error", {

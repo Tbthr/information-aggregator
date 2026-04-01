@@ -157,22 +157,23 @@ function parseDate(dateStr: string): ParseDateResult {
 
 export interface ParseRssItemsOptions {
   jobStartedAt: string;
+  timeWindow: number;
   filterContext?: FilterContext;
 }
 
 export function parseRssItems(
   xml: string,
   sourceId: string,
-  jobStartedAt: string,
-  filterContext?: FilterContext,
+  options: ParseRssItemsOptions,
 ): RawItem[] {
+  const { jobStartedAt, timeWindow, filterContext } = options;
   const itemBlocks = [...xml.matchAll(/<item\b[\s\S]*?<\/item>/gi)].map((match) => match[0]);
   const atomEntries = [...xml.matchAll(/<entry\b[\s\S]*?<\/entry>/gi)].map((match) => match[0]);
   const blocks = itemBlocks.length > 0 ? itemBlocks : atomEntries;
 
-  // Calculate the 24h cutoff
+  // Calculate the cutoff using timeWindow
   const jobStart = new Date(jobStartedAt);
-  const cutoffTime = new Date(jobStart.getTime() - 24 * 60 * 60 * 1000);
+  const cutoffTime = new Date(jobStart.getTime() - timeWindow);
 
   const items: RawItem[] = [];
   let discardCount = 0;
@@ -316,13 +317,13 @@ export function parseRssItems(
 
 export async function collectRssSource(
   source: { id: string; url?: string },
-  fetchImpl: typeof fetch = fetch,
-  jobStartedAt?: string,
+  options: { timeWindow: number; fetchImpl?: typeof fetch } = { timeWindow: 24 * 60 * 60 * 1000 },
   filterContext?: FilterContext,
 ): Promise<RawItem[]> {
   const url = source.url ?? "";
   const startTime = Date.now();
-  const effectiveJobStartedAt = jobStartedAt ?? new Date().toISOString();
+  const { timeWindow, fetchImpl = fetch } = options;
+  const jobStartedAt = new Date().toISOString();
 
   logger.info("Fetching RSS feed", { url, sourceId: source.id });
 
@@ -350,7 +351,7 @@ export async function collectRssSource(
       preview: truncateWithLength(xml, 500),
     });
 
-    return parseRssItems(xml, source.id, effectiveJobStartedAt, filterContext);
+    return parseRssItems(xml, source.id, { jobStartedAt, timeWindow, filterContext });
   } catch (error) {
     const elapsed = Date.now() - startTime;
     logger.error("RSS fetch error", {

@@ -294,7 +294,7 @@ function buildParentMetadata(parent: BirdThreadItem | undefined): { id?: string;
   };
 }
 
-function parseBirdItems(payload: string, source: Source, jobStartedAt: string): { items: RawItem[], discardCount: number } {
+function parseBirdItems(payload: string, source: Source, jobStartedAt: string, timeWindow: number): { items: RawItem[], discardCount: number } {
   const parsed = JSON.parse(payload) as BirdItem[] | { tweets: BirdItem[] };
   // --all 参数会返回 {"tweets": [...]} 结构，需要提取 tweets 数组
   const items = Array.isArray(parsed) ? parsed : (parsed as { tweets: BirdItem[] }).tweets;
@@ -303,7 +303,7 @@ function parseBirdItems(payload: string, source: Source, jobStartedAt: string): 
   }
 
   let discardCount = 0;
-  const cutoffTime = new Date(new Date(jobStartedAt).getTime() - 24 * 60 * 60 * 1000);
+  const cutoffTime = new Date(new Date(jobStartedAt).getTime() - timeWindow);
 
   const result = items
     .filter((item) => typeof item.text === "string")
@@ -393,7 +393,11 @@ function parseBirdItems(payload: string, source: Source, jobStartedAt: string): 
 
 export async function collectXBirdSource(
   source: Source,
-  execImpl: (command: string[]) => Promise<string> = async (command) => {
+  options: { timeWindow: number; execImpl?: (command: string[]) => Promise<string> } = { timeWindow: 24 * 60 * 60 * 1000 },
+): Promise<RawItem[]> {
+  const { timeWindow, execImpl } = options;
+  const jobStartedAt = new Date().toISOString();
+  const effectiveExecImpl = execImpl ?? (async (command) => {
     const maskedCommand = maskSensitiveArgs(command);
     const startTime = Date.now();
 
@@ -444,12 +448,10 @@ export async function collectXBirdSource(
     });
 
     return output;
-  },
-  jobStartedAt?: string,
-): Promise<RawItem[]> {
+  });
   const command = buildBirdCommand(source);
-  const rawOutput = await execImpl(command);
+  const rawOutput = await effectiveExecImpl(command);
   saveDebugOutput(source.id, rawOutput);
-  const { items } = parseBirdItems(rawOutput, source, jobStartedAt ?? new Date().toISOString());
+  const { items } = parseBirdItems(rawOutput, source, jobStartedAt, timeWindow);
   return items;
 }

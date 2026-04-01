@@ -20,12 +20,14 @@ function parseUnixTimestamp(ts: number | string | undefined): Date | null {
 
 export async function collectZeliSource(
   source: Source,
-  fetchImpl: typeof fetch = fetch,
-  jobStartedAt?: string,
+  options: { timeWindow: number; fetchImpl?: typeof fetch } = { timeWindow: 24 * 60 * 60 * 1000 },
   filterContext?: FilterContext,
 ): Promise<RawItem[]> {
   const url = "https://zeli.app/api/hacker-news?type=hot24h";
   const startTime = Date.now();
+  const { timeWindow, fetchImpl = fetch } = options;
+  const jobStartedAt = new Date().toISOString();
+  const cutoffMs = new Date(jobStartedAt).getTime() - timeWindow;
 
   logger.info("Fetching zeli API", { url, sourceId: source.id });
 
@@ -47,10 +49,6 @@ export async function collectZeliSource(
 
     const posts = body.posts ?? [];
     logger.info("Zeli API response", { count: posts.length, elapsed });
-
-    const cutoffMs = jobStartedAt
-      ? new Date(jobStartedAt).getTime() - 24 * 60 * 60 * 1000
-      : Date.now() - 24 * 60 * 60 * 1000;
 
     const out: RawItem[] = [];
 

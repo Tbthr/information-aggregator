@@ -55,6 +55,7 @@ function extractMetadata(html: string): {
 
 export interface ParseWebsiteItemsOptions {
   jobStartedAt: string;
+  timeWindow: number;
   filterContext?: FilterContext;
 }
 
@@ -67,12 +68,12 @@ export function parseWebsiteItems(
   html: string,
   sourceId: string,
   url: string,
-  jobStartedAt: string,
-  filterContext?: FilterContext,
+  options: ParseWebsiteItemsOptions,
 ): RawItem[] {
-  // Calculate the 24h cutoff
+  const { jobStartedAt, timeWindow, filterContext } = options;
+  // Calculate the cutoff using timeWindow
   const jobStart = new Date(jobStartedAt);
-  const cutoffTime = new Date(jobStart.getTime() - 24 * 60 * 60 * 1000);
+  const cutoffTime = new Date(jobStart.getTime() - timeWindow);
 
   let discardCount = 0;
   let itemFetched = false;
@@ -173,13 +174,13 @@ export function parseWebsiteItems(
 
 export async function collectWebsiteSource(
   source: { id: string; url?: string },
-  fetchImpl: typeof fetch = fetch,
-  jobStartedAt?: string,
+  options: { timeWindow: number; fetchImpl?: typeof fetch } = { timeWindow: 24 * 60 * 60 * 1000 },
   filterContext?: FilterContext,
 ): Promise<RawItem[]> {
   const url = source.url ?? "";
   const startTime = Date.now();
-  const effectiveJobStartedAt = jobStartedAt ?? new Date().toISOString();
+  const { timeWindow, fetchImpl = fetch } = options;
+  const jobStartedAt = new Date().toISOString();
 
   logger.info("Fetching website", { url, sourceId: source.id });
 
@@ -207,7 +208,7 @@ export async function collectWebsiteSource(
       preview: truncateWithLength(html, 500),
     });
 
-    return parseWebsiteItems(html, source.id, url, effectiveJobStartedAt, filterContext);
+    return parseWebsiteItems(html, source.id, url, { jobStartedAt, timeWindow, filterContext });
   } catch (error) {
     const elapsed = Date.now() - startTime;
     logger.error("Website fetch error", {
