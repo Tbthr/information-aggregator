@@ -30,22 +30,25 @@ collect → rawItemToArticle → JsonArticleStore.save → generateDailyReport
   ↓
 2 并发收集（adapter × source 两级并发，adapter 内部按 timeWindow 过滤）
   ↓
-3 rawItemToArticle（带 topicIds，仅作初筛标签）
+3 normalize（RawItem → normalizedArticle，engagementScore 计算）
   ↓
-4 normalize（纯转换，engagementScore 计算）
+4 topic 过滤（include/exclude 初筛，输出单一 article 池）
   ↓
-5 topic 过滤（include/exclude 初筛，输出单一 article 池）
+5 评分排序（sourceWeightScore×0.4 + engagementScore×0.15）
   ↓
-6 评分排序（sourceWeightScore×0.4 + engagementScore×0.15）
+6 全局去重（URL 精确 + 语义 LCS，winner 取高分）
   ↓
-7 全局去重（URL 精确 + 语义 LCS，winner 取高分）
+7 象限划分（AI classify，每篇一次）
   ↓
-8 象限划分（AI classify，每篇一次）
+8 MD 生成（AI 象限内容生成，使用 reports.yaml 中的 prompt）
   ↓
-9 MD 生成（AI 象限内容生成，使用 reports.yaml 中的 prompt）
-  ↓
-10 JSON 不落盘
+9 JSON 不落盘
 ```
+
+**命名简化说明：**
+- Fetch adapter 输出统称为 `RawItem`
+- `normalize()` 输出称为 `normalizedArticle`（替代原有的 `Article → NormalizedItem` 两级命名）
+- 后续流程中统一使用 `normalizedArticle`，不再有中间类型
 
 ---
 
@@ -95,33 +98,26 @@ type AdapterFn = (source: Source, options: { timeWindow: number }) => Promise<Ra
 
 **数据关联：**
 - collect 后的 RawItem 需带上 source 对应的 `topicIds`（从 `Source` 对象的 `topics` 字段继承）
+- `Source` 类型已有 `topics: string[]` 字段，`loadSourcesConfig()` 需读取 YAML 中的 `topics` 字段并传入
 
-### 步骤 3：rawItemToArticle 转换
+### 步骤 3：normalize
 
-- 格式转换：`RawItem → Article`
-- 带上 `topicIds`（从 source 配置继承，仅作初筛标签）
-- 不做过滤，不做去重
-
-**接口变更：**
-- `Article` 接口新增 `topicIds: string[]` 字段
-- `loadSourcesConfig()` 需读取 YAML 中的 `topics` 字段并传入 `Source` 对象
-
-### 步骤 4：normalize
-
-- 纯格式转换：`Article → NormalizedItem`
+- 纯格式转换：`RawItem → normalizedArticle`
 - URL 标准化（移除 tracking 参数）
 - 正文归一化（去 HTML、空白字符处理）
-- `engagementScore` 计算：从 metadata 解析 X/Twitter 互动数据，计算公式：
 
+**engagementScore 计算：**
 ```
+// engagementScore：X/Twitter 互动分，用于后续评分排序
+// 其他 source 类型 engagementScore 为 0
+// 若后续需要对特定类别进行评分，在此归一化
 engagementScore = min(100, floor((score * 1 + comments * 2 + reactions * 3) / 10))
 ```
-
 其中 `score`、`comments`、`reactions` 字段来自 `RawItemMetadata`（对应 metadataJson 中的字段）。其他 source 类型 engagementScore 为 0。
 
 - Topic 仅作为初筛标签存储，不参与 normalize 逻辑
 
-### 步骤 5：topic 过滤（初筛）
+### 步骤 4：topic 过滤（初筛）
 
 **设计说明：**
 - topic 是人工配置的初筛标签，代表"对这个 source 的内容大致预期"
@@ -133,8 +129,8 @@ engagementScore = min(100, floor((score * 1 + comments * 2 + reactions * 3) / 10
 3. 过滤后输出单一 article 池，topic 标签不再保留
 
 **数据流对齐：**
-- `Article.topicIds` → `NormalizedItem.topicIds` → `FilterableItem.topicIds`
-- topic 过滤可复用现有 `filter-by-topic.ts`，输入为 `NormalizedItem[]`，输出过滤后的 `NormalizedItem[]`
+- `RawItem.topicIds` → `normalizedArticle.topicIds` → `FilterableItem.topicIds`
+- topic 过滤可复用现有 `filter-by-topic.ts`，输入为 `normalizedArticle[]`，输出过滤后的 `normalizedArticle[]`
 
 **配置变更：**
 - `sources.yaml` 新增 `priority` 字段（每 source 配置一个数值，用于后续评分）
@@ -153,7 +149,7 @@ engagementScore = min(100, floor((score * 1 + comments * 2 + reactions * 3) / 10
     }))
   ```
 
-### 步骤 6：评分排序
+### 步骤 5：评分排序
 
 **评分公式：**
 
@@ -177,7 +173,7 @@ finalScore = sourceWeightScore × 0.4 + engagementScore × 0.15
 - 简化 `rankCandidates()` 函数，移除 `freshnessScore`、`contentQualityAi`、`relationshipPenalty` 相关逻辑
 - 输入类型简化为只含 `sourceWeightScore` 和 `engagementScore` 的候选对象
 
-### 步骤 7：全局去重
+### 步骤 6：全局去重
 
 **两步去重：**
 
@@ -195,14 +191,14 @@ finalScore = sourceWeightScore × 0.4 + engagementScore × 0.15
 - 去重发生在评分之后，确保 winner 是高分数 article
 - 去重后输出单一 article 池，不保留 topic 归属
 
-### 步骤 8：象限划分
+### 步骤 7：象限划分
 
 - 对每篇文章调用 AI `classifyArticleQuadrant`
 - 输出：尝试 / 深度 / 地图感 三象限之一
 - 失败重试 3 次，仍失败默认归入"地图感"
 - 复用现有 `generateDailyReport` 中的象限分类逻辑
 
-### 步骤 9：MD 生成
+### 步骤 8：MD 生成
 
 **三个象限的呈现形式：**
 
@@ -227,7 +223,7 @@ finalScore = sourceWeightScore × 0.4 + engagementScore × 0.15
 - 象限分类（`classifyArticleQuadrant`）使用现有 `QUADRANT_PROMPT`
 - 象限内容生成使用 `reports.yaml` 中对应的 prompt
 
-### 步骤 10：JSON 不落盘
+### 步骤 9：JSON 不落盘
 
 - 移除 `JsonArticleStore` 及相关读写逻辑
 - 全流程在内存中完成，无持久化中间状态
@@ -294,9 +290,9 @@ daily:
 | `src/adapters/attentionvc.ts` | 同上 |
 | `src/adapters/build-adapters.ts` | 适配新 AdapterFn 签名 |
 | `src/pipeline/collect.ts` | 改造为两级并发模型（adapterConcurrency + sourceConcurrency） |
-| `src/archive/index.ts` | `Article` 接口新增 `topicIds: string[]` 字段；移除 `JsonArticleStore` 导出 |
+| `src/archive/index.ts` | `Article` 类型重命名为 `normalizedArticle` 并添加 `topicIds` 字段；移除 `JsonArticleStore` 导出 |
 | `src/cli/run.ts` | 改造为完整 pipeline 入口，新增 CLI 参数解析（--timeWindow/--adapter-concurrency/--source-concurrency），移除 JsonArticleStore，加载 `sources.yaml` 中的 `priority` 和 `topics` 字段 |
-| `src/pipeline/normalize.ts` | 保持不变，作为纯转换层 |
+| `src/pipeline/normalize.ts` | 改造为 `RawItem → normalizedArticle`，engagementScore 计算，topicIds 透传 |
 | `src/pipeline/filter-by-topic.ts` | 复用，输入输出类型已对齐 |
 | `src/pipeline/dedupe-exact.ts` | 保持不变 |
 | `src/pipeline/dedupe-near.ts` | 保持不变 |
@@ -317,7 +313,16 @@ daily:
 
 ---
 
-## 测试要点
+## 端到端测试命令
+
+```bash
+bun run src/cli/run.ts --timeWindow 1h --adapter-concurrency 4 --source-concurrency 6
+```
+
+**参数说明：**
+- `--timeWindow 1h`：使用 1 小时窗口，避免测试运行时间过长
+- `--adapter-concurrency 4`：4 个不同 type 的 adapter 并发运行
+- `--source-concurrency 6`：每个 type 下最多 6 个 source 并发抓取
 
 1. **并发收集验证**：不同 adapter 和 source 并发执行，结果与串行一致
 2. **timeWindow 过滤**：不同时间窗口参数下，过滤结果正确；适配器签名变更后现有测试仍可通过
@@ -334,14 +339,15 @@ daily:
 
 ## 实施顺序建议
 
-1. **基础设施改造**：CLI 参数解析（--timeWindow/--adapter-concurrency/--source-concurrency）+ 类型定义变更（AdapterFn 新签名 + Article 新字段）
+1. **基础设施改造**：CLI 参数解析（--timeWindow/--adapter-concurrency/--source-concurrency）+ 类型定义变更（AdapterFn 新签名 + normalize 输出类型）
 2. **Adapter 改造**：统一 adapter 函数签名 + timeWindow 传入逻辑
 3. **并发收集**：`collect.ts` 两级并发模型实现
-4. **pipeline 整合**：normalize → topic 过滤 → 评分 → 去重
-5. **reports.yaml 配置**：添加 `quadrantPrompts`，移除 weekly 和 quadrantBonus
-6. **日报生成改造**：`daily.ts` prompt 加载逻辑 + 移除不需要的逻辑
-7. **清理**：移除 JsonArticleStore 及相关代码
-8. **端到端测试验证**
+4. **normalize 改造**：`RawItem → normalizedArticle`，engagementScore 计算，topicIds 透传
+5. **pipeline 整合**：topic 过滤 → 评分 → 去重
+6. **reports.yaml 配置**：添加 `quadrantPrompts`，移除 weekly 和 quadrantBonus
+7. **日报生成改造**：`daily.ts` prompt 加载逻辑 + 移除不需要的逻辑
+8. **清理**：移除 JsonArticleStore 及相关代码
+9. **端到端测试验证**
 
 ---
 
