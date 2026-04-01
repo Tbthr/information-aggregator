@@ -1,5 +1,6 @@
 dist/
 tsconfig.tsbuildinfo
+node_modules/
 coverage/
 .worktrees/
 .env
