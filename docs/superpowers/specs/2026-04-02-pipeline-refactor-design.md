@@ -67,25 +67,44 @@ collect → rawItemToArticle → JsonArticleStore.save → generateDailyReport
 
 ### 步骤 2：并发收集
 
-**Adapter 维度并发：**
-- 不同 type 的 adapter（rss / json-feed / website / x / techurls / zeli / newsnow / clawfeed / attentionvc）并行执行
+**现有实现问题：**
+- 当前 `collect.ts` 的 `CollectDependencies` 只有单一 `concurrency` 参数
+- 当前 `AdapterFn` 类型为 `(source: Source) => Promise<RawItem[]>`，不接收 `timeWindow` 参数
+- 当前 RSS adapter 内部硬编码 24h 窗口逻辑在 `parseRssItems` 中
 
-**Source 维度并发：**
-- 同 type 下多个 source 并行抓取
+**改造方案：**
 
-**实现方式：**
-- 复用现有 `processWithConcurrency` 工具函数
-- `collect.ts` 改造：接收 `adapterConcurrency` 和 `sourceConcurrency` 两个参数
-- 各 adapter 接收 `timeWindow` 参数，自行按时间窗口过滤（替代原有的硬编码 24h 逻辑）
+Adapter 函数签名变更为：
+```typescript
+type AdapterFn = (source: Source, options: { timeWindow: number }) => Promise<RawItem[]>
+```
+其中 `timeWindow` 单位为毫秒，由 CLI 传入。
+
+**两级并发实现：**
+
+1. **Adapter 维度并发**：按 source type 分组，同组内用 `sourceConcurrency` 控制并发度，组间并行度由总任务数自动决定。例如有 3 种 type，每种 10 个 source，adapterConcurrency=3 表示最多同时运行 3 个不同 type 的 adapter。
+
+2. **Source 维度并发**：同 type 下多个 source 使用 `processWithConcurrency` 并发抓取，`sourceConcurrency` 控制每个 type 内的并发数。
+
+**改造清单：**
+- `src/types/index.ts`：将 `AdapterFn` 改为接收 `{ timeWindow: number }` 选项
+- `src/pipeline/collect.ts`：改造为两级并发模型
+- `src/adapters/rss.ts`：移除硬编码 24h，改为使用传入的 `timeWindow` 参数
+- `src/adapters/json-feed.ts`、`src/adapters/website.ts`、`src/adapters/x-bird.ts`、`src/adapters/techurls.ts`、`src/adapters/zeli.ts`、`src/adapters/newsnow.ts`、`src/adapters/clawfeed.ts`、`src/adapters/attentionvc.ts`：统一改造 adapter 函数签名
+- `src/adapters/build-adapters.ts`：适配新签名
 
 **数据关联：**
-- collect 后的 RawItem 需带上 source 对应的 `topicIds`，用于后续初筛
+- collect 后的 RawItem 需带上 source 对应的 `topicIds`（从 `Source` 对象的 `topics` 字段继承）
 
 ### 步骤 3：rawItemToArticle 转换
 
 - 格式转换：`RawItem → Article`
 - 带上 `topicIds`（从 source 配置继承，仅作初筛标签）
 - 不做过滤，不做去重
+
+**接口变更：**
+- `Article` 接口新增 `topicIds: string[]` 字段
+- `loadSourcesConfig()` 需读取 YAML 中的 `topics` 字段并传入 `Source` 对象
 
 ### 步骤 4：normalize
 
@@ -95,10 +114,10 @@ collect → rawItemToArticle → JsonArticleStore.save → generateDailyReport
 - `engagementScore` 计算：从 metadata 解析 X/Twitter 互动数据，计算公式：
 
 ```
-engagementScore = min(100, floor((likeCount * 1 + comments * 2 + reactions * 3) / 10))
+engagementScore = min(100, floor((score * 1 + comments * 2 + reactions * 3) / 10))
 ```
 
-其他 source 类型 engagementScore 为 0。
+其中 `score`、`comments`、`reactions` 字段来自 `RawItemMetadata`（对应 metadataJson 中的字段）。其他 source 类型 engagementScore 为 0。
 
 - Topic 仅作为初筛标签存储，不参与 normalize 逻辑
 
@@ -113,9 +132,26 @@ engagementScore = min(100, floor((likeCount * 1 + comments * 2 + reactions * 3) 
 2. 按 topic 的 `includeRules`（必须包含关键词）/ `excludeRules`（必须排除关键词）过滤
 3. 过滤后输出单一 article 池，topic 标签不再保留
 
+**数据流对齐：**
+- `Article.topicIds` → `NormalizedItem.topicIds` → `FilterableItem.topicIds`
+- topic 过滤可复用现有 `filter-by-topic.ts`，输入为 `NormalizedItem[]`，输出过滤后的 `NormalizedItem[]`
+
 **配置变更：**
 - `sources.yaml` 新增 `priority` 字段（每 source 配置一个数值，用于后续评分）
+- `loadSourcesConfig()` 需读取 YAML 中的 `priority` 字段，映射到 `Source.priority`
 - `topics.yaml` 无需变更
+
+**优先级字段映射：**
+- `InlineSource` 类型已有 `priority?: number` 字段，无需修改类型定义
+- 只需在 `loadSourcesConfig()` 中添加读取逻辑：
+  ```typescript
+  return raw.sources
+    .filter(s => s.enabled !== false)
+    .map(s => ({
+      ...
+      priority: s.priority ?? 0.5,  // 默认 0.5
+    }))
+  ```
 
 ### 步骤 6：评分排序
 
@@ -129,13 +165,17 @@ finalScore = sourceWeightScore × 0.4 + engagementScore × 0.15
 
 | 字段 | 来源 |
 |------|------|
-| `sourceWeightScore` | `sources.yaml` 中配置的 `priority` 字段，归一化到 0-1 |
-| `engagementScore` | normalize 阶段计算的 X/Twitter 互动分，其他 source 为 0 |
+| `sourceWeightScore` | `sources.yaml` 中配置的 `priority` 字段（已归一化到 0-1） |
+| `engagementScore` | normalize 阶段计算的 X/Twitter 互动分（`score * 1 + comments * 2 + reactions * 3`，其他 source 为 0） |
 
 **移除的维度：**
 - `freshnessScore`：所有数据在 timeWindow 内，无区分度，移除
 - `contentQualityAi`：AI 增强已移除，移除
 - `community_post` 扣减项：移除
+
+**rank.ts 改造：**
+- 简化 `rankCandidates()` 函数，移除 `freshnessScore`、`contentQualityAi`、`relationshipPenalty` 相关逻辑
+- 输入类型简化为只含 `sourceWeightScore` 和 `engagementScore` 的候选对象
 
 ### 步骤 7：全局去重
 
@@ -177,8 +217,15 @@ finalScore = sourceWeightScore × 0.4 + engagementScore × 0.15
 - 移除现有的 `weekly` 相关配置（只保留 daily 相关）
 
 **复用逻辑：**
-- 复用现有 `generateDailyReport` 中的 Markdown 输出逻辑
-- Prompt 模板从 `reports.yaml` 读取，不再硬编码
+- 改造 `generateDailyReport`：prompt 模板从 `reports.yaml` 读取，不再硬编码
+- 移除 `generateDailyReport` 中 `quadrantBonus` 加成逻辑（三象限不再有加成）
+- 移除 `weekly` 相关代码
+
+**Prompt 加载逻辑：**
+- `config/reports.yaml` 新增 `quadrantPrompts.map`、`quadrantPrompts.try`、`quadrantPrompts.deep` 三个字段
+- `daily.ts` 中新增 `loadQuadrantPrompts()` 函数，从 YAML 读取三个 prompt
+- 象限分类（`classifyArticleQuadrant`）使用现有 `QUADRANT_PROMPT`
+- 象限内容生成使用 `reports.yaml` 中对应的 prompt
 
 ### 步骤 10：JSON 不落盘
 
@@ -198,8 +245,8 @@ sources:
     name: Example
     url: https://example.com/feed
     enabled: true
-    topics: [ai-news]
-    priority: 0.8   # 新增字段，0.0-1.0，越高越优先
+    topics: [ai-news]     # 用于初筛过滤
+    priority: 0.8          # 新增字段，0.0-1.0，越高越优先（用于评分和 dedupe winner 选择）
 ```
 
 ### config/reports.yaml
@@ -208,20 +255,19 @@ sources:
 daily:
   maxItems: 50
   minScore: 0
-  quadrantBonus:
-    near: 1.3
-    mid: 1.0
-    far: 0.8
-  # 新增三个象限的 prompt
+  # 新增三个象限的 prompt（quadrantBonus 字段可移除，已无评分加成逻辑）
   quadrantPrompts:
     map: |
-      （地图感 prompt：生成核心要点 123…）
+      你是一个信息整理助手。用户会提供一个话题下的多篇文章列表，你需要生成该话题的核心要点，用清晰的123...格式列出。
+      每条要点应该简洁有力，反映该话题的主要趋势或发现。
     try: |
-      （尝试 prompt：生成总结概括，每条含尝试理由和预计时间）
+      你是一个信息整理助手。用户会提供一个话题下的多篇文章列表，你需要生成该话题的总结概括，用清晰的123...格式列出。
+      每条需要说明：1)值得尝试的原因 2)预计投入时间。
     deep: |
-      （深度 prompt：生成"为什么值得深入阅读"）
+      你是一个信息整理助手。对于每篇文章，说明"为什么值得深入阅读"，包括：文章解决了什么问题、提供了什么独特视角、适合什么程度的读者。
 
 # 移除 weekly 配置
+# 移除 quadrantBonus 配置（简化后不再需要）
 ```
 
 ### config/topics.yaml
@@ -236,16 +282,30 @@ daily:
 
 | 文件 | 变更说明 |
 |------|---------|
-| `src/cli/run.ts` | 改造为完整 pipeline 入口，新增并发参数解析，移除 JsonArticleStore |
-| `src/pipeline/collect.ts` | 支持两级并发控制，adapter 接收 timeWindow 参数 |
+| `src/types/index.ts` | `AdapterFn` 类型变更为 `(source: Source, options: { timeWindow: number }) => Promise<RawItem[]>` |
+| `src/adapters/rss.ts` | 移除硬编码 24h，改为使用传入的 `timeWindow` 参数 |
+| `src/adapters/json-feed.ts` | 同上 |
+| `src/adapters/website.ts` | 同上 |
+| `src/adapters/x-bird.ts` | 同上 |
+| `src/adapters/techurls.ts` | 同上 |
+| `src/adapters/zeli.ts` | 同上 |
+| `src/adapters/newsnow.ts` | 同上 |
+| `src/adapters/clawfeed.ts` | 同上 |
+| `src/adapters/attentionvc.ts` | 同上 |
+| `src/adapters/build-adapters.ts` | 适配新 AdapterFn 签名 |
+| `src/pipeline/collect.ts` | 改造为两级并发模型（adapterConcurrency + sourceConcurrency） |
+| `src/archive/index.ts` | `Article` 接口新增 `topicIds: string[]` 字段；移除 `JsonArticleStore` 导出 |
+| `src/cli/run.ts` | 改造为完整 pipeline 入口，新增 CLI 参数解析（--timeWindow/--adapter-concurrency/--source-concurrency），移除 JsonArticleStore，加载 `sources.yaml` 中的 `priority` 和 `topics` 字段 |
 | `src/pipeline/normalize.ts` | 保持不变，作为纯转换层 |
+| `src/pipeline/filter-by-topic.ts` | 复用，输入输出类型已对齐 |
 | `src/pipeline/dedupe-exact.ts` | 保持不变 |
 | `src/pipeline/dedupe-near.ts` | 保持不变 |
-| `src/pipeline/rank.ts` | 简化为 `finalScore = sourceWeightScore×0.4 + engagementScore×0.15` |
-| `src/pipeline/enrich.ts` | 不再调用（AI 增强已移除） |
-| `src/reports/daily.ts` | 读取 reports.yaml 中的象限 prompt，移除 weekly 逻辑 |
-| `src/archive/json-store.ts` | 移除 |
-| `src/archive/index.ts` | 移除 ArticleStore 接口中 JsonArticleStore 相关内容 |
+| `src/pipeline/rank.ts` | 简化为 `finalScore = sourceWeightScore×0.4 + engagementScore×0.15`，移除 freshnessScore/contentQualityAi/relationshipPenalty |
+| `src/pipeline/enrich.ts` | 不再调用（AI 增强已移除），可保留文件但不在 pipeline 中使用 |
+| `src/reports/daily.ts` | 新增 `loadQuadrantPrompts()` 从 reports.yaml 读取象限 prompt，移除 weekly 逻辑和 quadrantBonus 加成 |
+| `src/ai/prompts-reports.ts` | `QUADRANT_PROMPT` 保留，移除 weekly 相关 prompt |
+| `src/archive/json-store.ts` | 删除 |
+| `src/archive/index.ts` | 移除 `JsonArticleStore` 导出和 `ArticleStore` 接口中相关定义 |
 
 ### 需删除的文件
 
@@ -253,26 +313,45 @@ daily:
 
 ### 需改造的配置加载
 
-- `src/cli/run.ts`：加载 `sources.yaml` 中的 `priority` 字段，传入 pipeline
-- `src/reports/daily.ts`：从 `reports.yaml` 读取三个象限的 prompt
+- `src/cli/run.ts`：`loadSourcesConfig()` 读取 `sources.yaml` 中的 `priority` 和 `topics` 字段
 
 ---
 
 ## 测试要点
 
 1. **并发收集验证**：不同 adapter 和 source 并发执行，结果与串行一致
-2. **timeWindow 过滤**：不同时间窗口参数下，过滤结果正确
-3. **评分公式**：priority 和 engagementScore 加权正确
-4. **去重正确性**：exact dedupe 和 near dedupe 的 winner 选择符合预期
-5. **象限分类**：三象限分类结果符合各象限定义
-6. **MD 输出**：三个象限的呈现格式符合设计
+2. **timeWindow 过滤**：不同时间窗口参数下，过滤结果正确；适配器签名变更后现有测试仍可通过
+3. **topicIds 传递**：`Article` 新增 `topicIds` 字段后，从 collect 到 topic 过滤的数据流正确
+4. **priority 加载**：`sources.yaml` 中 `priority` 字段能正确读取和映射
+5. **评分公式**：priority 和 engagementScore 加权正确，rank.ts 简化后公式与测试对齐
+6. **去重正确性**：exact dedupe 和 near dedupe 的 winner 选择符合预期（高分数优先）
+7. **象限分类**：三象限分类结果符合各象限定义；AI 失败时默认归入"地图感"
+8. **MD 输出**：三个象限的呈现格式符合设计，prompt 从 reports.yaml 正确读取
+9. **边界情况**：空数据、全过滤掉、AI 失败等场景处理正确
+10. **JSON 不落盘**：运行全程无磁盘 IO（除最终 MD 输出）
 
 ---
 
 ## 实施顺序建议
 
-1. CLI 参数解析 + 并发收集改造
-2. pipeline 整合（normalize → 评分 → 去重）
-3. reports.yaml prompt 配置 + 象限 MD 生成
-4. 移除 JsonArticleStore 及相关代码
-5. 端到端测试验证
+1. **基础设施改造**：CLI 参数解析（--timeWindow/--adapter-concurrency/--source-concurrency）+ 类型定义变更（AdapterFn 新签名 + Article 新字段）
+2. **Adapter 改造**：统一 adapter 函数签名 + timeWindow 传入逻辑
+3. **并发收集**：`collect.ts` 两级并发模型实现
+4. **pipeline 整合**：normalize → topic 过滤 → 评分 → 去重
+5. **reports.yaml 配置**：添加 `quadrantPrompts`，移除 weekly 和 quadrantBonus
+6. **日报生成改造**：`daily.ts` prompt 加载逻辑 + 移除不需要的逻辑
+7. **清理**：移除 JsonArticleStore 及相关代码
+8. **端到端测试验证**
+
+---
+
+## 边界情况处理
+
+| 场景 | 处理方式 |
+|------|---------|
+| `timeWindow` 内无任何数据 | 直接退出，输出提示信息，不生成日报 |
+| 所有 article 被 topic 过滤淘汰 | 直接退出，输出提示信息，不生成日报 |
+| 去重后 article 数量为 0 | 直接退出，输出提示信息，不生成日报 |
+| AI 象限分类失败（重试3次） | 默认归入"地图感"象限 |
+| source 的 `priority` 未配置 | 默认 0.5 |
+| `sources.yaml` 中引用了不存在的 topic | 忽略该 topic 配置，article 仍参与后续流程 |
