@@ -1,4 +1,4 @@
-import { type RawItem, type RawItemMetadata, type Source } from "../types/index";
+import { type AdapterFn, type RawItem, type RawItemMetadata, type Source } from "../types/index";
 import { parseRawItemMetadata } from "../utils/metadata";
 import { processWithConcurrency } from "../ai/concurrency";
 import { createLogger } from "../utils/logger";
@@ -13,17 +13,18 @@ export interface CollectSourceEvent {
   error?: string;
 }
 
-export type AdapterFn = (source: Source) => Promise<RawItem[]>;
+// Re-export AdapterFn from types for external use
+export type { AdapterFn } from "../types/index";
 
 export interface CollectDependencies {
   adapters: Record<string, AdapterFn>;
   onSourceEvent?: (event: CollectSourceEvent) => void;
-  /**
-   * 并发配置（可选）
-   * 默认为 undefined 表示顺序执行（向后兼容）
-   * 设置后启用并行抓取
-   */
-  concurrency?: number;
+  /** adapter 维度并发数（不同 kind 间） */
+  adapterConcurrency: number;
+  /** source 维度并发数（同 kind 内） */
+  sourceConcurrency: number;
+  /** 时间窗口（毫秒） */
+  timeWindow: number;
 }
 
 function defaultProviderForSourceType(sourceType: Source["kind"]): string {
@@ -80,107 +81,83 @@ function normalizeCollectedItem(source: Source, item: RawItem): RawItem {
   return {
     ...item,
     metadataJson: JSON.stringify(normalizedMetadata),
+    // 透传 source 的 topicIds
+    filterContext: { topicIds: source.topicIds },
   };
 }
 
 export async function collectSources(sources: Source[], dependencies: CollectDependencies): Promise<RawItem[]> {
-  const { concurrency } = dependencies;
-
-  // 如果未设置并发或并发为 1，使用顺序执行（向后兼容）
-  if (concurrency === undefined || concurrency === 1) {
-    return collectSourcesSequential(sources, dependencies);
-  }
-
-  // 并行执行
-  logger.info("Using parallel collection", { concurrency, sourceCount: sources.length });
-
-  const results = await processWithConcurrency(
-    sources,
-    { batchSize: sources.length, concurrency },
-    async (source) => {
-      const adapter = dependencies.adapters[source.kind];
-      if (!adapter) {
-        dependencies.onSourceEvent?.({
-          sourceId: source.id,
-          status: "failure",
-          itemCount: 0,
-          latencyMs: 0,
-          error: `Missing adapter: ${source.kind}`,
-        });
-        return [];
-      }
-
-      try {
-        const startedAt = Date.now();
-        const collected = await adapter(source);
-        const latencyMs = Date.now() - startedAt;
-
-        dependencies.onSourceEvent?.({
-          sourceId: source.id,
-          status: collected.length === 0 ? "zero-items" : "success",
-          itemCount: collected.length,
-          latencyMs,
-        });
-
-        return collected.map((item) => normalizeCollectedItem(source, item));
-      } catch (error) {
-        dependencies.onSourceEvent?.({
-          sourceId: source.id,
-          status: "failure",
-          itemCount: 0,
-          latencyMs: 0,
-          error: error instanceof Error ? error.message : String(error),
-        });
-        return [];
-      }
-    },
-  );
-
-  return results.flat();
+  return collectWithTwoLevelConcurrency(sources, dependencies);
 }
 
 /**
- * 顺序收集（向后兼容的默认行为）
+ * 两级并发收集:
+ * 1. 按 source kind 分组
+ * 2. Adapter 维度：最多同时运行 adapterConcurrency 个不同 kind 的 adapter
+ * 3. Source 维度：同 kind 内最多同时抓取 sourceConcurrency 个 source
  */
-async function collectSourcesSequential(sources: Source[], dependencies: CollectDependencies): Promise<RawItem[]> {
-  const items: RawItem[] = [];
+export async function collectWithTwoLevelConcurrency(
+  sources: Source[],
+  dependencies: CollectDependencies,
+): Promise<RawItem[]> {
+  const { adapters, adapterConcurrency, sourceConcurrency, onSourceEvent, timeWindow } = dependencies;
 
+  // 按 kind 分组
+  const byKind = new Map<string, Source[]>();
   for (const source of sources) {
-    const adapter = dependencies.adapters[source.kind];
-    if (!adapter) {
-      dependencies.onSourceEvent?.({
-        sourceId: source.id,
-        status: "failure",
-        itemCount: 0,
-        latencyMs: 0,
-        error: `Missing adapter: ${source.kind}`,
-      });
-      continue;
-    }
-
-    try {
-      const startedAt = Date.now();
-      const collected = await adapter(source);
-      const latencyMs = Date.now() - startedAt;
-      items.push(...collected.map((item) => normalizeCollectedItem(source, item)));
-
-      dependencies.onSourceEvent?.({
-        sourceId: source.id,
-        status: collected.length === 0 ? "zero-items" : "success",
-        itemCount: collected.length,
-        latencyMs,
-      });
-    } catch (error) {
-      const latencyMs = 0;
-      dependencies.onSourceEvent?.({
-        sourceId: source.id,
-        status: "failure",
-        itemCount: 0,
-        latencyMs,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
+    const list = byKind.get(source.kind) ?? [];
+    list.push(source);
+    byKind.set(source.kind, list);
   }
 
-  return items;
+  const kinds = Array.from(byKind.keys());
+
+  // Adapter 维度并发：最多同时运行 adapterConcurrency 个不同 kind
+  const allResults: RawItem[][] = await processWithConcurrency(
+    kinds,
+    { batchSize: adapterConcurrency, concurrency: adapterConcurrency },
+    async (kind) => {
+      const kindSources = byKind.get(kind)!;
+      const adapter = adapters[kind];
+      if (!adapter) {
+        for (const s of kindSources) {
+          onSourceEvent?.({ sourceId: s.id, status: "failure", itemCount: 0, error: `Missing adapter: ${kind}` });
+        }
+        return [];
+      }
+
+      // Source 维度并发：同 kind 内最多同时抓取 sourceConcurrency 个 source
+      const results = await processWithConcurrency(
+        kindSources,
+        { batchSize: sourceConcurrency, concurrency: sourceConcurrency },
+        async (source) => {
+          const startedAt = Date.now();
+          try {
+            const collected = await adapter(source, { timeWindow });
+            const latencyMs = Date.now() - startedAt;
+            onSourceEvent?.({
+              sourceId: source.id,
+              status: collected.length === 0 ? "zero-items" : "success",
+              itemCount: collected.length,
+              latencyMs,
+            });
+            return collected.map((item) => normalizeCollectedItem(source, item));
+          } catch (error) {
+            const latencyMs = Date.now() - startedAt;
+            onSourceEvent?.({
+              sourceId: source.id,
+              status: "failure",
+              itemCount: 0,
+              latencyMs,
+              error: error instanceof Error ? error.message : String(error),
+            });
+            return [];
+          }
+        },
+      );
+      return results.flat();
+    },
+  );
+
+  return allResults.flat();
 }
