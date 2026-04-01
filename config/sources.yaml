@@ -25,6 +25,14 @@ sources:
     enabled: true
     topics: [tech-news]
 
+  # === 中文技术博客 ===
+  - type: rss
+    id: www-ruanyifeng-com-blog-atom
+    name: 阮一峰的网络日志
+    url: https://www.ruanyifeng.com/blog/atom.xml
+    enabled: true
+    topics: [karpathy-picks]
+
   # === Karpathy 精选技术博客 ===
   - type: rss
     id: anildash-com-feed-xml
