@@ -2,7 +2,7 @@
  * Daily Report Generator — JSON-based pipeline (no Prisma)
  *
  * Architecture:
- * 1. Read articles from JsonArticleStore (data/YYYY-MM-DD.json)
+ * 1. Accept pre-processed articles (from pipeline)
  * 2. Classify each article into a quadrant (尝试/深度/地图感) using AI
  * 3. Group articles by quadrant
  * 4. Within each quadrant, cluster articles into topics using AI
@@ -13,16 +13,15 @@
 import fs from 'fs'
 import path from 'path'
 import yaml from 'js-yaml'
-import { JsonArticleStore } from '../archive/json-store.js'
 import {
   QUADRANT_PROMPT,
   TOPIC_CLUSTER_PROMPT,
   parseQuadrantResult,
   parseTopicClusterResult,
 } from '../ai/prompts-reports.js'
-import type { Article } from '../archive/index.js'
 import type { AiClient } from '../ai/types.js'
 import { formatUtcDate, formatUtcDayLabel } from '../../lib/date-utils.js'
+import type { RankedCandidate } from '../types/index.js'
 
 // ============================================================
 // Types
@@ -87,11 +86,10 @@ const QUADRANT_BONUS: Record<Quadrant, number> = {
   '地图感': 0.8,
 }
 
-function computeBaseScore(article: Article): number {
+function computeBaseScore(article: RankedCandidate): number {
   // Base score from engagement + quality (each contributes up to 0.25)
-  // Note: Article type has engagementScore/qualityScore via enrichment
-  const engagementBonus = Math.min((article as Article & { engagementScore?: number }).engagementScore ?? 0, 0.25)
-  const qualityBonus = Math.min((article as Article & { qualityScore?: number }).qualityScore ?? 0, 0.25)
+  const engagementBonus = Math.min(article.engagementScore ?? 0, 0.25)
+  const qualityBonus = Math.min(article.contentQualityAi ?? 0, 0.25)
   return 0.5 + engagementBonus + qualityBonus
 }
 
@@ -100,7 +98,7 @@ function computeBaseScore(article: Article): number {
 // ============================================================
 
 async function classifyArticleQuadrant(
-  article: Article,
+  article: RankedCandidate,
   aiClient: AiClient
 ): Promise<Quadrant> {
   const text = buildQuadrantPromptText(article)
@@ -121,9 +119,10 @@ async function classifyArticleQuadrant(
   return '地图感'
 }
 
-function buildQuadrantPromptText(article: Article): string {
-  const summary = article.content?.slice(0, 300) ?? ''
-  return `${QUADRANT_PROMPT}\n\n内容标题：${article.title}\n内容摘要：${summary}`
+function buildQuadrantPromptText(article: RankedCandidate): string {
+  const summary = (article.normalizedText || '')?.slice(0, 300) ?? ''
+  const title = article.title || article.normalizedTitle || ''
+  return `${QUADRANT_PROMPT}\n\n内容标题：${title}\n内容摘要：${summary}`
 }
 
 // ============================================================
@@ -131,15 +130,17 @@ function buildQuadrantPromptText(article: Article): string {
 // ============================================================
 
 async function generateTopicGroups(
-  articles: Article[],
+  articles: RankedCandidate[],
   aiClient: AiClient,
   _config: DailyConfig
 ): Promise<TopicGroup[]> {
   if (articles.length === 0) return []
 
   const contentList = articles.map((a, i) => {
-    const summary = a.content?.slice(0, 200) ?? ''
-    return `[${i}] [${a.kind === 'tweet' ? '推文' : '文章'}] ${a.title}: ${summary}`
+    const summary = (a.normalizedText || '')?.slice(0, 200) ?? ''
+    const title = a.title || a.normalizedTitle || ''
+    const kind = a.contentType === 'tweet' ? '推文' : '文章'
+    return `[${i}] [${kind}] ${title}: ${summary}`
   })
 
   const prompt = `${TOPIC_CLUSTER_PROMPT}\n\n内容列表：\n${contentList.join('\n')}`
@@ -159,9 +160,9 @@ async function generateTopicGroups(
           articles: t.articleIndexes
             .filter(idx => idx >= 0 && idx < articles.length)
             .map(idx => ({
-              title: articles[idx].title,
-              url: articles[idx].url,
-              sourceName: articles[idx].sourceName,
+              title: articles[idx].title || articles[idx].normalizedTitle || '',
+              url: articles[idx].url || articles[idx].canonicalUrl || '',
+              sourceName: articles[idx].sourceName || '',
             })),
         }))
 
@@ -179,9 +180,9 @@ async function generateTopicGroups(
     summary: `共 ${articles.length} 条内容`,
     keyPoints: [],
     articles: articles.map(a => ({
-      title: a.title,
-      url: a.url,
-      sourceName: a.sourceName,
+      title: a.title || a.normalizedTitle || '',
+      url: a.url || a.canonicalUrl || '',
+      sourceName: a.sourceName || '',
     })),
   }]
 }
@@ -241,7 +242,7 @@ export function generateDailyMarkdown(report: DailyReportData): string {
  * Generates a daily report using the quadrant-aware pipeline.
  *
  * Pipeline:
- * 1. Read articles from JsonArticleStore (data/YYYY-MM-DD.json)
+ * 1. Accept pre-processed articles (RankedCandidate[] from pipeline)
  * 2. Score and classify each article into a quadrant using AI
  * 3. Group by quadrant
  * 4. Cluster articles into topics within each quadrant
@@ -250,7 +251,8 @@ export function generateDailyMarkdown(report: DailyReportData): string {
  */
 export async function generateDailyReport(
   now: Date,
-  aiClient: AiClient
+  aiClient: AiClient,
+  articles: RankedCandidate[]
 ): Promise<DailyGenerateResult> {
   const dateStr = formatUtcDate(now)
   const dayLabel = formatUtcDayLabel(now)
@@ -264,22 +266,12 @@ export async function generateDailyReport(
     config = { maxItems: 50, minScore: 0 }
   }
 
-  // Step 1: Read articles from JSON store
-  const store = new JsonArticleStore('data')
-  let articles: Article[]
-  try {
-    articles = await store.findAllByDate(dateStr)
-  } catch {
-    errorSteps.push('dataCollection')
-    return { date: dateStr, topicCount: 0, errorSteps }
-  }
-
   if (articles.length === 0) {
     return { date: dateStr, topicCount: 0, errorSteps }
   }
 
   // Step 2: Score and classify each article by quadrant
-  const scoredArticles: { article: Article; score: number; quadrant: Quadrant }[] = []
+  const scoredArticles: { article: RankedCandidate; score: number; quadrant: Quadrant }[] = []
 
   for (const article of articles) {
     const baseScore = computeBaseScore(article)
@@ -299,7 +291,7 @@ export async function generateDailyReport(
   }
 
   // Step 4: Group by quadrant (preserving order)
-  const byQuadrant = new Map<Quadrant, Article[]>()
+  const byQuadrant = new Map<Quadrant, RankedCandidate[]>()
   for (const { article, quadrant } of filtered) {
     const list = byQuadrant.get(quadrant) ?? []
     list.push(article)
