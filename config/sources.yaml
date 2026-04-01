@@ -670,6 +670,35 @@ sources:
     enabled: true
     topics: [karpathy-picks]
 
+  # === AI 资讯 / 精选博客 (RSS) ===
+  - type: rss
+    id: aihot-today-blog
+    name: AI 今日热点
+    url: https://aihot.today/blog/index.xml
+    enabled: true
+    topics: [ai-news]
+
+  - type: rss
+    id: ai-hubtoday-blog
+    name: AI HubToday
+    url: https://ai.hubtoday.app/blog/index.xml
+    enabled: true
+    topics: [ai-news]
+
+  - type: rss
+    id: bestblogs-dev-zh
+    name: BestBlogs 中文
+    url: https://www.bestblogs.dev/zh/feeds/rss
+    enabled: true
+    topics: [tech-news]
+
+  - type: rss
+    id: juya-ai-daily
+    name: 橘鸦 AI 早报
+    url: https://imjuya.github.io/juya-ai-daily/rss.xml
+    enabled: true
+    topics: [ai-news]
+
   # === Twitter/X (需要 auth) ===
   # - type: twitter
   #   id: karpathy

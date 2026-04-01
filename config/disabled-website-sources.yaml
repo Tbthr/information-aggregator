@@ -1,39 +1,40 @@
-# Website 类型数据源（需要手动处理）
-# 这些网站没有提供 RSS/JSON Feed，需要手动转换或寻找替代数据源
+# Website 类型数据源（已调研）
+# 调研日期: 2026-04-01
+#
+# 接入结论:
+#   - ✅ 已接入 RSS: aihot.today, ai.hubtoday.app, bestblogs.dev, juya-ai-daily (移至 sources.yaml)
+#   - ❌ 无 RSS/无法抓取: techurls.com, zeli.app, newsnow.busiyi.world, attentionvc.ai
 
 pack:
   id: website-sources
   name: 网站数据源（待处理）
-  description: 无法直接抓取的网站，需要手动查找对应的 RSS/JSON Feed
+  description: 无法直接抓取的网站，已调研确认无 RSS 或需要特殊处理
   enabled: false
 
 sources:
-  # === AI 资讯 ===
-  - type: website
-    url: https://aihot.today/
-    description: AI 今日热点，中文 AI 资讯聚合
+  # === 已接入 RSS (sources.yaml) ===
+  # - aihot.today/blog/index.xml → sources.yaml: aihot-today-blog
+  # - ai.hubtoday.app/blog/index.xml → sources.yaml: ai-hubtoday-blog
+  # - bestblogs.dev/zh/feeds/rss → sources.yaml: bestblogs-dev-zh
+  # - juya.github.io/juya-ai-daily/rss.xml → sources.yaml: juya-ai-daily
 
-  - type: website
-    url: https://ai.hubtoday.app/
-    description: AI HubToday，AI 新闻聚合
-
-  # === 科技资讯 ===
+  # === 无法接入 ===
   - type: website
     url: https://techurls.com/
-    description: TechURLs，科技资讯聚合
-
-  - type: website
-    url: https://www.bestblogs.dev/en/newsletter
-    description: BestBlogs Newsletter，优质博客精选
+    description: 静态 HTML，无 RSS；内容为外部链接聚合，非自产内容
+    status: no-rss-static-html  # 暂不接入，HTML 抓取价值有限
 
   - type: website
     url: https://zeli.app/
-    description: Zeli，科技资讯聚合
+    description: Next.js SPA，客户端渲染，/atom 返回 403，无公开 RSS
+    status: spa-no-api  # 需浏览器自动化
 
   - type: website
     url: https://newsnow.busiyi.world/
-    description: NewsNow，即时新闻聚合
+    description: 静态 HTML，无 RSS；内容为外部新闻链接聚合
+    status: no-rss-static-html  # 暂不接入，HTML 抓取价值有限
 
   - type: website
-    url: https://www.attentionvc.ai/article?window=all&lang=zh
-    description: X 长文热榜
+    url: https://www.attentionvc.ai/article?window=1d&lang=zh
+    description: Next.js SSR+CSR，X 长文热榜，内容客户端加载，无公开 API
+    status: spa-no-api  # 需浏览器自动化或 API 逆向
