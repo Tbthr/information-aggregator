@@ -65,11 +65,11 @@ information-aggregator/
 |---------|---------|
 | `bun install` | 安装依赖 |
 | `bun run src/cli/run.ts` | 运行 CLI |
-| `bun run tsc --noEmit` | TypeScript 类型检查 |
+| `bun run typecheck` | TypeScript 类型检查 |
 
 ### Pre-commit Checklist
 
-1. `bun run tsc --noEmit` - 确保无 TypeScript 错误
+1. `bun run typecheck` - 确保无 TypeScript 错误
 2. `bun run src/cli/run.ts` - 确保 CLI 能正常运行
 
 ## Environment
