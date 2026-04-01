@@ -1,7 +1,16 @@
-import type { CandidateWithDistance } from "./classify-productivity"
-import type { CandidateWithFreshness } from "./classify-freshness"
+import type { ReportCandidate } from "../types/index.js"
 
 export type Quadrant = "噪音" | "地图感" | "尝试" | "深度"
+
+export interface CandidateWithDistance {
+  candidate: ReportCandidate
+  distance: "近" | "中" | "远"
+}
+
+export interface CandidateWithFreshness {
+  candidate: ReportCandidate
+  freshness: "热点" | "趋势" | "经典"
+}
 
 export function getQuadrant(
   distance: CandidateWithDistance["distance"],

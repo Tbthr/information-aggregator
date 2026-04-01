@@ -16,15 +16,4 @@ export interface ArticleStore {
   findAllByDate(date: string): Promise<Article[]>
 }
 
-export {
-  archiveContentItems,
-  syncTopicsToPrisma,
-  upsertSourcesBatch,
-  recordSourcesSuccessBatch,
-  recordSourceFailure,
-  getArchiveStats,
-  type ContentArchiveResult,
-  type ContentArchiveInput,
-} from "./upsert-content-prisma";
-
 export { JsonArticleStore } from "./json-store";
