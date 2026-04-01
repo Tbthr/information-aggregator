@@ -8,7 +8,7 @@ export interface NearDedupItem {
   normalizedUrl: string;
   publishedAt?: string | null;
   fetchedAt?: string | null;
-  topicIds?: string[];
+  sourceDefaultTopicIds?: string[];
   sourceWeightScore?: number;
   engagementScore?: number | null;
 }
@@ -47,8 +47,8 @@ function selectWinner<T extends NearDedupItem>(items: T[]): T {
  */
 function compareForWinner<T extends NearDedupItem>(a: T, b: T): number {
   // 1. topicIds.length 更高者优先
-  const aTopicCount = a.topicIds?.length ?? 0;
-  const bTopicCount = b.topicIds?.length ?? 0;
+  const aTopicCount = a.sourceDefaultTopicIds?.length ?? 0;
+  const bTopicCount = b.sourceDefaultTopicIds?.length ?? 0;
   if (aTopicCount !== bTopicCount) {
     return bTopicCount - aTopicCount;
   }

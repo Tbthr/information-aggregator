@@ -7,7 +7,7 @@ export interface DedupItem {
   normalizedUrl: string;
   publishedAt?: string | null;
   fetchedAt?: string | null;
-  topicIds?: string[];
+  sourceDefaultTopicIds?: string[];
   sourceWeightScore?: number;
   engagementScore?: number | null;
 }
@@ -46,8 +46,8 @@ function selectWinner<T extends DedupItem>(items: T[]): T {
  */
 function compareForWinner<T extends DedupItem>(a: T, b: T): number {
   // 1. topicIds.length 更高者优先
-  const aTopicCount = a.topicIds?.length ?? 0;
-  const bTopicCount = b.topicIds?.length ?? 0;
+  const aTopicCount = a.sourceDefaultTopicIds?.length ?? 0;
+  const bTopicCount = b.sourceDefaultTopicIds?.length ?? 0;
   if (aTopicCount !== bTopicCount) {
     return bTopicCount - aTopicCount; // Higher topic count wins
   }

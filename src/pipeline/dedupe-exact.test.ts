@@ -35,8 +35,8 @@ describe("dedupeExact", () => {
   test("winner selection uses topicIds.length as primary criterion", () => {
     // Item with more topics should win
     const items = [
-      { id: "few-topics", normalizedUrl: "https://example.com/post", topicIds: ["t1"], publishedAt: "2026-03-09T00:00:00Z" },
-      { id: "many-topics", normalizedUrl: "https://example.com/post", topicIds: ["t1", "t2", "t3"], publishedAt: "2026-03-09T00:00:00Z" },
+      { id: "few-topics", normalizedUrl: "https://example.com/post", sourceDefaultTopicIds: ["t1"], publishedAt: "2026-03-09T00:00:00Z" },
+      { id: "many-topics", normalizedUrl: "https://example.com/post", sourceDefaultTopicIds: ["t1", "t2", "t3"], publishedAt: "2026-03-09T00:00:00Z" },
     ];
     const deduped = dedupeExact(items);
     expect(deduped).toHaveLength(1);
@@ -45,8 +45,8 @@ describe("dedupeExact", () => {
 
   test("winner selection uses sourcePriority as secondary criterion", () => {
     const items = [
-      { id: "low-priority", normalizedUrl: "https://example.com/post", sourcePriority: 1, publishedAt: "2026-03-09T00:00:00Z" },
-      { id: "high-priority", normalizedUrl: "https://example.com/post", sourcePriority: 10, publishedAt: "2026-03-09T00:00:00Z" },
+      { id: "low-priority", normalizedUrl: "https://example.com/post", sourceDefaultTopicIds: [], sourcePriority: 1, publishedAt: "2026-03-09T00:00:00Z" },
+      { id: "high-priority", normalizedUrl: "https://example.com/post", sourceDefaultTopicIds: [], sourcePriority: 10, publishedAt: "2026-03-09T00:00:00Z" },
     ];
     const deduped = dedupeExact(items);
     expect(deduped).toHaveLength(1);
