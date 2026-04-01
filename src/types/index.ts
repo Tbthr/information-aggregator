@@ -13,6 +13,7 @@ export const CANONICAL_SOURCE_KINDS = [
   "techurls",
   "zeli",
   "newsnow",
+  "attentionvc",
 ] as const;
 
 export type SourceKind = (typeof CANONICAL_SOURCE_KINDS)[number];

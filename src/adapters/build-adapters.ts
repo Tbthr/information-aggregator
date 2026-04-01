@@ -6,6 +6,7 @@ import { collectTechurlsSource } from "./techurls";
 import { collectZeliSource } from "./zeli";
 import { collectNewsnowSource } from "./newsnow";
 import { collectClawfeedSource } from "./clawfeed";
+import { collectAttentionvcSource } from "./attentionvc";
 import type { AdapterFn } from "../types/index";
 
 /**
@@ -22,5 +23,6 @@ export function buildAdapters(): Record<string, AdapterFn> {
     zeli: (source) => collectZeliSource(source),
     newsnow: (source) => collectNewsnowSource(source),
     clawfeed: (source) => collectClawfeedSource(source),
+    attentionvc: (source) => collectAttentionvcSource(source),
   };
 }
