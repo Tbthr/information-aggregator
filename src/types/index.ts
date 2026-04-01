@@ -208,7 +208,7 @@ export interface normalizedArticle {
   normalizedContent: string;
   metadataJson: string;
   // Pipeline 运行时字段
-  topicIds: string[];
+  sourceDefaultTopicIds: string[];
   sourceWeightScore: number;
   engagementScore: number;
 }

@@ -13,7 +13,7 @@ import { dedupeExact } from '../pipeline/dedupe-exact.js'
 import { dedupeNear } from '../pipeline/dedupe-near.js'
 import { generateDailyReport } from '../reports/daily.js'
 import { createAiClient } from '../ai/client.js'
-import type { Source, Topic, normalizedArticle, RankedCandidate } from '../types/index.js'
+import type { Source, Topic, normalizedArticle } from '../types/index.js'
 
 // ============================================================
 // CLI Argument Parsing
@@ -66,7 +66,7 @@ function parseArgs(): CLIArgs {
 interface LogEntry {
   level: 'info' | 'warn' | 'error'
   ts: string
-  stage: 'collect' | 'enrich' | 'dedupe' | 'score' | 'quadrant' | 'topic' | 'output'
+  stage: 'collect' | 'enrich' | 'filter' | 'dedupe' | 'score' | 'quadrant' | 'topic' | 'output'
   msg: string
   data?: Record<string, unknown>
 }
@@ -225,7 +225,7 @@ async function main() {
   log({
     level: 'info',
     ts: new Date().toISOString(),
-    stage: 'dedupe',
+    stage: 'filter',
     msg: `Topic 过滤完成`,
     data: { afterFilter: filtered.length },
   })

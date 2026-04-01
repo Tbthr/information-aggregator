@@ -169,7 +169,7 @@ export function normalizeItem(item: RawItem): normalizedArticle | null {
     normalizedSummary: normalizeSummary(metadata.summary || ""),
     normalizedContent,
     metadataJson: item.metadataJson,
-    topicIds,
+    sourceDefaultTopicIds: topicIds,
     sourceWeightScore,
     engagementScore,
   };
