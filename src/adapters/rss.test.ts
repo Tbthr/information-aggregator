@@ -11,7 +11,7 @@ describe("parseRssItems", () => {
         <item><title>Hello</title><link>https://example.com/1</link></item>
       </channel></rss>
     `;
-    const items = parseRssItems(xml, "rss-1", JOB_STARTED_AT);
+    const items = parseRssItems(xml, "rss-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
     expect(items[0]?.title).toBe("Hello");
   });
 
@@ -26,7 +26,7 @@ describe("parseRssItems", () => {
       </channel></rss>
     `;
 
-    const items = parseRssItems(xml, "rss-1", JOB_STARTED_AT);
+    const items = parseRssItems(xml, "rss-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
 
     expect(items[0]?.publishedAt).toBe("2026-03-09T08:00:00.000Z");
   });
@@ -38,7 +38,7 @@ describe("parseRssItems", () => {
       </channel></rss>
     `;
 
-    const items = parseRssItems(xml, "rss-1", JOB_STARTED_AT);
+    const items = parseRssItems(xml, "rss-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
 
     expect(JSON.parse(items[0]?.metadataJson ?? "{}")).toEqual({
       provider: "rss",
@@ -64,7 +64,7 @@ describe("parseRssItems", () => {
       </feed>
     `;
 
-    const items = parseRssItems(xml, "rss-1", JOB_STARTED_AT);
+    const items = parseRssItems(xml, "rss-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
 
     expect(items[0]?.publishedAt).toBe("2026-03-09T08:00:00.000Z");
   });
@@ -80,7 +80,7 @@ describe("parseRssItems", () => {
           </item>
         </channel></rss>
       `;
-      const items = parseRssItems(xml, "rss-1", JOB_STARTED_AT);
+      const items = parseRssItems(xml, "rss-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
       expect(items[0]?.publishedAt).toBe("2026-03-09T08:00:00.000Z");
     });
 
@@ -94,7 +94,7 @@ describe("parseRssItems", () => {
           </item>
         </channel></rss>
       `;
-      const items = parseRssItems(xml, "rss-1", JOB_STARTED_AT);
+      const items = parseRssItems(xml, "rss-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
       expect(items[0]?.publishedAt).toBe("2026-03-09T08:00:00.000Z");
     });
 
@@ -108,7 +108,7 @@ describe("parseRssItems", () => {
           </item>
         </channel></rss>
       `;
-      const items = parseRssItems(xml, "rss-1", JOB_STARTED_AT);
+      const items = parseRssItems(xml, "rss-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
       // 2026-03-09T16:00:00+08:00 = 2026-03-09T08:00:00Z
       expect(items[0]?.publishedAt).toBe("2026-03-09T08:00:00.000Z");
     });
@@ -123,7 +123,7 @@ describe("parseRssItems", () => {
           </item>
         </channel></rss>
       `;
-      const items = parseRssItems(xml, "rss-1", JOB_STARTED_AT);
+      const items = parseRssItems(xml, "rss-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
       // 2026-03-09T13:00:00-05:00 = 2026-03-09T18:00:00Z
       expect(items[0]?.publishedAt).toBe("2026-03-09T18:00:00.000Z");
     });
@@ -140,7 +140,7 @@ describe("parseRssItems", () => {
           </item>
         </channel></rss>
       `;
-      const items = parseRssItems(xml, "rss-1", JOB_STARTED_AT);
+      const items = parseRssItems(xml, "rss-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
       expect(items[0]?.publishedAt).toBe("2026-03-09T23:59:59.000Z");
     });
 
@@ -156,7 +156,7 @@ describe("parseRssItems", () => {
       `;
       // This test doesn't have a pubDate so it's just checking date-only filling from content:encoded
       // But since content:encoded is not a date field, we should check metadata
-      const items = parseRssItems(xml, "rss-1", JOB_STARTED_AT);
+      const items = parseRssItems(xml, "rss-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
       const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
       // date-only filling only applies to pubDate/published/updated fields
       expect(metadata.timeParseNote).toBe("no timestamp found");
@@ -179,7 +179,7 @@ describe("parseRssItems", () => {
           </item>
         </channel></rss>
       `;
-      const items = parseRssItems(xml, "rss-1", JOB_STARTED_AT);
+      const items = parseRssItems(xml, "rss-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
       // Only the valid item should be present
       expect(items.length).toBe(1);
       expect(items[0]?.title).toBe("Test Valid");
@@ -200,7 +200,7 @@ describe("parseRssItems", () => {
           </item>
         </channel></rss>
       `;
-      const items = parseRssItems(xml, "rss-1", JOB_STARTED_AT);
+      const items = parseRssItems(xml, "rss-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
       expect(items.length).toBe(1);
       expect(items[0]?.title).toBe("Test Valid");
     });
@@ -225,7 +225,7 @@ describe("parseRssItems", () => {
           </item>
         </channel></rss>
       `;
-      const items = parseRssItems(xml, "rss-1", jobStartedAt);
+      const items = parseRssItems(xml, "rss-1", { jobStartedAt, timeWindow: 24 * 60 * 60 * 1000 });
       expect(items.length).toBe(1);
       expect(items[0]?.title).toBe("Within Window");
     });
@@ -241,7 +241,7 @@ describe("parseRssItems", () => {
           </item>
         </channel></rss>
       `;
-      const items = parseRssItems(xml, "rss-1", jobStartedAt);
+      const items = parseRssItems(xml, "rss-1", { jobStartedAt, timeWindow: 24 * 60 * 60 * 1000 });
       expect(items.length).toBe(1);
       expect(items[0]?.title).toBe("Exactly at Boundary");
     });
@@ -258,7 +258,7 @@ describe("parseRssItems", () => {
           </item>
         </channel></rss>
       `;
-      const items = parseRssItems(xml, "rss-1", JOB_STARTED_AT);
+      const items = parseRssItems(xml, "rss-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
       const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
       expect(metadata.summary).toBe("This is a test description");
     });
@@ -274,7 +274,7 @@ describe("parseRssItems", () => {
           </item>
         </channel></rss>
       `;
-      const items = parseRssItems(xml, "rss-1", JOB_STARTED_AT);
+      const items = parseRssItems(xml, "rss-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
       const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
       expect(metadata.summary).toBe("Full content text");
     });
@@ -289,7 +289,7 @@ describe("parseRssItems", () => {
           </item>
         </channel></rss>
       `;
-      const items = parseRssItems(xml, "rss-1", JOB_STARTED_AT);
+      const items = parseRssItems(xml, "rss-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
       const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
       expect(metadata.summary).toBe("Content without description");
     });
@@ -306,7 +306,7 @@ describe("parseRssItems", () => {
           </item>
         </channel></rss>
       `;
-      const items = parseRssItems(xml, "rss-1", JOB_STARTED_AT);
+      const items = parseRssItems(xml, "rss-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
       const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
       expect(metadata.authorName).toBe("John Doe");
     });
@@ -321,7 +321,7 @@ describe("parseRssItems", () => {
           </item>
         </channel></rss>
       `;
-      const items = parseRssItems(xml, "rss-1", JOB_STARTED_AT);
+      const items = parseRssItems(xml, "rss-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
       const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
       expect(metadata.authorName).toBe("Jane Smith");
     });
@@ -337,7 +337,7 @@ describe("parseRssItems", () => {
           </item>
         </channel></rss>
       `;
-      const items = parseRssItems(xml, "rss-1", JOB_STARTED_AT);
+      const items = parseRssItems(xml, "rss-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
       const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
       expect(metadata.authorName).toBe("Creator Tag");
     });
@@ -354,7 +354,7 @@ describe("parseRssItems", () => {
           </item>
         </channel></rss>
       `;
-      const items = parseRssItems(xml, "rss-1", JOB_STARTED_AT);
+      const items = parseRssItems(xml, "rss-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
       const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
       expect(metadata.rawPublishedAt).toBe("Mon, 09 Mar 2026 08:00:00 GMT");
     });
@@ -369,7 +369,7 @@ describe("parseRssItems", () => {
           </item>
         </channel></rss>
       `;
-      const items = parseRssItems(xml, "rss-1", JOB_STARTED_AT);
+      const items = parseRssItems(xml, "rss-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
       const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
       expect(metadata.timeSourceField).toBe("published");
     });
@@ -384,7 +384,7 @@ describe("parseRssItems", () => {
           </item>
         </channel></rss>
       `;
-      const items = parseRssItems(xml, "rss-1", JOB_STARTED_AT);
+      const items = parseRssItems(xml, "rss-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
       const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
       expect(metadata.timeParseNote).toContain("date-only");
     });
@@ -400,13 +400,13 @@ describe("parseRssItems", () => {
           </item>
         </channel></rss>
       `;
-      const items = parseRssItems(xml, "rss-1", jobStartedAt);
+      const items = parseRssItems(xml, "rss-1", { jobStartedAt, timeWindow: 24 * 60 * 60 * 1000 });
       expect(items.length).toBe(0);
     });
   });
 
   describe("minimal RawItem shape", () => {
-    test("does not include author field at top level", () => {
+    test("includes author field at top level", () => {
       const xml = `
         <rss><channel>
           <item>
@@ -416,13 +416,13 @@ describe("parseRssItems", () => {
           </item>
         </channel></rss>
       `;
-      const items = parseRssItems(xml, "rss-1", JOB_STARTED_AT);
-      // author should be in metadataJson.authorName, not at top level
-      expect(items[0]).not.toHaveProperty("author");
+      const items = parseRssItems(xml, "rss-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
+      // author is at top level AND in metadataJson.authorName (D-06)
+      expect(items[0]?.author).toBe("John Doe");
       expect(items[0]?.metadataJson).toContain("authorName");
     });
 
-    test("does not include content field at top level", () => {
+    test("includes content field at top level", () => {
       const xml = `
         <rss><channel>
           <item>
@@ -432,9 +432,9 @@ describe("parseRssItems", () => {
           </item>
         </channel></rss>
       `;
-      const items = parseRssItems(xml, "rss-1", JOB_STARTED_AT);
-      // content should be in metadataJson.content, not at top level
-      expect(items[0]).not.toHaveProperty("content");
+      const items = parseRssItems(xml, "rss-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
+      // content is at top level AND in metadataJson.content (D-07)
+      expect(items[0]?.content).toBe("Some content");
       expect(items[0]?.metadataJson).toContain("content");
     });
   });
@@ -450,7 +450,7 @@ describe("parseRssItems", () => {
         </channel></rss>
       `;
       const filterContext = { topicIds: ["topic-1"], mustInclude: ["AI"], exclude: ["spam"] };
-      const items = parseRssItems(xml, "rss-1", JOB_STARTED_AT, filterContext);
+      const items = parseRssItems(xml, "rss-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000, filterContext });
       expect(items[0]?.filterContext).toEqual(filterContext);
     });
   });
