@@ -614,6 +614,13 @@ sources:
     enabled: true
     topics: [karpathy-picks]
 
+  - type: clawfeed
+    id: clawfeed-kevinhe-io-feed-kevin
+    name: Kevin He
+    url: https://clawfeed.kevinhe.io/feed/kevin
+    enabled: true
+    topics: [ai-news]
+
   - type: rss
     id: www-righto-com-feeds-posts-default
     name: Kenji
