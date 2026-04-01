@@ -2,7 +2,9 @@ import { loadConfig } from '../config/loader.js'
 import { parseDate } from '../lib/date-utils.js'
 import { writeDailyData } from '../data/writer.js'
 import type { CollectedItem, SourceData } from '../data/writer.js'
-import { buildAdapters } from '../../adapters/build-adapters.js'
+import { collectRssSource } from '../../adapters/rss.js'
+import { collectJsonFeedSource } from '../../adapters/json-feed.js'
+import { collectXBirdSource } from '../../adapters/x-bird.js'
 import type { RawItem, Source } from '../../types/index.js'
 import type { Source as ConfigSource } from '../config/types.js'
 
@@ -73,16 +75,15 @@ function rawItemToCollectedItem(raw: RawItem): CollectedItem {
 }
 
 async function fetchSource(source: ConfigSource): Promise<CollectedItem[]> {
-  const adapters = buildAdapters()
   const jobStartedAt = new Date().toISOString()
 
   switch (source.type) {
     case 'rss': {
-      const items = await adapters.rss({ id: source.id, url: source.url }, fetch, jobStartedAt)
+      const items = await collectRssSource({ id: source.id, url: source.url }, fetch, jobStartedAt)
       return items.map(rawItemToCollectedItem)
     }
     case 'json-feed': {
-      const items = await adapters['json-feed']({ id: source.id, url: source.url }, fetch, jobStartedAt)
+      const items = await collectJsonFeedSource({ id: source.id, url: source.url }, fetch, jobStartedAt)
       return items.map(rawItemToCollectedItem)
     }
     case 'twitter': {
@@ -98,7 +99,7 @@ async function fetchSource(source: ConfigSource): Promise<CollectedItem[]> {
           ct0: source.auth?.ct0,
         }),
       }
-      const items = await adapters.x(birdSource, async (cmd: string[]) => {
+      const items = await collectXBirdSource(birdSource, async (cmd: string[]) => {
         // Execute bird CLI command
         const { spawn } = await import('node:child_process')
         return new Promise<string>((resolve, reject) => {
