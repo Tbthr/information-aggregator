@@ -393,7 +393,7 @@ function parseBirdItems(payload: string, source: Source, jobStartedAt: string, t
 
 export async function collectXBirdSource(
   source: Source,
-  options: { timeWindow: number; execImpl?: (command: string[]) => Promise<string> } = { timeWindow: 24 * 60 * 60 * 1000 },
+  options: { timeWindow: number; execImpl?: (command: string[]) => Promise<string> } = { timeWindow: 100 * 24 * 60 * 60 * 1000 },
 ): Promise<RawItem[]> {
   const { timeWindow, execImpl } = options;
   const jobStartedAt = new Date().toISOString();

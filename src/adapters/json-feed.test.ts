@@ -10,7 +10,7 @@ describe("parseJsonFeedItems", () => {
       version: "https://jsonfeed.org/version/1.1",
       items: [{ id: "1", title: "Hello", url: "https://example.com/1" }],
     };
-    const items = parseJsonFeedItems(payload, "json-1", JOB_STARTED_AT);
+    const items = parseJsonFeedItems(payload, "json-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
     expect(items[0]?.url).toBe("https://example.com/1");
   });
 
@@ -27,7 +27,7 @@ describe("parseJsonFeedItems", () => {
       ],
     };
 
-    const items = parseJsonFeedItems(payload, "json-1", JOB_STARTED_AT);
+    const items = parseJsonFeedItems(payload, "json-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
 
     expect(items[0]?.publishedAt).toBe("2026-03-09T08:00:00.000Z");
   });
@@ -38,7 +38,7 @@ describe("parseJsonFeedItems", () => {
       items: [{ id: "1", title: "Hello", url: "https://example.com/1" }],
     };
 
-    const items = parseJsonFeedItems(payload, "json-1", JOB_STARTED_AT);
+    const items = parseJsonFeedItems(payload, "json-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
 
     expect(JSON.parse(items[0]?.metadataJson ?? "{}")).toEqual({
       provider: "json-feed",
@@ -66,7 +66,7 @@ describe("parseJsonFeedItems", () => {
           },
         ],
       };
-      const items = parseJsonFeedItems(payload, "json-1", JOB_STARTED_AT);
+      const items = parseJsonFeedItems(payload, "json-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
       expect(items[0]?.publishedAt).toBe("2026-03-09T08:00:00.000Z");
     });
 
@@ -82,7 +82,7 @@ describe("parseJsonFeedItems", () => {
           },
         ],
       };
-      const items = parseJsonFeedItems(payload, "json-1", JOB_STARTED_AT);
+      const items = parseJsonFeedItems(payload, "json-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
       // 2026-03-09T16:00:00+08:00 = 2026-03-09T08:00:00Z
       expect(items[0]?.publishedAt).toBe("2026-03-09T08:00:00.000Z");
     });
@@ -99,7 +99,7 @@ describe("parseJsonFeedItems", () => {
           },
         ],
       };
-      const items = parseJsonFeedItems(payload, "json-1", JOB_STARTED_AT);
+      const items = parseJsonFeedItems(payload, "json-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
       // 2026-03-09T13:00:00-05:00 = 2026-03-09T18:00:00Z
       expect(items[0]?.publishedAt).toBe("2026-03-09T18:00:00.000Z");
     });
@@ -118,7 +118,7 @@ describe("parseJsonFeedItems", () => {
           },
         ],
       };
-      const items = parseJsonFeedItems(payload, "json-1", JOB_STARTED_AT);
+      const items = parseJsonFeedItems(payload, "json-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
       expect(items[0]?.publishedAt).toBe("2026-03-09T23:59:59.000Z");
     });
   });
@@ -142,7 +142,7 @@ describe("parseJsonFeedItems", () => {
           },
         ],
       };
-      const items = parseJsonFeedItems(payload, "json-1", JOB_STARTED_AT);
+      const items = parseJsonFeedItems(payload, "json-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
       // Only the valid item should be present
       expect(items.length).toBe(1);
       expect(items[0]?.title).toBe("Test Valid");
@@ -166,7 +166,7 @@ describe("parseJsonFeedItems", () => {
           },
         ],
       };
-      const items = parseJsonFeedItems(payload, "json-1", JOB_STARTED_AT);
+      const items = parseJsonFeedItems(payload, "json-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
       expect(items.length).toBe(1);
       expect(items[0]?.title).toBe("Test Valid");
     });
@@ -194,7 +194,7 @@ describe("parseJsonFeedItems", () => {
           },
         ],
       };
-      const items = parseJsonFeedItems(payload, "json-1", jobStartedAt);
+      const items = parseJsonFeedItems(payload, "json-1", { jobStartedAt, timeWindow: 24 * 60 * 60 * 1000 });
       expect(items.length).toBe(1);
       expect(items[0]?.title).toBe("Within Window");
     });
@@ -212,7 +212,7 @@ describe("parseJsonFeedItems", () => {
           },
         ],
       };
-      const items = parseJsonFeedItems(payload, "json-1", jobStartedAt);
+      const items = parseJsonFeedItems(payload, "json-1", { jobStartedAt, timeWindow: 24 * 60 * 60 * 1000 });
       expect(items.length).toBe(1);
       expect(items[0]?.title).toBe("Exactly at Boundary");
     });
@@ -231,7 +231,7 @@ describe("parseJsonFeedItems", () => {
           },
         ],
       };
-      const items = parseJsonFeedItems(payload, "json-1", JOB_STARTED_AT);
+      const items = parseJsonFeedItems(payload, "json-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
       const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
       expect(metadata.summary).toBe("This is a test summary");
     });
@@ -249,7 +249,7 @@ describe("parseJsonFeedItems", () => {
           },
         ],
       };
-      const items = parseJsonFeedItems(payload, "json-1", JOB_STARTED_AT);
+      const items = parseJsonFeedItems(payload, "json-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
       const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
       expect(metadata.summary).toBe("<p>HTML content</p>");
     });
@@ -266,7 +266,7 @@ describe("parseJsonFeedItems", () => {
           },
         ],
       };
-      const items = parseJsonFeedItems(payload, "json-1", JOB_STARTED_AT);
+      const items = parseJsonFeedItems(payload, "json-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
       const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
       expect(metadata.summary).toBe("Plain text content");
     });
@@ -285,7 +285,7 @@ describe("parseJsonFeedItems", () => {
           },
         ],
       };
-      const items = parseJsonFeedItems(payload, "json-1", JOB_STARTED_AT);
+      const items = parseJsonFeedItems(payload, "json-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
       const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
       expect(metadata.authorName).toBe("John Doe");
     });
@@ -302,7 +302,7 @@ describe("parseJsonFeedItems", () => {
           },
         ],
       };
-      const items = parseJsonFeedItems(payload, "json-1", JOB_STARTED_AT);
+      const items = parseJsonFeedItems(payload, "json-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
       const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
       expect(metadata.authorName).toBeUndefined();
     });
@@ -321,7 +321,7 @@ describe("parseJsonFeedItems", () => {
           },
         ],
       };
-      const items = parseJsonFeedItems(payload, "json-1", JOB_STARTED_AT);
+      const items = parseJsonFeedItems(payload, "json-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
       const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
       expect(metadata.rawPublishedAt).toBe("2026-03-09T08:00:00Z");
     });
@@ -338,7 +338,7 @@ describe("parseJsonFeedItems", () => {
           },
         ],
       };
-      const items = parseJsonFeedItems(payload, "json-1", JOB_STARTED_AT);
+      const items = parseJsonFeedItems(payload, "json-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
       const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
       expect(metadata.timeSourceField).toBe("date_published");
     });
@@ -355,7 +355,7 @@ describe("parseJsonFeedItems", () => {
           },
         ],
       };
-      const items = parseJsonFeedItems(payload, "json-1", JOB_STARTED_AT);
+      const items = parseJsonFeedItems(payload, "json-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
       const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
       expect(metadata.timeParseNote).toContain("date-only");
     });
@@ -373,13 +373,13 @@ describe("parseJsonFeedItems", () => {
           },
         ],
       };
-      const items = parseJsonFeedItems(payload, "json-1", jobStartedAt);
+      const items = parseJsonFeedItems(payload, "json-1", { jobStartedAt, timeWindow: 24 * 60 * 60 * 1000 });
       expect(items.length).toBe(0);
     });
   });
 
   describe("minimal RawItem shape", () => {
-    test("does not include author field at top level", () => {
+    test("includes author field at top level", () => {
       const payload = {
         version: "https://jsonfeed.org/version/1.1",
         items: [
@@ -391,13 +391,13 @@ describe("parseJsonFeedItems", () => {
           },
         ],
       };
-      const items = parseJsonFeedItems(payload, "json-1", JOB_STARTED_AT);
-      // author should be in metadataJson.authorName, not at top level
-      expect(items[0]).not.toHaveProperty("author");
+      const items = parseJsonFeedItems(payload, "json-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
+      // author is at top level AND in metadataJson.authorName (D-06)
+      expect(items[0]?.author).toBe("John Doe");
       expect(items[0]?.metadataJson).toContain("authorName");
     });
 
-    test("does not include content field at top level", () => {
+    test("includes content field at top level", () => {
       const payload = {
         version: "https://jsonfeed.org/version/1.1",
         items: [
@@ -409,9 +409,9 @@ describe("parseJsonFeedItems", () => {
           },
         ],
       };
-      const items = parseJsonFeedItems(payload, "json-1", JOB_STARTED_AT);
-      // content should be in metadataJson.content, not at top level
-      expect(items[0]).not.toHaveProperty("content");
+      const items = parseJsonFeedItems(payload, "json-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
+      // content is at top level AND in metadataJson.content (D-07)
+      expect(items[0]?.content).toBe("<p>Some content</p>");
       expect(items[0]?.metadataJson).toContain("content");
     });
   });
@@ -423,7 +423,7 @@ describe("parseJsonFeedItems", () => {
         items: [{ id: "1", title: "Test", url: "https://example.com/1" }],
       };
       const filterContext = { topicIds: ["topic-1"], mustInclude: ["AI"], exclude: ["spam"] };
-      const items = parseJsonFeedItems(payload, "json-1", JOB_STARTED_AT, filterContext);
+      const items = parseJsonFeedItems(payload, "json-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000, filterContext });
       expect(items[0]?.filterContext).toEqual(filterContext);
     });
   });

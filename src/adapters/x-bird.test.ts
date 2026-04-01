@@ -49,7 +49,7 @@ describe("x bird integration", () => {
         enabled: false,
         configJson: JSON.stringify({ birdMode: "home" }),
       },
-      async () =>
+      { timeWindow: 50 * 24 * 60 * 60 * 1000, execImpl: async () =>
         JSON.stringify([
           {
             id: "tweet-1",
@@ -60,6 +60,7 @@ describe("x bird integration", () => {
             created_at: "2026-03-09T08:00:00Z",
           },
         ]),
+    },
     );
 
     expect(items).toHaveLength(1);
@@ -84,7 +85,7 @@ describe("x bird integration", () => {
         enabled: false,
         configJson: JSON.stringify({ birdMode: "home" }),
       },
-      async () =>
+      { timeWindow: 50 * 24 * 60 * 60 * 1000, execImpl: async () =>
         JSON.stringify([
           {
             id: "2030994765169205673",
@@ -99,6 +100,7 @@ describe("x bird integration", () => {
             },
           },
         ]),
+    },
     );
 
     expect(items).toHaveLength(1);
@@ -130,7 +132,7 @@ describe("x bird integration", () => {
         enabled: false,
         configJson: JSON.stringify({ birdMode: "home" }),
       },
-      async () =>
+      { timeWindow: 50 * 24 * 60 * 60 * 1000, execImpl: async () =>
         JSON.stringify([
           {
             id: "2031007472094461985",
@@ -145,6 +147,7 @@ describe("x bird integration", () => {
             },
           },
         ]),
+    },
     );
 
     expect(items).toHaveLength(1);
@@ -188,7 +191,7 @@ describe("x bird integration", () => {
         enabled: false,
         configJson: JSON.stringify({ birdMode: "home" }),
       },
-      async () =>
+      { timeWindow: 50 * 24 * 60 * 60 * 1000, execImpl: async () =>
         JSON.stringify([
           {
             id: "2031007472094461985",
@@ -205,6 +208,7 @@ describe("x bird integration", () => {
             },
           },
         ]),
+    },
     );
 
     expect(items).toHaveLength(1);
@@ -226,7 +230,7 @@ describe("x bird integration", () => {
         enabled: false,
         configJson: JSON.stringify({ birdMode: "home" }),
       },
-      async () =>
+      { timeWindow: 50 * 24 * 60 * 60 * 1000, execImpl: async () =>
         JSON.stringify([
           {
             id: "media-tweet",
@@ -253,6 +257,7 @@ describe("x bird integration", () => {
             ],
           },
         ]),
+    },
     );
 
     expect(items).toHaveLength(1);
@@ -278,7 +283,7 @@ describe("x bird integration", () => {
         enabled: false,
         configJson: JSON.stringify({ birdMode: "home" }),
       },
-      async () =>
+      { timeWindow: 50 * 24 * 60 * 60 * 1000, execImpl: async () =>
         JSON.stringify([
           {
             id: "quote-tweet",
@@ -292,6 +297,7 @@ describe("x bird integration", () => {
             },
           },
         ]),
+    },
     );
 
     expect(items).toHaveLength(1);
@@ -313,7 +319,7 @@ describe("x bird integration", () => {
         enabled: false,
         configJson: JSON.stringify({ birdMode: "home" }),
       },
-      async () =>
+      { timeWindow: 50 * 24 * 60 * 60 * 1000, execImpl: async () =>
         JSON.stringify([
           {
             id: "thread-root",
@@ -325,6 +331,7 @@ describe("x bird integration", () => {
             ],
           },
         ]),
+    },
     );
 
     expect(items).toHaveLength(1);
@@ -347,7 +354,7 @@ describe("x bird integration", () => {
         enabled: false,
         configJson: JSON.stringify({ birdMode: "home" }),
       },
-      async () =>
+      { timeWindow: 50 * 24 * 60 * 60 * 1000, execImpl: async () =>
         JSON.stringify([
           {
             id: "reply-tweet",
@@ -360,6 +367,7 @@ describe("x bird integration", () => {
             },
           },
         ]),
+    },
     );
 
     expect(items).toHaveLength(1);
@@ -380,7 +388,7 @@ describe("x bird integration", () => {
         enabled: false,
         configJson: JSON.stringify({ birdMode: "home" }),
       },
-      async () =>
+      { timeWindow: 50 * 24 * 60 * 60 * 1000, execImpl: async () =>
         JSON.stringify([
           {
             id: "tweet-with-conv",
@@ -389,6 +397,7 @@ describe("x bird integration", () => {
             conversationId: "1234567890",
           },
         ]),
+    },
     );
 
     expect(items).toHaveLength(1);
@@ -405,7 +414,7 @@ describe("x bird integration", () => {
         enabled: false,
         configJson: JSON.stringify({ birdMode: "home" }),
       },
-      async () =>
+      { timeWindow: 50 * 24 * 60 * 60 * 1000, execImpl: async () =>
         JSON.stringify([
           {
             id: "simple-tweet",
@@ -414,6 +423,7 @@ describe("x bird integration", () => {
             // No article, media, quote, thread, or parent
           },
         ]),
+    },
     );
 
     expect(items).toHaveLength(1);
@@ -436,7 +446,7 @@ describe("x bird integration", () => {
         enabled: false,
         configJson: JSON.stringify({ birdMode: "home" }),
       },
-      async () =>
+      { timeWindow: 50 * 24 * 60 * 60 * 1000, execImpl: async () =>
         JSON.stringify([
           {
             id: "tweet-123",
@@ -449,6 +459,7 @@ describe("x bird integration", () => {
             expandedUrl: "https://example.com/expanded",
           },
         ]),
+    },
     );
 
     expect(items).toHaveLength(1);
