@@ -9,7 +9,7 @@ export interface NearDedupItem {
   publishedAt?: string | null;
   fetchedAt?: string | null;
   topicIds?: string[];
-  sourcePriority?: number;
+  sourceWeightScore?: number;
   engagementScore?: number | null;
 }
 
@@ -54,8 +54,8 @@ function compareForWinner<T extends NearDedupItem>(a: T, b: T): number {
   }
 
   // 2. Source.priority 更高者优先
-  const aPriority = a.sourcePriority ?? 0;
-  const bPriority = b.sourcePriority ?? 0;
+  const aPriority = a.sourceWeightScore ?? 0;
+  const bPriority = b.sourceWeightScore ?? 0;
   if (aPriority !== bPriority) {
     return bPriority - aPriority;
   }

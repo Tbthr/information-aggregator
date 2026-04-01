@@ -36,7 +36,7 @@ function parseTimeWindow(value: string): number {
 
 function parseArgs(): CLIArgs {
   const args = process.argv.slice(2)
-  const result: CLIArgs = { timeWindow: '24h' }
+  const result: CLIArgs = { timeWindow: '' }
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]
@@ -50,6 +50,10 @@ function parseArgs(): CLIArgs {
       // Positional arg: timeWindow
       result.timeWindow = arg
     }
+  }
+
+  if (!result.timeWindow) {
+    throw new Error('--time-window is required (e.g., 24h, 7d, 30d)')
   }
 
   return result
@@ -227,7 +231,7 @@ async function main() {
   })
 
   // 5. 评分排序
-  const ranked = rankCandidates(filtered as any)
+  const ranked = rankCandidates(filtered)
 
   log({
     level: 'info',
@@ -238,8 +242,8 @@ async function main() {
   })
 
   // 6. 全局去重
-  const dedupedExact = dedupeExact(ranked as any)
-  const deduped = dedupeNear(dedupedExact as any)
+  const dedupedExact = dedupeExact(ranked)
+  const deduped = dedupeNear(dedupedExact)
 
   log({
     level: 'info',
