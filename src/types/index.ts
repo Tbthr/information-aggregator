@@ -10,6 +10,9 @@ export const CANONICAL_SOURCE_KINDS = [
   "github-trending",
   "x",
   "youtube",
+  "techurls",
+  "zeli",
+  "newsnow",
 ] as const;
 
 export type SourceKind = (typeof CANONICAL_SOURCE_KINDS)[number];

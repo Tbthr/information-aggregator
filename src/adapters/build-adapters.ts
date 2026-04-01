@@ -2,6 +2,9 @@ import { collectJsonFeedSource } from "./json-feed";
 import { collectRssSource } from "./rss";
 import { collectWebsiteSource } from "./website";
 import { collectXBirdSource } from "./x-bird";
+import { collectTechurlsSource } from "./techurls";
+import { collectZeliSource } from "./zeli";
+import { collectNewsnowSource } from "./newsnow";
 import type { AdapterFn } from "../types/index";
 
 /**
@@ -14,5 +17,8 @@ export function buildAdapters(): Record<string, AdapterFn> {
     rss: (source) => collectRssSource(source),
     website: (source) => collectWebsiteSource(source),
     x: (source) => collectXBirdSource(source),
+    techurls: (source) => collectTechurlsSource(source),
+    zeli: (source) => collectZeliSource(source),
+    newsnow: (source) => collectNewsnowSource(source),
   };
 }
