@@ -82,13 +82,14 @@ Required in `.env` (gitignored):
 ### Pipeline Flow
 
 ```
-1. 收集 (collect)     → 从数据源获取内容
-2. 充实 (enrich)      → 正文提取
-3. 去重 (dedupe)      → 精确去重
-4. 评分 (score)       → 基于质量/热度评分
-5. 象限分类 (quadrant) → AI 分类到尝试/深度/地图感
-6. 话题生成 (topic)   → AI 聚类 + 生成摘要/要点
-7. 输出 (output)      → 生成 Markdown
+1. 收集 (collect)     → 并发收集（adapter × source 两级）
+2. 标准化 (normalize) → 格式转换 + engagementScore 计算
+3. topic 过滤         → include/exclude 初筛
+4. 评分 (rank)        → sourceWeightScore×0.4 + engagementScore×0.15
+5. 去重 (dedupe)      → URL 精确 + 语义 LCS
+6. 象限分类 (quadrant) → AI 分类到尝试/深度/地图感
+7. 话题生成 (topic)   → AI 聚类 + 生成摘要/要点（各象限独立 prompt）
+8. 输出 (output)      → 生成 Markdown
 ```
 
 ### Data Format
@@ -193,12 +194,12 @@ retry:
 
 ```yaml
 daily:
-  maxItems: 50      # 输入 AI 的候选数量上限
-  minScore: 0        # 最终分数门槛
-  quadrantBonus:     # 象限评分加成
-    near: 1.3
-    mid: 1.0
-    far: 0.8
+  maxItems: 50        # 输入 AI 的候选数量上限
+  minScore: 0          # 最终分数门槛
+  quadrantPrompts:     # 各象限独立的生成 prompt
+    near: "尝试象限 prompt..."
+    mid: "深度象限 prompt..."
+    far: "地图感象限 prompt..."
 ```
 
 ## GitHub Actions

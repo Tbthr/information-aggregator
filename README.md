@@ -43,25 +43,42 @@ bun run src/cli/run.ts
 | 文件 | 说明 |
 |------|------|
 | `config/sources.yaml` | 数据源配置（RSS、JSON Feed、X/Twitter） |
-| `config/topics.yaml` | Topic 配置 |
-| `config/reports.yaml` | 日报参数（maxItems、minScore、prompts） |
+| `config/topics.yaml` | Topic 配置（include/exclude 规则、scoreBoost） |
+| `config/reports.yaml` | 日报参数（maxItems、minScore、quadrantPrompts） |
 | `config/ai.yaml` | AI provider/model/retry 配置 |
 
 ## 架构
 
 ```
-数据源 → 收集 → 正文提取 → 去重 → 评分 → 象限分类 → 话题生成 → Markdown
+数据源 → 并发收集 → 标准化 → Topic 过滤 → 评分排序 → 去重 → 象限分类 → 话题生成 → Markdown
 ```
+
+### CLI 参数
+
+```bash
+bun run src/cli/run.ts <timeWindow> [options]
+bun run src/cli/run.ts 24h              # 收集最近 24 小时内容
+bun run src/cli/run.ts 7d -t 7d         # 收集最近 7 天内容
+bun run src/cli/run.ts 24h --adapter-concurrency 4 --source-concurrency 4
+```
+
+| 参数 | 说明 |
+|------|------|
+| `timeWindow` | 时间窗口，如 `24h`、`7d`、`30d`（必填） |
+| `-t, --time-window` | 同上 |
+| `--adapter-concurrency` | Adapter 并发数（默认 4） |
+| `--source-concurrency` | Source 并发数（默认 4） |
 
 ### 数据流
 
-1. **收集** - 从配置的数据源获取内容
-2. **充实** - 提取文章正文
-3. **去重** - 基于 URL 和内容去重
-4. **评分** - 基于质量和热度评分
-5. **象限分类** - AI 将内容分配到尝试/深度/地图感
-6. **话题生成** - AI 聚类相关内容，生成摘要和要点
-7. **输出** - 生成 Markdown 日报
+1. **收集 (collect)** - 并发收集（adapter × source 两级并发）
+2. **标准化 (normalize)** - 格式转换 + engagementScore 计算
+3. **Topic 过滤** - include/exclude 规则初筛
+4. **评分排序 (rank)** - sourceWeightScore×0.4 + engagementScore×0.15
+5. **去重 (dedupe)** - URL 精确去重 + 语义 LCS 去重
+6. **象限分类 (quadrant)** - AI 将内容分配到尝试/深度/地图感
+7. **话题生成 (topic)** - AI 聚类相关内容，生成摘要和要点（各象限独立 prompt）
+8. **输出 (output)** - 生成 Markdown 日报
 
 ## License
 
