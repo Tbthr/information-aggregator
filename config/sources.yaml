@@ -699,6 +699,31 @@ sources:
     enabled: true
     topics: [ai-news]
 
+  # === Website 数据源 (静态 HTML / 隐藏 API) ===
+  # techurls: 静态 HTML，div.publisher-block 结构
+  - type: techurls
+    id: techurls-com
+    name: TechURLs
+    url: https://techurls.com/
+    enabled: true
+    topics: [ai-news, tech-news]
+
+  # zeli: 隐藏 API (https://zeli.app/api/hacker-news?type=hot24h)
+  - type: zeli
+    id: zeli-app
+    name: Zeli
+    url: https://zeli.app/
+    enabled: true
+    topics: [ai-news]
+
+  # newsnow: JS bundle 逆向 + API 批量获取
+  - type: newsnow
+    id: newsnow-busiyi
+    name: NewsNow
+    url: https://newsnow.busiyi.world/
+    enabled: true
+    topics: [ai-news, tech-news]
+
   # === Twitter/X (需要 auth) ===
   # - type: twitter
   #   id: karpathy
