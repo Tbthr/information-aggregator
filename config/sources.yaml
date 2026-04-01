@@ -692,6 +692,7 @@ sources:
     enabled: true
     topics: [ai-news]
 
+# https://github.com/ginobefun/BestBlogs/blob/main/BestBlogs_RSS_Doc.md
   - type: rss
     id: bestblogs-dev-zh
     name: BestBlogs 中文
