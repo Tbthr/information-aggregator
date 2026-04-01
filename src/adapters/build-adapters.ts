@@ -15,14 +15,14 @@ import type { AdapterFn } from "../types/index";
  */
 export function buildAdapters(): Record<string, AdapterFn> {
   return {
-    "json-feed": (source, _options) => collectJsonFeedSource(source),
-    rss: (source, _options) => collectRssSource(source),
-    website: (source, _options) => collectWebsiteSource(source),
-    x: (source, _options) => collectXBirdSource(source),
-    techurls: (source, _options) => collectTechurlsSource(source),
-    zeli: (source, _options) => collectZeliSource(source),
-    newsnow: (source, _options) => collectNewsnowSource(source),
-    clawfeed: (source, _options) => collectClawfeedSource(source),
-    attentionvc: (source, _options) => collectAttentionvcSource(source),
+    "json-feed": (source, options) => collectJsonFeedSource(source, options),
+    rss: (source, options) => collectRssSource(source, options),
+    website: (source, options) => collectWebsiteSource(source, options),
+    x: (source, options) => collectXBirdSource(source, options),
+    techurls: (source, options) => collectTechurlsSource(source, options),
+    zeli: (source, options) => collectZeliSource(source, options),
+    newsnow: (source, options) => collectNewsnowSource(source, options),
+    clawfeed: (source, options) => collectClawfeedSource(source, options),
+    attentionvc: (source, options) => collectAttentionvcSource(source, options),
   };
 }

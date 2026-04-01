@@ -26,12 +26,14 @@ interface ClawfeedResponse {
 
 export async function collectClawfeedSource(
   source: Source,
-  fetchImpl: typeof fetch = fetch,
-  jobStartedAt?: string,
+  options: { timeWindow: number; fetchImpl?: typeof fetch } = { timeWindow: 24 * 60 * 60 * 1000 },
   filterContext?: FilterContext,
 ): Promise<RawItem[]> {
   const url = "https://clawfeed.kevinhe.io/feed/kevin";
   const startTime = Date.now();
+  const { timeWindow, fetchImpl = fetch } = options;
+  const jobStartedAt = new Date().toISOString();
+  const cutoffMs = new Date(jobStartedAt).getTime() - timeWindow;
 
   logger.info("Fetching ClawFeed", { url, sourceId: source.id });
 
@@ -48,11 +50,6 @@ export async function collectClawfeedSource(
     const digests = body.digests ?? [];
 
     logger.info("ClawFeed response", { count: digests.length, elapsed, total: body.total });
-
-    // Use cutoff from jobStartedAt or 48h default
-    const cutoffMs = jobStartedAt
-      ? new Date(jobStartedAt).getTime() - 48 * 60 * 60 * 1000
-      : Date.now() - 48 * 60 * 60 * 1000;
 
     const out: RawItem[] = [];
 
