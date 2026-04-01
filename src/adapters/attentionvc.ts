@@ -56,9 +56,11 @@ export async function collectAttentionvcSource(
   options: { timeWindow: number; fetchImpl?: typeof fetch } = { timeWindow: 24 * 60 * 60 * 1000 },
   filterContext?: FilterContext,
 ): Promise<RawItem[]> {
-  const { fetchImpl = fetch } = options;
+  const { timeWindow, fetchImpl = fetch } = options;
   const url = `${API_BASE}/leaderboard?window=1d&category=ai&sortBy=views&limit=20`;
   const startTime = Date.now();
+  const jobStartedAt = new Date().toISOString();
+  const cutoffMs = new Date(jobStartedAt).getTime() - timeWindow;
 
   logger.info("Fetching AttentionVC", { url, sourceId: source.id });
 
@@ -79,6 +81,20 @@ export async function collectAttentionvcSource(
     const out: RawItem[] = [];
 
     for (const entry of entries) {
+      // Filter by timeWindow using tweetCreatedAt
+      const publishedAt = new Date(entry.tweetCreatedAt);
+      if (publishedAt.getTime() < cutoffMs) {
+        logger.warn("Discarding item outside time window", {
+          sourceId: source.id,
+          sourceType: "attentionvc",
+          title: entry.title,
+          url: `https://x.com/${entry.author.handle}/status/${entry.tweetId}`,
+          rawTime: entry.tweetCreatedAt,
+          discardReason: `tweetCreatedAt ${publishedAt.toISOString()} is before cutoff ${new Date(cutoffMs).toISOString()}`,
+        });
+        continue;
+      }
+
       // Construct Twitter URL from tweetId and author handle
       const tweetUrl = `https://x.com/${entry.author.handle}/status/${entry.tweetId}`;
 
