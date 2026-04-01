@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "build": "tsc",
-    "prepublish": "npm run build"
+    "typecheck": "tsc --noEmit",
+    "start": "bun run src/cli/run.ts"
   },
   "dependencies": {
     "@mozilla/readability": "^0.6.0",
