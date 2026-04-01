@@ -1,66 +1,67 @@
 # Information Aggregator
 
-一个现代化的信息聚合平台，帮助您高效管理和发现有价值的内容。
+一个轻量级信息聚合平台，通过 AI 自动收集、整理、分类每日信息，生成结构化日报。
 
 ## 功能特性
 
-- **日报视图** - 每日精选内容概览
-- **周报视图** - 本周热点和深度分析
-- **收藏功能** - 保存感兴趣的文章
+- **AI 分类** - 内容自动分配到尝试/深度/地图感 三个象限
+- **话题聚类** - AI 将相关内容聚合成话题，生成摘要和核心要点
+- **历史去重** - 基于 URL 和内容的精确去重
+- **GitHub Pages 部署** - 静态网站，自动更新
 
 ## 快速开始
 
 ### 环境要求
 
-- Node.js 20.19+ 或 22.12+
-- pnpm 9+
+- [Bun](https://bun.sh/) 1.0+
 
 ### 安装
 
 ```bash
-pnpm install
+bun install
 cp .env.example .env
-# 编辑 .env 填入数据库连接信息
+# 编辑 .env 填入 ANTHROPIC_API_KEY
 ```
 
-### 开发
+### 运行
 
 ```bash
-pnpm dev
+bun run src/cli/run.ts
 ```
+
+生成的日报输出到 `reports/daily/YYYY-MM-DD.md`
 
 ## 技术栈
 
-- [Next.js 16](https://nextjs.org/)
-- [Tailwind CSS](https://tailwindcss.com/)
-- [shadcn/ui](https://ui.shadcn.com/)
-- [Prisma](https://www.prisma.io/)
-- [Supabase](https://supabase.com/)
+- [Bun](https://bun.sh/) - TypeScript 运行时
+- [Anthropic Claude](https://anthropic.com/) - AI 分类和摘要生成
+- [GitHub Actions](https://github.com/features/actions) - 自动化运行
+- [GitHub Pages](https://pages.github.com/) - 静态部署
 
-## Diagnostics Framework
+## 配置
 
-项目内置诊断框架，用于验证收集流水线和报表系统的正确性。
+| 文件 | 说明 |
+|------|------|
+| `config/sources.yaml` | 数据源配置（RSS、JSON Feed、X/Twitter） |
+| `config/topics.yaml` | Topic 配置 |
+| `config/reports.yaml` | 日报参数（maxItems、minScore、prompts） |
+| `config/ai.yaml` | AI provider/model/retry 配置 |
 
-### 命令
+## 架构
 
-```bash
-# 只读诊断（无风险）
-npx tsx scripts/diagnostics.ts collection                          # 收集系统诊断
-npx tsx scripts/diagnostics.ts reports --config-only               # 报表配置校验
-
-# 写入诊断（需确认）
-npx tsx scripts/diagnostics.ts collection --run-collection --allow-write  # 触发实际收集
-npx tsx scripts/diagnostics.ts reports --daily-only --allow-write --confirm-production
-npx tsx scripts/diagnostics.ts reports --weekly-only --allow-write --confirm-production
-npx tsx scripts/diagnostics.ts full --allow-write --confirm-production       # 全量诊断
-
-# 完整命令矩阵见 AGENTS.md
+```
+数据源 → 收集 → 正文提取 → 去重 → 评分 → 象限分类 → 话题生成 → Markdown
 ```
 
-### 已知限制
+### 数据流
 
-- `--cleanup` 标志已定义但**未实现**。目前不会执行任何数据清理。
-- 生产环境写入操作需要 `--confirm-production` 确认。
+1. **收集** - 从配置的数据源获取内容
+2. **充实** - 提取文章正文
+3. **去重** - 基于 URL 和内容去重
+4. **评分** - 基于质量和热度评分
+5. **象限分类** - AI 将内容分配到尝试/深度/地图感
+6. **话题生成** - AI 聚类相关内容，生成摘要和要点
+7. **输出** - 生成 Markdown 日报
 
 ## License
 
