@@ -132,10 +132,16 @@ export function fetchArticleContent(
     const stdout = execSync(`node ${agentFetchBin} "${url}" --json`, {
       timeout,
       cwd: process.cwd(),
+      encoding: "utf-8",
     });
 
     const result = JSON.parse(stdout.toString());
-    if (result.content && result.content.textContent) {
+    // agent-fetch 通过 JSON 中的 success 字段区分成功/失败，而非退出码
+    if (result.success === false) {
+      // 提取失败（如 body_too_small、页面不存在等），静默跳过
+      return null;
+    }
+    if (result.content?.textContent) {
       return result.content.textContent;
     }
     if (result.textContent) {
@@ -143,7 +149,7 @@ export function fetchArticleContent(
     }
     return null;
   } catch (error) {
-    console.error(`agent-fetch failed for ${url}:`, error);
+    // execSync 本身的异常（如超时、二进制不存在），静默跳过
     return null;
   }
 }
