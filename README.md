@@ -45,7 +45,6 @@ bun run src/cli/run.ts
 | `config/sources.yaml` | 数据源配置（RSS、JSON Feed、X/Twitter） |
 | `config/topics.yaml` | Topic 配置（include/exclude 规则、scoreBoost） |
 | `config/reports.yaml` | 日报参数（maxItems、minScore、quadrantPrompts） |
-| `config/ai.yaml` | AI provider/model/retry 配置 |
 
 ## 架构
 
