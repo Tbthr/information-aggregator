@@ -10,6 +10,7 @@ interface JsonFeedItem {
   external_url?: string;
   content_text?: string;
   content_html?: string;
+  summary?: string;
   date_published?: string;
   date_modified?: string;
   author?: { name?: string };
@@ -191,11 +192,11 @@ export function parseJsonFeedItems(
     // Extract authorName
     const authorName = item.author?.name;
 
-    // summary: prefer content_html, then content_text
-    const summary = item.content_html || item.content_text;
+    // summary: dedicated summary field if present
+    const summary = item.summary;
 
-    // content: stored in metadataJson
-    const content = item.content_html || item.content_text;
+    // content: prefer plain text, then HTML
+    const content = item.content_text || item.content_html;
 
     // Build metadataJson with audit and content fields
     const metadataJson = JSON.stringify({
