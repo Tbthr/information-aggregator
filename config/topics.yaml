@@ -1,5 +1,4 @@
 # Topic 配置
-# 从 Supabase Topic 表迁移
 
 topics:
   - id: github
@@ -10,10 +9,7 @@ topics:
       可以过滤：重复项目、低质量项目、纯营销项目
     includeRules: []
     excludeRules: []
-    maxItems: 10
     scoreBoost: 1.0
-    displayOrder: 0
-    enabled: true
 
   - id: karpathy-picks
     name: Karpathy 精选技术博客
@@ -21,10 +17,7 @@ topics:
       90个来自 Hacker News Popularity Contest 2025 的优质 RSS 源（由 Karpathy 精选）
     includeRules: []
     excludeRules: []
-    maxItems: 10
     scoreBoost: 1.0
-    displayOrder: 0
-    enabled: true
 
   - id: tech-news
     name: 科技资讯聚合
@@ -34,7 +27,4 @@ topics:
       可以过滤：营销内容、浅层资讯、转载文章、广告软文
     includeRules: []
     excludeRules: []
-    maxItems: 10
     scoreBoost: 1.0
-    displayOrder: 0
-    enabled: true

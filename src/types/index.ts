@@ -27,12 +27,9 @@ export interface Topic {
   id: string;
   name: string;
   description?: string;
-  enabled: boolean;
   includeRules: string[];
   excludeRules: string[];
   scoreBoost: number;
-  displayOrder: number;
-  maxItems: number;
 }
 
 // TopicScores map for stable object mapping
