@@ -162,7 +162,7 @@ export function enrichArticleItem(
   item: normalizedArticle,
   options: EnrichOptions
 ): EnrichArticleResult {
-  const { needed, reason } = needsEnrichment(
+  const { needed } = needsEnrichment(
     item.normalizedContent,
     item.normalizedUrl,
     options
