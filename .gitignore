@@ -4,6 +4,7 @@ node_modules/
 coverage/
 .worktrees/
 .env
+.env.local
 .DS_Store
 .claude/skills/ui-ux-pro-max/
 .agents/skills/ui-ux-pro-max/
