@@ -129,8 +129,10 @@ Fetch 失败时回退到现有的 `metadata.content`，**不阻断 pipeline**。
 | `src/pipeline/enrich.test.ts` | 新建 |
 | `src/cli/run.ts` | pipeline 中增加 enrich 步骤 |
 | `src/reports/daily.ts` | classifyArticlesQuadrantBatch 改用 normalizedContent |
-| `src/types/index.ts` | normalizedArticle 新增可选字段（如 `enrichedContent`） |
-| `src/pipeline/extract-content.ts` | 可移除（已孤立，agent-fetch 替代方案） |
+| `src/types/index.ts` | 无需变更，沿用现有 `normalizedContent` 字段 |
+| `src/pipeline/extract-content.ts` | 可移除（已孤立，agent-fetch 替代方案）。**实现时需验证无其他 import 引用后再删除** |
+
+> `normalizedContent` 采用原地替换策略：fetch 成功则替换原有内容，失败则回退到原有 content。不新增 `enrichedContent` 字段，保持 type 简洁。
 
 ## 配置项
 
