@@ -17,13 +17,13 @@ describe("isSocialPost", () => {
     expect(isSocialPost(item)).toBe(true);
   });
 
-  test("should return true for sourceType starting with 'x-'", () => {
+  test("should return true for sourceKind starting with 'x-'", () => {
     const sources = ["x-home", "x-list", "x-bookmarks", "x-likes"];
 
-    sources.forEach((sourceType) => {
+    sources.forEach((sourceKind) => {
       const item = {
         id: "1",
-        sourceType,
+        sourceKind,
         sourceWeightScore: 1,
         freshnessScore: 1,
         engagementScore: 0,
@@ -107,10 +107,10 @@ describe("createSocialPostContent", () => {
     expect(result.length).toBe(0);
   });
 
-  test("should use canonicalUrl as fallback", () => {
+  test("should use url as fallback", () => {
     const candidate = {
       id: "789",
-      canonicalUrl: "https://x.com/user/status/789",
+      url: "https://x.com/user/status/789",
       normalizedText: "Content",
       sourceWeightScore: 1,
       freshnessScore: 1,

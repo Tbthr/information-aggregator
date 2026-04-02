@@ -67,6 +67,26 @@ export function formatUtcWeekday(date: Date): string {
   return days[date.getUTCDay()]
 }
 
+/** Parse ISO week number string like "2026-W13" to the Monday date */
+export function parseWeekNumber(weekStr: string): Date {
+  const match = weekStr.match(/^(\d{4})-W(\d{2})$/)
+  if (!match) throw new Error(`Invalid week number format: ${weekStr}`)
+  const year = parseInt(match[1], 10)
+  const week = parseInt(match[2], 10)
+
+  // Find the Monday of week 1 of the year
+  // Jan 4 is always in week 1 (ISO 8601)
+  const jan4 = new Date(Date.UTC(year, 0, 4))
+  const jan4Day = jan4.getUTCDay()
+  // Days from Jan4 Monday to Jan4
+  const daysToMonday = jan4Day === 0 ? -6 : 1 - jan4Day
+  const week1Monday = new Date(jan4.getTime() + daysToMonday * 24 * 60 * 60 * 1000)
+
+  // Add (week - 1) weeks
+  const monday = new Date(week1Monday.getTime() + (week - 1) * 7 * 24 * 60 * 60 * 1000)
+  return monday
+}
+
 /** Compute ISO week number from a UTC Monday */
 export function utcWeekNumber(monday: Date): string {
   const year = monday.getUTCFullYear()

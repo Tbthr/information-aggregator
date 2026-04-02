@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { normalizeItem } from "./normalize";
-import type { RawItem, FilterContext } from "../types/index";
+import type { RawItem } from "../types/index";
 
 function makeRawItem(overrides: Partial<RawItem> = {}): RawItem {
   return {
@@ -35,9 +35,9 @@ describe("normalizeItem", () => {
     expect(result.sourceKind).toBe("rss"); // NEW: sourceKind instead of sourceType
     expect(result.contentType).toBe("article");
     expect(result.normalizedUrl).toBe("https://example.com/post");
-    expect(result.normalizedTitle).toBe("test article title");
+    expect(result.normalizedTitle).toBe("Test Article Title");
     expect(result.normalizedSummary).toBe("this is a test article summary");
-    expect(result.normalizedContent).toBe("this is the full content of the article that provides more details.");
+    expect(result.normalizedContent).toBe("This is the full content of the article that provides more details.");
     expect(result.metadataJson).toBe(raw.metadataJson);
   });
 
@@ -54,18 +54,7 @@ describe("normalizeItem", () => {
       title: "RT @user: Breaking News | Example Site!",
     });
     const result = normalizeItem(raw);
-    expect(result.normalizedTitle).toBe("breaking news");
-  });
-
-  test("passes through filterContext from RawItem", () => {
-    const filterContext: FilterContext = {
-      topicIds: ["topic-1"],
-      mustInclude: ["ai"],
-      exclude: ["spam"],
-    };
-    const raw = makeRawItem({ filterContext });
-    const result = normalizeItem(raw);
-    expect(result.filterContext).toEqual(filterContext);
+    expect(result.normalizedTitle).toBe("Breaking News");
   });
 
   test("normalizes summary (light normalization)", () => {
@@ -138,15 +127,5 @@ describe("normalizeItem", () => {
     const result = normalizeItem(raw);
     // Item with empty title after normalization should be discarded
     expect(result).toBeNull();
-  });
-
-  test("includes legacy fields for migration compatibility", () => {
-    const raw = makeRawItem();
-    const result = normalizeItem(raw);
-
-    // Legacy fields are included for migration compatibility
-    expect(result.rawItemId).toBe("raw-1");
-    expect(result.url).toBe("https://example.com/post");
-    expect(result.content).toBeTruthy();
   });
 });

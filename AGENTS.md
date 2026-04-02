@@ -53,8 +53,9 @@ information-aggregator/
 
 | Command | Purpose |
 |---------|---------|
-| `bun run src/cli/run.ts` | 运行完整流程：收集数据 + 生成日报 |
-| `bun run src/cli/run.ts --help` | 查看帮助 |
+| `bun run src/cli/run.ts --help` | 显示帮助信息 |
+| `bun run src/cli/run.ts` | 运行完整流程（默认 24h 时间窗口）|
+| `bun run src/cli/run.ts -t 1h` | 本地测试用，缩短运行时间 |
 
 ## Development Workflow
 
@@ -63,13 +64,15 @@ information-aggregator/
 | Command | Purpose |
 |---------|---------|
 | `bun install` | 安装依赖 |
-| `bun run src/cli/run.ts` | 运行 CLI |
+| `bun test` | 运行所有单元测试 |
+| `bun run src/cli/run.ts -t 1h` | 运行 CLI（测试时用 1h 避免数据过多）|
 | `bun run typecheck` | TypeScript 类型检查 |
 
 ### Pre-commit Checklist
 
 1. `bun run typecheck` - 确保无 TypeScript 错误
-2. `bun run src/cli/run.ts` - 确保 CLI 能正常运行
+2. `bun test` - 确保所有测试通过
+3. `bun run src/cli/run.ts -t 1h` - 确保 CLI 能正常运行（测试时用 1h 避免数据过多）
 
 ## Environment
 
@@ -171,6 +174,16 @@ env $(cat .env.local) bun run src/cli/run.ts
 - 工具函数见 `lib/date-utils.ts`
 
 ## Testing
+
+### Unit Tests
+
+```bash
+bun test              # 运行所有测试
+bun test src/utils    # 运行指定目录测试
+bun test --reporter   # 详细输出
+```
+
+**注意**: 测试使用 `bun:test` 框架，文件命名必须为 `*.test.ts`
 
 ### CLI Verification
 

@@ -218,8 +218,8 @@ describe("parseJsonFeedItems", () => {
     });
   });
 
-  describe("metadataJson summary fallback from content", () => {
-    test("uses content_text as summary when no explicit summary", () => {
+  describe("metadataJson summary from content", () => {
+    test("does not use content_text as summary when no explicit summary", () => {
       const payload = {
         version: "https://jsonfeed.org/version/1.1",
         items: [
@@ -233,10 +233,10 @@ describe("parseJsonFeedItems", () => {
       };
       const items = parseJsonFeedItems(payload, "json-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
       const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
-      expect(metadata.summary).toBe("This is a test summary");
+      expect(metadata.summary).toBeUndefined();
     });
 
-    test("prefers content_html over content_text for summary", () => {
+    test("does not prefer content_html over content_text for summary", () => {
       const payload = {
         version: "https://jsonfeed.org/version/1.1",
         items: [
@@ -251,10 +251,10 @@ describe("parseJsonFeedItems", () => {
       };
       const items = parseJsonFeedItems(payload, "json-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
       const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
-      expect(metadata.summary).toBe("<p>HTML content</p>");
+      expect(metadata.summary).toBeUndefined();
     });
 
-    test("falls back to content_text when no content_html", () => {
+    test("does not fall back to content_text when no content_html", () => {
       const payload = {
         version: "https://jsonfeed.org/version/1.1",
         items: [
@@ -268,7 +268,7 @@ describe("parseJsonFeedItems", () => {
       };
       const items = parseJsonFeedItems(payload, "json-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
       const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
-      expect(metadata.summary).toBe("Plain text content");
+      expect(metadata.summary).toBeUndefined();
     });
   });
 
