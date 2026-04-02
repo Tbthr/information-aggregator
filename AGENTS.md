@@ -74,8 +74,17 @@ information-aggregator/
 
 ## Environment
 
-Required in `.env` (gitignored):
+Required in `.env.local` (gitignored):
 - `ANTHROPIC_API_KEY` — Anthropic API key
+
+### 本地运行准则
+
+```bash
+# 使用 .env.local 中的变量运行（仅影响本次进程，不污染当前 shell）
+env $(cat .env.local) bun run src/cli/run.ts
+```
+
+> Bun 的环境变量优先级：shell 已有的变量 > `.env` / `.env.local`。上述命令通过 `env` 前缀确保使用 `.env.local` 的值，且运行结束后不残留到 shell 中。
 
 ## Architecture
 
