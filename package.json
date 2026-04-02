@@ -7,7 +7,7 @@
     "start": "bun run src/cli/run.ts"
   },
   "dependencies": {
-    "@mozilla/readability": "^0.6.0",
+    "@teng-lin/agent-fetch": "^0.1.6",
     "js-yaml": "^4.1.0",
     "linkedom": "^0.18.12",
     "markdown-it": "^14.0.0"
