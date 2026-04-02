@@ -1,11 +1,91 @@
 # 数据源配置
-# 从 Supabase Source 表迁移，过滤了 example.com 测试数据
 
 sources:
+  # === AI 资讯 / 精选博客 (RSS) ===
+  - type: rss
+    id: aihot-today-blog
+    name: AI 今日热点
+    url: https://aihot.today/blog/index.xml
+    enabled: true
+    topics: [ai-news]
+  
+  - type: clawfeed
+    id: clawfeed-kevinhe-io-feed-kevin
+    name: ClawFeed
+    url: https://clawfeed.kevinhe.io/feed/kevin
+    enabled: true
+    topics: [ai-news]
+
+  - type: rss
+    id: ai-hubtoday-blog
+    name: 何夕2077的AI资讯 | 精选AI新闻与工具 | 洞悉AI前沿动态
+    url: https://ai.hubtoday.app/blog/index.xml
+    enabled: true
+    topics: [ai-news]
+
+  # 可用参数见：https://github.com/ginobefun/BestBlogs/blob/main/BestBlogs_RSS_Doc.md
+  - type: rss
+    id: bestblogs-dev-zh
+    name: BestBlogs.dev
+    url: https://www.bestblogs.dev/zh/feeds/rss
+    enabled: true
+    topics: [tech-news]
+
+  - type: rss
+    id: juya-ai-daily
+    name: 橘鸦AI早报
+    url: https://imjuya.github.io/juya-ai-daily/rss.xml
+    enabled: true
+    topics: [ai-news]
+
+  # === Website 数据源 (静态 HTML / 隐藏 API) ===
+  # techurls: 静态 HTML，div.publisher-block 结构
+  - type: techurls
+    id: techurls-com
+    name: TechURLs – A neat technology news aggregator
+    url: https://techurls.com/
+    enabled: true
+    topics: [ai-news, tech-news]
+
+  # zeli: 隐藏 API (https://zeli.app/api/hacker-news?type=hot24h)
+  - type: zeli
+    id: zeli-app
+    name: Zeli - Read Hacker News and AI Papers with Digest
+    url: https://zeli.app/
+    enabled: true
+    topics: [ai-news]
+
+  # newsnow: JS bundle 逆向 + API 批量获取
+  - type: newsnow
+    id: newsnow-busiyi
+    name: Read Tech News With Digest
+    url: https://newsnow.busiyi.world/
+    enabled: true
+    topics: [ai-news, tech-news]
+
+  # attentionvc: 追踪 X/Twitter 热门文章排行榜（24h AI 分类）
+  - type: attentionvc
+    id: attentionvc-ai-24h
+    name: AttentionVC - We're all attention VCs
+    url: https://attentionvc.ai
+    enabled: true
+    topics: [ai-news]
+
+  # === Twitter/X (需要 auth) ===
+  # - type: twitter
+  #   id: karpathy
+  #   name: Andrej Karpathy
+  #   handle: karpathy
+  #   enabled: false
+  #   topics: [ai]
+  #   auth:
+  #     authToken: ${TWITTER_AUTH_TOKEN}
+  #     ct0: ${TWITTER_CT0}
+
   # === GitHub 趋势 ===
   - type: github-trending
     id: github-com-trending
-    name: GitHub Trending
+    name: Trending repositories on GitHub today · GitHub
     url: https://github.com/trending
     enabled: true
     topics: [github]
@@ -13,7 +93,7 @@ sources:
   # === 科技资讯 (中文) ===
   - type: rss
     id: www-infoq-cn-feed
-    name: InfoQ 中文
+    name: InfoQ - 促进软件开发领域知识与创新的传播
     url: https://www.infoq.cn/feed
     enabled: true
     topics: [tech-news]
@@ -50,42 +130,42 @@ sources:
 
   - type: rss
     id: aresluna-org-main-rss
-    name: aresluna
+    name: Aresluna
     url: https://aresluna.org/main.rss
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: beej-us-blog-rss-xml
-    name: Beej's Blog
+    name: Beej's Bit Bucket
     url: https://beej.us/blog/rss.xml
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: bernsteinbear-com-feed-xml
-    name: Bernstein Bear
+    name: Max Bernstein's Blog
     url: https://bernsteinbear.com/feed.xml
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: berthub-eu-articles-index-xml
-    name: Bert Hubert
+    name: Bert Hubert's writings
     url: https://berthub.eu/articles/index.xml
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: blog-jim-nielsen-com-feed-xml
-    name: Jim Nielsen
+    name: Jim Nielsen's Blog
     url: https://blog.jim-nielsen.com/feed.xml
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: blog-miguelgrinberg-com-feed
-    name: Miguel Grinberg
+    name: Miguel Grinberg's Blog
     url: https://blog.miguelgrinberg.com/feed
     enabled: true
     topics: [karpathy-picks]
@@ -99,45 +179,45 @@ sources:
 
   - type: rss
     id: bogdanthegeek-github-io-blog-index-xml
-    name: Bogdan The Geek
+    name: BogdanTheGeek's Blog
     url: https://bogdanthegeek.github.io/blog/index.xml
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: borretti-me-feed-xml
-    name: Borretti
+    name: Fernando Borretti
     url: https://borretti.me/feed.xml
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: brutecat-com-rss-xml
-    name: Brutecat
+    name: skull's blog
     url: https://brutecat.com/rss.xml
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: buttondown-com-hillelwayne-rss
-    name: Hillel Wayne
+    name: Computer Things
     url: https://buttondown.com/hillelwayne/rss
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: chadnauseam-com-rss-xml
-    name: Chad Nauseam
+    name: Chad Nauseam Home
     url: https://chadnauseam.com/rss.xml
     enabled: true
     topics: [karpathy-picks]
 
-  # - type: rss
-  #   id: computer-rip-rss-xml
-  #   name: Computer Rip
-  #   url: https://computer.rip/rss.xml
-  #   enabled: true
-  #   topics: [karpathy-picks]
+  - type: rss
+    id: computer-rip-rss-xml
+    name: computers are bad
+    url: https://computer.rip/rss.xml
+    enabled: true
+    topics: [karpathy-picks]
 
   - type: rss
     id: danielchasehooper-com-feed-xml
@@ -148,14 +228,14 @@ sources:
 
   - type: rss
     id: danieldelaney-net-feed
-    name: Daniel Delaney
+    name: Daniel De Laney
     url: https://danieldelaney.net/feed
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: danielwirtz-com-rss-xml
-    name: Daniel Wirtz
+    name: Blog - Daniel Wirtz
     url: https://danielwirtz.com/rss.xml
     enabled: true
     topics: [karpathy-picks]
@@ -169,28 +249,28 @@ sources:
 
   - type: rss
     id: devblogs-microsoft-com-oldnewthing-feed
-    name: Old New Thing
+    name: The Old New Thing
     url: https://devblogs.microsoft.com/oldnewthing/feed
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: dfarq-homeip-net-feed
-    name: dfarq.homeip
+    name: The Silicon Underground
     url: https://dfarq.homeip.net/feed/
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: dynomight-net-feed-xml
-    name: Dynomight
+    name: DYNOMIGHT
     url: https://dynomight.net/feed.xml
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: eli-thegreenplace-net-feeds-all-atom-xml
-    name: Eli Bendersky
+    name: Eli Bendersky's website
     url: https://eli.thegreenplace.net/feeds/all.atom.xml
     enabled: true
     topics: [karpathy-picks]
@@ -204,14 +284,14 @@ sources:
 
   - type: rss
     id: ericmigi-com-rss-xml
-    name: Eric Migicovsky
+    name: Eric Migicovsky's Blog RSS Feed
     url: https://ericmigi.com/rss.xml
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: evanhahn-com-feed-xml
-    name: Evan Hahn
+    name: Evan Hahn (dot com)
     url: https://evanhahn.com/feed.xml
     enabled: true
     topics: [karpathy-picks]
@@ -225,70 +305,70 @@ sources:
 
   - type: rss
     id: feed-tedium-co
-    name: Tedium
+    name: "Tedium: The Dull Side of the Internet."
     url: https://feed.tedium.co/
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: garymarcus-substack-com-feed
-    name: Gary Marcus
+    name: Marcus on AI
     url: https://garymarcus.substack.com/feed
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: geohot-github-io-blog-feed-xml
-    name: George Hotz
+    name: Geohot's blog
     url: https://geohot.github.io/blog/feed.xml
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: gilesthomas-com-feed-rss-xml
-    name: Giles Thomas
+    name: Giles' blog
     url: https://gilesthomas.com/feed/rss.xml
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: grantslatton-com-rss-xml
-    name: Grant Slatton
+    name: Grant Slatton's Blog
     url: https://grantslatton.com/rss.xml
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: gwern-substack-com-feed
-    name: Gwern
+    name: Gwern.net Newsletter
     url: https://gwern.substack.com/feed
     enabled: false
     topics: [karpathy-picks]
 
   - type: rss
     id: hermann-bearblog-dev-feed
-    name: Hermann
+    name: Herman's blog
     url: https://herman.bearblog.dev/feed/
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: hey-paris-index-xml
-    name: Hey Paris
+    name: Dr Paris Buttfield-Addison
     url: https://hey.paris/index.xml
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: hugotunius-se-feed-xml
-    name: Hugo Tunius
+    name: Hugo Tunius - Blog
     url: https://hugotunius.se/feed.xml
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: idiallo-com-feed-rss
-    name: Idiallo
+    name: iDiallo.com
     url: https://idiallo.com/feed.rss
     enabled: true
     topics: [karpathy-picks]
@@ -302,28 +382,28 @@ sources:
 
   - type: rss
     id: jayd-ml-feed-xml
-    name: Jayd
+    name: Jayden's Blog
     url: https://jayd.ml/feed.xml
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: joanwestenberg-com-rss
-    name: Joan Westenberg
+    name: Westenberg.
     url: https://joanwestenberg.com/rss
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: jyn-dev-atom-xml
-    name: Jyn
+    name: the website of jyn
     url: https://jyn.dev/atom.xml
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: keygen-sh-blog-feed-xml
-    name: Keygen
+    name: Keygen Blog
     url: https://keygen.sh/blog/feed.xml
     enabled: true
     topics: [karpathy-picks]
@@ -337,14 +417,14 @@ sources:
 
   - type: rss
     id: lcamtuf-substack-com-feed
-    name: Lcamtuf
+    name: lcamtuf's thing
     url: https://lcamtuf.substack.com/feed
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: lucumr-pocoo-org-feed-atom
-    name: Armin Ronacher
+    name: Armin Ronacher's Thoughts and Writings
     url: https://lucumr.pocoo.org/feed.atom
     enabled: true
     topics: [karpathy-picks]
@@ -358,7 +438,7 @@ sources:
 
   - type: rss
     id: matduggan-com-rss
-    name: Matt Duggan
+    name: matduggan.com
     url: https://matduggan.com/rss/
     enabled: true
     topics: [karpathy-picks]
@@ -372,28 +452,28 @@ sources:
 
   - type: rss
     id: maurycyz-com-index-xml
-    name: Maurycy
+    name: Colours, Fresh
     url: https://maurycyz.com/index.xml
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: micahflee-com-feed
-    name: Micah Fleef
+    name: micahflee
     url: https://micahflee.com/feed/
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: michael-stapelberg-ch-feed-xml
-    name: Michael Stapelberg
+    name: Michael Stapelbergs Website
     url: https://michael.stapelberg.ch/feed.xml
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: minimaxir-com-index-xml
-    name: Maximilian
+    name: Max Woolf's Blog
     url: https://minimaxir.com/index.xml
     enabled: true
     topics: [karpathy-picks]
@@ -407,35 +487,35 @@ sources:
 
   - type: rss
     id: mjg59-dreamwidth-org-data-rss
-    name: MJG59
+    name: Matthew Garrett
     url: https://mjg59.dreamwidth.org/data/rss
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: nesbitt-io-feed-xml
-    name: Nesbitt
+    name: Andrew Nesbitt
     url: https://nesbitt.io/feed.xml
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: oldvcr-blogspot-com-feeds-posts-default
-    name: Old VCR
+    name: Old Vintage Computing Research
     url: https://oldvcr.blogspot.com/feeds/posts/default
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: overreacted-io-rss-xml
-    name: Overreacted
+    name: overreacted — A blog by Dan Abramov
     url: https://overreacted.io/rss.xml
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: philiplaine-com-index-xml
-    name: Philipp Laine
+    name: Philip Laine
     url: https://philiplaine.com/index.xml
     enabled: true
     topics: [karpathy-picks]
@@ -449,14 +529,14 @@ sources:
 
   - type: rss
     id: rachelbythebay-com-w-atom-xml
-    name: Rachel by the Bay
+    name: Rachel By The Bay
     url: https://rachelbythebay.com/w/atom.xml
     enabled: false
     topics: [karpathy-picks]
 
   - type: rss
     id: rakhim-exotext-com-rss-xml
-    name: Rakhim
+    name: Rakhim's blog
     url: https://rakhim.exotext.com/rss.xml
     enabled: true
     topics: [karpathy-picks]
@@ -477,28 +557,28 @@ sources:
 
   - type: rss
     id: shkspr-mobi-blog-feed
-    name: SW
+    name: Terence Eden's Blog
     url: https://shkspr.mobi/blog/feed/
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: simone-org-feed
-    name: Simone
+    name: Simone Salis
     url: https://simone.org/feed/
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: simonwillison-net-atom-everything
-    name: Simon Willison
+    name: Simon Willison's Weblog
     url: https://simonwillison.net/atom/everything/
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: skyfall-dev-rss-xml
-    name: Skyfall
+    name: Mahad Kalam
     url: https://skyfall.dev/rss.xml
     enabled: true
     topics: [karpathy-picks]
@@ -526,21 +606,21 @@ sources:
 
   - type: rss
     id: timsh-org-rss
-    name: Timshel
+    name: tim.sh
     url: https://timsh.org/rss/
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: tomrenner-com-index-xml
-    name: Tom Renner
+    name: Tom Renner on My place to put things
     url: https://tomrenner.com/index.xml
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: utcc-utoronto-ca-cks-space-blog
-    name: UTC
+    name: Wandering Thoughts
     url: https://utcc.utoronto.ca/~cks/space/blog/?atom
     enabled: false
     topics: [karpathy-picks]
@@ -568,7 +648,7 @@ sources:
 
   - type: rss
     id: www-chiark-greenend-org-uk-sgtatham-quasiblog-feed-xml
-    name: Simon Tatham
+    name: Simon Tatham's quasi-blog
     url: https://www.chiark.greenend.org.uk/~sgtatham/quasiblog/feed.xml
     enabled: true
     topics: [karpathy-picks]
@@ -594,16 +674,16 @@ sources:
     enabled: true
     topics: [karpathy-picks]
 
-  # - type: rss
-  #   id: www-experimental-history-com-feed
-  #   name: Experimental History
-  #   url: https://www.experimental-history.com/feed
-  #   enabled: true
-  #   topics: [karpathy-picks]
+  - type: rss
+    id: www-experimental-history-com-feed
+    name: Experimental History
+    url: https://www.experimental-history.com/feed
+    enabled: true
+    topics: [karpathy-picks]
 
   - type: rss
     id: www-filfre-net-feed
-    name: Filfre
+    name: The Digital Antiquarian
     url: https://www.filfre.net/feed/
     enabled: true
     topics: [karpathy-picks]
@@ -629,23 +709,16 @@ sources:
     enabled: true
     topics: [karpathy-picks]
 
-  # - type: clawfeed
-  #   id: clawfeed-kevinhe-io-feed-kevin
-  #   name: Kevin He
-  #   url: https://clawfeed.kevinhe.io/feed/kevin
-  #   enabled: true
-  #   topics: [ai-news]
-
   - type: rss
     id: www-righto-com-feeds-posts-default
-    name: Kenji
+    name: Ken Shirriff's blog
     url: https://www.righto.com/feeds/posts/default
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: www-seangoedecke-com-rss-xml
-    name: Sean Goedecke
+    name: seangoedecke.com RSS feed
     url: https://www.seangoedecke.com/rss.xml
     enabled: true
     topics: [karpathy-picks]
@@ -673,95 +746,21 @@ sources:
 
   - type: rss
     id: www-wheresyoured-at-rss
-    name: Where's Your Ed
+    name: Ed Zitron's Where's Your Ed At
     url: https://www.wheresyoured.at/rss/
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: xania-org-feed
-    name: Xania
+    name: Matt Godbolt's blog
     url: https://xania.org/feed
     enabled: true
     topics: [karpathy-picks]
 
   - type: rss
     id: xeiaso-net-blog-rss
-    name: Xe Iaso
+    name: Xe Iaso's blog
     url: https://xeiaso.net/blog.rss
     enabled: true
     topics: [karpathy-picks]
-
-  # === AI 资讯 / 精选博客 (RSS) ===
-  - type: rss
-    id: aihot-today-blog
-    name: AI 今日热点
-    url: https://aihot.today/blog/index.xml
-    enabled: true
-    topics: [ai-news]
-
-  - type: rss
-    id: ai-hubtoday-blog
-    name: AI HubToday
-    url: https://ai.hubtoday.app/blog/index.xml
-    enabled: true
-    topics: [ai-news]
-
-# https://github.com/ginobefun/BestBlogs/blob/main/BestBlogs_RSS_Doc.md
-  - type: rss
-    id: bestblogs-dev-zh
-    name: BestBlogs 中文
-    url: https://www.bestblogs.dev/zh/feeds/rss
-    enabled: true
-    topics: [tech-news]
-
-  - type: rss
-    id: juya-ai-daily
-    name: 橘鸦 AI 早报
-    url: https://imjuya.github.io/juya-ai-daily/rss.xml
-    enabled: true
-    topics: [ai-news]
-
-  # === Website 数据源 (静态 HTML / 隐藏 API) ===
-  # techurls: 静态 HTML，div.publisher-block 结构
-  - type: techurls
-    id: techurls-com
-    name: TechURLs
-    url: https://techurls.com/
-    enabled: true
-    topics: [ai-news, tech-news]
-
-  # zeli: 隐藏 API (https://zeli.app/api/hacker-news?type=hot24h)
-  - type: zeli
-    id: zeli-app
-    name: Zeli
-    url: https://zeli.app/
-    enabled: true
-    topics: [ai-news]
-
-  # newsnow: JS bundle 逆向 + API 批量获取
-  - type: newsnow
-    id: newsnow-busiyi
-    name: NewsNow
-    url: https://newsnow.busiyi.world/
-    enabled: true
-    topics: [ai-news, tech-news]
-
-  # attentionvc: 追踪 X/Twitter 热门文章排行榜（24h AI 分类）
-  - type: attentionvc
-    id: attentionvc-ai-24h
-    name: AttentionVC AI
-    url: https://attentionvc.ai
-    enabled: true
-    topics: [ai-news]
-
-  # === Twitter/X (需要 auth) ===
-  # - type: twitter
-  #   id: karpathy
-  #   name: Andrej Karpathy
-  #   handle: karpathy
-  #   enabled: false
-  #   topics: [ai]
-  #   auth:
-  #     authToken: ${TWITTER_AUTH_TOKEN}
-  #     ct0: ${TWITTER_CT0}
