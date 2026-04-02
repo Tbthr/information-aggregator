@@ -132,12 +132,12 @@ sources:
     enabled: true
     topics: [karpathy-picks]
 
-  - type: rss
-    id: computer-rip-rss-xml
-    name: Computer Rip
-    url: https://computer.rip/rss.xml
-    enabled: true
-    topics: [karpathy-picks]
+  # - type: rss
+  #   id: computer-rip-rss-xml
+  #   name: Computer Rip
+  #   url: https://computer.rip/rss.xml
+  #   enabled: true
+  #   topics: [karpathy-picks]
 
   - type: rss
     id: danielchasehooper-com-feed-xml
@@ -594,12 +594,12 @@ sources:
     enabled: true
     topics: [karpathy-picks]
 
-  - type: rss
-    id: www-experimental-history-com-feed
-    name: Experimental History
-    url: https://www.experimental-history.com/feed
-    enabled: true
-    topics: [karpathy-picks]
+  # - type: rss
+  #   id: www-experimental-history-com-feed
+  #   name: Experimental History
+  #   url: https://www.experimental-history.com/feed
+  #   enabled: true
+  #   topics: [karpathy-picks]
 
   - type: rss
     id: www-filfre-net-feed
@@ -629,12 +629,12 @@ sources:
     enabled: true
     topics: [karpathy-picks]
 
-  - type: clawfeed
-    id: clawfeed-kevinhe-io-feed-kevin
-    name: Kevin He
-    url: https://clawfeed.kevinhe.io/feed/kevin
-    enabled: true
-    topics: [ai-news]
+  # - type: clawfeed
+  #   id: clawfeed-kevinhe-io-feed-kevin
+  #   name: Kevin He
+  #   url: https://clawfeed.kevinhe.io/feed/kevin
+  #   enabled: true
+  #   topics: [ai-news]
 
   - type: rss
     id: www-righto-com-feeds-posts-default
@@ -650,12 +650,12 @@ sources:
     enabled: true
     topics: [karpathy-picks]
 
-  - type: rss
-    id: www-tedunangst-com-flak-rss
-    name: Ted Unangst
-    url: https://www.tedunangst.com/flak/rss
-    enabled: false
-    topics: [karpathy-picks]
+  # - type: rss
+  #   id: www-tedunangst-com-flak-rss
+  #   name: Ted Unangst
+  #   url: https://www.tedunangst.com/flak/rss
+  #   enabled: false
+  #   topics: [karpathy-picks]
 
   - type: rss
     id: www-theatlantic-com-feed-author-derek-thompson
