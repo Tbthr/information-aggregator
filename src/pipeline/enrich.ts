@@ -70,8 +70,8 @@ export function contentQuality(text: string, minLength = 500): ContentQualityRes
     };
   }
 
-  // Rule 3: Count sentences (ends with . ! ？)
-  const sentences = plainText.split(/[.!?？]/).filter((s) => s.trim().length > 0);
+  // Rule 3: Count sentences (ends with . ! 。 ？)
+  const sentences = plainText.split(/[.!?。？]/).filter((s) => s.trim().length > 0);
   if (sentences.length < 3) {
     return {
       status: "fail",
