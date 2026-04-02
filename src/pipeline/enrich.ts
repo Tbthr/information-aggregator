@@ -3,11 +3,11 @@
  * 负责判断哪些文章需要从原 URL 提取完整正文，以及执行提取
  */
 
-import { execFile } from "child_process";
-import { promisify } from "util";
+import { execSync } from "child_process";
+import path from "path";
 import type { normalizedArticle } from "../types/index.js";
 
-const execFileAsync = promisify(execFile);
+const agentFetchBin = path.join(process.cwd(), "node_modules/.bin/agent-fetch");
 
 // ============================================================
 // Types
@@ -59,7 +59,7 @@ export function contentQuality(text: string, minLength = 500): ContentQualityRes
   }
 
   // Rule 2: Check for truncation markers
-  const truncationMarkers = ["[...]", "[...].", "Read more", "read more", "Read more...", "read more..."];
+  const truncationMarkers = ["[...]", "Read more", "click here", "read more at", "来源：", "Original:"];
   const hasTruncationMarker = truncationMarkers.some((marker) =>
     plainText.toLowerCase().includes(marker.toLowerCase())
   );
@@ -111,7 +111,7 @@ export function needsEnrichment(
   }
 
   // Quality insufficient + no URL → not needed
-  return { needed: false, reason: "内容质量不达标但无 URL可供提取" };
+  return { needed: false, reason: "内容质量不达标但无 URL 可供提取" };
 }
 
 // ============================================================
@@ -124,18 +124,17 @@ export function needsEnrichment(
  * @param timeout 超时时间（毫秒）
  * @returns 提取的正文内容，失败返回 null
  */
-export async function fetchArticleContent(
+export function fetchArticleContent(
   url: string,
-  timeout: number
-): Promise<string | null> {
+  timeout: number = 20000
+): string | null {
   try {
-    const { stdout } = await execFileAsync(
-      "node",
-      ["./node_modules/.bin/agent-fetch", url],
-      { timeout, cwd: process.cwd() }
-    );
+    const stdout = execSync(`node ${agentFetchBin} "${url}" --json`, {
+      timeout,
+      cwd: process.cwd(),
+    });
 
-    const result = JSON.parse(stdout);
+    const result = JSON.parse(stdout.toString());
     if (result.content && result.content.textContent) {
       return result.content.textContent;
     }
@@ -159,10 +158,10 @@ export async function fetchArticleContent(
  * @param options 充实选项
  * @returns 充实结果
  */
-export async function enrichArticleItem(
+export function enrichArticleItem(
   item: normalizedArticle,
   options: EnrichOptions
-): Promise<EnrichArticleResult> {
+): EnrichArticleResult {
   const { needed, reason } = needsEnrichment(
     item.normalizedContent,
     item.normalizedUrl,
@@ -176,7 +175,7 @@ export async function enrichArticleItem(
     };
   }
 
-  const newContent = await fetchArticleContent(item.normalizedUrl, options.fetchTimeout);
+  const newContent = fetchArticleContent(item.normalizedUrl, options.fetchTimeout);
 
   if (!newContent) {
     return {
@@ -206,14 +205,14 @@ export async function enrichArticleItem(
  * @param options 充实选项
  * @returns 充实后的文章数组（in-place）
  */
-export async function enrichArticles(
+export function enrichArticles(
   articles: normalizedArticle[],
   options: EnrichOptions
-): Promise<normalizedArticle[]> {
+): normalizedArticle[] {
   // Process in batches
   for (let i = 0; i < articles.length; i += options.batchSize) {
     const batch = articles.slice(i, i + options.batchSize);
-    await Promise.all(batch.map((article) => enrichArticleItem(article, options)));
+    batch.forEach((article) => enrichArticleItem(article, options));
   }
 
   return articles;
