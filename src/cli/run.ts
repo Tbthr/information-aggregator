@@ -125,7 +125,7 @@ function loadSourcesConfig(): Source[] {
       kind: s.type as Source['kind'],
       id: s.id,
       url: s.url ?? '',
-      description: s.name,
+      name: s.name ?? s.id,
       enabled: true,
       configJson: s.auth ? JSON.stringify(s.auth) : undefined,
       topicIds: s.topics ?? [],

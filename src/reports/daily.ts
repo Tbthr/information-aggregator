@@ -196,7 +196,7 @@ export async function generateDailyReport(
       articles: quadArticles.map(a => ({
         title: a.title || a.normalizedTitle || '',
         url: a.normalizedUrl || '',
-        sourceName: a.sourceId || '',
+        sourceName: a.sourceName || a.sourceId || '',
       })),
     })
     totalArticles += quadArticles.length

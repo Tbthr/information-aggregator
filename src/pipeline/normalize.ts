@@ -33,6 +33,7 @@ interface RawItemMetadata {
     author?: string;
   };
   thread?: Array<{ text?: string }>;
+  sourceName?: string;
 }
 
 function parseMetadata(metadataJson: string): RawItemMetadata {
@@ -160,6 +161,7 @@ export function normalizeItem(item: RawItem): normalizedArticle | null {
   return {
     id: item.id,
     sourceId: item.sourceId,
+    sourceName: metadata.sourceName,
     title: item.title,
     publishedAt: item.publishedAt,
     sourceKind,

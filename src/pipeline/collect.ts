@@ -76,6 +76,7 @@ function normalizeCollectedItem(source: Source, item: RawItem): RawItem {
     canonicalHints: buildCanonicalHints(source, item, metadata),
     subreddit: metadata?.subreddit,
     discoveredFrom: metadata?.discoveredFrom,
+    sourceName: source.name,
   };
 
   return {
