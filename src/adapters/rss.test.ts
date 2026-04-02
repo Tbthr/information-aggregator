@@ -247,7 +247,7 @@ describe("parseRssItems", () => {
     });
   });
 
-  describe("metadataJson summary fallback from content", () => {
+  describe("metadataJson summary from description only", () => {
     test("uses description as summary when no explicit summary", () => {
       const xml = `
         <rss><channel>
@@ -263,7 +263,7 @@ describe("parseRssItems", () => {
       expect(metadata.summary).toBe("This is a test description");
     });
 
-    test("prefers content:encoded over description for summary", () => {
+    test("does not prefer content:encoded over description for summary", () => {
       const xml = `
         <rss><channel>
           <item>
@@ -276,10 +276,10 @@ describe("parseRssItems", () => {
       `;
       const items = parseRssItems(xml, "rss-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
       const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
-      expect(metadata.summary).toBe("Full content text");
+      expect(metadata.summary).toBe("Description text");
     });
 
-    test("falls back to content when no summary available", () => {
+    test("does not fall back to content when no summary available", () => {
       const xml = `
         <rss><channel>
           <item>
@@ -291,7 +291,7 @@ describe("parseRssItems", () => {
       `;
       const items = parseRssItems(xml, "rss-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
       const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
-      expect(metadata.summary).toBe("Content without description");
+      expect(metadata.summary).toBeUndefined();
     });
   });
 

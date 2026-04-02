@@ -12,6 +12,8 @@ describe("createAiClient", () => {
         delete process.env[key];
       }
     }
+    // 禁用重试以加速测试
+    process.env.AI_MAX_RETRIES = "0";
   });
 
   afterEach(() => {
@@ -204,6 +206,7 @@ describe("GeminiClient (direct)", () => {
   test("parses score from response", async () => {
     const client = new GeminiClient({
       apiKey: "test-key",
+      model: "gemini-2.0-flash",
       fetch: async () =>
         new Response(
           JSON.stringify({
@@ -220,6 +223,7 @@ describe("GeminiClient (direct)", () => {
   test("extracts text from response for summaries", async () => {
     const client = new GeminiClient({
       apiKey: "test-key",
+      model: "gemini-2.0-flash",
       fetch: async () =>
         new Response(
           JSON.stringify({
@@ -236,6 +240,7 @@ describe("GeminiClient (direct)", () => {
   test("throws on failed request", async () => {
     const client = new GeminiClient({
       apiKey: "test-key",
+      model: "gemini-2.0-flash",
       fetch: async () => new Response("error", { status: 401 }),
     });
 
@@ -245,6 +250,7 @@ describe("GeminiClient (direct)", () => {
   test("throws on invalid response format", async () => {
     const client = new GeminiClient({
       apiKey: "test-key",
+      model: "gemini-2.0-flash",
       fetch: async () => new Response(JSON.stringify({ candidates: [] }), { status: 200 }),
     });
 

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { filterByPack } from "./filter-by-pack";
+import { filterByPack } from "./filter-by-topic";
 import type { FilterContext } from "../types/index";
 
 interface TestItem {

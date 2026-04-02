@@ -34,13 +34,36 @@ function parseTimeWindow(value: string): number {
   return num * ms
 }
 
+function printHelp(): void {
+  console.log(`
+Information Aggregator CLI
+
+Usage:
+  bun run src/cli/run.ts [options]
+
+Options:
+  --time-window, -t <value>  时间窗口，如 24h, 7d, 30d (默认: 24h)
+  --adapter-concurrency <n>  Adapter 并发数 (默认: 4)
+  --source-concurrency <n>   Source 并发数 (默认: 4)
+  --help, -h                 显示帮助信息
+
+Examples:
+  bun run src/cli/run.ts --time-window 24h
+  bun run src/cli/run.ts -t 7d --adapter-concurrency 8
+  bun run src/cli/run.ts --time-window 1h  # 本地测试用
+`)
+  process.exit(0)
+}
+
 function parseArgs(): CLIArgs {
   const args = process.argv.slice(2)
-  const result: CLIArgs = { timeWindow: '' }
+  const result: CLIArgs = { timeWindow: '24h' } // 默认 24h
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]
-    if (arg === '--time-window' || arg === '-t') {
+    if (arg === '--help' || arg === '-h') {
+      printHelp()
+    } else if (arg === '--time-window' || arg === '-t') {
       result.timeWindow = args[++i]
     } else if (arg === '--adapter-concurrency') {
       result.adapterConcurrency = parseInt(args[++i], 10)
@@ -50,10 +73,6 @@ function parseArgs(): CLIArgs {
       // Positional arg: timeWindow
       result.timeWindow = arg
     }
-  }
-
-  if (!result.timeWindow) {
-    throw new Error('--time-window is required (e.g., 24h, 7d, 30d)')
   }
 
   return result

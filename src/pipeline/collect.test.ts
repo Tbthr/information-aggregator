@@ -4,7 +4,7 @@ import { collectSources } from "./collect";
 describe("collectSources", () => {
   test("collects from multiple sources and flattens results", async () => {
     const items = await collectSources(
-      [{ id: "s1", type: "rss", enabled: true, configJson: "{}", url: "https://a.com/feed" }],
+      [{ id: "s1", kind: "rss", enabled: true, configJson: "{}", url: "https://a.com/feed", topicIds: [], sourceWeightScore: 0.5 }],
       {
         adapters: {
           rss: async () => [
@@ -18,12 +18,15 @@ describe("collectSources", () => {
             },
           ],
         },
+        adapterConcurrency: 4,
+        sourceConcurrency: 4,
+        timeWindow: 24 * 60 * 60 * 1000,
       },
     );
     expect(items).toHaveLength(1);
     expect(JSON.parse(items[0]?.metadataJson ?? "{}")).toEqual({
       provider: "rss",
-      sourceType: "rss",
+      sourceKind: "rss",
       contentType: "article",
     });
   });
@@ -33,8 +36,8 @@ describe("collectSources", () => {
 
     await collectSources(
       [
-        { id: "s1", type: "rss", enabled: true, configJson: "{}", url: "https://a.com/feed" },
-        { id: "s2", type: "rss", enabled: true, configJson: "{}", url: "https://b.com/feed" },
+        { id: "s1", kind: "rss", enabled: true, configJson: "{}", url: "https://a.com/feed", topicIds: [], sourceWeightScore: 0.5 },
+        { id: "s2", kind: "rss", enabled: true, configJson: "{}", url: "https://b.com/feed", topicIds: [], sourceWeightScore: 0.5 },
       ],
       {
         adapters: {
@@ -57,6 +60,9 @@ describe("collectSources", () => {
         onSourceEvent: (event) => {
           events.push(event);
         },
+        adapterConcurrency: 4,
+        sourceConcurrency: 4,
+        timeWindow: 24 * 60 * 60 * 1000,
       },
     );
 
