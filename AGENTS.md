@@ -9,7 +9,7 @@ Information Aggregator 是一个轻量级信息聚合平台，通过 YAML 配置
 - **Runtime**: Bun (TypeScript 直接运行，无需预编译)
 - **配置**: YAML 配置文件
 - **存储**: JSON 文件（`data/YYYY-MM-DD.json`）
-- **AI**: Anthropic Claude (通过 `config/ai.yaml` 配置)
+- **AI**: Anthropic Claude
 - **部署**: GitHub Actions + GitHub Pages
 
 ### Directory Structure
@@ -19,8 +19,7 @@ information-aggregator/
 ├── config/                    # YAML 配置
 │   ├── sources.yaml        # 数据源配置
 │   ├── topics.yaml         # Topic 配置
-│   ├── reports.yaml         # 报表配置（日报参数、prompts）
-│   └── ai.yaml             # AI provider/model/retry 配置
+│   └── reports.yaml         # 报表配置（日报参数、prompts）
 ├── data/                    # 收集的 JSON 数据（用于历史去重）
 │   └── YYYY-MM-DD.json
 ├── reports/daily/           # 生成的日报 Markdown
@@ -206,20 +205,6 @@ bun run src/cli/run.ts
 > 注意: `--time-window` 参数格式为数字+单位，`h`=小时，`d`=天（如 `1h`、`24h`、`7d`）。
 
 ## 配置说明
-
-### config/ai.yaml
-
-```yaml
-default: anthropic
-providers:
-  anthropic:
-    apiKey: ${ANTHROPIC_API_KEY}  # 从环境变量注入
-    model: claude-sonnet-4-20250514
-retry:
-  maxRetries: 3
-  initialDelayMs: 1000
-  backoffFactor: 2
-```
 
 ### config/reports.yaml
 
