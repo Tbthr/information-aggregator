@@ -11,7 +11,7 @@
 import fs from 'fs'
 import path from 'path'
 import yaml from 'js-yaml'
-import { getQuadrantPrompt, parseQuadrantResult } from '../ai/prompts-reports.js'
+import { getQuadrantPrompt } from '../ai/prompts-reports.js'
 import type { AiClient } from '../ai/types.js'
 import { formatUtcDate, formatUtcDayLabel } from '../../lib/date-utils.js'
 import type { normalizedArticle } from '../types/index.js'
@@ -75,27 +75,60 @@ function computeBaseScore(article: normalizedArticle): number {
 // Quadrant Classification
 // ============================================================
 
-async function classifyArticleQuadrant(
-  article: normalizedArticle,
+async function classifyArticlesQuadrantBatch(
+  articles: normalizedArticle[],
   aiClient: AiClient
-): Promise<Quadrant> {
-  const summary = (article.normalizedSummary || '')?.slice(0, 300) ?? ''
-  const title = article.title || article.normalizedTitle || ''
-  const prompt = `${getQuadrantPrompt()}\n\n内容标题：${title}\n内容摘要：${summary}`
+): Promise<Map<string, Quadrant>> {
+  const idAndContent = articles.map((a, i) => ({
+    id: a.id || `article-${i}`,
+    title: a.title || a.normalizedTitle || '',
+    summary: (a.normalizedSummary || '')?.slice(0, 300) ?? '',
+  }))
+
+  const prompt = `${getQuadrantPrompt()}\n\n请对以下所有内容进行分类，返回JSON数组格式：\n${JSON.stringify(idAndContent, null, 2)}\n\n返回格式：\n[{"id": "文章id", "quadrant": "尝试|深度|地图感", "reason": "理由"}]`
+
+  const resultMap = new Map<string, Quadrant>()
 
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const result = await aiClient.generateText(prompt)
-      const parsed = parseQuadrantResult(result)
-      if (parsed) {
-        return parsed.quadrant
+      const raw = await aiClient.generateText(prompt)
+
+      // Try parsing as JSON array
+      let items: { id: string; quadrant: string }[] = []
+      try {
+        const parsed = JSON.parse(raw)
+        if (Array.isArray(parsed)) {
+          items = parsed
+        }
+      } catch {
+        // Try extracting from markdown code block
+        const match = raw.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/)
+        if (match) {
+          try {
+            items = JSON.parse(match[1])
+          } catch { /* ignore */ }
+        }
+      }
+
+      if (items.length > 0) {
+        for (const item of items) {
+          if (['尝试', '深度', '地图感'].includes(item.quadrant)) {
+            resultMap.set(item.id, item.quadrant as Quadrant)
+          }
+        }
+        if (resultMap.size > 0) return resultMap
       }
     } catch {
       // retry
     }
   }
 
-  return '地图感'
+  // Fallback: all to 地图感
+  for (const a of articles) {
+    const id = a.id || `article-${articles.indexOf(a)}`
+    resultMap.set(id, '地图感')
+  }
+  return resultMap
 }
 
 // ============================================================
@@ -158,12 +191,14 @@ export async function generateDailyReport(
     return { date: dateStr, articleCount: 0, errorSteps }
   }
 
-  // Step 2: Classify each article by quadrant
-  const classified: { article: normalizedArticle; score: number; quadrant: Quadrant }[] = []
+  // Step 2: Classify all articles by quadrant (single batch AI call)
+  const quadrantMap = await classifyArticlesQuadrantBatch(articles, aiClient)
 
+  const classified: { article: normalizedArticle; score: number; quadrant: Quadrant }[] = []
   for (const article of articles) {
+    const id = article.id || `article-${articles.indexOf(article)}`
     const baseScore = computeBaseScore(article)
-    const quadrant = await classifyArticleQuadrant(article, aiClient)
+    const quadrant = quadrantMap.get(id) ?? '地图感'
     classified.push({ article, score: baseScore, quadrant })
   }
 

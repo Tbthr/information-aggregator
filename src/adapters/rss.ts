@@ -260,11 +260,11 @@ export function parseRssItems(
     const contentEncoded = extractTag(block, "content:encoded");
     const description = extractTag(block, "description");
 
-    // summary is the source summary, fallback from content
-    const summary = contentEncoded || description;
+    // summary: source description only
+    const summary = description;
 
-    // content is stored in metadataJson
-    const content = contentEncoded || description;
+    // content: content:encoded only (the full article body)
+    const content = contentEncoded;
 
     // Build metadataJson with audit and content fields
     const metadataJson = JSON.stringify({
