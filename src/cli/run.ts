@@ -271,7 +271,7 @@ async function main() {
         ts: new Date().toISOString(),
         stage: 'output',
         msg: '日报生成完成',
-        data: { topics: result.topicCount },
+        data: { articles: result.articleCount },
       })
     } else {
       log({ level: 'warn', ts: new Date().toISOString(), stage: 'output', msg: 'AI client not available, skipping report generation' })

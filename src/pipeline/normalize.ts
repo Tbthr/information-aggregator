@@ -175,9 +175,3 @@ export function normalizeItem(item: RawItem): normalizedArticle | null {
   };
 }
 
-/**
- * @deprecated Use normalizeItem instead
- */
-export function normalizeItems(items: RawItem[]): normalizedArticle[] {
-  return items.map(normalizeItem).filter((item): item is normalizedArticle => item !== null);
-}

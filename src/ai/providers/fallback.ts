@@ -61,44 +61,4 @@ export class FallbackAiClient implements AiClient {
   async summarizeItem(title: string, content: string) {
     return this.withFallback(c => c.summarizeItem(title, content));
   }
-
-  async scoreWithContent(title: string, content: string, url?: string) {
-    return this.withFallback(c => c.scoreWithContent(title, content, url));
-  }
-
-  async extractKeyPoints(title: string, content: string, maxPoints?: number) {
-    return this.withFallback(c => c.extractKeyPoints(title, content, maxPoints));
-  }
-
-  async generateTags(title: string, content: string, maxTags?: number) {
-    return this.withFallback(c => c.generateTags(title, content, maxTags));
-  }
-
-  async summarizeContent(title: string, content: string, maxLength?: number) {
-    return this.withFallback(c => c.summarizeContent(title, content, maxLength));
-  }
-
-  async scoreMultiDimensional(title: string, content: string, url?: string) {
-    return this.withFallback(c => c.scoreMultiDimensional(title, content, url));
-  }
-
-  async generateHighlights(titles: string[]) {
-    return this.withFallback(c => c.generateHighlights(titles));
-  }
-
-  async enrichArticle(title: string, content: string) {
-    return this.withFallback(c => c.enrichArticle(title, content));
-  }
-
-  async generateDailyBriefOverview(descriptions: string[]) {
-    return this.withFallback(c => c.generateDailyBriefOverview(descriptions));
-  }
-
-  async summarizePost(title: string, content: string) {
-    return this.withFallback(c => c.summarizePost(title, content));
-  }
-
-  async batchFilter(items: Parameters<AiClient["batchFilter"]>[0], packContext: Parameters<AiClient["batchFilter"]>[1]) {
-    return this.withFallback(c => c.batchFilter(items, packContext));
-  }
 }
