@@ -2,16 +2,9 @@
 
 sources:
   # === AI 资讯 / 精选博客 (RSS) ===
-  - type: rss
-    id: aihot-today-blog
-    name: AI 今日热点
-    url: https://aihot.today/blog/index.xml
-    enabled: true
-    topics: [ai-news]
-  
   - type: clawfeed
     id: clawfeed-kevinhe-io-feed-kevin
-    name: ClawFeed
+    name: ClawFeed - AI 新闻4小时简报
     url: https://clawfeed.kevinhe.io/feed/kevin
     enabled: true
     topics: [ai-news]
@@ -38,15 +31,6 @@ sources:
     enabled: true
     topics: [ai-news]
 
-  # === Website 数据源 (静态 HTML / 隐藏 API) ===
-  # techurls: 静态 HTML，div.publisher-block 结构
-  - type: techurls
-    id: techurls-com
-    name: TechURLs – A neat technology news aggregator
-    url: https://techurls.com/
-    enabled: true
-    topics: [ai-news, tech-news]
-
   # zeli: 隐藏 API (https://zeli.app/api/hacker-news?type=hot24h)
   - type: zeli
     id: zeli-app
@@ -54,14 +38,6 @@ sources:
     url: https://zeli.app/
     enabled: true
     topics: [ai-news]
-
-  # newsnow: JS bundle 逆向 + API 批量获取
-  - type: newsnow
-    id: newsnow-busiyi
-    name: Read Tech News With Digest
-    url: https://newsnow.busiyi.world/
-    enabled: true
-    topics: [ai-news, tech-news]
 
   # attentionvc: 追踪 X/Twitter 热门文章排行榜（24h AI 分类）
   - type: attentionvc
@@ -82,30 +58,22 @@ sources:
   #     authToken: ${TWITTER_AUTH_TOKEN}
   #     ct0: ${TWITTER_CT0}
 
-  # === GitHub 趋势 ===
   - type: github-trending
     id: github-com-trending
     name: Trending repositories on GitHub today · GitHub
+    description: GitHub 趋势
     url: https://github.com/trending
     enabled: true
     topics: [github]
 
-  # === 科技资讯 (中文) ===
-  - type: rss
-    id: www-infoq-cn-feed
-    name: InfoQ - 促进软件开发领域知识与创新的传播
-    url: https://www.infoq.cn/feed
-    enabled: true
-    topics: [tech-news]
-
   - type: rss
     id: www-buzzing-cc-feed-json
     name: Buzzing
+    description: 用中文浏览国外社交媒体里的热门讨论，母语快速导读，感兴趣再进原文深度阅读
     url: https://www.buzzing.cc/feed.json
-    enabled: true
+    enabled: false
     topics: [tech-news]
 
-  # === 中文技术博客 ===
   - type: rss
     id: www-ruanyifeng-com-blog-atom
     name: 阮一峰的网络日志
@@ -120,7 +88,7 @@ sources:
     enabled: true
     topics: [karpathy-picks]
 
-  # === Karpathy 精选技术博客 ===
+  # === Karpathy 精选 90+ 技术博客 ===
   - type: rss
     id: anildash-com-feed-xml
     name: Anil Dash
@@ -722,13 +690,6 @@ sources:
     url: https://www.seangoedecke.com/rss.xml
     enabled: true
     topics: [karpathy-picks]
-
-  # - type: rss
-  #   id: www-tedunangst-com-flak-rss
-  #   name: Ted Unangst
-  #   url: https://www.tedunangst.com/flak/rss
-  #   enabled: false
-  #   topics: [karpathy-picks]
 
   - type: rss
     id: www-theatlantic-com-feed-author-derek-thompson
