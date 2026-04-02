@@ -174,6 +174,28 @@ bun run src/cli/run.ts
 # reports/daily/YYYY-MM-DD.md 应生成
 ```
 
+### 快速测试规范
+
+本地开发调试时，应使用最小数据源集 + 短时间窗口：
+
+1. **时间窗口**: 必须指定 `--time-window 1h`，限制数据范围
+2. **数据源简化**:
+   - `mv config/sources.yaml config/sources.yaml.bak`
+   - 创建只含单数据源的 `config/sources.yaml`:
+     ```yaml
+     sources:
+       - type: rss
+         id: infoq-cn-test
+         name: InfoQ 中文（测试）
+         url: https://www.infoq.cn/feed
+         enabled: true
+         topics: [tech-news]
+     ```
+3. **运行测试**: `bun run src/cli/run.ts --time-window 1h`
+4. **恢复现场**: `mv config/sources.yaml.bak config/sources.yaml`
+
+> 注意: `--time-window` 参数格式为数字+单位，`h`=小时，`d`=天（如 `1h`、`24h`、`7d`）。
+
 ## 配置说明
 
 ### config/ai.yaml
