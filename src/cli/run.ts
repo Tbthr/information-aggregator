@@ -11,8 +11,10 @@ import { filterByTopics } from '../pipeline/filter-by-topic.js'
 import { rankCandidates } from '../pipeline/rank.js'
 import { dedupeExact } from '../pipeline/dedupe-exact.js'
 import { dedupeNear } from '../pipeline/dedupe-near.js'
+import { enrichArticles } from '../pipeline/enrich.js'
 import { generateDailyReport } from '../reports/daily.js'
 import { createAiClient } from '../ai/client.js'
+import type { EnrichOptions } from '../pipeline/enrich.js'
 import type { Source, Topic, normalizedArticle } from '../types/index.js'
 
 // ============================================================
@@ -85,7 +87,7 @@ function parseArgs(): CLIArgs {
 interface LogEntry {
   level: 'info' | 'warn' | 'error'
   ts: string
-  stage: 'collect' | 'enrich' | 'filter' | 'dedupe' | 'score' | 'quadrant' | 'topic' | 'output'
+  stage: 'collect' | 'enrich' | 'filter' | 'dedupe' | 'score' | 'normalize' | 'quadrant' | 'topic' | 'output'
   msg: string
   data?: Record<string, unknown>
 }
@@ -133,6 +135,15 @@ interface YamlTopicsConfig {
   topics: YamlTopic[]
 }
 
+interface YamlEnrichConfig {
+  enrich: {
+    enabled?: boolean
+    batchSize?: number
+    minContentLength?: number
+    fetchTimeout?: number
+  }
+}
+
 function loadSourcesConfig(): Source[] {
   const configPath = path.join(process.cwd(), 'config', 'sources.yaml')
   const content = fs.readFileSync(configPath, 'utf-8')
@@ -170,6 +181,18 @@ function loadTopicsConfig(): Topic[] {
       displayOrder: t.displayOrder ?? 0,
       maxItems: t.maxItems ?? 10,
     }))
+}
+
+function loadEnrichConfig(): EnrichOptions {
+  const configPath = path.join(process.cwd(), 'config', 'reports.yaml')
+  const content = fs.readFileSync(configPath, 'utf-8')
+  const raw = yaml.load(content) as YamlEnrichConfig
+
+  return {
+    batchSize: raw.enrich?.batchSize ?? 10,
+    minContentLength: raw.enrich?.minContentLength ?? 500,
+    fetchTimeout: raw.enrich?.fetchTimeout ?? 20000,
+  }
 }
 
 async function main() {
@@ -232,7 +255,7 @@ async function main() {
   log({
     level: 'info',
     ts: new Date().toISOString(),
-    stage: 'enrich',
+    stage: 'normalize',
     msg: `标准化完成`,
     data: { totalItems: normalized.length },
   })
@@ -272,7 +295,27 @@ async function main() {
     data: { beforeDedup: ranked.length, afterDedup: deduped.length },
   })
 
-  // 7. 生成日报
+  // 7. 内容充实
+  const enrichConfig = loadEnrichConfig()
+  log({
+    level: 'info',
+    ts: new Date().toISOString(),
+    stage: 'enrich',
+    msg: '开始内容充实',
+    data: { beforeEnrich: deduped.length },
+  })
+
+  const enriched = enrichArticles(deduped, enrichConfig)
+
+  log({
+    level: 'info',
+    ts: new Date().toISOString(),
+    stage: 'enrich',
+    msg: '内容充实完成',
+    data: { afterEnrich: enriched.length },
+  })
+
+  // 8. 生成日报
   log({
     level: 'info',
     ts: new Date().toISOString(),
@@ -284,7 +327,7 @@ async function main() {
     const aiClient = createAiClient()
 
     if (aiClient) {
-      const result = await generateDailyReport(new Date(), aiClient, deduped as any)
+      const result = await generateDailyReport(new Date(), aiClient, enriched as any)
       log({
         level: 'info',
         ts: new Date().toISOString(),
