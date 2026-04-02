@@ -22,3 +22,9 @@ daily:
       "reason": "分类理由"
     }
 
+enrich:
+  enabled: true
+  batchSize: 10
+  minContentLength: 500
+  fetchTimeout: 20000  # agent-fetch 超时（毫秒）
+
