@@ -82,7 +82,7 @@ async function classifyArticlesQuadrantBatch(
   const idAndContent = articles.map((a, i) => ({
     id: a.id || `article-${i}`,
     title: a.title || a.normalizedTitle || '',
-    summary: (a.normalizedSummary || '')?.slice(0, 300) ?? '',
+    content: (a.normalizedContent || '')?.slice(0, 2000) ?? '',
   }))
 
   const prompt = `${getQuadrantPrompt()}\n\n请对以下所有内容进行分类，返回JSON数组格式：\n${JSON.stringify(idAndContent, null, 2)}\n\n返回格式：\n[{"id": "文章id", "quadrant": "尝试|深度|地图感", "reason": "理由"}]`
