@@ -43,6 +43,7 @@ export interface InlineSource {
   kind: SourceKind;
   url: string;
   description?: string;
+  name?: string;          // 易读名称，用于日报展示
   enabled?: boolean;
   configJson?: string;
   // NEW: topic-centric config
@@ -52,7 +53,7 @@ export interface InlineSource {
 }
 
 // Source 类型，用于 adapter 函数签名
-export type Source = InlineSource & { id: string; topicIds: string[]; sourceWeightScore: number };
+export type Source = InlineSource & { id: string; topicIds: string[]; sourceWeightScore: number; name?: string };
 
 // Adapter 函数类型
 export type AdapterFn = (source: Source, options: { timeWindow: number }) => Promise<RawItem[]>;
@@ -148,6 +149,7 @@ export interface RawItemMetadata {
   expandedUrl?: string;       // 展开的外链 URL
   conversationId?: string;    // 对话 ID
   parent?: RawItemThreadItem; // 父推文（回复上下文）
+  sourceName?: string;       // 来源名称，用于日报展示
 }
 
 // NormalizedItem - simplified article-only output from normalize.ts
@@ -171,6 +173,7 @@ export interface NormalizedItem {
 export interface normalizedArticle {
   id: string;
   sourceId: string;
+  sourceName?: string;      // 来源名称，用于日报展示
   title: string;
   publishedAt?: string;
   sourceKind: SourceKind;
