@@ -63,8 +63,18 @@ sources:
     name: Trending repositories on GitHub today · GitHub
     description: GitHub 趋势
     url: https://github.com/trending
-    enabled: true
+    enabled: false
     topics: [github]
+    # TODO 在日报中增加开源项目和skill推荐
+
+  - type: rss
+    id: agentskillshub-top-feed
+    name: Agents Skills Hub
+    description: AI Agent Skills 精选资源
+    url: https://agentskillshub.top/feed.xml
+    enabled: false
+    topics: [github]
+    # TODO 在日报中增加开源项目和skill推荐
 
   - type: rss
     id: www-buzzing-cc-feed-json
