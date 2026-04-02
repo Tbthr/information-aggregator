@@ -1,6 +1,5 @@
 export type RunKind = "query";
 export type QuerySort = "ranked" | "recent" | "engagement";
-export type CanonicalRelationship = "original" | "discussion" | "share";
 export const CANONICAL_SOURCE_KINDS = [
   "rss",
   "json-feed",
@@ -22,20 +21,6 @@ export type RunStatus = "pending" | "running" | "completed" | "failed" | "succee
 // Content kinds for unified content model
 export const CONTENT_KINDS = ["article", "tweet", "video", "github", "reddit", "hackernews"] as const;
 export type ContentKind = (typeof CONTENT_KINDS)[number];
-
-// SourceType - legacy alias for SourceKind (for migration compatibility)
-export type SourceType = SourceKind;
-
-// SourcePack - legacy type for pack-based sources (deprecated, use topic-centric model)
-export interface SourcePack {
-  id: string;
-  name: string;
-  description?: string | null;
-  mustInclude: string[];
-  exclude: string[];
-  createdAt: Date;
-  updatedAt: Date;
-}
 
 // Topic model fields (mirrors Prisma Topic)
 export interface Topic {
@@ -180,18 +165,6 @@ export interface NormalizedItem {
   metadataJson: string;
   // Runtime filter context (not stored in DB, set at collection time)
   filterContext?: FilterContext;
-  // Legacy fields (deprecated, will be removed per Task 9)
-  rawItemId?: string;
-  canonicalUrl?: string;
-  linkedCanonicalUrl?: string;
-  relationshipToCanonical?: CanonicalRelationship;
-  isDiscussionSource?: boolean;
-  normalizedText?: string;
-  exactDedupKey?: string;
-  processedAt?: string;
-  url?: string;
-  engagementScore?: number;
-  content?: string;
 }
 
 // normalizedArticle - pipeline 中统一使用的文章类型
@@ -305,15 +278,10 @@ export interface RankedCandidate {
   sourceName?: string;
   normalizedTitle?: string;
   normalizedText?: string;
-  canonicalUrl?: string;
-  processedAt?: string;
   sourceWeightScore: number;
   freshnessScore: number;
   engagementScore: number;
   contentQualityAi: number;
-  linkedCanonicalUrl?: string;
-  relationshipToCanonical?: CanonicalRelationship;
-  isDiscussionSource?: boolean;
   finalScore?: number;
   rationale?: string;
   contentType?: string;

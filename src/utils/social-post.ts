@@ -30,7 +30,7 @@ export function isSocialPost(item: RankedCandidate): boolean {
 export function createSocialPostContent(candidate: RankedCandidate): ExtractedContent {
   const content = candidate.normalizedText ?? "";
   return {
-    url: candidate.url ?? candidate.canonicalUrl ?? "",
+    url: candidate.url ?? "",
     title: candidate.title ?? candidate.normalizedTitle,
     textContent: content,
     length: content.length,
