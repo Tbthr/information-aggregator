@@ -7,7 +7,7 @@ import yaml from 'js-yaml'
 import { buildAdapters } from '../adapters/build-adapters.js'
 import { collectWithTwoLevelConcurrency } from '../pipeline/collect.js'
 import { normalizeItem } from '../pipeline/normalize.js'
-import { filterByTopics } from '../pipeline/filter-by-topic.js'
+import { filterByTags } from '../pipeline/filter-by-tag.js'
 import { rankCandidates } from '../pipeline/rank.js'
 import { dedupeExact } from '../pipeline/dedupe-exact.js'
 import { dedupeNear } from '../pipeline/dedupe-near.js'
@@ -275,13 +275,13 @@ async function main() {
 
   // 4. tag 过滤
   const tagsConfig = loadTagsConfig()
-  const filtered = filterByTopics(normalized as any, tagsConfig) as normalizedArticle[]
+  const filtered = filterByTags(normalized as any, tagsConfig) as normalizedArticle[]
 
   log({
     level: 'info',
     ts: new Date().toISOString(),
     stage: 'filter',
-    msg: `Topic 过滤完成`,
+    msg: `Tag 过滤完成`,
     data: { afterFilter: filtered.length },
   })
 

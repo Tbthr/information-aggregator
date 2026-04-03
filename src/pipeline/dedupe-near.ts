@@ -8,7 +8,7 @@ export interface NearDedupItem {
   normalizedUrl: string;
   publishedAt?: string | null;
   fetchedAt?: string | null;
-  sourceDefaultTopicIds?: string[];
+  sourceDefaultTags?: string[];
   sourceWeightScore?: number;
   engagementScore?: number | null;
 }
@@ -16,7 +16,7 @@ export interface NearDedupItem {
 /**
  * Winner selection for near dedupe.
  * Selection criteria (in order):
- * 1. topicIds.length 更高者优先
+ * 1. tags.length 更高者优先
  * 2. Source.priority 更高者优先
  * 3. engagementScore 更高者优先（null 视为 -1）
  * 4. publishedAt 更新者优先
@@ -46,11 +46,11 @@ function selectWinner<T extends NearDedupItem>(items: T[]): T {
  * Returns negative if a should win, positive if b should win, 0 if tie.
  */
 function compareForWinner<T extends NearDedupItem>(a: T, b: T): number {
-  // 1. topicIds.length 更高者优先
-  const aTopicCount = a.sourceDefaultTopicIds?.length ?? 0;
-  const bTopicCount = b.sourceDefaultTopicIds?.length ?? 0;
-  if (aTopicCount !== bTopicCount) {
-    return bTopicCount - aTopicCount;
+  // 1. tags.length 更高者优先
+  const aTagCount = a.sourceDefaultTags?.length ?? 0;
+  const bTagCount = b.sourceDefaultTags?.length ?? 0;
+  if (aTagCount !== bTagCount) {
+    return bTagCount - aTagCount;
   }
 
   // 2. Source.priority 更高者优先

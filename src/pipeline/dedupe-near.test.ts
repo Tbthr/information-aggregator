@@ -72,20 +72,20 @@ describe("dedupeNear", () => {
     expect(ids).toEqual(["2", "3"]);
   });
 
-  test("winner selection uses topicIds.length as primary criterion", () => {
+  test("winner selection uses tags.length as primary criterion", () => {
     const items = [
-      { id: "few-topics", normalizedTitle: "openai releases new model", normalizedContent: "", normalizedUrl: "https://a.com", sourceDefaultTopicIds: ["t1"], publishedAt: "2026-03-09T00:00:00Z" },
-      { id: "many-topics", normalizedTitle: "openai releases new model", normalizedContent: "", normalizedUrl: "https://b.com", sourceDefaultTopicIds: ["t1", "t2", "t3"], publishedAt: "2026-03-09T00:00:00Z" },
+      { id: "few-tags", normalizedTitle: "openai releases new model", normalizedContent: "", normalizedUrl: "https://a.com", sourceDefaultTags: ["t1"], publishedAt: "2026-03-09T00:00:00Z" },
+      { id: "many-tags", normalizedTitle: "openai releases new model", normalizedContent: "", normalizedUrl: "https://b.com", sourceDefaultTags: ["t1", "t2", "t3"], publishedAt: "2026-03-09T00:00:00Z" },
     ];
     const deduped = dedupeNear(items);
     expect(deduped.length).toBe(1);
-    expect(deduped[0]?.id).toBe("many-topics");
+    expect(deduped[0]?.id).toBe("many-tags");
   });
 
   test("winner selection uses sourcePriority as secondary criterion", () => {
     const items = [
-      { id: "low-priority", normalizedTitle: "openai releases new model", normalizedContent: "", normalizedUrl: "https://a.com", sourceDefaultTopicIds: [], sourcePriority: 1, publishedAt: "2026-03-09T00:00:00Z" },
-      { id: "high-priority", normalizedTitle: "openai releases new model", normalizedContent: "", normalizedUrl: "https://b.com", sourceDefaultTopicIds: [], sourcePriority: 10, publishedAt: "2026-03-09T00:00:00Z" },
+      { id: "low-priority", normalizedTitle: "openai releases new model", normalizedContent: "", normalizedUrl: "https://a.com", sourceDefaultTags: [], sourcePriority: 1, publishedAt: "2026-03-09T00:00:00Z" },
+      { id: "high-priority", normalizedTitle: "openai releases new model", normalizedContent: "", normalizedUrl: "https://b.com", sourceDefaultTags: [], sourcePriority: 10, publishedAt: "2026-03-09T00:00:00Z" },
     ];
     const deduped = dedupeNear(items);
     expect(deduped.length).toBe(1);
