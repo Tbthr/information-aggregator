@@ -43,13 +43,13 @@ bun run src/cli/run.ts
 | 文件 | 说明 |
 |------|------|
 | `config/sources.yaml` | 数据源配置（RSS、JSON Feed、X/Twitter） |
-| `config/topics.yaml` | Topic 配置（include/exclude 规则、scoreBoost） |
+| `config/tags.yaml` | Tag 配置（include/exclude 规则、scoreBoost） |
 | `config/reports.yaml` | 日报参数（maxItems、minScore、quadrantPrompts） |
 
 ## 架构
 
 ```
-数据源 → 并发收集 → 标准化 → Topic 过滤 → 评分排序 → 去重 → 象限分类 → 话题生成 → Markdown
+数据源 → 并发收集 → 标准化 → Tag 过滤 → 评分排序 → 去重 → 象限分类 → 话题生成 → Markdown
 ```
 
 ### CLI 参数
@@ -72,7 +72,7 @@ bun run src/cli/run.ts 24h --adapter-concurrency 4 --source-concurrency 4
 
 1. **收集 (collect)** - 并发收集（adapter × source 两级并发）
 2. **标准化 (normalize)** - 格式转换 + engagementScore 计算
-3. **Topic 过滤** - include/exclude 规则初筛
+3. **Tag 过滤** - include/exclude 规则初筛
 4. **评分排序 (rank)** - sourceWeightScore×0.4 + engagementScore×0.15
 5. **去重 (dedupe)** - URL 精确去重 + 语义 LCS 去重
 6. **象限分类 (quadrant)** - AI 将内容分配到尝试/深度/地图感

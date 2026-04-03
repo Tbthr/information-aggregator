@@ -52,33 +52,33 @@ export async function collectWithTwoLevelConcurrency(
 ): Promise<RawItem[]> {
   const { adapters, adapterConcurrency, sourceConcurrency, onSourceEvent, timeWindow } = dependencies;
 
-  // 按 kind 分组
-  const byKind = new Map<string, Source[]>();
+  // 按 type 分组
+  const byType = new Map<string, Source[]>();
   for (const source of sources) {
-    const list = byKind.get(source.kind) ?? [];
+    const list = byType.get(source.type) ?? [];
     list.push(source);
-    byKind.set(source.kind, list);
+    byType.set(source.type, list);
   }
 
-  const kinds = Array.from(byKind.keys());
+  const types = Array.from(byType.keys());
 
-  // Adapter 维度并发：最多同时运行 adapterConcurrency 个不同 kind
+  // Adapter 维度并发：最多同时运行 adapterConcurrency 个不同 type
   const allResults: RawItem[][] = await processWithConcurrency(
-    kinds,
+    types,
     { batchSize: adapterConcurrency, concurrency: adapterConcurrency },
-    async (kind) => {
-      const kindSources = byKind.get(kind)!;
-      const adapter = adapters[kind];
+    async (type) => {
+      const typeSources = byType.get(type)!;
+      const adapter = adapters[type];
       if (!adapter) {
-        for (const s of kindSources) {
-          onSourceEvent?.({ sourceId: s.id, status: "failure", itemCount: 0, error: `Missing adapter: ${kind}` });
+        for (const s of typeSources) {
+          onSourceEvent?.({ sourceId: s.id, status: "failure", itemCount: 0, error: `Missing adapter: ${type}` });
         }
         return [];
       }
 
-      // Source 维度并发：同 kind 内最多同时抓取 sourceConcurrency 个 source
+      // Source 维度并发：同 type 内最多同时抓取 sourceConcurrency 个 source
       const results = await processWithConcurrency(
-        kindSources,
+        typeSources,
         { batchSize: sourceConcurrency, concurrency: sourceConcurrency },
         async (source) => {
           const startedAt = Date.now();

@@ -18,7 +18,7 @@ Information Aggregator 是一个轻量级信息聚合平台，通过 YAML 配置
 information-aggregator/
 ├── config/                    # YAML 配置
 │   ├── sources.yaml        # 数据源配置
-│   ├── topics.yaml         # Topic 配置
+│   ├── tags.yaml           # Tag 配置
 │   └── reports.yaml         # 报表配置（日报参数、prompts）
 ├── data/                    # 收集的 JSON 数据（用于历史去重）
 │   └── YYYY-MM-DD.json
@@ -95,7 +95,7 @@ env $(cat .env.local) bun run src/cli/run.ts
 ```
 1. 收集 (collect)     → 并发收集（adapter × source 两级）
 2. 标准化 (normalize) → 格式转换 + engagementScore 计算
-3. topic 过滤         → include/exclude 初筛
+3. tag 过滤          → include/exclude 初筛
 4. 评分 (rank)        → sourceWeightScore×0.4 + engagementScore×0.15
 5. 去重 (dedupe)      → URL 精确 + 语义 LCS
 6. 象限分类 (quadrant) → AI 分类到尝试/深度/地图感
@@ -210,7 +210,7 @@ bun run src/cli/run.ts
          name: InfoQ 中文（测试）
          url: https://www.infoq.cn/feed
          enabled: true
-         topics: [tech-news]
+         tagIds: [ai]
      ```
 3. **运行测试**: `bun run src/cli/run.ts --time-window 1h`
 4. **恢复现场**: `mv config/sources.yaml.bak config/sources.yaml`

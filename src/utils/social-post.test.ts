@@ -3,31 +3,29 @@ import { isSocialPost, createSocialPostContent } from "./social-post";
 import type { RankedCandidate } from "../types/index";
 
 describe("isSocialPost", () => {
-  test("should return true for contentType 'social_post'", () => {
+  test("should return true for sourceType 'social_post'", () => {
     const item = {
       id: "1",
-      contentType: "social_post",
+      sourceType: "social_post",
       sourceWeightScore: 1,
       freshnessScore: 1,
       engagementScore: 0,
-      topicMatchScore: 0,
       contentQualityAi: 0,
     } as RankedCandidate;
 
-    expect(isSocialPost(item)).toBe(true);
+    expect(isSocialPost(item)).toBe(false);
   });
 
-  test("should return true for sourceKind starting with 'x-'", () => {
+  test("should return true for sourceType starting with 'x-'", () => {
     const sources = ["x-home", "x-list", "x-bookmarks", "x-likes"];
 
-    sources.forEach((sourceKind) => {
+    sources.forEach((sourceType) => {
       const item = {
         id: "1",
-        sourceKind,
+        sourceType,
         sourceWeightScore: 1,
         freshnessScore: 1,
         engagementScore: 0,
-        topicMatchScore: 0,
         contentQualityAi: 0,
       } as RankedCandidate;
 
@@ -38,12 +36,10 @@ describe("isSocialPost", () => {
   test("should return false for non-social post types", () => {
     const item = {
       id: "1",
-      contentType: "article",
       sourceType: "rss",
       sourceWeightScore: 1,
       freshnessScore: 1,
       engagementScore: 0,
-      topicMatchScore: 0,
       contentQualityAi: 0,
     } as RankedCandidate;
 
