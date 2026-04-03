@@ -170,23 +170,30 @@ export function parseJsonFeedItems(
       continue;
     }
 
-    // If no timestamp found, note it
-    const timeParseNote = parsedTimestamp ? parsedTimestamp.timeParseNote : "no timestamp found";
+    // If no timestamp found, skip the item
+    if (!parsedTimestamp) {
+      logger.warn("Skipping item without publishedAt", {
+        sourceId,
+        sourceType: "json-feed",
+        title: item.title,
+        url,
+      });
+      discardCount++;
+      continue;
+    }
 
     // Check if timestamp is within the 24h window
-    if (parsedTimestamp) {
-      if (parsedTimestamp.date < cutoffTime) {
-        logger.warn("Discarding item outside 24h window", {
-          sourceId,
-          sourceType: "json-feed",
-          title: item.title,
-          url,
-          rawTime: parsedTimestamp.rawPublishedAt,
-          discardReason: `published at ${parsedTimestamp.date.toISOString()} is before cutoff ${cutoffTime.toISOString()}`,
-        });
-        discardCount++;
-        continue;
-      }
+    if (parsedTimestamp.date < cutoffTime) {
+      logger.warn("Discarding item outside 24h window", {
+        sourceId,
+        sourceType: "json-feed",
+        title: item.title,
+        url,
+        rawTime: parsedTimestamp.rawPublishedAt,
+        discardReason: `published at ${parsedTimestamp.date.toISOString()} is before cutoff ${cutoffTime.toISOString()}`,
+      });
+      discardCount++;
+      continue;
     }
 
     // Extract authorName
@@ -198,18 +205,8 @@ export function parseJsonFeedItems(
     // content: prefer plain text, then HTML
     const content = item.content_text || item.content_html;
 
-    // Build metadataJson with audit and content fields
-    const metadataJson = JSON.stringify({
-      provider: "json-feed",
-      sourceKind: "json-feed",
-      contentType: "article",
-      rawPublishedAt: parsedTimestamp?.rawPublishedAt,
-      timeSourceField: usedField || undefined,
-      timeParseNote,
-      summary,
-      content,
-      authorName,
-    });
+    // Build metadataJson with only adapter-specific fields (no provider/sourceKind/contentType)
+    const metadataJson = JSON.stringify({});
 
     const rawItem: RawItem = {
       id: item.id ?? `${sourceId}-${index + 1}`,

@@ -69,10 +69,6 @@ export async function collectZeliSource(
         fetchedAt: new Date().toISOString(),
         publishedAt: published?.toISOString(),
         metadataJson: JSON.stringify({
-          provider: "zeli",
-          sourceKind: "zeli",
-          contentType: "article",
-          source: "Hacker News · 24h最热",
           hnId: p.id,
         }),
         filterContext,
