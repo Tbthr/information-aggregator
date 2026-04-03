@@ -103,7 +103,6 @@ export interface normalizedArticle {
   normalizedContent: string;
   metadataJson: string;
   // Pipeline 运行时字段
-  sourceDefaultTopicIds: string[];
   sourceWeightScore: number;
   engagementScore: number;
 }
@@ -215,7 +214,6 @@ export interface RankedCandidate {
   contentQualityAi: number;
   finalScore?: number;
   rationale?: string;
-  contentType?: string;
   sourceType?: string;
   metadataJson?: string;  // 原始元数据 JSON
   author?: string;        // 作者信息
