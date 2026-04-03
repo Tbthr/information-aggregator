@@ -1,6 +1,26 @@
 # Tags 配置
 
 tags:
+  - id: ai-news
+    name: AI 资讯
+    description: |
+      关注 AI 领域的最新动态、产品发布、技术突破和行业趋势。
+      优先保留：重要发布、深度分析、技术突破、行业影响
+      可以过滤：营销软文、重复报道、浅层转载
+    includeRules: []
+    excludeRules: []
+    scoreBoost: 1.0
+
+  - id: ai
+    name: AI 技术
+    description: |
+      AI 技术相关的深度内容，包括研究论文、技术博客、实践分享。
+      优先保留：原创观点、技术分析、实践经验
+      可以过滤：浅层介绍、纯营销内容
+    includeRules: []
+    excludeRules: []
+    scoreBoost: 1.0
+
   - id: github
     name: GitHub 趋势
     description: |

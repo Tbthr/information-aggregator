@@ -55,15 +55,15 @@ sources:
 
   # === Twitter/X (需要 auth) ===
   - type: twitter
-    id: karpathy
-    name: Andrej Karpathy
-    handle: karpathy
+    id: twitter
+    name: twitter
     enabled: true
     tagIds: [ai]
     contentType: tweet
     auth:
       authToken: ${TWITTER_AUTH_TOKEN}
       ct0: ${TWITTER_CT0}
+      birdMode: home
 
   - type: github-trending
     id: github-com-trending
