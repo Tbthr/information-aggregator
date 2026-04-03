@@ -84,7 +84,7 @@ function parseArgs(): CLIArgs {
 interface LogEntry {
   level: 'info' | 'warn' | 'error'
   ts: string
-  stage: 'collect' | 'enrich' | 'filter' | 'dedupe' | 'score' | 'normalize' | 'quadrant' | 'topic' | 'output'
+  stage: 'collect' | 'enrich' | 'filter' | 'dedupe' | 'score' | 'normalize' | 'digest' | 'output'
   msg: string
   data?: Record<string, unknown>
 }
@@ -147,6 +147,8 @@ async function main() {
         normalized.sourceWeightScore = sourceWeightScore
         // 传递 tagIds，供 filterByTags 使用
         ;(normalized as any).tagIds = item.tagFilter ?? source?.tagIds ?? []
+        // 透传 feedType，供日报模块分流使用
+        normalized.feedType = source?.feedType ?? 'article'
       }
       return normalized
     })
@@ -226,13 +228,13 @@ async function main() {
     const aiClient = createAiClient()
 
     if (aiClient) {
-      const result = await generateDailyReport(new Date(), aiClient, enriched as any, dailyConfig.quadrantPrompt)
+      const result = await generateDailyReport(new Date(), aiClient, enriched as any, dailyConfig)
       log({
         level: 'info',
         ts: new Date().toISOString(),
         stage: 'output',
         msg: '日报生成完成',
-        data: { articles: result.articleCount },
+        data: { articles: result.articleCount, digestItems: result.digestItemCount },
       })
     } else {
       log({ level: 'warn', ts: new Date().toISOString(), stage: 'output', msg: 'AI client not available, skipping report generation' })

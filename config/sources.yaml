@@ -17,6 +17,7 @@ sources:
     enabled: true
     tagIds: [ai-news]
     contentType: article
+    feedType: digest
 
   # 可用参数见：https://github.com/ginobefun/BestBlogs/blob/main/BestBlogs_RSS_Doc.md
   - type: rss
@@ -34,6 +35,7 @@ sources:
     enabled: true
     tagIds: [ai-news]
     contentType: article
+    feedType: digest
 
   # zeli: 隐藏 API (https://zeli.app/api/hacker-news?type=hot24h)
   - type: zeli

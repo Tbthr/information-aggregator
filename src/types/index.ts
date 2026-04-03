@@ -33,6 +33,8 @@ export interface Source {
   contentType: string;
   authConfigJson: string | null;
   sourceWeightScore: number;
+  /** 内容类型：article=普通文章, digest=AI快讯类（如何夕、橘鸦） */
+  feedType?: 'article' | 'digest';
 }
 
 // Adapter 函数类型
@@ -105,6 +107,8 @@ export interface normalizedArticle {
   // Pipeline 运行时字段
   sourceWeightScore: number;
   engagementScore: number;
+  /** 来源内容类型，用于日报模块分流 */
+  feedType?: 'article' | 'digest';
 }
 
 // Content - unified content model for normalized items
@@ -165,7 +169,7 @@ export interface ReportCandidate {
     id: string;
     sourceId: string;
   };
-  // Quadrant-aware pipeline fields
+  // Pipeline fields
   tagIds?: string[]; // Content.tagIds copy for preset Tag grouping
   sourceType?: string; // Source.type this content was collected from
   freshnessTier?: "热点" | "趋势" | "经典";

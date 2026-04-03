@@ -14,7 +14,7 @@ import type { EnrichOptions } from '../pipeline/enrich.js'
 // ============================================================
 
 export interface DailyConfig {
-  quadrantPrompt: string
+  digestPrompt: string
 }
 
 // ============================================================
@@ -101,7 +101,7 @@ function loadReportsConfig(): { enrichOptions: EnrichOptions; dailyConfig: Daily
   const configPath = path.join(process.cwd(), 'config', 'reports.yaml')
   const content = fs.readFileSync(configPath, 'utf-8')
   const raw = yaml.load(content) as {
-    daily?: { quadrantPrompt?: string }
+    daily?: { digestPrompt?: string }
     enrich?: { enabled?: boolean; batchSize?: number; minContentLength?: number; fetchTimeout?: number }
   }
 
@@ -112,7 +112,7 @@ function loadReportsConfig(): { enrichOptions: EnrichOptions; dailyConfig: Daily
   }
 
   const dailyConfig: DailyConfig = {
-    quadrantPrompt: raw.daily?.quadrantPrompt ?? '',
+    digestPrompt: raw.daily?.digestPrompt ?? '',
   }
 
   return { enrichOptions, dailyConfig }
