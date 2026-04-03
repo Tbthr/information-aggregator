@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
     :root {
       --ink: #1a1a1a;
@@ -17,6 +18,15 @@
       --gray-light: #e5e5e5;
       --sidebar-w: 240px;
       --content-max: 720px;
+    }
+
+    [data-theme="dark"] {
+      --ink: #f0ebe5;
+      --paper: #1a1816;
+      --terra: #e07a5f;
+      --terra-light: #3d2a24;
+      --gray: #a8a299;
+      --gray-light: #2a2826;
     }
 
     * {
@@ -31,6 +41,7 @@
       color: var(--ink);
       line-height: 1.7;
       min-height: 100vh;
+      transition: background 0.3s ease, color 0.3s ease;
     }
 
     /* Header */
@@ -47,6 +58,7 @@
       justify-content: space-between;
       padding: 0 32px;
       z-index: 100;
+      transition: background 0.3s ease, border-color 0.3s ease;
     }
 
     .logo {
@@ -60,12 +72,14 @@
       color: var(--terra);
     }
 
+    /* Theme toggle */
     .nav-tabs {
       display: flex;
       gap: 4px;
       background: var(--gray-light);
       padding: 4px;
       border-radius: 8px;
+      transition: background 0.3s ease;
     }
 
     .nav-tab {
@@ -79,12 +93,27 @@
       border-radius: 6px;
       cursor: pointer;
       transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .nav-tab:hover {
+      color: var(--ink);
     }
 
     .nav-tab.active {
-      background: white;
+      background: var(--paper);
       color: var(--ink);
       box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .nav-tab svg {
+      width: 16px;
+      height: 16px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.5;
     }
 
     /* Layout */
@@ -104,6 +133,8 @@
       padding: 32px 24px;
       border-right: 1px solid var(--gray-light);
       overflow-y: auto;
+      background: var(--paper);
+      transition: background 0.3s ease, border-color 0.3s ease;
     }
 
     .sidebar-section {
@@ -118,6 +149,7 @@
       color: var(--gray);
       margin-bottom: 12px;
       padding-left: 12px;
+      transition: color 0.3s ease;
     }
 
     .nav-list {
@@ -175,6 +207,7 @@
       margin-bottom: 48px;
       padding-bottom: 32px;
       border-bottom: 2px solid var(--ink);
+      transition: border-color 0.3s ease;
     }
 
     .report-date {
@@ -183,6 +216,7 @@
       color: var(--terra);
       font-weight: 600;
       margin-bottom: 8px;
+      transition: color 0.3s ease;
     }
 
     .report-title {
@@ -197,114 +231,54 @@
     .report-meta {
       font-size: 14px;
       color: var(--gray);
+      transition: color 0.3s ease;
     }
 
-    /* Topic Section */
-    .topic {
-      margin-bottom: 48px;
-      opacity: 0;
-      animation: slideUp 0.5s ease forwards;
-    }
-
-    @keyframes slideUp {
-      from {
-        opacity: 0;
-        transform: translateY(20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .topic:nth-child(1) { animation-delay: 0.1s; }
-    .topic:nth-child(2) { animation-delay: 0.2s; }
-    .topic:nth-child(3) { animation-delay: 0.3s; }
-    .topic:nth-child(4) { animation-delay: 0.4s; }
-    .topic:nth-child(5) { animation-delay: 0.5s; }
-
-    .topic-title {
+    /* Markdown Content */
+    .report-content h1 {
       font-family: 'Newsreader', serif;
-      font-size: 24px;
+      font-size: 28px;
       font-weight: 600;
-      margin-bottom: 8px;
+      margin: 40px 0 20px;
+    }
+
+    .report-content h2 {
+      font-family: 'Newsreader', serif;
+      font-size: 22px;
+      font-weight: 600;
+      margin: 32px 0 16px;
       color: var(--ink);
     }
 
-    .topic-summary {
-      font-size: 15px;
+    .report-content p {
+      margin-bottom: 12px;
       color: var(--gray);
-      margin-bottom: 20px;
-      padding-bottom: 16px;
+    }
+
+    .report-content ul {
+      list-style: none;
+      margin: 16px 0;
+    }
+
+    .report-content li {
+      padding: 8px 0;
       border-bottom: 1px solid var(--gray-light);
     }
 
-    /* Pick Item */
-    .pick {
-      display: flex;
-      gap: 16px;
-      padding: 16px;
-      margin-bottom: 12px;
-      background: white;
-      border-radius: 8px;
-      border: 1px solid var(--gray-light);
-      transition: all 0.2s ease;
+    .report-content li:last-child {
+      border-bottom: none;
     }
 
-    .pick:hover {
-      border-color: var(--terra);
-      box-shadow: 0 2px 8px rgba(196, 93, 58, 0.1);
-    }
-
-    .pick-number {
-      font-family: 'Newsreader', serif;
-      font-size: 24px;
-      font-weight: 700;
-      color: var(--terra);
-      line-height: 1;
-      min-width: 32px;
-    }
-
-    .pick-content {
-      flex: 1;
-    }
-
-    .pick-title {
-      font-weight: 600;
-      font-size: 15px;
-      margin-bottom: 4px;
-    }
-
-    .pick-title a {
+    .report-content a {
       color: var(--ink);
       text-decoration: none;
+      border-bottom: 1px solid var(--gray-light);
+      transition: all 0.15s ease;
     }
 
-    .pick-title a:hover {
+    .report-content a:hover {
       color: var(--terra);
-    }
-
-    .pick-reason {
-      font-size: 13px;
-      color: var(--gray);
-      font-style: italic;
-    }
-
-    /* Weekly specific */
-    .weekly .report-title {
-      font-size: 36px;
-    }
-
-    .editorial {
-      font-family: 'Newsreader', serif;
-      font-size: 18px;
-      line-height: 1.8;
-      color: var(--ink);
-      margin-bottom: 48px;
-      padding: 24px;
-      background: var(--terra-light);
-      border-radius: 8px;
-      border-left: 4px solid var(--terra);
+      border-bottom-color: var(--terra);
     }
 
     /* Empty state */
@@ -318,6 +292,15 @@
       font-size: 48px;
       margin-bottom: 16px;
       opacity: 0.5;
+    }
+
+    /* Loading state */
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 80px;
+      color: var(--gray);
     }
 
     /* Mobile */
@@ -359,8 +342,15 @@
   <header class="header">
     <div class="logo">THE <span>DAILY</span> BRIEF</div>
     <div class="nav-tabs">
-      <button class="nav-tab active" data-view="daily">日报</button>
-      <button class="nav-tab" data-view="weekly">周报</button>
+      <button class="nav-tab" id="themeToggle" aria-label="Toggle theme">
+        <svg class="sun-icon" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="5"/>
+          <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+        </svg>
+        <svg class="moon-icon" viewBox="0 0 24 24" style="display:none">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      </button>
     </div>
   </header>
 
@@ -369,214 +359,127 @@
       <div class="sidebar-section">
         <div class="sidebar-title">日期</div>
         <ul class="nav-list" id="daily-nav">
-          <li class="nav-item"><a href="#" class="nav-link active" data-date="2026-03-31">03-31</a></li>
-          <li class="nav-item"><a href="#" class="nav-link" data-date="2026-03-30">03-30</a></li>
-          <li class="nav-item"><a href="#" class="nav-link" data-date="2026-03-29">03-29</a></li>
-          <li class="nav-item"><a href="#" class="nav-link" data-date="2026-03-28">03-28</a></li>
-        </ul>
-      </div>
-      <div class="sidebar-section">
-        <div class="sidebar-title">周</div>
-        <ul class="nav-list" id="weekly-nav" style="display:none">
-          <li class="nav-item"><a href="#" class="nav-link" data-week="W13">W13 · 03-24 ~ 03-30</a></li>
-          <li class="nav-item"><a href="#" class="nav-link" data-week="W12">W12 · 03-17 ~ 03-23</a></li>
-          <li class="nav-item"><a href="#" class="nav-link" data-week="W11">W11 · 03-10 ~ 03-16</a></li>
+          <li class="nav-item"><span class="nav-link loading">加载中...</span></li>
         </ul>
       </div>
     </aside>
 
     <main class="main">
       <article class="content" id="report-content">
-        <!-- Dynamic content here -->
+        <div class="loading">加载中...</div>
       </article>
     </main>
   </div>
 
   <script>
-    // Sample data - in production this would be fetched from files
-    const reports = {
-      daily: {
-        '2026-03-31': {
-          date: '2026年3月31日',
-          title: '今日简报',
-          topics: [
-            {
-              title: 'AI 与大模型',
-              summary: 'Claude 4 发布，GPT-5 进展，Gemini 2.0 更新',
-              picks: [
-                { n: 1, title: 'Anthropic 发布 Claude 4 系列模型', reason: '多模态能力大幅提升，在复杂推理任务上超越 GPT-4' },
-                { n: 2, title: 'Google 公布 Gemini 2.0 技术细节', reason: '长上下文窗口达到 2M tokens，适合超长文档处理' },
-                { n: 3, title: 'OpenAI CEO 透露 GPT-5 进展', reason: '预计下半年发布，重点优化推理效率和成本' }
-              ]
-            },
-            {
-              title: '技术趋势',
-              summary: 'Rust 继续流行，云原生进入 2.0 时代',
-              picks: [
-                { n: 1, title: 'Rust 连续第八年成为最受开发者喜爱的语言', reason: '内存安全特性在系统编程领域越来越受重视' },
-                { n: 2, title: 'CNCF 发布云原生成熟度模型 2.0', reason: '新增 AI/ML 工作负载支持，定义新一代云原生标准' }
-              ]
-            }
-          ]
-        }
-      },
-      weekly: {
-        'W13': {
-          week: 'W13 · 03-24 ~ 03-30',
-          title: '本周精选',
-          editorial: '本周 AI 领域迎来重要更新，各家大模型厂商纷纷发布新一代产品。技术圈对 AI Safety 的讨论持续升温，同时也出现了一些关于 AI 监管的新观点。开源社区依然活跃，多个优质项目获得关注。',
-          picks: [
-            { n: 1, title: 'Claude 4 系列发布', reason: '重新定义多模态 AI 标准' },
-            { n: 2, title: 'GitHub Copilot Enterprise 重大更新', reason: '支持自然语言重构代码' },
-            { n: 3, title: 'Linux 6.8 发布', reason: 'Rust 驱动进入主线' },
-            { n: 4, title: 'React 19 RC 候选发布', reason: 'Server Components 稳定化' }
-          ]
-        }
-      }
-    };
+    // Theme management
+    const themeToggle = document.getElementById('themeToggle');
+    const savedTheme = localStorage.getItem('theme') ||
+      (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    updateThemeIcon(savedTheme);
 
-    let currentView = 'daily';
-    let currentDate = '2026-03-31';
-
-    function renderReport() {
-      const content = document.getElementById('report-content');
-      const data = currentView === 'daily'
-        ? reports.daily[currentDate]
-        : reports.weekly[currentDate === '2026-03-31' ? 'W13' : currentDate];
-
-      if (!data) {
-        content.innerHTML = `
-          <div class="empty">
-            <div class="empty-icon">📭</div>
-            <p>暂无 ${currentView === 'daily' ? currentDate : currentDate} 的内容</p>
-          </div>
-        `;
-        return;
-      }
-
-      if (currentView === 'weekly') {
-        content.innerHTML = `
-          <header class="report-header weekly">
-            <div class="report-date">${data.week}</div>
-            <h1 class="report-title">${data.title}</h1>
-          </header>
-          ${data.editorial ? `<div class="editorial">${data.editorial}</div>` : ''}
-          ${data.picks.map((pick, i) => `
-            <section class="topic" style="animation-delay: ${(i+1) * 0.1}s">
-              <div class="topic-title">${pick.n}. ${pick.title}</div>
-              <div class="topic-summary">${pick.reason}</div>
-            </section>
-          `).join('')}
-        `;
+    function updateThemeIcon(theme) {
+      const sunIcon = themeToggle.querySelector('.sun-icon');
+      const moonIcon = themeToggle.querySelector('.moon-icon');
+      if (theme === 'dark') {
+        sunIcon.style.display = 'block';
+        moonIcon.style.display = 'none';
       } else {
-        content.innerHTML = `
-          <header class="report-header">
-            <div class="report-date">${data.date}</div>
-            <h1 class="report-title">${data.title}</h1>
-            <div class="report-meta">共 ${data.topics.reduce((acc, t) => acc + t.picks.length, 0)} 条精选</div>
-          </header>
-          ${data.topics.map((topic, i) => `
-            <section class="topic" style="animation-delay: ${(i+1) * 0.15}s">
-              <h2 class="topic-title"># ${topic.title}</h2>
-              <p class="topic-summary">${topic.summary}</p>
-              ${topic.picks.map(pick => `
-                <div class="pick">
-                  <div class="pick-number">${pick.n}</div>
-                  <div class="pick-content">
-                    <div class="pick-title"><a href="#">${pick.title}</a></div>
-                    <div class="pick-reason">" ${pick.reason} "</div>
-                  </div>
-                </div>
-              `).join('')}
-            </section>
-          `).join('')}
-        `;
+        sunIcon.style.display = 'none';
+        moonIcon.style.display = 'block';
       }
-
-      // Reset animation
-      content.style.animation = 'none';
-      content.offsetHeight; // Trigger reflow
-      content.style.animation = 'fadeIn 0.4s ease forwards';
     }
 
-    // Tab switching
-    document.querySelectorAll('.nav-tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
-        currentView = tab.dataset.view;
-
-        document.getElementById('daily-nav').style.display = currentView === 'daily' ? '' : 'none';
-        document.getElementById('weekly-nav').style.display = currentView === 'weekly' ? '' : 'none';
-
-        // Reset active state
-        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-        if (currentView === 'weekly') {
-          document.querySelector('#weekly-nav .nav-link').classList.add('active');
-          currentDate = 'W13';
-        } else {
-          document.querySelector('#daily-nav .nav-link').classList.add('active');
-          currentDate = '2026-03-31';
-        }
-
-        renderReport();
-      });
+    themeToggle.addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+      updateThemeIcon(next);
     });
 
-    // Navigation clicking
-    document.querySelectorAll('.nav-link').forEach(link => {
-      link.addEventListener('click', (e) => {
-        e.preventDefault();
-        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-        link.classList.add('active');
+    // State
+    let currentFile = null;
+    const nav = document.getElementById('daily-nav');
 
-        if (currentView === 'daily') {
-          currentDate = link.dataset.date;
-        } else {
-          currentDate = link.dataset.week;
+    // Fetch available reports
+    async function loadReportList() {
+      try {
+        const resp = await fetch('reports/reports.json');
+        const data = await resp.json();
+        const files = data.daily || [];
+
+        if (files.length === 0) {
+          nav.innerHTML = '<li class="nav-item"><span class="nav-link">暂无日报</span></li>';
+          showEmpty('暂无日报内容');
+          return;
         }
 
-        renderReport();
-      });
-    });
+        nav.innerHTML = files.map(f => {
+          const date = f.replace('.md', '');
+          const display = date.slice(5).replace(/-/g, '/');
+          return `<li class="nav-item">
+            <a href="#" class="nav-link" data-file="${f}">${display}</a>
+          </li>`;
+        }).join('');
 
-    // Initial render
-    renderReport();
+        // Load first report
+        loadReport(files[0]);
 
-    // Dynamic loading from serve command
-    const { dailyFiles, weeklyFiles } = window.__REPORTS_CONFIG || { dailyFiles: [], weeklyFiles: [] }
+        // Add click handlers
+        nav.querySelectorAll('.nav-link').forEach(link => {
+          link.addEventListener('click', (e) => {
+            e.preventDefault();
+            nav.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            link.classList.add('active');
+            loadReport(link.dataset.file);
+          });
+        });
 
-    // 渲染导航列表
-    function renderNav(files, type) {
-      const nav = document.getElementById(`${type}-nav`)
-      if (!nav) return
-      nav.innerHTML = files.map(f => {
-        const date = f.replace('.md', '')
-        return `<li class="nav-item"><a href="#" class="nav-link" data-type="${type}" data-file="${f}">${date}</a></li>`
-      }).join('')
+      } catch (err) {
+        nav.innerHTML = '<li class="nav-item"><span class="nav-link">加载失败</span></li>';
+        showEmpty('无法加载日报列表');
+      }
     }
 
-    renderNav(dailyFiles, 'daily')
-    renderNav(weeklyFiles, 'weekly')
+    // Load a specific report
+    async function loadReport(filename) {
+      currentFile = filename;
+      const content = document.getElementById('report-content');
+      content.innerHTML = '<div class="loading">加载中...</div>';
 
-    // 点击导航加载对应 Markdown
-    document.addEventListener('click', async (e) => {
-      const link = e.target.closest('.nav-link')
-      if (!link) return
+      try {
+        const resp = await fetch(`reports/daily/${filename}`);
+        if (!resp.ok) throw new Error('Failed to fetch');
+        const markdown = await resp.text();
+        const html = marked.parse(markdown);
 
-      e.preventDefault()
-      const { type, file } = link.dataset
+        content.innerHTML = `<div class="report-header">
+          <div class="report-date">${filename.replace('.md', '').replace(/-/g, '年').replace(/(\d{2})$/, '月$1日')}</div>
+          <h1 class="report-title">日报</h1>
+        </div>
+        <div class="report-content">${html}</div>`;
+        content.style.animation = 'none';
+        content.offsetHeight;
+        content.style.animation = 'fadeIn 0.4s ease forwards';
 
-      // 加载 Markdown
-      const resp = await fetch(`/reports/${type}/${file}`)
-      const markdown = await resp.text()
-
-      // 渲染
-      if (typeof md !== 'undefined') {
-        const html = md.render(markdown)
-        document.getElementById('report-content').innerHTML = html
+      } catch (err) {
+        showEmpty('加载日报失败');
       }
-    })
+    }
+
+    function showEmpty(message) {
+      document.getElementById('report-content').innerHTML = `
+        <div class="empty">
+          <div class="empty-icon">📭</div>
+          <p>${message}</p>
+        </div>
+      `;
+    }
+
+    // Init
+    loadReportList();
   </script>
 </body>
 </html>
