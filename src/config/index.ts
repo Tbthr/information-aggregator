@@ -14,8 +14,6 @@ import type { EnrichOptions } from '../pipeline/enrich.js'
 // ============================================================
 
 export interface DailyConfig {
-  maxItems: number
-  minScore: number
   quadrantPrompt: string
 }
 
@@ -103,7 +101,7 @@ function loadReportsConfig(): { enrichOptions: EnrichOptions; dailyConfig: Daily
   const configPath = path.join(process.cwd(), 'config', 'reports.yaml')
   const content = fs.readFileSync(configPath, 'utf-8')
   const raw = yaml.load(content) as {
-    daily?: { maxItems?: number; minScore?: number; quadrantPrompt?: string }
+    daily?: { quadrantPrompt?: string }
     enrich?: { enabled?: boolean; batchSize?: number; minContentLength?: number; fetchTimeout?: number }
   }
 
@@ -114,8 +112,6 @@ function loadReportsConfig(): { enrichOptions: EnrichOptions; dailyConfig: Daily
   }
 
   const dailyConfig: DailyConfig = {
-    maxItems: raw.daily?.maxItems ?? 50,
-    minScore: raw.daily?.minScore ?? 0,
     quadrantPrompt: raw.daily?.quadrantPrompt ?? '',
   }
 
