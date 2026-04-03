@@ -13,7 +13,7 @@ describe("parseGitHubTrendingHtml", () => {
         </article>
       `;
 
-      const items = parseGitHubTrendingHtml(html, "github-trending");
+      const items = parseGitHubTrendingHtml(html, "github-trending", "github-trending", "article", "GitHub Trending");
 
       expect(items).toHaveLength(1);
       expect(items[0]?.url).toBe("https://github.com/openai/information-aggregator");
@@ -35,7 +35,7 @@ describe("parseGitHubTrendingHtml", () => {
         </article>
       `;
 
-      const items = parseGitHubTrendingHtml(html, "github-trending");
+      const items = parseGitHubTrendingHtml(html, "github-trending", "github-trending", "article", "GitHub Trending");
 
       expect(items).toHaveLength(2);
       expect(items[0]?.title).toBe("user / repo1");
@@ -52,7 +52,7 @@ describe("parseGitHubTrendingHtml", () => {
         </article>
       `;
 
-      const items = parseGitHubTrendingHtml(html, "github-trending");
+      const items = parseGitHubTrendingHtml(html, "github-trending", "github-trending", "article", "GitHub Trending");
 
       expect(items).toHaveLength(1);
       expect(items[0]?.url).toBe("https://github.com/user/repo");
@@ -74,7 +74,7 @@ describe("parseGitHubTrendingHtml", () => {
         </article>
       `;
 
-      const items = parseGitHubTrendingHtml(html, "github-trending");
+      const items = parseGitHubTrendingHtml(html, "github-trending", "github-trending", "article", "GitHub Trending");
       const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
 
       expect(metadata.stars).toBe("12k");
@@ -90,7 +90,7 @@ describe("parseGitHubTrendingHtml", () => {
         </article>
       `;
 
-      const items = parseGitHubTrendingHtml(html, "github-trending");
+      const items = parseGitHubTrendingHtml(html, "github-trending", "github-trending", "article", "GitHub Trending");
       const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
 
       expect(metadata.author).toBe("openai");
@@ -109,7 +109,7 @@ describe("parseGitHubTrendingHtml", () => {
         </article>
       `;
 
-      const items = parseGitHubTrendingHtml(html, "github-trending");
+      const items = parseGitHubTrendingHtml(html, "github-trending", "github-trending", "article", "GitHub Trending");
 
       const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
       expect(metadata.todayStars).toBe("567");
@@ -125,7 +125,7 @@ describe("parseGitHubTrendingHtml", () => {
         </article>
       `;
 
-      const items = parseGitHubTrendingHtml(html, "github-trending");
+      const items = parseGitHubTrendingHtml(html, "github-trending", "github-trending", "article", "GitHub Trending");
 
       expect(items).toHaveLength(1);
       expect(items[0]?.url).toBe("https://github.com/user/repo");
@@ -139,7 +139,7 @@ describe("parseGitHubTrendingHtml", () => {
         </article>
       `;
 
-      const items = parseGitHubTrendingHtml(html, "github-trending");
+      const items = parseGitHubTrendingHtml(html, "github-trending", "github-trending", "article", "GitHub Trending");
       const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
 
       expect(items).toHaveLength(1);
@@ -156,7 +156,7 @@ describe("parseGitHubTrendingHtml", () => {
         </article>
       `;
 
-      const items = parseGitHubTrendingHtml(html, "github-trending");
+      const items = parseGitHubTrendingHtml(html, "github-trending", "github-trending", "article", "GitHub Trending");
 
       // 第一个 article 没有 href，应该被过滤掉
       // 第二个 article 应该被解析
@@ -171,7 +171,7 @@ describe("parseGitHubTrendingHtml", () => {
         </article>
       `;
 
-      const items = parseGitHubTrendingHtml(html, "github-trending");
+      const items = parseGitHubTrendingHtml(html, "github-trending", "github-trending", "article", "GitHub Trending");
 
       expect(items).toHaveLength(1);
       // 绝对路径会被正确解析
@@ -193,7 +193,7 @@ describe("collectGitHubTrendingSource", () => {
         url: "https://github.com/trending",
       };
 
-      await expect(collectGitHubTrendingSource(source, mockFetch as unknown as typeof fetch)).rejects.toThrow(
+      await expect(collectGitHubTrendingSource(source, { timeWindow: 24 * 60 * 60 * 1000, fetchImpl: mockFetch as unknown as typeof fetch })).rejects.toThrow(
         "GitHub Trending returned 404: Not Found",
       );
     });
@@ -224,7 +224,7 @@ describe("collectGitHubTrendingSource", () => {
         return mockFetch(url, { ...init, signal: controller.signal });
       };
 
-      await expect(collectGitHubTrendingSource(source, fetchWithAbort as unknown as typeof fetch)).rejects.toThrow();
+      await expect(collectGitHubTrendingSource(source, { timeWindow: 24 * 60 * 60 * 1000, fetchImpl: fetchWithAbort as unknown as typeof fetch })).rejects.toThrow();
     });
 
     test("throws on empty response", async () => {
@@ -238,7 +238,7 @@ describe("collectGitHubTrendingSource", () => {
         url: "https://github.com/trending",
       };
 
-      await expect(collectGitHubTrendingSource(source, mockFetch as unknown as typeof fetch)).rejects.toThrow(
+      await expect(collectGitHubTrendingSource(source, { timeWindow: 24 * 60 * 60 * 1000, fetchImpl: mockFetch as unknown as typeof fetch })).rejects.toThrow(
         "returned empty response",
       );
     });
@@ -254,7 +254,7 @@ describe("collectGitHubTrendingSource", () => {
         url: "https://github.com/trending",
       };
 
-      await expect(collectGitHubTrendingSource(source, mockFetch as unknown as typeof fetch)).rejects.toThrow(
+      await expect(collectGitHubTrendingSource(source, { timeWindow: 24 * 60 * 60 * 1000, fetchImpl: mockFetch as unknown as typeof fetch })).rejects.toThrow(
         "unexpected content type",
       );
     });
@@ -273,7 +273,7 @@ describe("collectGitHubTrendingSource", () => {
         url: "https://github.com/trending",
       };
 
-      await expect(collectGitHubTrendingSource(source, mockFetch as unknown as typeof fetch)).rejects.toThrow(
+      await expect(collectGitHubTrendingSource(source, { timeWindow: 24 * 60 * 60 * 1000, fetchImpl: mockFetch as unknown as typeof fetch })).rejects.toThrow(
         "no <article> elements found",
       );
     });
@@ -304,7 +304,7 @@ describe("collectGitHubTrendingSource", () => {
         url: "https://github.com/trending",
       };
 
-      const items = await collectGitHubTrendingSource(source, mockFetch as unknown as typeof fetch);
+      const items = await collectGitHubTrendingSource(source, { timeWindow: 24 * 60 * 60 * 1000, fetchImpl: mockFetch as unknown as typeof fetch });
 
       expect(items).toHaveLength(1);
       expect(items[0]?.title).toBe("test / repo");
@@ -328,7 +328,7 @@ describe("collectGitHubTrendingSource", () => {
         url: "https://github.com/trending/python",
       };
 
-      await collectGitHubTrendingSource(source, mockFetch as unknown as typeof fetch);
+      await collectGitHubTrendingSource(source, { timeWindow: 24 * 60 * 60 * 1000, fetchImpl: mockFetch as unknown as typeof fetch });
 
       // 验证使用了正确的 URL
       expect(fetchedUrl).toContain("python");

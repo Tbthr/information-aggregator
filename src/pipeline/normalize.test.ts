@@ -6,8 +6,13 @@ function makeRawItem(overrides: Partial<RawItem> = {}): RawItem {
   return {
     id: "raw-1",
     sourceId: "rss-1",
+    sourceType: "rss",
+    contentType: "article",
+    sourceName: "Test RSS",
     title: "Test Article Title",
     url: "https://example.com/post",
+    content: "This is the full content of the article that provides more details.",
+    summary: "This is a test article summary",
     fetchedAt: "2026-03-09T00:00:00Z",
     metadataJson: JSON.stringify({
       provider: "rss",
@@ -24,7 +29,7 @@ function makeRawItem(overrides: Partial<RawItem> = {}): RawItem {
 }
 
 describe("normalizeItem", () => {
-  test("produces NormalizedItem with sourceKind (not sourceType)", () => {
+  test("produces NormalizedItem with sourceType", () => {
     const raw = makeRawItem();
     const result = normalizeItem(raw);
 
@@ -32,7 +37,7 @@ describe("normalizeItem", () => {
     expect(result.sourceId).toBe("rss-1");
     expect(result.title).toBe("Test Article Title");
     expect(result.publishedAt).toBe("2026-03-09T10:00:00Z");
-    expect(result.sourceKind).toBe("rss"); // NEW: sourceKind instead of sourceType
+    expect(result.sourceType).toBe("rss");
     expect(result.contentType).toBe("article");
     expect(result.normalizedUrl).toBe("https://example.com/post");
     expect(result.normalizedTitle).toBe("Test Article Title");
@@ -63,8 +68,8 @@ describe("normalizeItem", () => {
         provider: "rss",
         sourceKind: "rss",
         contentType: "article",
-        summary: "  Hello   <b>World</b> &amp; Test  ",
       }),
+      summary: "  Hello   <b>World</b> &amp; Test  ",
     });
     const result = normalizeItem(raw);
     // HTML tags removed, entities decoded
@@ -79,8 +84,8 @@ describe("normalizeItem", () => {
         sourceKind: "rss",
         contentType: "article",
         summary: "short",
-        content: longContent,
       }),
+      content: longContent,
     });
     const result = normalizeItem(raw);
     expect(result.normalizedContent!.length).toBeLessThanOrEqual(503); // 500 + "..."
@@ -95,6 +100,7 @@ describe("normalizeItem", () => {
         contentType: "article",
         content: "Some content",
       }),
+      summary: "",
     });
     const result = normalizeItem(raw);
     expect(result.normalizedSummary).toBe("");
