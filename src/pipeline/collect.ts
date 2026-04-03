@@ -1,5 +1,4 @@
-import { type AdapterFn, type RawItem, type RawItemMetadata, type Source } from "../types/index";
-import { parseRawItemMetadata } from "../utils/metadata";
+import { type AdapterFn, type RawItem, type Source } from "../types/index";
 import { processWithConcurrency } from "../ai/concurrency";
 import { createLogger } from "../utils/logger";
 
@@ -27,63 +26,13 @@ export interface CollectDependencies {
   timeWindow: number;
 }
 
-function defaultProviderForSourceType(sourceType: Source["kind"]): string {
-  return sourceType;
-}
-
-function defaultContentTypeForSourceType(sourceType: Source["kind"]): string {
-  switch (sourceType) {
-    case "hn":
-    case "reddit":
-      return "community_post";
-    case "website":
-      return "page";
-    default:
-      return "article";
-  }
-}
-
-function buildCanonicalHints(source: Source, item: RawItem, metadata: RawItemMetadata | null): RawItemMetadata["canonicalHints"] {
-  if (metadata?.canonicalHints) {
-    return metadata.canonicalHints;
-  }
-
-  if (source.kind === "hn") {
-    const hnId = item.id.replace(/^hn-/, "");
-    return {
-      externalUrl: item.url,
-      discussionUrl: `https://news.ycombinator.com/item?id=${hnId}`,
-    };
-  }
-
-  if (source.kind === "reddit") {
-    return {
-      externalUrl: item.url,
-      discussionUrl: `https://www.reddit.com/r/artificial/comments/${item.id.replace(/^reddit-/, "")}`,
-    };
-  }
-
-  return undefined;
-}
-
 function normalizeCollectedItem(source: Source, item: RawItem): RawItem {
-  const metadata = parseRawItemMetadata(item.metadataJson);
-  const normalizedMetadata: RawItemMetadata = {
-    provider: metadata?.provider ?? defaultProviderForSourceType(source.kind),
-    sourceKind: metadata?.sourceKind ?? source.kind,
-    contentType: metadata?.contentType ?? defaultContentTypeForSourceType(source.kind),
-    engagement: metadata?.engagement,
-    canonicalHints: buildCanonicalHints(source, item, metadata),
-    subreddit: metadata?.subreddit,
-    discoveredFrom: metadata?.discoveredFrom,
-    sourceName: source.name,
-  };
-
   return {
     ...item,
-    metadataJson: JSON.stringify(normalizedMetadata),
-    // 透传 source 的 topicIds
-    filterContext: { topicIds: source.topicIds },
+    sourceType: source.type,
+    contentType: source.contentType,
+    sourceName: source.name,
+    tagFilter: source.tags,
   };
 }
 
