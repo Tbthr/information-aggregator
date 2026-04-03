@@ -123,8 +123,8 @@ function normalizeBirdTitle(text: string): string {
   return collapsed.length > 120 ? `${collapsed.slice(0, 117).trimEnd()}...` : collapsed;
 }
 
-function getBirdConfig(source: Pick<Source, "configJson">): BirdSourceConfig {
-  return JSON.parse(source.configJson ?? "{}") as BirdSourceConfig;
+function getBirdConfig(source: Pick<Source, "authConfigJson">): BirdSourceConfig {
+  return JSON.parse(source.authConfigJson ?? "{}") as BirdSourceConfig;
 }
 
 function getBirdAuthArgs(config: BirdSourceConfig): string[] {
@@ -158,7 +158,7 @@ function getBirdAuthArgs(config: BirdSourceConfig): string[] {
   return args;
 }
 
-function getBirdMode(source: Pick<Source, "configJson">): string {
+function getBirdMode(source: Pick<Source, "authConfigJson">): string {
   const mode = getBirdConfig(source).birdMode;
   if (!mode) {
     throw new Error("x source requires birdMode");
@@ -183,7 +183,7 @@ function getCountArgs(config: BirdSourceConfig, mode: string): string[] {
   return args;
 }
 
-export function buildBirdCommand(source: Pick<Source, "kind" | "configJson">): string[] {
+export function buildBirdCommand(source: Pick<Source, "type" | "authConfigJson">): string[] {
   const config = getBirdConfig(source);
   const mode = getBirdMode(source);
   const authArgs = getBirdAuthArgs(config);
@@ -317,34 +317,46 @@ function parseBirdItems(payload: string, source: Source, jobStartedAt: string, t
 
       // Check 24h window using created_at or createdAt
       const itemTime = item.created_at ?? item.createdAt;
-      if (itemTime) {
-        const parsedTime = new Date(itemTime);
-        if (!isNaN(parsedTime.getTime()) && parsedTime < cutoffTime) {
-          logger.warn("Discarding item outside 24h window", {
-            sourceId: source.id,
-            sourceType: "bird",
-            title: typeof article?.title === "string" && article.title.trim() !== ""
-              ? article.title.trim()
-              : normalizeBirdTitle(rawText),
-            url: item.url ?? "",
-            rawTime: itemTime,
-            discardReason: `created at ${parsedTime.toISOString()} is before cutoff ${cutoffTime.toISOString()}`,
-          });
-          discardCount++;
-          return null; // Will be filtered out
-        }
+      if (!itemTime) {
+        logger.warn("Skipping item without publishedAt", {
+          sourceId: source.id,
+          sourceType: "bird",
+          title,
+          url: item.url ?? "",
+        });
+        discardCount++;
+        return null;
+      }
+
+      const parsedTime = new Date(itemTime);
+      if (!isNaN(parsedTime.getTime()) && parsedTime < cutoffTime) {
+        logger.warn("Discarding item outside 24h window", {
+          sourceId: source.id,
+          sourceType: "bird",
+          title: typeof article?.title === "string" && article.title.trim() !== ""
+            ? article.title.trim()
+            : normalizeBirdTitle(rawText),
+          url: item.url ?? "",
+          rawTime: itemTime,
+          discardReason: `created at ${parsedTime.toISOString()} is before cutoff ${cutoffTime.toISOString()}`,
+        });
+        discardCount++;
+        return null; // Will be filtered out
       }
 
       return {
         id: item.id ?? `${source.id}-${index + 1}`,
         sourceId: source.id,
+        sourceType: source.type,
+        contentType: source.contentType,
+        sourceName: source.name,
         title,
         url: item.url
         ?? (typeof authorUsername === "string" && typeof item.id === "string"
           ? `https://x.com/${authorUsername}/status/${item.id}`
           : ""),
         author: authorUsername,
-        publishedAt: item.created_at ?? item.createdAt,
+        publishedAt: parsedTime.toISOString(),
         fetchedAt: new Date().toISOString(),
         content: rawText,
         metadataJson: JSON.stringify({

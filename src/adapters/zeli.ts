@@ -6,7 +6,7 @@
  *   返回 Hacker News 24h 最热帖子
  */
 
-import type { FilterContext, RawItem, Source } from "../types/index";
+import type { RawItem, Source } from "../types/index";
 import { createLogger } from "../utils/logger";
 
 const logger = createLogger("adapter:zeli");
@@ -21,7 +21,6 @@ function parseUnixTimestamp(ts: number | string | undefined): Date | null {
 export async function collectZeliSource(
   source: Source,
   options: { timeWindow: number; fetchImpl?: typeof fetch } = { timeWindow: 24 * 60 * 60 * 1000 },
-  filterContext?: FilterContext,
 ): Promise<RawItem[]> {
   const url = "https://zeli.app/api/hacker-news?type=hot24h";
   const startTime = Date.now();
@@ -58,20 +57,29 @@ export async function collectZeliSource(
       if (!title || !link) continue;
 
       const published = parseUnixTimestamp(p.time);
-      if (published && published.getTime() < cutoffMs) continue;
+      if (!published) {
+        logger.warn("Skipping item without publishedAt", {
+          sourceId: source.id,
+          url: link,
+        });
+        continue;
+      }
+      if (published.getTime() < cutoffMs) continue;
 
       const id = `zeli-${String(p.id ?? Date.now())}`;
       out.push({
         id,
         sourceId: source.id,
+        sourceType: source.type,
+        contentType: source.contentType,
+        sourceName: source.name,
         title,
         url: link,
         fetchedAt: new Date().toISOString(),
-        publishedAt: published?.toISOString(),
+        publishedAt: published.toISOString(),
         metadataJson: JSON.stringify({
           hnId: p.id,
         }),
-        filterContext,
       });
     }
 

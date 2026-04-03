@@ -83,9 +83,11 @@ function cleanTitle(title: string): string {
 /**
  * 解析 GitHub Trending HTML
  */
-export function parseGitHubTrendingHtml(html: string, sourceId: string): RawItem[] {
+export function parseGitHubTrendingHtml(html: string, sourceId: string, sourceType: string, sourceContentType: string, sourceName: string): RawItem[] {
   // 查找所有 article 元素
   const articles = [...html.matchAll(/<article\b[\s\S]*?<\/article>/gi)].map((match) => match[0]);
+
+  const fetchedAt = new Date().toISOString();
 
   const items = articles
     .map((article, index): RawItem | null => {
@@ -139,9 +141,13 @@ export function parseGitHubTrendingHtml(html: string, sourceId: string): RawItem
         return {
           id: `${sourceId}-${index + 1}`,
           sourceId,
+          sourceType,
+          contentType: sourceContentType,
+          sourceName,
           title,
           url,
-          fetchedAt: new Date().toISOString(),
+          fetchedAt,
+          publishedAt: fetchedAt, // GitHub trending doesn't provide per-item timestamps
           metadataJson: JSON.stringify(meta),
         };
       } catch (error) {
@@ -159,8 +165,9 @@ export function parseGitHubTrendingHtml(html: string, sourceId: string): RawItem
  */
 export async function collectGitHubTrendingSource(
   source: Source,
-  fetchImpl: typeof fetch = fetch,
+  options: { timeWindow: number; fetchImpl?: typeof fetch } = { timeWindow: 24 * 60 * 60 * 1000 },
 ): Promise<RawItem[]> {
+  const { fetchImpl = fetch } = options;
   const url = source.url ?? "https://github.com/trending";
   const startTime = Date.now();
 
@@ -216,7 +223,7 @@ export async function collectGitHubTrendingSource(
       preview: truncateWithLength(html, 500),
     });
 
-    return parseGitHubTrendingHtml(html, source.id);
+    return parseGitHubTrendingHtml(html, source.id, source.type, source.contentType, source.name);
   } catch (error) {
     const elapsed = Date.now() - startTime;
 

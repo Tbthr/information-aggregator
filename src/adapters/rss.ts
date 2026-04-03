@@ -1,4 +1,4 @@
-import type { FilterContext, RawItem } from "../types/index";
+import type { RawItem, Source } from "../types/index";
 import { createLogger, truncateWithLength } from "../utils/logger";
 
 const logger = createLogger("adapter:rss");
@@ -158,7 +158,9 @@ function parseDate(dateStr: string): ParseDateResult {
 export interface ParseRssItemsOptions {
   jobStartedAt: string;
   timeWindow: number;
-  filterContext?: FilterContext;
+  sourceType: string;
+  sourceContentType: string;
+  sourceName: string;
 }
 
 export function parseRssItems(
@@ -166,7 +168,7 @@ export function parseRssItems(
   sourceId: string,
   options: ParseRssItemsOptions,
 ): RawItem[] {
-  const { jobStartedAt, timeWindow, filterContext } = options;
+  const { jobStartedAt, timeWindow, sourceType, sourceContentType, sourceName } = options;
   const itemBlocks = [...xml.matchAll(/<item\b[\s\S]*?<\/item>/gi)].map((match) => match[0]);
   const atomEntries = [...xml.matchAll(/<entry\b[\s\S]*?<\/entry>/gi)].map((match) => match[0]);
   const blocks = itemBlocks.length > 0 ? itemBlocks : atomEntries;
@@ -231,23 +233,30 @@ export function parseRssItems(
       continue;
     }
 
-    // If no timestamp found, note it
-    const timeParseNote = parsedTimestamp ? parsedTimestamp.timeParseNote : "no timestamp found";
+    // If no timestamp found, skip the item (publishedAt is required)
+    if (!parsedTimestamp) {
+      logger.warn("Skipping item without publishedAt", {
+        sourceId,
+        sourceType: "rss",
+        title,
+        url,
+      });
+      discardCount++;
+      continue;
+    }
 
     // Check if timestamp is within the 24h window
-    if (parsedTimestamp) {
-      if (parsedTimestamp.date < cutoffTime) {
-        logger.warn("Discarding item outside 24h window", {
-          sourceId,
-          sourceType: "rss",
-          title,
-          url,
-          rawTime: parsedTimestamp.rawPublishedAt,
-          discardReason: `published at ${parsedTimestamp.date.toISOString()} is before cutoff ${cutoffTime.toISOString()}`,
-        });
-        discardCount++;
-        continue;
-      }
+    if (parsedTimestamp.date < cutoffTime) {
+      logger.warn("Discarding item outside 24h window", {
+        sourceId,
+        sourceType: "rss",
+        title,
+        url,
+        rawTime: parsedTimestamp.rawPublishedAt,
+        discardReason: `published at ${parsedTimestamp.date.toISOString()} is before cutoff ${cutoffTime.toISOString()}`,
+      });
+      discardCount++;
+      continue;
     }
 
     // Extract author (prefer dc:creator, then author, then managingEditor)
@@ -268,29 +277,25 @@ export function parseRssItems(
 
     // Build metadataJson with only adapter-specific fields (no provider/sourceKind/contentType)
     const metadataJson = JSON.stringify({
-      rawPublishedAt: parsedTimestamp?.rawPublishedAt,
-      timeSourceField: usedField || undefined,
-      timeParseNote,
+      rawPublishedAt: parsedTimestamp.rawPublishedAt,
+      timeSourceField: usedField,
+      timeParseNote: parsedTimestamp.timeParseNote,
     });
 
     const item: RawItem = {
       id: `${sourceId}-${index + 1}-${url || title}`,
       sourceId,
+      sourceType,
+      contentType: sourceContentType,
+      sourceName,
       title,
       url,
       author: authorName,
       content: content,
       fetchedAt: new Date().toISOString(),
+      publishedAt: parsedTimestamp.date.toISOString(),
       metadataJson,
     };
-
-    if (parsedTimestamp) {
-      item.publishedAt = parsedTimestamp.date.toISOString();
-    }
-
-    if (filterContext) {
-      item.filterContext = filterContext;
-    }
 
     items.push(item);
   }
@@ -310,9 +315,8 @@ export function parseRssItems(
 }
 
 export async function collectRssSource(
-  source: { id: string; url?: string },
+  source: Source,
   options: { timeWindow: number; fetchImpl?: typeof fetch } = { timeWindow: 24 * 60 * 60 * 1000 },
-  filterContext?: FilterContext,
 ): Promise<RawItem[]> {
   const url = source.url ?? "";
   const startTime = Date.now();
@@ -345,7 +349,7 @@ export async function collectRssSource(
       preview: truncateWithLength(xml, 500),
     });
 
-    return parseRssItems(xml, source.id, { jobStartedAt, timeWindow, filterContext });
+    return parseRssItems(xml, source.id, { jobStartedAt, timeWindow, sourceType: source.type, sourceContentType: source.contentType, sourceName: source.name });
   } catch (error) {
     const elapsed = Date.now() - startTime;
     logger.error("RSS fetch error", {

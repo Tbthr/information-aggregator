@@ -1,4 +1,4 @@
-import type { FilterContext, RawItem } from "../types/index";
+import type { RawItem, Source } from "../types/index";
 import { createLogger, truncateWithLength } from "../utils/logger";
 
 const logger = createLogger("adapter:json-feed");
@@ -99,15 +99,17 @@ function parseDate(dateStr: string): ParseDateResult {
 export interface ParseJsonFeedItemsOptions {
   jobStartedAt: string;
   timeWindow: number;
-  filterContext?: FilterContext;
 }
 
 export function parseJsonFeedItems(
   payload: JsonFeedPayload,
   sourceId: string,
+  sourceType: string,
+  sourceContentType: string,
+  sourceName: string,
   options: ParseJsonFeedItemsOptions,
 ): RawItem[] {
-  const { jobStartedAt, timeWindow, filterContext } = options;
+  const { jobStartedAt, timeWindow } = options;
   if (!Array.isArray(payload.items)) {
     throw new Error("Invalid JSON Feed payload");
   }
@@ -211,21 +213,17 @@ export function parseJsonFeedItems(
     const rawItem: RawItem = {
       id: item.id ?? `${sourceId}-${index + 1}`,
       sourceId,
+      sourceType,
+      contentType: sourceContentType,
+      sourceName,
       title: item.title ?? `Untitled ${index + 1}`,
       url,
       author: authorName,
       content: content,
       fetchedAt: new Date().toISOString(),
+      publishedAt: parsedTimestamp.date.toISOString(),
       metadataJson,
     };
-
-    if (parsedTimestamp) {
-      rawItem.publishedAt = parsedTimestamp.date.toISOString();
-    }
-
-    if (filterContext) {
-      rawItem.filterContext = filterContext;
-    }
 
     items.push(rawItem);
   }
@@ -245,9 +243,8 @@ export function parseJsonFeedItems(
 }
 
 export async function collectJsonFeedSource(
-  source: { id: string; url?: string },
+  source: Source,
   options: { timeWindow: number; fetchImpl?: typeof fetch } = { timeWindow: 24 * 60 * 60 * 1000 },
-  filterContext?: FilterContext,
 ): Promise<RawItem[]> {
   const url = source.url ?? "";
   const startTime = Date.now();
@@ -281,7 +278,7 @@ export async function collectJsonFeedSource(
       preview: truncateWithLength(responseStr, 500),
     });
 
-    return parseJsonFeedItems(payload, source.id, { jobStartedAt, timeWindow, filterContext });
+    return parseJsonFeedItems(payload, source.id, source.type, source.contentType, source.name, { jobStartedAt, timeWindow });
   } catch (error) {
     const elapsed = Date.now() - startTime;
     logger.error("JSON Feed fetch error", {
