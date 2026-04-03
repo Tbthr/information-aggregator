@@ -222,7 +222,7 @@ function loadSourcesConfig(): Source[] {
 
 ### 4.2 新增必填字段
 
-- 所有 source 必须补 `contentType` 字段
+- 所有 source 必须补 `contentType` 字段，缺失时 `loadSourcesConfig()` 抛出异常并终止运行
 
 ### 4.3 修正类型错误
 
