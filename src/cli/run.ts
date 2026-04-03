@@ -260,10 +260,13 @@ async function main() {
       const normalized = normalizeItem(item)
       if (normalized) {
         normalized.sourceWeightScore = sourceWeightScore
+        // 传递 tagFilter，供 filterByTags 使用
+        ;(normalized as any).tagFilter = item.tagFilter ?? source?.tags ?? []
       }
       return normalized
     })
     .filter((item): item is normalizedArticle => item !== null)
+
 
   log({
     level: 'info',
