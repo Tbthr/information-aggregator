@@ -10,7 +10,6 @@
 
 import fs from 'fs'
 import path from 'path'
-import type { DailyConfig } from '../config/index.js'
 import type { AiClient } from '../ai/types.js'
 import { formatUtcDate, formatUtcDayLabel } from '../../lib/date-utils.js'
 import type { normalizedArticle } from '../types/index.js'
@@ -42,16 +41,6 @@ type Quadrant = '尝试' | '深度' | '地图感'
 interface QuadrantData {
   quadrant: Quadrant
   articles: ArticleForReport[]
-}
-
-// ============================================================
-// Scoring
-// ============================================================
-
-function computeBaseScore(article: normalizedArticle): number {
-  const engagementBonus = Math.min(article.engagementScore ?? 0, 0.25)
-  const sourceBonus = Math.min(article.sourceWeightScore ?? 0, 0.25)
-  return 0.5 + engagementBonus + sourceBonus
 }
 
 // ============================================================
@@ -124,9 +113,6 @@ export function generateDailyMarkdown(report: DailyReportData): string {
 
   lines.push(`# ${report.dateLabel}`)
   lines.push('')
-  lines.push('本报告由 AI 自动生成')
-  lines.push('')
-
   for (const quad of report.quadrants) {
     lines.push(`## ${quad.quadrant} ⓘ`)
     lines.push('')
@@ -137,7 +123,6 @@ export function generateDailyMarkdown(report: DailyReportData): string {
       continue
     }
 
-    lines.push('**引用文章：**')
     for (const article of quad.articles) {
       lines.push(`- [${article.title}](${article.url}) (${article.sourceName})`)
     }
@@ -164,7 +149,6 @@ export async function generateDailyReport(
   now: Date,
   aiClient: AiClient,
   articles: normalizedArticle[],
-  dailyConfig: DailyConfig,
   quadrantPrompt: string
 ): Promise<DailyGenerateResult> {
   const dateStr = formatUtcDate(now)
@@ -178,19 +162,15 @@ export async function generateDailyReport(
   // Step 2: Classify all articles by quadrant (single batch AI call)
   const quadrantMap = await classifyArticlesQuadrantBatch(articles, aiClient, quadrantPrompt)
 
-  const classified: { article: normalizedArticle; score: number; quadrant: Quadrant }[] = []
+  const classified: { article: normalizedArticle; quadrant: Quadrant }[] = []
   for (const article of articles) {
     const id = article.id || `article-${articles.indexOf(article)}`
-    const baseScore = computeBaseScore(article)
     const quadrant = quadrantMap.get(id) ?? '地图感'
-    classified.push({ article, score: baseScore, quadrant })
+    classified.push({ article, quadrant })
   }
 
-  // Step 3: Filter by minScore and sort by score desc
+  // Step 3: 取所有已分类的文章（pipeline 已排序）
   const filtered = classified
-    .filter(c => c.score >= dailyConfig.minScore)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, dailyConfig.maxItems)
 
   if (filtered.length === 0) {
     return { date: dateStr, articleCount: 0, errorSteps }

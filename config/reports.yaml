@@ -1,8 +1,6 @@
 # 报表生成配置
 
 daily:
-  maxItems: 50
-  minScore: 0
   quadrantPrompt: |
     你是一位信息分类分析师。请将以下内容分配到对应的象限。
 

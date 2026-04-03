@@ -226,7 +226,7 @@ async function main() {
     const aiClient = createAiClient()
 
     if (aiClient) {
-      const result = await generateDailyReport(new Date(), aiClient, enriched as any, dailyConfig, dailyConfig.quadrantPrompt)
+      const result = await generateDailyReport(new Date(), aiClient, enriched as any, dailyConfig.quadrantPrompt)
       log({
         level: 'info',
         ts: new Date().toISOString(),
