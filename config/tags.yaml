@@ -1,6 +1,6 @@
-# Topic 配置
+# Tags 配置
 
-topics:
+tags:
   - id: github
     name: GitHub 趋势
     description: |
