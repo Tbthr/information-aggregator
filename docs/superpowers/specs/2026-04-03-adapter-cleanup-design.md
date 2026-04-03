@@ -43,9 +43,9 @@ tags.yaml ──loadTagsConfig()──→ Tag[]
 
 Pipeline 流程:
 
-collect ──→ RawItem (filterContext.tags: Tag[])
+collect ──→ RawItem (tagFilter: Tag[])
    ↓
-normalize ──→ normalizedArticle (sourceDefaultTags: Tag[])
+normalize ──→ normalizedArticle (tagFilter: Tag[])
    ↓
 filterByTags (直接用 Tag[] 对象)
    ↓
@@ -80,7 +80,7 @@ export interface RawItem {
   engagement?: RawItemEngagement; // 互动信号
   expandedUrl?: string;        // 展开后的外链 URL
   canonicalHints?: RawItemCanonicalHints; // URL 扩展提示
-  sourceName?: string;          // 来源名称
+  sourceName: string;         // 来源名称，从 source.name 读取（collect.ts 注入）
   publishedAt: string;          // 非空，缺失则 warn + 跳过该 item
   fetchedAt: string;
   metadataJson: string;          // 纯 JSON 字符串，adapter 内部自定义格式
@@ -90,7 +90,9 @@ export interface RawItem {
 
 ### metadataJson 变更
 
-adapter 构建 RawItem 时，`metadataJson` 退化为纯 JSON 字符串，只包含该 adapter 特有的字段，**不再包含** `provider`、`sourceKind`、`contentType`、`summary`、`content`、`engagement`、`expandedUrl`、`canonicalHints`、`sourceName`（这些已提升到 RawItem 顶层）。
+adapter 构建 RawItem 时，`metadataJson` 退化为纯 JSON 字符串，只包含该 adapter 特有的字段，**不再包含** `provider`、`sourceKind`、`contentType`、`summary`、`content`、`engagement`、`expandedUrl`、`canonicalHints`、`sourceName`（这些已提升到 RawItem 顶层或由 collect.ts 注入）。
+
+`sourceName` 由 `normalizeCollectedItem` 从 `source.name` 注入，adapter 无需处理。
 
 ### publishedAt 非空处理
 
@@ -115,8 +117,19 @@ adapter 构建 RawItem 时：
 |---|---|
 | `interface Topic` | `interface Tag` |
 | `type TopicScores` | `type TagScores` |
-| `interface ClassificationContext` | `interface TagClassificationContext` |
-| `sourceDefaultTopicIds` | `sourceDefaultTags` |
+
+### 删除的类型/变量
+
+| 删除项 | 原因 |
+|---|---|
+| `interface FilterContext` | 已被 `tagFilter: Tag[]` 替代 |
+| `interface ClassificationContext` | 死代码，从未使用 |
+| `sourceDefaultTopicIds` | 已被 `tagFilter: Tag[]` 替代 |
+| `FilterableItem.qualityScore` | 永远为 undefined，条件永不触发，死代码 |
+| `FilterableItem.sourceKind` | 在过滤中从未使用，死代码 |
+| `function classifyItemTopics()` | 死代码，导出但从未被调用 |
+| `function scoreItemByTopic()` | 死代码，导出但从未被调用 |
+| `function filterByPack()` | 仅 `filter-by-pack.test.ts` 使用，代码中标记为 `@deprecated` |
 
 ### 函数/变量重命名
 
@@ -124,10 +137,8 @@ adapter 构建 RawItem 时：
 |---|---|
 | `filterByTopics()` | `filterByTags()` |
 | `classifyByTopic()` | `classifyByTag()` |
-| `scoreItemByTopic()` | `scoreItemByTag()` |
 | `getCandidateTopics()` | `getCandidateTags()` |
 | `loadTopicsConfig()` | `loadTagsConfig()` |
-| `classifyItemTopics()` | `classifyItemTags()` |
 
 ### tags.yaml 结构
 
@@ -331,6 +342,8 @@ export function buildAdapters(): Record<string, AdapterFn> {
 | `x-bird` | `tweetId`, `authorId`, `conversationId`, `media`, `article`, `quote`, `thread`, `parent` |
 | `github-trending` | `stars`, `forks`, `todayStars`, `language`, `author`, `repo` |
 
+**注意**：adapter 将不再把 `authorName`（→ RawItem.author）、`summary`（→ RawItem.summary）、`engagement`（→ RawItem.engagement）、`expandedUrl`（→ RawItem.expandedUrl）、`sourceName`（→ Source.name）写入 metadataJson。
+
 ---
 
 ## 改动 8: collect.ts 改造
@@ -341,9 +354,10 @@ export function buildAdapters(): Record<string, AdapterFn> {
 function normalizeCollectedItem(source: Source, item: RawItem): RawItem {
   return {
     ...item,
-    // sourceType/contentType 由 adapter 写入，从 source 读取
+    // sourceType/contentType/sourceName 由 collect.ts 从 source 注入
     sourceType: source.type,
     contentType: source.contentType,
+    sourceName: source.name,
     // tagFilter 直接使用 Tag[] 对象
     tagFilter: source.tags,
   };
@@ -354,7 +368,7 @@ function normalizeCollectedItem(source: Source, item: RawItem): RawItem {
 - `collect.ts` 中的 `defaultProviderForSourceType`、`defaultContentTypeForSourceType`、`buildCanonicalHints`
 - `collect.ts` 中 `normalizeCollectedItem` 对 `RawItemMetadata` 的重组（不再构造 provider/sourceKind/contentType）
 
-**改动 8 中 normalize.ts 无需改动**，`normalize.ts` 中的 `normalizeItem` 直接从 RawItem 顶层读取 `sourceType`/`contentType`，无需从 metadataJson 解析。
+`canonicalHints` 从 `RawItem.expandedUrl` 直接读取，adapter 直接赋值到 RawItem 顶层。
 
 ---
 
@@ -387,10 +401,8 @@ export interface FilterableItem {
   normalizedTitle: string;
   normalizedSummary: string;
   normalizedContent: string;
-  sourceKind?: string;
   engagementScore?: number | null;
-  qualityScore?: number | null;   // 注意：normalizedArticle 当前无此字段，过滤逻辑中此值永远为 null（属于现存设计问题，本 spec 不处理）
-  tagFilter?: Tag[];              // 原 filterContext
+  tagFilter?: Tag[];
 }
 ```
 
@@ -403,19 +415,19 @@ export interface FilterableItem {
 - `RawItemMetadata` 类型定义（adapter 自行定义内部格式）
 - `parseMetadata()` 兼容逻辑
 - `defaultContentTypeForSourceType`（在 normalize.ts 中）
-- 从 `metadataJson` 读取 `provider`/`sourceKind`/`contentType`
-- `sourceDefaultTopicIds` → `sourceDefaultTags: source.tags`
+- 从 `metadataJson` 读取 `provider`/`sourceKind`/`contentType`/`sourceName`
 
-### sourceType/contentType 来源
+### 新逻辑
 
-由 `normalizeCollectedItem` 在 `collect.ts` 中从 `source` 注入到 RawItem 顶层，adapter 无需处理：
+所有字段从 RawItem 顶层直接读取，metadataJson 仅用于 adapter 特有字段：
+
 ```typescript
-// collect.ts - normalizeCollectedItem
-{ ...item, sourceType: source.type, contentType: source.contentType }
-
-// normalize.ts - 直接从 RawItem 顶层读取
+// normalize.ts
 const sourceType = item.sourceType;
 const contentType = item.contentType;
+const summary = item.summary ?? "";
+const engagementScore = item.engagement ? calculateEngagementScore(item.engagement, sourceType) : 0;
+const sourceName = item.sourceName;  // 由 collect.ts 从 source.name 注入
 ```
 
 ### tagFilter 传递
