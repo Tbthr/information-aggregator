@@ -63,8 +63,9 @@ export interface RawItem {
 }
 
 // Source 类型修改
+// Note: kind 保持 string，与 YAML type 字段一致（YAML 无运行时校验）
 export interface InlineSource {
-  kind: string;               // 保持 string，与 YAML type 字段一致
+  kind: string;
   url: string;
   description?: string;
   name?: string;
@@ -73,9 +74,96 @@ export interface InlineSource {
   priority?: number;
   defaultTopicIds?: string[];
   authRef?: string;
-  contentType: string;        // 新增：必填
+  contentType: string;        // 新增：必填，与 type 同级
 }
 ```
+
+### RawItemMetadata 显式类型定义
+
+移除 `provider`、`sourceKind`、`contentType` 后，`RawItemMetadata` 保留以下字段：
+
+```typescript
+// src/types/index.ts
+
+export interface RawItemMetadata {
+  // === 时间相关（可选） ===
+  rawPublishedAt?: string;        // 原始时间字符串
+  timeSourceField?: string;        // 时间来源字段名
+  timeParseNote?: string;         // 时间解析说明
+
+  // === 内容相关 ===
+  summary?: string;               // 摘要/描述
+  authorName?: string;            // 作者名（adapter 特有格式）
+
+  // === engagement 信号 ===
+  engagement?: RawItemEngagement;
+
+  // === URL 扩展 ===
+  canonicalHints?: RawItemCanonicalHints;
+  expandedUrl?: string;           // 展开后的外链 URL（X-Bird 等使用）
+
+  // === X/Twitter 特有 ===
+  tweetId?: string;
+  authorId?: string;
+  authorName?: string;
+  conversationId?: string;
+  media?: RawItemMediaItem[];
+  article?: RawItemArticle;
+  quote?: RawItemQuote;
+  thread?: RawItemThreadItem[];
+  parent?: RawItemThreadItem;
+
+  // === Zeli/HN 特有 ===
+  hnId?: string;
+  source?: string;                // 来源描述
+
+  // === Clawfeed 特有 ===
+  userName?: string;
+  userSlug?: string;
+  digestId?: string;
+  digestType?: string;
+
+  // === AttentionVC 特有 ===
+  coverImageUrl?: string;
+  wordCount?: number;
+  readingTimeMinutes?: number;
+  category?: string;
+  tags?: string[];
+  langsDetected?: string[];
+  trendingTopics?: string[];
+  lastMetricsUpdate?: string;
+  rank?: number;
+  isBlueVerified?: boolean;
+  followerCount?: number;
+  accountBasedIn?: string;
+
+  // === GitHub-Trending 特有 ===
+  stars?: string;
+  forks?: string;
+  todayStars?: string;
+  language?: string;
+  author?: string;
+  repo?: string;
+
+  // === NewsNow/Techurls（已废弃，保留字段定义） ===
+  sourceName?: string;             // 来源名称
+  timeHint?: string;              // 相对时间提示
+}
+```
+
+### 历史数据兼容
+
+**问题**: `data/YYYY-MM-DD.json` 中已存储的历史 `metadataJson` 仍包含 `provider`、`sourceKind`、`contentType` 字段。
+
+**策略**: `JSON.parse()` 宽容处理，访问这三个字段时使用默认值或兼容逻辑：
+
+```typescript
+const meta = JSON.parse(rawItem.metadataJson);
+// provider/sourceKind/contentType 已不存在于类型定义中
+// 旧数据中这些字段会被忽略，不影响功能
+```
+
+`sourceType` 和 `contentType` 从 RawItem 顶层读取，不依赖 `metadataJson`。
 
 ### metadataJson 变更示例
 
