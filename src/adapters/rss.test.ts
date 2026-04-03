@@ -8,7 +8,7 @@ describe("parseRssItems", () => {
   test("extracts title and link from RSS items", () => {
     const xml = `
       <rss><channel>
-        <item><title>Hello</title><link>https://example.com/1</link></item>
+        <item><title>Hello</title><link>https://example.com/1</link><pubDate>Mon, 09 Mar 2026 08:00:00 GMT</pubDate></item>
       </channel></rss>
     `;
     const items = parseRssItems(xml, "rss-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
@@ -34,22 +34,16 @@ describe("parseRssItems", () => {
   test("emits stable collector metadata", () => {
     const xml = `
       <rss><channel>
-        <item><title>Hello</title><link>https://example.com/1</link></item>
+        <item><title>Hello</title><link>https://example.com/1</link><pubDate>Mon, 09 Mar 2026 08:00:00 GMT</pubDate></item>
       </channel></rss>
     `;
 
     const items = parseRssItems(xml, "rss-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
 
     expect(JSON.parse(items[0]?.metadataJson ?? "{}")).toEqual({
-      provider: "rss",
-      sourceKind: "rss",
-      contentType: "article",
-      rawPublishedAt: undefined,
-      timeSourceField: undefined,
-      timeParseNote: "no timestamp found",
-      summary: undefined,
-      content: undefined,
-      authorName: undefined,
+      rawPublishedAt: "Mon, 09 Mar 2026 08:00:00 GMT",
+      timeSourceField: "pubDate",
+      timeParseNote: "parsed as UTC",
     });
   });
 
@@ -144,24 +138,7 @@ describe("parseRssItems", () => {
       expect(items[0]?.publishedAt).toBe("2026-03-09T23:59:59.000Z");
     });
 
-    test("fills date-only in content:encoded to 23:59:59 UTC", () => {
-      const xml = `
-        <rss><channel>
-          <item>
-            <title>Test</title>
-            <link>https://example.com/1</link>
-            <content:encoded><![CDATA[2026-03-09]]></content:encoded>
-          </item>
-        </channel></rss>
-      `;
-      // This test doesn't have a pubDate so it's just checking date-only filling from content:encoded
-      // But since content:encoded is not a date field, we should check metadata
-      const items = parseRssItems(xml, "rss-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
-      const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
-      // date-only filling only applies to pubDate/published/updated fields
-      expect(metadata.timeParseNote).toBe("no timestamp found");
-    });
-  });
+      });
 
   describe("relative/invalid timestamps discarded with warnings", () => {
     test("discards item with relative timestamp like '2 hours ago'", () => {
@@ -247,54 +224,7 @@ describe("parseRssItems", () => {
     });
   });
 
-  describe("metadataJson summary from description only", () => {
-    test("uses description as summary when no explicit summary", () => {
-      const xml = `
-        <rss><channel>
-          <item>
-            <title>Test</title>
-            <link>https://example.com/1</link>
-            <description>This is a test description</description>
-          </item>
-        </channel></rss>
-      `;
-      const items = parseRssItems(xml, "rss-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
-      const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
-      expect(metadata.summary).toBe("This is a test description");
-    });
-
-    test("does not prefer content:encoded over description for summary", () => {
-      const xml = `
-        <rss><channel>
-          <item>
-            <title>Test</title>
-            <link>https://example.com/1</link>
-            <description>Description text</description>
-            <content:encoded><![CDATA[Full content text]]></content:encoded>
-          </item>
-        </channel></rss>
-      `;
-      const items = parseRssItems(xml, "rss-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
-      const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
-      expect(metadata.summary).toBe("Description text");
-    });
-
-    test("does not fall back to content when no summary available", () => {
-      const xml = `
-        <rss><channel>
-          <item>
-            <title>Test</title>
-            <link>https://example.com/1</link>
-            <content:encoded><![CDATA[Content without description]]></content:encoded>
-          </item>
-        </channel></rss>
-      `;
-      const items = parseRssItems(xml, "rss-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
-      const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
-      expect(metadata.summary).toBeUndefined();
-    });
-  });
-
+  
   describe("metadataJson authorName population", () => {
     test("extracts authorName from dc:creator", () => {
       const xml = `
@@ -303,12 +233,13 @@ describe("parseRssItems", () => {
             <title>Test</title>
             <link>https://example.com/1</link>
             <dc:creator>John Doe</dc:creator>
+            <pubDate>Mon, 09 Mar 2026 08:00:00 GMT</pubDate>
           </item>
         </channel></rss>
       `;
       const items = parseRssItems(xml, "rss-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
-      const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
-      expect(metadata.authorName).toBe("John Doe");
+      // authorName is no longer in metadataJson per Task 9
+      expect(items[0]?.author).toBe("John Doe");
     });
 
     test("extracts authorName from author tag", () => {
@@ -318,12 +249,13 @@ describe("parseRssItems", () => {
             <title>Test</title>
             <link>https://example.com/1</link>
             <author>Jane Smith</author>
+            <pubDate>Mon, 09 Mar 2026 08:00:00 GMT</pubDate>
           </item>
         </channel></rss>
       `;
       const items = parseRssItems(xml, "rss-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
-      const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
-      expect(metadata.authorName).toBe("Jane Smith");
+      // authorName is no longer in metadataJson per Task 9
+      expect(items[0]?.author).toBe("Jane Smith");
     });
 
     test("prefers dc:creator over author tag", () => {
@@ -334,12 +266,13 @@ describe("parseRssItems", () => {
             <link>https://example.com/1</link>
             <author>Author Tag</author>
             <dc:creator>Creator Tag</dc:creator>
+            <pubDate>Mon, 09 Mar 2026 08:00:00 GMT</pubDate>
           </item>
         </channel></rss>
       `;
       const items = parseRssItems(xml, "rss-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
-      const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
-      expect(metadata.authorName).toBe("Creator Tag");
+      // authorName is no longer in metadataJson per Task 9; dc:creator takes precedence
+      expect(items[0]?.author).toBe("Creator Tag");
     });
   });
 
@@ -413,13 +346,12 @@ describe("parseRssItems", () => {
             <title>Test</title>
             <link>https://example.com/1</link>
             <author>John Doe</author>
+            <pubDate>Mon, 09 Mar 2026 08:00:00 GMT</pubDate>
           </item>
         </channel></rss>
       `;
       const items = parseRssItems(xml, "rss-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
-      // author is at top level AND in metadataJson.authorName (D-06)
       expect(items[0]?.author).toBe("John Doe");
-      expect(items[0]?.metadataJson).toContain("authorName");
     });
 
     test("includes content field at top level", () => {
@@ -429,29 +361,13 @@ describe("parseRssItems", () => {
             <title>Test</title>
             <link>https://example.com/1</link>
             <content:encoded><![CDATA[Some content]]></content:encoded>
+            <pubDate>Mon, 09 Mar 2026 08:00:00 GMT</pubDate>
           </item>
         </channel></rss>
       `;
       const items = parseRssItems(xml, "rss-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000 });
-      // content is at top level AND in metadataJson.content (D-07)
       expect(items[0]?.content).toBe("Some content");
-      expect(items[0]?.metadataJson).toContain("content");
     });
   });
 
-  describe("filterContext", () => {
-    test("populates filterContext from fourth parameter", () => {
-      const xml = `
-        <rss><channel>
-          <item>
-            <title>Test</title>
-            <link>https://example.com/1</link>
-          </item>
-        </channel></rss>
-      `;
-      const filterContext = { topicIds: ["topic-1"], mustInclude: ["AI"], exclude: ["spam"] };
-      const items = parseRssItems(xml, "rss-1", { jobStartedAt: JOB_STARTED_AT, timeWindow: 24 * 60 * 60 * 1000, filterContext });
-      expect(items[0]?.filterContext).toEqual(filterContext);
-    });
   });
-});

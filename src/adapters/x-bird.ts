@@ -314,6 +314,7 @@ function parseBirdItems(payload: string, source: Source, jobStartedAt: string, t
         ? article.title.trim()
         : normalizeBirdTitle(rawText);
       const authorUsername = extractAuthorUsername(item.author);
+      const authorName = typeof item.author === "object" && item.author !== null ? item.author.name : undefined;
 
       // Check 24h window using created_at or createdAt
       const itemTime = item.created_at ?? item.createdAt;
@@ -360,9 +361,14 @@ function parseBirdItems(payload: string, source: Source, jobStartedAt: string, t
         fetchedAt: new Date().toISOString(),
         content: rawText,
         metadataJson: JSON.stringify({
+          provider: "bird",
+          sourceKind: source.type,
           tweetId: item.id,
           authorId: item.authorId,
+          authorName,
           conversationId: item.conversationId,
+          expandedUrl: item.expandedUrl ?? item.expanded_url,
+          contentType: source.contentType,
           media: buildMediaMetadata(item.media),
           article: buildArticleMetadata(article),
           quote: buildQuoteMetadata(item.quote),
