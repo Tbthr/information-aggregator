@@ -312,13 +312,13 @@ export function buildAdapters(): Record<string, AdapterFn> {
 
 ## 改动 7: Adapter 统一改造
 
+**注意**：`sourceType` 和 `contentType` 由 `normalizeCollectedItem`（collect.ts）从 `source` 注入，adapter **无需**设置这两个字段。
+
 每个 adapter 构建 RawItem 时：
 
 1. **`metadataJson`** — 不再写入 `provider`、`sourceKind`、`contentType`，只写 adapter 特有字段
-2. **`sourceType`** — 从 `source.type` 读取
-3. **`contentType`** — 从 `source.contentType` 读取
-4. **`publishedAt`** — 无法获取时 warn + 跳过该 item
-5. **auth** — 从 `source.authConfigJson` `JSON.parse()` 获取（x-bird 等需要认证的 adapter）
+2. **`publishedAt`** — 无法获取时 warn + 跳过该 item
+3. **auth** — 从 `source.authConfigJson` `JSON.parse()` 获取（x-bird 等需要认证的 adapter）
 
 ### 需改造的 adapter
 
@@ -351,7 +351,11 @@ function normalizeCollectedItem(source: Source, item: RawItem): RawItem {
 }
 ```
 
-**移除**：`defaultProviderForSourceType`、`defaultContentTypeForSourceType`、`buildCanonicalHints`、`normalizeCollectedItem` 中对 `RawItemMetadata` 的重组逻辑。
+**移除的函数/变量**：
+- `collect.ts` 中的 `defaultProviderForSourceType`、`defaultContentTypeForSourceType`、`buildCanonicalHints`
+- `collect.ts` 中 `normalizeCollectedItem` 对 `RawItemMetadata` 的重组（不再构造 provider/sourceKind/contentType）
+
+**改动 8 中 normalize.ts 无需改动**，`normalize.ts` 中的 `normalizeItem` 直接从 RawItem 顶层读取 `sourceType`/`contentType`，无需从 metadataJson 解析。
 
 ---
 
@@ -386,8 +390,8 @@ export interface FilterableItem {
   normalizedContent: string;
   sourceKind?: string;
   engagementScore?: number | null;
-  qualityScore?: number | null;
-  sourceDefaultTags?: Tag[];  // 原 sourceDefaultTopicIds
+  qualityScore?: number | null;   // 注意：normalizedArticle 当前无此字段，过滤逻辑中此值永远为 null（属于现存设计问题，本 spec 不处理）
+  sourceDefaultTags?: Tag[];      // 原 sourceDefaultTopicIds
 }
 ```
 
@@ -399,14 +403,18 @@ export interface FilterableItem {
 
 - `RawItemMetadata` 类型定义（adapter 自行定义内部格式）
 - `parseMetadata()` 兼容逻辑
-- `defaultProviderForSourceType` / `defaultContentTypeForSourceType`
+- `defaultContentTypeForSourceType`（在 normalize.ts 中）
 - 从 `metadataJson` 读取 `provider`/`sourceKind`/`contentType`
-- `sourceDefaultTopicIds: topicIds` → `sourceDefaultTags: source.tags`
+- `sourceDefaultTopicIds` → `sourceDefaultTags: source.tags`
 
 ### sourceType/contentType 来源
 
-从 RawItem 顶层读取（adapter 写入时已赋值）：
+由 `normalizeCollectedItem` 在 `collect.ts` 中从 `source` 注入到 RawItem 顶层，adapter 无需处理：
 ```typescript
+// collect.ts - normalizeCollectedItem
+{ ...item, sourceType: source.type, contentType: source.contentType }
+
+// normalize.ts - 直接从 RawItem 顶层读取
 const sourceType = item.sourceType;
 const contentType = item.contentType;
 ```
