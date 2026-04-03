@@ -121,7 +121,14 @@ export class ContentCache<T = ExtractedContent> {
    * 检查键是否存在（且未过期）
    */
   has(key: string): boolean {
-    return this.get(key) !== null;
+    const normalizedKey = this.normalizeKey(key);
+    const entry = this.cache.get(normalizedKey);
+    if (!entry) return false;
+    if (this.isExpired(entry)) {
+      this.cache.delete(normalizedKey);
+      return false;
+    }
+    return true;
   }
 
   /**

@@ -5,11 +5,7 @@ export interface FilterableItem {
   normalizedSummary: string;
   normalizedContent: string;
   engagementScore?: number | null;
-  /**
-   * Tags from the source's tagFilter.
-   * Use item.tagFilter directly (Tag[] from source).
-   */
-  tagFilter?: Tag[];
+  tagIds?: string[];
 }
 
 /**
@@ -62,7 +58,7 @@ export function classifyByTag(item: FilterableItem, tag: Tag): boolean {
 
 /**
  * Filter items based on multiple tags (OR logic - item passes if it matches any tag).
- * Uses item.tagFilter directly (Tag[] from source).
+ * Uses item.tagIds directly (string[] from source).
  */
 export function filterByTags(items: FilterableItem[], tags: Tag[]): FilterableItem[] {
   if (tags.length === 0) {
@@ -72,9 +68,9 @@ export function filterByTags(items: FilterableItem[], tags: Tag[]): FilterableIt
   const tagMap = new Map(tags.map((t) => [t.id, t]));
 
   return items.filter((item) => {
-    const itemTags = item.tagFilter ?? [];
-    return itemTags.some((tag) => {
-      const resolvedTag = tagMap.get(tag.id);
+    const itemTagIds = item.tagIds ?? [];
+    return itemTagIds.some((id) => {
+      const resolvedTag = tagMap.get(id);
       if (!resolvedTag) return false;
       return classifyByTag(item, resolvedTag);
     });

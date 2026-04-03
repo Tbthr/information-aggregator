@@ -14,13 +14,15 @@ function decodeHtmlEntities(value: string): string {
     .replace(/&nbsp;/g, " ");
 }
 
+// Pre-compiled regex for site name removal
+const SITE_NAME_PATTERN = /\s*[|\-–—]\s*[^|\-–—]+$/;
+
 // Remove trailing site name pattern like " | SiteName" or " - SiteName"
 // Handles multiple pipe patterns iteratively: "Title | Site | Another" → "Title"
 function removeSiteName(value: string): string {
   let result = value;
-  // Keep removing trailing site name patterns until none remain
-  while (/\s*[|\-–—]\s*[^|\-–—]+$/.test(result)) {
-    result = result.replace(/\s*[|\-–—]\s*[^|\-–—]+$/, "");
+  while (SITE_NAME_PATTERN.test(result)) {
+    result = result.replace(SITE_NAME_PATTERN, "");
   }
   return result;
 }
