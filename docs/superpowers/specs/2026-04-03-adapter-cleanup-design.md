@@ -75,23 +75,22 @@ export interface RawItem {
   title: string;
   url: string;
   author?: string;
-  content?: string;
-  publishedAt: string;       // 非空，缺失则 warn + 跳过该 item
+  content?: string;           // 正文内容（部分 adapter 有）
+  summary?: string;            // 摘要/描述
+  engagement?: RawItemEngagement; // 互动信号
+  expandedUrl?: string;        // 展开后的外链 URL
+  canonicalHints?: RawItemCanonicalHints; // URL 扩展提示
+  sourceName?: string;          // 来源名称
+  publishedAt: string;          // 非空，缺失则 warn + 跳过该 item
   fetchedAt: string;
-  metadataJson: string;       // 纯 JSON 字符串，adapter 内部自定义格式
-  filterContext?: TagFilterContext;
-}
-
-export interface TagFilterContext {
-  tags: Tag[];               // Source.tags 的拷贝，过滤时直接使用
-  mustInclude?: string[];
-  exclude?: string[];
+  metadataJson: string;          // 纯 JSON 字符串，adapter 内部自定义格式
+  tagFilter?: Tag[];             // 标签过滤上下文（运行时注入）
 }
 ```
 
 ### metadataJson 变更
 
-adapter 构建 RawItem 时，`metadataJson` 退化为纯 JSON 字符串，只包含该 adapter 特有的字段，**不再包含** `provider`、`sourceKind`、`contentType`。
+adapter 构建 RawItem 时，`metadataJson` 退化为纯 JSON 字符串，只包含该 adapter 特有的字段，**不再包含** `provider`、`sourceKind`、`contentType`、`summary`、`content`、`engagement`、`expandedUrl`、`canonicalHints`、`sourceName`（这些已提升到 RawItem 顶层）。
 
 ### publishedAt 非空处理
 
@@ -324,12 +323,12 @@ export function buildAdapters(): Record<string, AdapterFn> {
 
 | Adapter | metadataJson 特有字段 |
 |---|---|
-| `rss` | `authorName`, `summary`, `rawPublishedAt`, `timeSourceField`, `timeParseNote` |
-| `json-feed` | `authorName`, `summary` |
+| `rss` | `rawPublishedAt`, `timeSourceField`, `timeParseNote` |
+| `json-feed` | （无特有字段） |
 | `clawfeed` | `userName`, `userSlug`, `digestId`, `digestType` |
-| `zeli` | `source`, `hnId` |
-| `attentionvc` | `tweetId`, `authorId`, `engagement`, `coverImageUrl`, `rank` 等 |
-| `x-bird` | `tweetId`, `authorId`, `engagement`, `media`, `article`, `conversationId` 等 |
+| `zeli` | `hnId` |
+| `attentionvc` | `tweetId`, `authorId`, `coverImageUrl`, `rank`, `category`, `tags`, `langsDetected`, `trendingTopics`, `lastMetricsUpdate`, `isBlueVerified`, `followerCount`, `accountBasedIn`, `readingTimeMinutes`, `wordCount` |
+| `x-bird` | `tweetId`, `authorId`, `conversationId`, `media`, `article`, `quote`, `thread`, `parent` |
 | `github-trending` | `stars`, `forks`, `todayStars`, `language`, `author`, `repo` |
 
 ---
@@ -345,8 +344,8 @@ function normalizeCollectedItem(source: Source, item: RawItem): RawItem {
     // sourceType/contentType 由 adapter 写入，从 source 读取
     sourceType: source.type,
     contentType: source.contentType,
-    // filterContext 使用 Tag[] 对象
-    filterContext: { tags: source.tags },
+    // tagFilter 直接使用 Tag[] 对象
+    tagFilter: source.tags,
   };
 }
 ```
@@ -391,7 +390,7 @@ export interface FilterableItem {
   sourceKind?: string;
   engagementScore?: number | null;
   qualityScore?: number | null;   // 注意：normalizedArticle 当前无此字段，过滤逻辑中此值永远为 null（属于现存设计问题，本 spec 不处理）
-  sourceDefaultTags?: Tag[];      // 原 sourceDefaultTopicIds
+  tagFilter?: Tag[];              // 原 filterContext
 }
 ```
 
@@ -419,10 +418,10 @@ const sourceType = item.sourceType;
 const contentType = item.contentType;
 ```
 
-### TagFilterContext 传递
+### tagFilter 传递
 
 ```typescript
-const sourceTags = item.filterContext?.tags ?? [];
+const sourceTags = item.tagFilter ?? [];
 ```
 
 ---
@@ -452,3 +451,4 @@ TWITTER_CT0=your_ct0_here
 11. 运行 `bun run typecheck` 验证
 12. 运行 `bun test` 验证
 13. 更新 `.env.local`（添加 twitter 认证变量）
+14. 更新项目文档（README.md、AGENTS.md 等），反映所有变更
