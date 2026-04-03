@@ -191,6 +191,12 @@ describe("collectGitHubTrendingSource", () => {
         type: "github-trending" as const,
         enabled: true,
         url: "https://github.com/trending",
+        name: "GitHub Trending",
+        tags: [],
+        weightScore: null,
+        contentType: "repository",
+        authConfigJson: null,
+        sourceWeightScore: 1,
       };
 
       await expect(collectGitHubTrendingSource(source, { timeWindow: 24 * 60 * 60 * 1000, fetchImpl: mockFetch as unknown as typeof fetch })).rejects.toThrow(
@@ -217,6 +223,12 @@ describe("collectGitHubTrendingSource", () => {
         type: "github-trending" as const,
         enabled: true,
         url: "https://github.com/trending",
+        name: "GitHub Trending",
+        tags: [],
+        weightScore: null,
+        contentType: "repository",
+        authConfigJson: null,
+        sourceWeightScore: 1,
       };
 
       // 传入一个已经 abort 的 signal
@@ -236,6 +248,12 @@ describe("collectGitHubTrendingSource", () => {
         type: "github-trending" as const,
         enabled: true,
         url: "https://github.com/trending",
+        name: "GitHub Trending",
+        tags: [],
+        weightScore: null,
+        contentType: "repository",
+        authConfigJson: null,
+        sourceWeightScore: 1,
       };
 
       await expect(collectGitHubTrendingSource(source, { timeWindow: 24 * 60 * 60 * 1000, fetchImpl: mockFetch as unknown as typeof fetch })).rejects.toThrow(
@@ -252,6 +270,12 @@ describe("collectGitHubTrendingSource", () => {
         type: "github-trending" as const,
         enabled: true,
         url: "https://github.com/trending",
+        name: "GitHub Trending",
+        tags: [],
+        weightScore: null,
+        contentType: "repository",
+        authConfigJson: null,
+        sourceWeightScore: 1,
       };
 
       await expect(collectGitHubTrendingSource(source, { timeWindow: 24 * 60 * 60 * 1000, fetchImpl: mockFetch as unknown as typeof fetch })).rejects.toThrow(
@@ -271,6 +295,12 @@ describe("collectGitHubTrendingSource", () => {
         type: "github-trending" as const,
         enabled: true,
         url: "https://github.com/trending",
+        name: "GitHub Trending",
+        tags: [],
+        weightScore: null,
+        contentType: "repository",
+        authConfigJson: null,
+        sourceWeightScore: 1,
       };
 
       await expect(collectGitHubTrendingSource(source, { timeWindow: 24 * 60 * 60 * 1000, fetchImpl: mockFetch as unknown as typeof fetch })).rejects.toThrow(
@@ -302,6 +332,12 @@ describe("collectGitHubTrendingSource", () => {
         type: "github-trending" as const,
         enabled: true,
         url: "https://github.com/trending",
+        name: "GitHub Trending",
+        tags: [],
+        weightScore: null,
+        contentType: "repository",
+        authConfigJson: null,
+        sourceWeightScore: 1,
       };
 
       const items = await collectGitHubTrendingSource(source, { timeWindow: 24 * 60 * 60 * 1000, fetchImpl: mockFetch as unknown as typeof fetch });
@@ -326,6 +362,12 @@ describe("collectGitHubTrendingSource", () => {
         type: "github-trending" as const,
         enabled: true,
         url: "https://github.com/trending/python",
+        name: "GitHub Trending",
+        tags: [],
+        weightScore: null,
+        contentType: "repository",
+        authConfigJson: null,
+        sourceWeightScore: 1,
       };
 
       await collectGitHubTrendingSource(source, { timeWindow: 24 * 60 * 60 * 1000, fetchImpl: mockFetch as unknown as typeof fetch });

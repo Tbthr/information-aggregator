@@ -4,50 +4,55 @@ import { buildBirdCommand, collectXBirdSource } from "./x-bird";
 
 describe("x bird integration", () => {
   test("maps x family source types to bird CLI arguments", () => {
-    expect(buildBirdCommand({ kind: "x", configJson: JSON.stringify({ birdMode: "bookmarks" }) })).toEqual(["bird", "bookmarks", "--json"]);
-    expect(buildBirdCommand({ kind: "x", configJson: JSON.stringify({ birdMode: "likes" }) })).toEqual(["bird", "likes", "--json"]);
+    expect(buildBirdCommand({ type: "x", authConfigJson: JSON.stringify({ birdMode: "bookmarks" }) })).toEqual(["bird", "bookmarks", "--json"]);
+    expect(buildBirdCommand({ type: "x", authConfigJson: JSON.stringify({ birdMode: "likes" }) })).toEqual(["bird", "likes", "--json"]);
     expect(
       buildBirdCommand({
-        kind: "x",
-        configJson: JSON.stringify({ birdMode: "list", listId: "2021198996157710621" }),
+        type: "x",
+        authConfigJson: JSON.stringify({ birdMode: "list", listId: "2021198996157710621" }),
       }),
     ).toEqual(["bird", "list-timeline", "2021198996157710621", "--json"]);
-    expect(buildBirdCommand({ kind: "x", configJson: JSON.stringify({ birdMode: "home" }) })).toEqual(["bird", "home", "--json"]);
+    expect(buildBirdCommand({ type: "x", authConfigJson: JSON.stringify({ birdMode: "home" }) })).toEqual(["bird", "home", "--json"]);
   });
 
   test("supports count parameter", () => {
-    expect(buildBirdCommand({ kind: "x", configJson: JSON.stringify({ birdMode: "home", count: 50 }) })).toEqual(["bird", "home", "-n", "50", "--json"]);
-    expect(buildBirdCommand({ kind: "x", configJson: JSON.stringify({ birdMode: "bookmarks", count: 100 }) })).toEqual(["bird", "bookmarks", "-n", "100", "--json"]);
+    expect(buildBirdCommand({ type: "x", authConfigJson: JSON.stringify({ birdMode: "home", count: 50 }) })).toEqual(["bird", "home", "-n", "50", "--json"]);
+    expect(buildBirdCommand({ type: "x", authConfigJson: JSON.stringify({ birdMode: "bookmarks", count: 100 }) })).toEqual(["bird", "bookmarks", "-n", "100", "--json"]);
     expect(
       buildBirdCommand({
-        kind: "x",
-        configJson: JSON.stringify({ birdMode: "list", listId: "123", count: 200 }),
+        type: "x",
+        authConfigJson: JSON.stringify({ birdMode: "list", listId: "123", count: 200 }),
       }),
     ).toEqual(["bird", "list-timeline", "123", "-n", "200", "--json"]);
   });
 
   test("supports fetchAll parameter for list/bookmarks/likes", () => {
-    expect(buildBirdCommand({ kind: "x", configJson: JSON.stringify({ birdMode: "list", listId: "123", fetchAll: true }) })).toEqual(["bird", "list-timeline", "123", "--all", "--json"]);
-    expect(buildBirdCommand({ kind: "x", configJson: JSON.stringify({ birdMode: "list", listId: "123", fetchAll: true, maxPages: 5 }) })).toEqual(["bird", "list-timeline", "123", "--all", "--max-pages", "5", "--json"]);
-    expect(buildBirdCommand({ kind: "x", configJson: JSON.stringify({ birdMode: "bookmarks", fetchAll: true }) })).toEqual(["bird", "bookmarks", "--all", "--json"]);
-    expect(buildBirdCommand({ kind: "x", configJson: JSON.stringify({ birdMode: "likes", fetchAll: true, maxPages: 3 }) })).toEqual(["bird", "likes", "--all", "--max-pages", "3", "--json"]);
+    expect(buildBirdCommand({ type: "x", authConfigJson: JSON.stringify({ birdMode: "list", listId: "123", fetchAll: true }) })).toEqual(["bird", "list-timeline", "123", "--all", "--json"]);
+    expect(buildBirdCommand({ type: "x", authConfigJson: JSON.stringify({ birdMode: "list", listId: "123", fetchAll: true, maxPages: 5 }) })).toEqual(["bird", "list-timeline", "123", "--all", "--max-pages", "5", "--json"]);
+    expect(buildBirdCommand({ type: "x", authConfigJson: JSON.stringify({ birdMode: "bookmarks", fetchAll: true }) })).toEqual(["bird", "bookmarks", "--all", "--json"]);
+    expect(buildBirdCommand({ type: "x", authConfigJson: JSON.stringify({ birdMode: "likes", fetchAll: true, maxPages: 3 }) })).toEqual(["bird", "likes", "--all", "--max-pages", "3", "--json"]);
   });
 
   test("ignores fetchAll for home timeline", () => {
     // home 不支持 --all，应该忽略
-    expect(buildBirdCommand({ kind: "x", configJson: JSON.stringify({ birdMode: "home", fetchAll: true }) })).toEqual(["bird", "home", "--json"]);
+    expect(buildBirdCommand({ type: "x", authConfigJson: JSON.stringify({ birdMode: "home", fetchAll: true }) })).toEqual(["bird", "home", "--json"]);
     // 但 count 仍然有效
-    expect(buildBirdCommand({ kind: "x", configJson: JSON.stringify({ birdMode: "home", fetchAll: true, count: 50 }) })).toEqual(["bird", "home", "-n", "50", "--json"]);
+    expect(buildBirdCommand({ type: "x", authConfigJson: JSON.stringify({ birdMode: "home", fetchAll: true, count: 50 }) })).toEqual(["bird", "home", "-n", "50", "--json"]);
   });
 
   test("converts bird output into raw items", async () => {
     const items = await collectXBirdSource(
       {
         id: "x-home",
-        kind: "x",
-        url: "https://x.com/home",
+        type: "x",
+        name: "Test",
         enabled: false,
-        configJson: JSON.stringify({ birdMode: "home" }),
+        url: "https://x.com/home",
+        tags: [],
+        weightScore: 1,
+        contentType: "social_post",
+        authConfigJson: JSON.stringify({ birdMode: "home", authToken: "test", ct0: "test" }),
+        sourceWeightScore: 1,
       },
       { timeWindow: 50 * 24 * 60 * 60 * 1000, execImpl: async () =>
         JSON.stringify([
@@ -69,7 +74,7 @@ describe("x bird integration", () => {
     expect(metadata.provider).toBe("bird");
     expect(metadata.sourceKind).toBe("x");
     expect(metadata.contentType).toBe("social_post");
-    expect(metadata.canonicalHints?.expandedUrl).toBe("https://example.com/article");
+    expect(metadata.expandedUrl).toBe("https://example.com/article");
     expect(metadata.tweetId).toBe("tweet-1");
     // author 是字符串 "alice"，所以 authorName 是 undefined
     expect(metadata.authorName).toBeUndefined();
@@ -80,10 +85,15 @@ describe("x bird integration", () => {
     const items = await collectXBirdSource(
       {
         id: "x-home",
-        kind: "x",
-        url: "https://x.com/home",
+        type: "x",
+        name: "Test",
         enabled: false,
-        configJson: JSON.stringify({ birdMode: "home" }),
+        url: "https://x.com/home",
+        tags: [],
+        weightScore: 1,
+        contentType: "tweet",
+        authConfigJson: JSON.stringify({ birdMode: "home", authToken: "test", ct0: "test" }),
+        sourceWeightScore: 1,
       },
       { timeWindow: 50 * 24 * 60 * 60 * 1000, execImpl: async () =>
         JSON.stringify([
@@ -109,16 +119,11 @@ describe("x bird integration", () => {
     expect(items[0]?.author).toBe("GoSailGlobal");
     expect(items[0]?.url).toBe("https://x.com/GoSailGlobal/status/2030994765169205673");
     expect(items[0]?.author).toBe("GoSailGlobal");
-    expect(items[0]?.publishedAt).toBe("Mon Mar 09 13:11:00 +0000 2026");
+    expect(items[0]?.publishedAt).toBe("2026-03-09T13:11:00.000Z");
     const metadata = JSON.parse(items[0]?.metadataJson ?? "{}");
     expect(metadata.provider).toBe("bird");
     expect(metadata.sourceKind).toBe("x");
-    expect(metadata.contentType).toBe("social_post");
-    expect(metadata.engagement).toEqual({
-      score: 42,
-      comments: 17,
-      reactions: 2,
-    });
+    expect(metadata.contentType).toBe("tweet");
     expect(metadata.tweetId).toBe("2030994765169205673");
     expect(metadata.authorName).toBe("Jason Zhu");
   });
@@ -127,10 +132,15 @@ describe("x bird integration", () => {
     const items = await collectXBirdSource(
       {
         id: "x-home",
-        kind: "x",
-        url: "https://x.com/home",
+        type: "x",
+        name: "Test",
         enabled: false,
-        configJson: JSON.stringify({ birdMode: "home" }),
+        url: "https://x.com/home",
+        tags: [],
+        weightScore: 1,
+        contentType: "tweet",
+        authConfigJson: JSON.stringify({ birdMode: "home", authToken: "test", ct0: "test" }),
+        sourceWeightScore: 1,
       },
       { timeWindow: 50 * 24 * 60 * 60 * 1000, execImpl: async () =>
         JSON.stringify([
@@ -157,8 +167,8 @@ describe("x bird integration", () => {
   test("prefers explicit auth token config over browser profile settings", () => {
     expect(
       buildBirdCommand({
-        kind: "x",
-        configJson: JSON.stringify({
+        type: "x",
+        authConfigJson: JSON.stringify({
           birdMode: "home",
           authToken: "auth-token-value",
           ct0: "ct0-value",
@@ -171,8 +181,8 @@ describe("x bird integration", () => {
     // 带 count 参数
     expect(
       buildBirdCommand({
-        kind: "x",
-        configJson: JSON.stringify({
+        type: "x",
+        authConfigJson: JSON.stringify({
           birdMode: "home",
           count: 100,
           authToken: "auth-token-value",
@@ -186,10 +196,15 @@ describe("x bird integration", () => {
     const items = await collectXBirdSource(
       {
         id: "x-home",
-        kind: "x",
-        url: "https://x.com/home",
+        type: "x",
+        name: "Test",
         enabled: false,
-        configJson: JSON.stringify({ birdMode: "home" }),
+        url: "https://x.com/home",
+        tags: [],
+        weightScore: 1,
+        contentType: "tweet",
+        authConfigJson: JSON.stringify({ birdMode: "home", authToken: "test", ct0: "test" }),
+        sourceWeightScore: 1,
       },
       { timeWindow: 50 * 24 * 60 * 60 * 1000, execImpl: async () =>
         JSON.stringify([
@@ -225,10 +240,15 @@ describe("x bird integration", () => {
     const items = await collectXBirdSource(
       {
         id: "x-home",
-        kind: "x",
-        url: "https://x.com/home",
+        type: "x",
+        name: "Test",
         enabled: false,
-        configJson: JSON.stringify({ birdMode: "home" }),
+        url: "https://x.com/home",
+        tags: [],
+        weightScore: 1,
+        contentType: "tweet",
+        authConfigJson: JSON.stringify({ birdMode: "home", authToken: "test", ct0: "test" }),
+        sourceWeightScore: 1,
       },
       { timeWindow: 50 * 24 * 60 * 60 * 1000, execImpl: async () =>
         JSON.stringify([
@@ -236,6 +256,7 @@ describe("x bird integration", () => {
             id: "media-tweet",
             text: "Check out this content!",
             author: { username: "mediatest" },
+            createdAt: "Mon Mar 09 14:01:30 +0000 2026",
             media: [
               {
                 type: "photo",
@@ -278,10 +299,15 @@ describe("x bird integration", () => {
     const items = await collectXBirdSource(
       {
         id: "x-home",
-        kind: "x",
-        url: "https://x.com/home",
+        type: "x",
+        name: "Test",
         enabled: false,
-        configJson: JSON.stringify({ birdMode: "home" }),
+        url: "https://x.com/home",
+        tags: [],
+        weightScore: 1,
+        contentType: "tweet",
+        authConfigJson: JSON.stringify({ birdMode: "home", authToken: "test", ct0: "test" }),
+        sourceWeightScore: 1,
       },
       { timeWindow: 50 * 24 * 60 * 60 * 1000, execImpl: async () =>
         JSON.stringify([
@@ -289,6 +315,7 @@ describe("x bird integration", () => {
             id: "quote-tweet",
             text: "This is my commentary on the original",
             author: { username: "quoter" },
+            createdAt: "Mon Mar 09 14:01:30 +0000 2026",
             quote: {
               id: "original-tweet-id",
               text: "Original tweet content",
@@ -314,10 +341,15 @@ describe("x bird integration", () => {
     const items = await collectXBirdSource(
       {
         id: "x-home",
-        kind: "x",
-        url: "https://x.com/home",
+        type: "x",
+        name: "Test",
         enabled: false,
-        configJson: JSON.stringify({ birdMode: "home" }),
+        url: "https://x.com/home",
+        tags: [],
+        weightScore: 1,
+        contentType: "tweet",
+        authConfigJson: JSON.stringify({ birdMode: "home", authToken: "test", ct0: "test" }),
+        sourceWeightScore: 1,
       },
       { timeWindow: 50 * 24 * 60 * 60 * 1000, execImpl: async () =>
         JSON.stringify([
@@ -325,6 +357,7 @@ describe("x bird integration", () => {
             id: "thread-root",
             text: "Starting a thread about AI",
             author: { username: "threader" },
+            createdAt: "Mon Mar 09 14:01:30 +0000 2026",
             thread: [
               { id: "thread-1", text: "Point 1: AI is evolving", author: { username: "threader" } },
               { id: "thread-2", text: "Point 2: Agents are the future", author: { username: "threader" } },
@@ -349,10 +382,15 @@ describe("x bird integration", () => {
     const items = await collectXBirdSource(
       {
         id: "x-home",
-        kind: "x",
-        url: "https://x.com/home",
+        type: "x",
+        name: "Test",
         enabled: false,
-        configJson: JSON.stringify({ birdMode: "home" }),
+        url: "https://x.com/home",
+        tags: [],
+        weightScore: 1,
+        contentType: "tweet",
+        authConfigJson: JSON.stringify({ birdMode: "home", authToken: "test", ct0: "test" }),
+        sourceWeightScore: 1,
       },
       { timeWindow: 50 * 24 * 60 * 60 * 1000, execImpl: async () =>
         JSON.stringify([
@@ -360,6 +398,7 @@ describe("x bird integration", () => {
             id: "reply-tweet",
             text: "I agree with your point!",
             author: { username: "replier" },
+            createdAt: "Mon Mar 09 14:01:30 +0000 2026",
             parent: {
               id: "parent-tweet-id",
               text: "What do you think about this?",
@@ -383,10 +422,15 @@ describe("x bird integration", () => {
     const items = await collectXBirdSource(
       {
         id: "x-home",
-        kind: "x",
-        url: "https://x.com/home",
+        type: "x",
+        name: "Test",
         enabled: false,
-        configJson: JSON.stringify({ birdMode: "home" }),
+        url: "https://x.com/home",
+        tags: [],
+        weightScore: 1,
+        contentType: "tweet",
+        authConfigJson: JSON.stringify({ birdMode: "home", authToken: "test", ct0: "test" }),
+        sourceWeightScore: 1,
       },
       { timeWindow: 50 * 24 * 60 * 60 * 1000, execImpl: async () =>
         JSON.stringify([
@@ -394,6 +438,7 @@ describe("x bird integration", () => {
             id: "tweet-with-conv",
             text: "Part of a conversation",
             author: { username: "user" },
+            createdAt: "Mon Mar 09 14:01:30 +0000 2026",
             conversationId: "1234567890",
           },
         ]),
@@ -409,10 +454,15 @@ describe("x bird integration", () => {
     const items = await collectXBirdSource(
       {
         id: "x-home",
-        kind: "x",
-        url: "https://x.com/home",
+        type: "x",
+        name: "Test",
         enabled: false,
-        configJson: JSON.stringify({ birdMode: "home" }),
+        url: "https://x.com/home",
+        tags: [],
+        weightScore: 1,
+        contentType: "tweet",
+        authConfigJson: JSON.stringify({ birdMode: "home", authToken: "test", ct0: "test" }),
+        sourceWeightScore: 1,
       },
       { timeWindow: 50 * 24 * 60 * 60 * 1000, execImpl: async () =>
         JSON.stringify([
@@ -420,6 +470,7 @@ describe("x bird integration", () => {
             id: "simple-tweet",
             text: "Just a simple tweet",
             author: { username: "simple" },
+            createdAt: "Mon Mar 09 14:01:30 +0000 2026",
             // No article, media, quote, thread, or parent
           },
         ]),
@@ -441,10 +492,15 @@ describe("x bird integration", () => {
     const items = await collectXBirdSource(
       {
         id: "x-home",
-        kind: "x",
-        url: "https://x.com/home",
+        type: "x",
+        name: "Test",
         enabled: false,
-        configJson: JSON.stringify({ birdMode: "home" }),
+        url: "https://x.com/home",
+        tags: [],
+        weightScore: 1,
+        contentType: "tweet",
+        authConfigJson: JSON.stringify({ birdMode: "home", authToken: "test", ct0: "test" }),
+        sourceWeightScore: 1,
       },
       { timeWindow: 50 * 24 * 60 * 60 * 1000, execImpl: async () =>
         JSON.stringify([
@@ -457,6 +513,7 @@ describe("x bird integration", () => {
             },
             authorId: "author-456",
             expandedUrl: "https://example.com/expanded",
+            createdAt: "Mon Mar 09 14:01:30 +0000 2026",
           },
         ]),
     },
