@@ -4,15 +4,19 @@ import { collectSources } from "./collect";
 describe("collectSources", () => {
   test("collects from multiple sources and flattens results", async () => {
     const items = await collectSources(
-      [{ id: "s1", kind: "rss", enabled: true, configJson: "{}", url: "https://a.com/feed", topicIds: [], sourceWeightScore: 0.5 }],
+      [{ id: "s1", type: "rss", enabled: true, url: "https://a.com/feed", tags: [], sourceWeightScore: 0.5, contentType: "article", name: "Test Source", weightScore: null, authConfigJson: null }],
       {
         adapters: {
           rss: async () => [
             {
               id: "item-1",
               sourceId: "s1",
+              sourceType: "rss",
+              contentType: "article",
+              sourceName: "Test Source",
               title: "Hello",
               url: "https://a.com/1",
+              publishedAt: "2026-03-09T00:00:00Z",
               fetchedAt: "2026-03-09T00:00:00Z",
               metadataJson: "{}",
             },
@@ -24,11 +28,7 @@ describe("collectSources", () => {
       },
     );
     expect(items).toHaveLength(1);
-    expect(JSON.parse(items[0]?.metadataJson ?? "{}")).toEqual({
-      provider: "rss",
-      sourceKind: "rss",
-      contentType: "article",
-    });
+    expect(JSON.parse(items[0]?.metadataJson ?? "{}")).toEqual({});
   });
 
   test("reports source event metrics for success and failure paths", async () => {
@@ -36,8 +36,8 @@ describe("collectSources", () => {
 
     await collectSources(
       [
-        { id: "s1", kind: "rss", enabled: true, configJson: "{}", url: "https://a.com/feed", topicIds: [], sourceWeightScore: 0.5 },
-        { id: "s2", kind: "rss", enabled: true, configJson: "{}", url: "https://b.com/feed", topicIds: [], sourceWeightScore: 0.5 },
+        { id: "s1", type: "rss", enabled: true, url: "https://a.com/feed", tags: [], sourceWeightScore: 0.5, contentType: "article", name: "Test Source", weightScore: null, authConfigJson: null },
+        { id: "s2", type: "rss", enabled: true, url: "https://b.com/feed", tags: [], sourceWeightScore: 0.5, contentType: "article", name: "Test Source", weightScore: null, authConfigJson: null },
       ],
       {
         adapters: {
@@ -49,8 +49,12 @@ describe("collectSources", () => {
               {
                 id: "item-1",
                 sourceId: "s1",
+                sourceType: "rss",
+                contentType: "article",
+                sourceName: "Test Source",
                 title: "Hello",
                 url: "https://a.com/1",
+                publishedAt: "2026-03-09T00:00:00Z",
                 fetchedAt: "2026-03-09T00:00:00Z",
                 metadataJson: "{}",
               },
