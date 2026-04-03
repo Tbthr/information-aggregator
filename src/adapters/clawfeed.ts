@@ -77,9 +77,6 @@ export async function collectClawfeedSource(
         publishedAt: createdAt.toISOString(),
         content: d.content,
         metadataJson: JSON.stringify({
-          provider: "clawfeed",
-          sourceKind: "clawfeed",
-          contentType: "digest",
           userName: body.user.name,
           userSlug: body.user.slug,
           digestId: d.id,

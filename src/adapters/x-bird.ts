@@ -348,30 +348,14 @@ function parseBirdItems(payload: string, source: Source, jobStartedAt: string, t
         fetchedAt: new Date().toISOString(),
         content: rawText,
         metadataJson: JSON.stringify({
-          provider: "bird",
-          sourceKind: source.kind,
-          contentType: "social_post",
+          tweetId: item.id,
+          authorId: item.authorId,
           conversationId: item.conversationId,
-          engagement: item.likeCount === undefined && item.replyCount === undefined && item.retweetCount === undefined
-            ? undefined
-            : {
-              score: item.likeCount,
-              comments: item.replyCount,
-              reactions: item.retweetCount,
-            },
-          canonicalHints: item.expanded_url || item.expandedUrl
-            ? { expandedUrl: item.expanded_url ?? item.expandedUrl }
-            : undefined,
-          article: buildArticleMetadata(article),
           media: buildMediaMetadata(item.media),
+          article: buildArticleMetadata(article),
           quote: buildQuoteMetadata(item.quote),
           thread: buildThreadMetadata(item.thread),
           parent: buildParentMetadata(item.parent),
-          // 新增字段
-          tweetId: item.id,
-          authorId: item.authorId,
-          authorName: typeof item.author === 'object' ? item.author?.name : undefined,
-          expandedUrl: item.expanded_url ?? item.expandedUrl,
         }),
       };
     })

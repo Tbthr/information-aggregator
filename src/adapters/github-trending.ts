@@ -142,12 +142,7 @@ export function parseGitHubTrendingHtml(html: string, sourceId: string): RawItem
           title,
           url,
           fetchedAt: new Date().toISOString(),
-          metadataJson: JSON.stringify({
-            provider: "github-trending",
-            sourceType: "github-trending",
-            contentType: "repository",
-            ...meta,
-          }),
+          metadataJson: JSON.stringify(meta),
         };
       } catch (error) {
         // 单个条目解析失败不影响其他条目

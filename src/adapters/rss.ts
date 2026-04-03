@@ -266,17 +266,11 @@ export function parseRssItems(
     // content: content:encoded only (the full article body)
     const content = contentEncoded;
 
-    // Build metadataJson with audit and content fields
+    // Build metadataJson with only adapter-specific fields (no provider/sourceKind/contentType)
     const metadataJson = JSON.stringify({
-      provider: "rss",
-      sourceKind: "rss",
-      contentType: "article",
       rawPublishedAt: parsedTimestamp?.rawPublishedAt,
       timeSourceField: usedField || undefined,
       timeParseNote,
-      summary,
-      content,
-      authorName,
     });
 
     const item: RawItem = {
