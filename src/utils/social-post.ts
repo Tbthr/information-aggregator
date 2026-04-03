@@ -9,14 +9,10 @@ import type { RankedCandidate, ExtractedContent } from "../types/index";
  * 判断是否为社交帖子类型（内容已在 snippet/normalizedText 中，无需 URL 提取）
  *
  * 判断规则：
- * 1. contentType 为 "social_post"
- * 2. sourceType 以 "x-" 开头（X/Twitter 系列）
+ * 1. sourceType 以 "x-" 开头（X/Twitter 系列）
  */
 export function isSocialPost(item: RankedCandidate): boolean {
-  if (item.contentType === "social_post") {
-    return true;
-  }
-  if (item.sourceKind?.startsWith("x-")) {
+  if (item.sourceType?.startsWith("x-")) {
     return true;
   }
   return false;

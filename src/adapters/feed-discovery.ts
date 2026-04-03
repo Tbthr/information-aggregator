@@ -19,15 +19,23 @@ export async function collectFeedDiscoverySource(source: Source, fetchImpl: type
   const html = await response.text();
   const feedUrl = discoverFeedUrl(source.url ?? "", html);
 
+  // publishedAt is required but we don't have a real timestamp for discovered feeds
+  // Use fetchedAt as a fallback
+  const fetchedAt = new Date().toISOString();
+
   // Website mode is an MVP fallback so a single-page record is better than dropping the source entirely.
   if (!feedUrl) {
     return [
       {
         id: `${source.id}-page`,
         sourceId: source.id,
+        sourceType: source.type,
+        contentType: source.contentType,
+        sourceName: source.name,
         title: extractPageTitle(html),
         url: source.url ?? "",
-        fetchedAt: new Date().toISOString(),
+        fetchedAt,
+        publishedAt: fetchedAt,
         metadataJson: JSON.stringify({
           provider: "feed-discovery",
           sourceType: "feed-discovery",
@@ -41,9 +49,13 @@ export async function collectFeedDiscoverySource(source: Source, fetchImpl: type
     {
       id: `${source.id}-feed`,
       sourceId: source.id,
+      sourceType: source.type,
+      contentType: source.contentType,
+      sourceName: source.name,
       title: extractPageTitle(html),
       url: feedUrl,
-      fetchedAt: new Date().toISOString(),
+      fetchedAt,
+      publishedAt: fetchedAt,
       metadataJson: JSON.stringify({
         provider: "feed-discovery",
         sourceType: "feed-discovery",

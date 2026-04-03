@@ -1,5 +1,4 @@
 import type { AdapterFn, Source } from "../types/index";
-import { mergeAuthConfig } from "../config/load-auth";
 
 /**
  * 项目级适配器家族定义
@@ -41,11 +40,9 @@ export function registerAdapterFamily(
   family: AdapterFamily,
   getAuth?: () => Record<string, unknown> | undefined,
 ): Record<string, AdapterFn> {
-  // 创建合并 auth 后的 collector
+  // 创建 collector
   const collector: AdapterFn = (source: Source, options) => {
-    const authConfig = getAuth?.();
-    const merged = authConfig ? mergeAuthConfig(source, authConfig) : source;
-    return family.collect(merged, options);
+    return family.collect(source, options);
   };
 
   // 存储到注册表（用于后续查找）

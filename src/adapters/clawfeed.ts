@@ -6,7 +6,7 @@
  *   返回用户自定义 RSS 摘要，每4小时一份
  */
 
-import type { FilterContext, RawItem, Source } from "../types/index";
+import type { RawItem, Source } from "../types/index";
 import { createLogger } from "../utils/logger";
 
 const logger = createLogger("adapter:clawfeed");
@@ -27,7 +27,6 @@ interface ClawfeedResponse {
 export async function collectClawfeedSource(
   source: Source,
   options: { timeWindow: number; fetchImpl?: typeof fetch } = { timeWindow: 24 * 60 * 60 * 1000 },
-  filterContext?: FilterContext,
 ): Promise<RawItem[]> {
   const url = "https://clawfeed.kevinhe.io/feed/kevin";
   const startTime = Date.now();
@@ -71,6 +70,9 @@ export async function collectClawfeedSource(
       out.push({
         id: `clawfeed-${d.id}`,
         sourceId: source.id,
+        sourceType: source.type,
+        contentType: source.contentType,
+        sourceName: source.name,
         title,
         url: url, // ClawFeed digests don't have individual URLs
         fetchedAt: new Date().toISOString(),
@@ -82,7 +84,6 @@ export async function collectClawfeedSource(
           digestId: d.id,
           digestType: d.type,
         }),
-        filterContext,
       });
     }
 

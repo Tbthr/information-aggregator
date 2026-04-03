@@ -5,7 +5,6 @@
  * 此文件仅保留元数据特有的解析逻辑
  */
 
-import type { RawItemMetadata } from "../types/index";
 import { createLogger } from "./logger";
 
 const logger = createLogger("utils:metadata");
@@ -13,13 +12,13 @@ const logger = createLogger("utils:metadata");
 /**
  * 解析 RawItem 的 metadata JSON 字符串
  */
-export function parseRawItemMetadata(metadataJson: string | undefined): RawItemMetadata | null {
+export function parseRawItemMetadata(metadataJson: string | undefined): Record<string, unknown> | null {
   if (typeof metadataJson !== "string" || metadataJson.trim() === "") {
     return null;
   }
 
   try {
-    const parsed = JSON.parse(metadataJson) as RawItemMetadata | null;
+    const parsed = JSON.parse(metadataJson) as Record<string, unknown> | null;
     return parsed && typeof parsed === "object" ? parsed : null;
   } catch (error) {
     // 非空字符串解析失败时使用 warn 级别（改进静默错误处理）

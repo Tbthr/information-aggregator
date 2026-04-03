@@ -6,7 +6,7 @@
  *   返回 24 小时内 AI 领域热门文章排行榜
  */
 
-import type { FilterContext, RawItem, Source } from "../types/index";
+import type { RawItem, Source } from "../types/index";
 import { createLogger } from "../utils/logger";
 
 const logger = createLogger("adapter:attentionvc");
@@ -54,7 +54,6 @@ interface AttentionvcResponse {
 export async function collectAttentionvcSource(
   source: Source,
   options: { timeWindow: number; fetchImpl?: typeof fetch } = { timeWindow: 24 * 60 * 60 * 1000 },
-  filterContext?: FilterContext,
 ): Promise<RawItem[]> {
   const { timeWindow, fetchImpl = fetch } = options;
   const url = `${API_BASE}/leaderboard?window=1d&category=ai&sortBy=views&limit=20`;
@@ -101,6 +100,9 @@ export async function collectAttentionvcSource(
       out.push({
         id: `attentionvc-${entry.tweetId}`,
         sourceId: source.id,
+        sourceType: source.type,
+        contentType: source.contentType,
+        sourceName: source.name,
         title: entry.title,
         url: tweetUrl,
         fetchedAt: new Date().toISOString(),
@@ -122,7 +124,6 @@ export async function collectAttentionvcSource(
           readingTimeMinutes: entry.readingTimeMinutes,
           wordCount: entry.wordCount,
         }),
-        filterContext,
       });
     }
 
