@@ -258,7 +258,9 @@ function loadSourcesConfig(): Source[] {
 
 ### 4.5 恢复 Twitter/X 源
 
-取消注释，恢复 `twitter` 源配置，使用 `authConfigJson`（通过 `auth` 对象传入）：
+取消注释，恢复 `twitter` 源配置。注意：`sources.yaml` 中的 `type: twitter` 对应内部 `x-bird` adapter（由 `collectXBirdSource` 实现，`build-adapters.ts` 中注册为 `x`），只是 type 值叫 `twitter` 而已。
+
+使用 `authConfigJson`（通过 `auth` 对象传入）：
 
 ```yaml
 - type: twitter
@@ -317,6 +319,8 @@ export function buildAdapters(): Record<string, AdapterFn> {
 | `src/adapters/website.ts` | adapter 已废弃 |
 | `src/adapters/techurls.test.ts` | 对应 adapter 已删除 |
 | `src/adapters/newsnow.test.ts` | 对应 adapter 已删除 |
+| `src/adapters/website.test.ts` | 对应 adapter 已删除 |
+| `src/pipeline/filter-by-pack.test.ts` | 对应废弃函数 filterByPack 已删除 |
 
 ---
 
