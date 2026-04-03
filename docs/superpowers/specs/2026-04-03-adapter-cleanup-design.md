@@ -105,7 +105,6 @@ export interface RawItemMetadata {
   // === X/Twitter 特有 ===
   tweetId?: string;
   authorId?: string;
-  authorName?: string;
   conversationId?: string;
   media?: RawItemMediaItem[];
   article?: RawItemArticle;
@@ -138,6 +137,7 @@ export interface RawItemMetadata {
   accountBasedIn?: string;
 
   // === GitHub-Trending 特有 ===
+  // Note: stars/forks/todayStars 存储为字符串（如 "1.2k"、"12,345"），非数字
   stars?: string;
   forks?: string;
   todayStars?: string;
@@ -164,6 +164,12 @@ const meta = JSON.parse(rawItem.metadataJson);
 ```
 
 `sourceType` 和 `contentType` 从 RawItem 顶层读取，不依赖 `metadataJson`。
+
+### 已知设计不一致（不在本改动范围内）
+
+**`InlineSource.authRef` vs YAML `auth` 对象**: `InlineSource` 类型定义中仅有 `authRef?: string`，但 `sources.yaml` 中 twitter 源使用 `auth: { authToken, ct0 }` 对象格式。实际运行时通过 `mergeAuthConfig()` 将 YAML `auth` 对象合并到 source 配置中。这是现有设计，不在本改动范围内。
+
+**GitHub-Trending stars/forks/todayStars 为字符串**: GitHub-Trending adapter 从 HTML 文本中提取星标数（如 "1.2k"、"12,345"），存储为 `string` 而非 `number`。这是 adapter 实现决定，metadata 类型定义反映这一事实。
 
 ### metadataJson 变更示例
 
