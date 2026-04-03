@@ -32,7 +32,7 @@ function normalizeCollectedItem(source: Source, item: RawItem): RawItem {
     sourceType: source.type,
     contentType: source.contentType,
     sourceName: source.name,
-    tagFilter: source.tags,
+    tagFilter: source.tagIds,
   };
 }
 

@@ -28,7 +28,7 @@ export interface Source {
   description?: string;
   url: string;
   enabled: boolean;
-  tags: Tag[];
+  tagIds: string[];
   weightScore: number | null;
   contentType: string;
   authConfigJson: string | null;
@@ -70,7 +70,7 @@ export interface RawItem {
   publishedAt: string;
   fetchedAt: string;
   metadataJson: string;
-  tagFilter?: Tag[];
+  tagFilter?: string[];
 }
 
 // NormalizedItem - simplified article-only output from normalize.ts
@@ -139,7 +139,7 @@ export interface FilterableItem {
   normalizedSummary: string;
   normalizedContent: string;
   engagementScore?: number | null;
-  tagFilter?: Tag[];
+  tagIds?: string[];
 }
 
 // ReportCandidate - 日报阶段统一候选模型（基于 Content，不是数据库表）

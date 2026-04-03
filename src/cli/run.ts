@@ -1,9 +1,6 @@
 // src/cli/run.ts
 // Information Aggregator CLI - 单入口运行收集 + 生成日报
 
-import fs from 'fs'
-import path from 'path'
-import yaml from 'js-yaml'
 import { buildAdapters } from '../adapters/build-adapters.js'
 import { collectWithTwoLevelConcurrency } from '../pipeline/collect.js'
 import { normalizeItem } from '../pipeline/normalize.js'
@@ -14,8 +11,8 @@ import { dedupeNear } from '../pipeline/dedupe-near.js'
 import { enrichArticles } from '../pipeline/enrich.js'
 import { generateDailyReport } from '../reports/daily.js'
 import { createAiClient } from '../ai/client.js'
-import type { EnrichOptions } from '../pipeline/enrich.js'
-import type { Source, Tag, normalizedArticle } from '../types/index.js'
+import { loadConfig } from '../config/index.js'
+import type { normalizedArticle } from '../types/index.js'
 
 // ============================================================
 // CLI Argument Parsing
@@ -96,118 +93,6 @@ function log(entry: LogEntry): void {
   console.log(JSON.stringify(entry))
 }
 
-// ============================================================
-// Config Loading
-// ============================================================
-
-interface YamlSource {
-  type: string
-  id: string
-  name?: string
-  url?: string
-  enabled?: boolean
-  tagIds?: string[]
-  handle?: string
-  weightScore?: number
-  contentType?: string
-  auth?: {
-    authToken?: string
-    ct0?: string
-  }
-}
-
-interface YamlConfig {
-  sources: YamlSource[]
-}
-
-interface YamlTag {
-  id: string
-  name?: string
-  description?: string
-  enabled?: boolean
-  includeRules?: string[]
-  excludeRules?: string[]
-  scoreBoost?: number
-}
-
-interface YamlTagsConfig {
-  tags: YamlTag[]
-}
-
-interface YamlEnrichConfig {
-  enrich: {
-    enabled?: boolean
-    batchSize?: number
-    minContentLength?: number
-    fetchTimeout?: number
-  }
-}
-
-function loadSourcesConfig(): Source[] {
-  const sourcesPath = path.join(process.cwd(), 'config', 'sources.yaml')
-  const sourcesContent = fs.readFileSync(sourcesPath, 'utf-8')
-  const raw = yaml.load(sourcesContent) as YamlConfig
-
-  const tagsPath = path.join(process.cwd(), 'config', 'tags.yaml')
-  const tagsContent = fs.readFileSync(tagsPath, 'utf-8')
-  const tagsRaw = yaml.load(tagsContent) as YamlTagsConfig
-  const tagMap = new Map(tagsRaw.tags.map(t => [t.id, t]))
-
-  return raw.sources
-    .filter(s => s.enabled !== false)
-    .map(s => {
-      if (!s.contentType) {
-        throw new Error(`Source ${s.id} is missing required contentType field`)
-      }
-      const resolvedTags = (s.tagIds ?? [])
-        .map(id => tagMap.get(id))
-        .filter((t): t is Tag => t !== undefined)
-
-      return {
-        type: s.type,
-        id: s.id,
-        name: s.name ?? s.id,
-        url: s.url ?? '',
-        enabled: true,
-        tags: resolvedTags,
-        weightScore: null,
-        contentType: s.contentType,
-        authConfigJson: s.auth ? JSON.stringify(s.auth) : null,
-        sourceWeightScore: s.weightScore ?? 1,
-      }
-    })
-}
-
-function loadTagsConfig(): Tag[] {
-  const configPath = path.join(process.cwd(), 'config', 'tags.yaml')
-  const content = fs.readFileSync(configPath, 'utf-8')
-  const raw = yaml.load(content) as YamlTagsConfig
-
-  return raw.tags
-    .filter(t => t.enabled !== false)
-    .map(t => ({
-      id: t.id,
-      name: t.name ?? t.id,
-      description: t.description,
-      enabled: t.enabled ?? true,
-      includeRules: t.includeRules ?? [],
-      excludeRules: t.excludeRules ?? [],
-      scoreBoost: t.scoreBoost ?? 1.0,
-    }))
-}
-
-function loadEnrichConfig(): EnrichOptions {
-  const configPath = path.join(process.cwd(), 'config', 'reports.yaml')
-  const content = fs.readFileSync(configPath, 'utf-8')
-  const raw = yaml.load(content) as YamlEnrichConfig
-
-  return {
-    batchSize: raw.enrich?.batchSize ?? 10,
-    minContentLength: raw.enrich?.minContentLength ?? 500,
-    fetchTimeout: raw.enrich?.fetchTimeout ?? 20000,
-  }
-}
-
 async function main() {
   const startTime = Date.now()
   const args = parseArgs()
@@ -224,7 +109,7 @@ async function main() {
   })
 
   // 1. 加载配置
-  const sources = loadSourcesConfig()
+  const { sources, tags, enrichOptions, dailyConfig } = loadConfig()
   const adapters = buildAdapters()
 
   // 2. 并发收集
@@ -260,8 +145,8 @@ async function main() {
       const normalized = normalizeItem(item)
       if (normalized) {
         normalized.sourceWeightScore = sourceWeightScore
-        // 传递 tagFilter，供 filterByTags 使用
-        ;(normalized as any).tagFilter = item.tagFilter ?? source?.tags ?? []
+        // 传递 tagIds，供 filterByTags 使用
+        ;(normalized as any).tagIds = item.tagFilter ?? source?.tagIds ?? []
       }
       return normalized
     })
@@ -277,8 +162,7 @@ async function main() {
   })
 
   // 4. tag 过滤
-  const tagsConfig = loadTagsConfig()
-  const filtered = filterByTags(normalized as any, tagsConfig) as normalizedArticle[]
+  const filtered = filterByTags(normalized as any, tags) as normalizedArticle[]
 
   log({
     level: 'info',
@@ -312,7 +196,6 @@ async function main() {
   })
 
   // 7. 内容充实
-  const enrichConfig = loadEnrichConfig()
   log({
     level: 'info',
     ts: new Date().toISOString(),
@@ -321,7 +204,7 @@ async function main() {
     data: { beforeEnrich: deduped.length },
   })
 
-  const enriched = enrichArticles(deduped, enrichConfig)
+  const enriched = await enrichArticles(deduped, enrichOptions)
 
   log({
     level: 'info',
@@ -343,7 +226,7 @@ async function main() {
     const aiClient = createAiClient()
 
     if (aiClient) {
-      const result = await generateDailyReport(new Date(), aiClient, enriched as any)
+      const result = await generateDailyReport(new Date(), aiClient, enriched as any, dailyConfig, dailyConfig.quadrantPrompt)
       log({
         level: 'info',
         ts: new Date().toISOString(),

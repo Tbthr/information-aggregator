@@ -1,5 +1,7 @@
 import type { RawItem, Source } from "../types/index";
 import { createLogger, truncateWithLength } from "../utils/logger";
+import { parseDate, type ParseDateSuccess, type ParseDateFailure } from "../../lib/date-utils";
+import { computeTimeCutoff } from "../../lib/utils";
 
 const logger = createLogger("adapter:json-feed");
 
@@ -21,81 +23,6 @@ interface JsonFeedPayload {
   items?: JsonFeedItem[];
 }
 
-interface ParseDateSuccess {
-  valid: true;
-  date: Date;
-  rawPublishedAt: string;
-  timeSourceField: string;
-  timeParseNote: string;
-}
-
-interface ParseDateFailure {
-  valid: false;
-  rawPublishedAt: string;
-  reason: "relative" | "invalid";
-}
-
-type ParseDateResult = ParseDateSuccess | ParseDateFailure | null;
-
-/**
- * Parse a date string into UTC Date.
- * Supports:
- * - ISO 8601 with Z: "2026-03-09T08:00:00Z"
- * - ISO 8601 with offset: "2026-03-09T08:00:00+08:00"
- * - ISO 8601 with negative offset: "2026-03-09T08:00:00-05:00"
- * - Date only: "2026-03-09" (filled to 23:59:59 UTC)
- *
- * Returns null for empty input, { valid: false } for invalid/relative timestamps.
- */
-function parseDate(dateStr: string): ParseDateResult {
-  if (!dateStr || dateStr.trim() === "") {
-    return null;
-  }
-
-  const trimmed = dateStr.trim();
-
-  // Check for relative timestamps (contain words like "ago", "hours", "days", etc.)
-  const relativePatterns = [/\bago\b/i, /\bhours?\b/i, /\bdays?\b/i, /\bminutes?\b/i, /\byesterday\b/i, /\bjust now\b/i];
-  if (relativePatterns.some((pattern) => pattern.test(trimmed))) {
-    return { valid: false, rawPublishedAt: trimmed, reason: "relative" };
-  }
-
-  // Try pure date format (YYYY-MM-DD)
-  const dateOnlyMatch = trimmed.match(/^\d{4}-\d{2}-\d{2}$/);
-
-  if (dateOnlyMatch) {
-    // Date-only: treat as UTC 23:59:59 of that date
-    const datePart = trimmed;
-    const parsed = new Date(`${datePart}T23:59:59.000Z`);
-    if (isNaN(parsed.getTime())) {
-      return { valid: false, rawPublishedAt: trimmed, reason: "invalid" };
-    }
-    return {
-      valid: true,
-      date: parsed,
-      rawPublishedAt: trimmed,
-      timeSourceField: "date_published",
-      timeParseNote: "date-only, filled to 23:59:59 UTC",
-    };
-  }
-
-  // Try standard Date.parse for ISO 8601 formats
-  const parsed = new Date(trimmed);
-  if (!isNaN(parsed.getTime())) {
-    // The Date constructor handles timezone offsets correctly
-    return {
-      valid: true,
-      date: new Date(parsed.toISOString()),
-      rawPublishedAt: trimmed,
-      timeSourceField: "date_published",
-      timeParseNote: parsed.getTimezoneOffset() === 0 ? "parsed as UTC" : "parsed with timezone conversion",
-    };
-  }
-
-  // Unparseable
-  return { valid: false, rawPublishedAt: trimmed, reason: "invalid" };
-}
-
 export interface ParseJsonFeedItemsOptions {
   jobStartedAt: string;
   timeWindow: number;
@@ -115,8 +42,7 @@ export function parseJsonFeedItems(
   }
 
   // Calculate the cutoff using timeWindow
-  const jobStart = new Date(jobStartedAt);
-  const cutoffTime = new Date(jobStart.getTime() - timeWindow);
+  const cutoffTimestamp = computeTimeCutoff(jobStartedAt, timeWindow);
 
   const items: RawItem[] = [];
   let discardCount = 0;
@@ -136,7 +62,7 @@ export function parseJsonFeedItems(
     let usedField = "";
 
     if (item.date_published) {
-      const parsed = parseDate(item.date_published);
+      const parsed = parseDate(item.date_published, "date_published");
       if (parsed === null) {
         // No timestamp provided
       } else if (!parsed.valid) {
@@ -149,7 +75,7 @@ export function parseJsonFeedItems(
 
     // If no date_published, try date_modified
     if (!parsedTimestamp && !timestampFailure && item.date_modified) {
-      const parsed = parseDate(item.date_modified);
+      const parsed = parseDate(item.date_modified, "date_modified");
       if (parsed !== null && parsed.valid) {
         parsedTimestamp = { ...parsed, timeSourceField: "date_modified" };
         usedField = "date_modified";
@@ -185,14 +111,14 @@ export function parseJsonFeedItems(
     }
 
     // Check if timestamp is within the 24h window
-    if (parsedTimestamp.date < cutoffTime) {
+    if (parsedTimestamp.date.getTime() < cutoffTimestamp) {
       logger.warn("Discarding item outside 24h window", {
         sourceId,
         sourceType: "json-feed",
         title: item.title,
         url,
         rawTime: parsedTimestamp.rawPublishedAt,
-        discardReason: `published at ${parsedTimestamp.date.toISOString()} is before cutoff ${cutoffTime.toISOString()}`,
+        discardReason: `published at ${parsedTimestamp.date.toISOString()} is before cutoff ${new Date(cutoffTimestamp).toISOString()}`,
       });
       discardCount++;
       continue;

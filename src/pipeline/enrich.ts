@@ -211,14 +211,14 @@ export function enrichArticleItem(
  * @param options 充实选项
  * @returns 充实后的文章数组（in-place）
  */
-export function enrichArticles(
+export async function enrichArticles(
   articles: normalizedArticle[],
   options: EnrichOptions
-): normalizedArticle[] {
-  // Process in batches
+): Promise<normalizedArticle[]> {
+  // Process in batches with concurrency
   for (let i = 0; i < articles.length; i += options.batchSize) {
     const batch = articles.slice(i, i + options.batchSize);
-    batch.forEach((article) => enrichArticleItem(article, options));
+    await Promise.all(batch.map(article => Promise.resolve(enrichArticleItem(article, options))));
   }
 
   return articles;

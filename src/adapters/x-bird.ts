@@ -3,6 +3,7 @@ import { createLogger, maskSensitiveArgs, truncateWithLength } from "../utils/lo
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
+import { computeTimeCutoff } from "../../lib/utils";
 
 const logger = createLogger("adapter:bird");
 
@@ -303,7 +304,7 @@ function parseBirdItems(payload: string, source: Source, jobStartedAt: string, t
   }
 
   let discardCount = 0;
-  const cutoffTime = new Date(new Date(jobStartedAt).getTime() - timeWindow);
+  const cutoffTimestamp = computeTimeCutoff(jobStartedAt, timeWindow);
 
   const result = items
     .filter((item) => typeof item.text === "string")
@@ -330,7 +331,7 @@ function parseBirdItems(payload: string, source: Source, jobStartedAt: string, t
       }
 
       const parsedTime = new Date(itemTime);
-      if (!isNaN(parsedTime.getTime()) && parsedTime < cutoffTime) {
+      if (!isNaN(parsedTime.getTime()) && parsedTime.getTime() < cutoffTimestamp) {
         logger.warn("Discarding item outside 24h window", {
           sourceId: source.id,
           sourceType: "bird",
@@ -339,7 +340,7 @@ function parseBirdItems(payload: string, source: Source, jobStartedAt: string, t
             : normalizeBirdTitle(rawText),
           url: item.url ?? "",
           rawTime: itemTime,
-          discardReason: `created at ${parsedTime.toISOString()} is before cutoff ${cutoffTime.toISOString()}`,
+          discardReason: `created at ${parsedTime.toISOString()} is before cutoff ${new Date(cutoffTimestamp).toISOString()}`,
         });
         discardCount++;
         return null; // Will be filtered out

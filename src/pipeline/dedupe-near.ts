@@ -1,3 +1,5 @@
+import { selectWinner, removePunctuation } from "../../lib/utils";
+
 /**
  * Near deduplication item interface with all fields needed for winner selection.
  */
@@ -11,85 +13,6 @@ export interface NearDedupItem {
   sourceDefaultTags?: string[];
   sourceWeightScore?: number;
   engagementScore?: number | null;
-}
-
-/**
- * Winner selection for near dedupe.
- * Selection criteria (in order):
- * 1. tags.length 更高者优先
- * 2. Source.priority 更高者优先
- * 3. engagementScore 更高者优先（null 视为 -1）
- * 4. publishedAt 更新者优先
- * 5. fetchedAt 更新者优先
- * 6. id 字典序作为最终 tiebreaker
- */
-function selectWinner<T extends NearDedupItem>(items: T[]): T {
-  if (items.length === 0) {
-    throw new Error("Cannot select winner from empty array");
-  }
-  if (items.length === 1) {
-    return items[0];
-  }
-
-  let winner = items[0];
-
-  for (let i = 1; i < items.length; i++) {
-    const current = items[i];
-    winner = compareForWinner(winner, current) > 0 ? current : winner;
-  }
-
-  return winner;
-}
-
-/**
- * Compare two items for winner selection.
- * Returns negative if a should win, positive if b should win, 0 if tie.
- */
-function compareForWinner<T extends NearDedupItem>(a: T, b: T): number {
-  // 1. tags.length 更高者优先
-  const aTagCount = a.sourceDefaultTags?.length ?? 0;
-  const bTagCount = b.sourceDefaultTags?.length ?? 0;
-  if (aTagCount !== bTagCount) {
-    return bTagCount - aTagCount;
-  }
-
-  // 2. Source.priority 更高者优先
-  const aPriority = a.sourceWeightScore ?? 0;
-  const bPriority = b.sourceWeightScore ?? 0;
-  if (aPriority !== bPriority) {
-    return bPriority - aPriority;
-  }
-
-  // 3. engagementScore 更高者优先（null 视为 -1）
-  const aEngagement = a.engagementScore ?? -1;
-  const bEngagement = b.engagementScore ?? -1;
-  if (aEngagement !== bEngagement) {
-    return bEngagement - aEngagement;
-  }
-
-  // 4. publishedAt 更新者优先
-  const aPublished = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
-  const bPublished = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
-  if (aPublished !== bPublished) {
-    return bPublished - aPublished;
-  }
-
-  // 5. fetchedAt 更新者优先
-  const aFetched = a.fetchedAt ? new Date(a.fetchedAt).getTime() : 0;
-  const bFetched = b.fetchedAt ? new Date(b.fetchedAt).getTime() : 0;
-  if (aFetched !== bFetched) {
-    return bFetched - aFetched;
-  }
-
-  // 6. id 字典序作为最终 tiebreaker
-  return a.id.localeCompare(b.id);
-}
-
-/**
- * Strip punctuation characters that are disruptive for dedup comparison.
- */
-function removePunctuation(value: string): string {
-  return value.replace(/[!"#$%&'*+,/:;<=>?@[\]^`{|}~]/g, "");
 }
 
 /**
@@ -139,17 +62,6 @@ function similarityRatio(a: string[], b: string[]): number {
   const lenSum = a.length + b.length;
   if (lenSum === 0) return 0;
   return (2 * lcs) / lenSum;
-}
-
-/**
- * Check if two items are within the same day (used for pre-filtering).
- * Items must have publishedAt within 24 hours of each other to be considered duplicates.
- */
-function isWithinDay(left?: string | null, right?: string | null): boolean {
-  if (!left || !right) {
-    return true; // If either is missing, allow comparison
-  }
-  return Math.abs(new Date(left).getTime() - new Date(right).getTime()) <= 24 * 60 * 60 * 1000;
 }
 
 /**
@@ -209,11 +121,6 @@ function findClusters<T extends NearDedupItem>(items: T[], threshold = 0.75): Ma
         continue;
       }
 
-      // Must be within the same day
-      if (!isWithinDay(items[i].publishedAt, items[j].publishedAt)) {
-        continue;
-      }
-
       // Compute SequenceMatcher-style similarity
       const sim = similarityRatio(tokenized[i], tokenized[j]);
 
@@ -240,7 +147,7 @@ function findClusters<T extends NearDedupItem>(items: T[], threshold = 0.75): Ma
  *
  * Algorithm (input-order independent):
  * 1. Tokenize all items using combined title + body (lowercased, punctuation-stripped)
- * 2. Build similarity graph using bucket pre-filtering and 24h time window
+ * 2. Build similarity graph using token bucket pre-filtering
  * 3. Find connected components (clusters) using Union-Find
  * 4. For each cluster, select a single winner using the winner selection algorithm
  *

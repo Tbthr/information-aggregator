@@ -10,8 +10,7 @@
 
 import fs from 'fs'
 import path from 'path'
-import yaml from 'js-yaml'
-import { getQuadrantPrompt } from '../ai/prompts-reports.js'
+import type { DailyConfig } from '../config/index.js'
 import type { AiClient } from '../ai/types.js'
 import { formatUtcDate, formatUtcDayLabel } from '../../lib/date-utils.js'
 import type { normalizedArticle } from '../types/index.js'
@@ -46,22 +45,6 @@ interface QuadrantData {
 }
 
 // ============================================================
-// Config
-// ============================================================
-
-interface DailyConfig {
-  maxItems: number
-  minScore: number
-}
-
-function loadReportsConfig(): DailyConfig {
-  const configPath = path.join(process.cwd(), 'config', 'reports.yaml')
-  const content = fs.readFileSync(configPath, 'utf-8')
-  const raw = yaml.load(content) as { daily: DailyConfig }
-  return raw.daily
-}
-
-// ============================================================
 // Scoring
 // ============================================================
 
@@ -77,7 +60,8 @@ function computeBaseScore(article: normalizedArticle): number {
 
 async function classifyArticlesQuadrantBatch(
   articles: normalizedArticle[],
-  aiClient: AiClient
+  aiClient: AiClient,
+  quadrantPrompt: string
 ): Promise<Map<string, Quadrant>> {
   const idAndContent = articles.map((a, i) => ({
     id: a.id || `article-${i}`,
@@ -85,7 +69,7 @@ async function classifyArticlesQuadrantBatch(
     content: (a.normalizedContent || '')?.slice(0, 2000) ?? '',
   }))
 
-  const prompt = `${getQuadrantPrompt()}\n\n请对以下所有内容进行分类，返回JSON数组格式：\n${JSON.stringify(idAndContent, null, 2)}\n\n返回格式：\n[{"id": "文章id", "quadrant": "尝试|深度|地图感", "reason": "理由"}]`
+  const prompt = `${quadrantPrompt}\n\n请对以下所有内容进行分类，返回JSON数组格式：\n${JSON.stringify(idAndContent, null, 2)}\n\n返回格式：\n[{"id": "文章id", "quadrant": "尝试|深度|地图感", "reason": "理由"}]`
 
   const resultMap = new Map<string, Quadrant>()
 
@@ -179,20 +163,20 @@ export function generateDailyMarkdown(report: DailyReportData): string {
 export async function generateDailyReport(
   now: Date,
   aiClient: AiClient,
-  articles: normalizedArticle[]
+  articles: normalizedArticle[],
+  dailyConfig: DailyConfig,
+  quadrantPrompt: string
 ): Promise<DailyGenerateResult> {
   const dateStr = formatUtcDate(now)
   const dayLabel = formatUtcDayLabel(now)
   const errorSteps: string[] = []
-
-  const config = loadReportsConfig()
 
   if (articles.length === 0) {
     return { date: dateStr, articleCount: 0, errorSteps }
   }
 
   // Step 2: Classify all articles by quadrant (single batch AI call)
-  const quadrantMap = await classifyArticlesQuadrantBatch(articles, aiClient)
+  const quadrantMap = await classifyArticlesQuadrantBatch(articles, aiClient, quadrantPrompt)
 
   const classified: { article: normalizedArticle; score: number; quadrant: Quadrant }[] = []
   for (const article of articles) {
@@ -204,9 +188,9 @@ export async function generateDailyReport(
 
   // Step 3: Filter by minScore and sort by score desc
   const filtered = classified
-    .filter(c => c.score >= config.minScore)
+    .filter(c => c.score >= dailyConfig.minScore)
     .sort((a, b) => b.score - a.score)
-    .slice(0, config.maxItems)
+    .slice(0, dailyConfig.maxItems)
 
   if (filtered.length === 0) {
     return { date: dateStr, articleCount: 0, errorSteps }
