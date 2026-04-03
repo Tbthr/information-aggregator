@@ -15,7 +15,7 @@ import { enrichArticles } from '../pipeline/enrich.js'
 import { generateDailyReport } from '../reports/daily.js'
 import { createAiClient } from '../ai/client.js'
 import type { EnrichOptions } from '../pipeline/enrich.js'
-import type { Source, Topic, normalizedArticle } from '../types/index.js'
+import type { Source, Tag, normalizedArticle } from '../types/index.js'
 
 // ============================================================
 // CLI Argument Parsing
@@ -106,9 +106,10 @@ interface YamlSource {
   name?: string
   url?: string
   enabled?: boolean
-  topics?: string[]
+  tagIds?: string[]
   handle?: string
-  priority?: number
+  weightScore?: number
+  contentType?: string
   auth?: {
     authToken?: string
     ct0?: string
@@ -119,7 +120,7 @@ interface YamlConfig {
   sources: YamlSource[]
 }
 
-interface YamlTopic {
+interface YamlTag {
   id: string
   name?: string
   description?: string
@@ -127,12 +128,10 @@ interface YamlTopic {
   includeRules?: string[]
   excludeRules?: string[]
   scoreBoost?: number
-  displayOrder?: number
-  maxItems?: number
 }
 
-interface YamlTopicsConfig {
-  topics: YamlTopic[]
+interface YamlTagsConfig {
+  tags: YamlTag[]
 }
 
 interface YamlEnrichConfig {
@@ -145,30 +144,46 @@ interface YamlEnrichConfig {
 }
 
 function loadSourcesConfig(): Source[] {
-  const configPath = path.join(process.cwd(), 'config', 'sources.yaml')
-  const content = fs.readFileSync(configPath, 'utf-8')
-  const raw = yaml.load(content) as YamlConfig
+  const sourcesPath = path.join(process.cwd(), 'config', 'sources.yaml')
+  const sourcesContent = fs.readFileSync(sourcesPath, 'utf-8')
+  const raw = yaml.load(sourcesContent) as YamlConfig
+
+  const tagsPath = path.join(process.cwd(), 'config', 'tags.yaml')
+  const tagsContent = fs.readFileSync(tagsPath, 'utf-8')
+  const tagsRaw = yaml.load(tagsContent) as YamlTagsConfig
+  const tagMap = new Map(tagsRaw.tags.map(t => [t.id, t]))
 
   return raw.sources
     .filter(s => s.enabled !== false)
-    .map(s => ({
-      kind: s.type as Source['kind'],
-      id: s.id,
-      url: s.url ?? '',
-      name: s.name ?? s.id,
-      enabled: true,
-      configJson: s.auth ? JSON.stringify(s.auth) : undefined,
-      topicIds: s.topics ?? [],
-      sourceWeightScore: s.priority ?? 0.5,
-    }))
+    .map(s => {
+      if (!s.contentType) {
+        throw new Error(`Source ${s.id} is missing required contentType field`)
+      }
+      const resolvedTags = (s.tagIds ?? [])
+        .map(id => tagMap.get(id))
+        .filter((t): t is Tag => t !== undefined)
+
+      return {
+        type: s.type,
+        id: s.id,
+        name: s.name ?? s.id,
+        url: s.url ?? '',
+        enabled: true,
+        tags: resolvedTags,
+        weightScore: null,
+        contentType: s.contentType,
+        authConfigJson: s.auth ? JSON.stringify(s.auth) : null,
+        sourceWeightScore: s.weightScore ?? 1,
+      }
+    })
 }
 
-function loadTopicsConfig(): Topic[] {
-  const configPath = path.join(process.cwd(), 'config', 'topics.yaml')
+function loadTagsConfig(): Tag[] {
+  const configPath = path.join(process.cwd(), 'config', 'tags.yaml')
   const content = fs.readFileSync(configPath, 'utf-8')
-  const raw = yaml.load(content) as YamlTopicsConfig
+  const raw = yaml.load(content) as YamlTagsConfig
 
-  return raw.topics
+  return raw.tags
     .filter(t => t.enabled !== false)
     .map(t => ({
       id: t.id,
@@ -178,8 +193,6 @@ function loadTopicsConfig(): Topic[] {
       includeRules: t.includeRules ?? [],
       excludeRules: t.excludeRules ?? [],
       scoreBoost: t.scoreBoost ?? 1.0,
-      displayOrder: t.displayOrder ?? 0,
-      maxItems: t.maxItems ?? 10,
     }))
 }
 
@@ -260,9 +273,9 @@ async function main() {
     data: { totalItems: normalized.length },
   })
 
-  // 4. topic 过滤
-  const topicsConfig = loadTopicsConfig()
-  const filtered = filterByTopics(normalized as any, topicsConfig) as normalizedArticle[]
+  // 4. tag 过滤
+  const tagsConfig = loadTagsConfig()
+  const filtered = filterByTopics(normalized as any, tagsConfig) as normalizedArticle[]
 
   log({
     level: 'info',
