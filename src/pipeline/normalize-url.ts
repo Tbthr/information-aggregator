@@ -1,5 +1,3 @@
-import type { RawItemMetadata } from "../types/index";
-
 // Tracking parameters to remove from URLs
 const TRACKING_PARAMS = new Set([
   "fbclid",
