@@ -1,152 +1,76 @@
 export type RunKind = "query";
 export type QuerySort = "ranked" | "recent" | "engagement";
-export const CANONICAL_SOURCE_KINDS = [
-  "rss",
-  "json-feed",
-  "website",
-  "hn",
-  "reddit",
-  "github-trending",
-  "x",
-  "youtube",
-  "techurls",
-  "zeli",
-  "newsnow",
-  "attentionvc",
-] as const;
-
-export type SourceKind = (typeof CANONICAL_SOURCE_KINDS)[number];
 export type RunStatus = "pending" | "running" | "completed" | "failed" | "succeeded";
 
 // Content kinds for unified content model
 export const CONTENT_KINDS = ["article", "tweet", "video", "github", "reddit", "hackernews"] as const;
 export type ContentKind = (typeof CONTENT_KINDS)[number];
 
-// Topic model fields (mirrors Prisma Topic)
-export interface Topic {
+// Tag model fields (renamed from Topic)
+export interface Tag {
   id: string;
   name: string;
   description?: string;
+  enabled: boolean;
   includeRules: string[];
   excludeRules: string[];
   scoreBoost: number;
 }
 
-// TopicScores map for stable object mapping
-export type TopicScores = Record<string, number>; // topicId -> score
-
-// 内联数据源定义 (kind replaces type)
-export interface InlineSource {
-  kind: SourceKind;
-  url: string;
-  description?: string;
-  name?: string;          // 易读名称，用于日报展示
-  enabled?: boolean;
-  configJson?: string;
-  // NEW: topic-centric config
-  priority?: number;
-  defaultTopicIds?: string[];
-  authRef?: string;
-}
+// TagScores map for stable object mapping
+export type TagScores = Record<string, number>; // tagId -> score
 
 // Source 类型，用于 adapter 函数签名
-export type Source = InlineSource & { id: string; topicIds: string[]; sourceWeightScore: number; name?: string };
+export interface Source {
+  type: string;
+  id: string;
+  name: string;
+  description?: string;
+  url: string;
+  enabled: boolean;
+  tags: Tag[];
+  weightScore: number | null;
+  contentType: string;
+  authConfigJson: string | null;
+  sourceWeightScore: number;
+}
 
 // Adapter 函数类型
 export type AdapterFn = (source: Source, options: { timeWindow: number }) => Promise<RawItem[]>;
 
-// FilterContext - runtime context for filtering items (topic-centric for migration)
-export interface FilterContext {
-  topicIds: string[]; // Topics to filter by (replaces packId)
-  mustInclude?: string[];
-  exclude?: string[];
+// RawItemEngagement
+export interface RawItemEngagement {
+  likes?: number;
+  comments?: number;
+  reactions?: number;
+  shares?: number;
 }
 
-// Topic-centric classification context
-export interface ClassificationContext {
-  topics: Topic[];
-  sourceKind?: SourceKind;
-  timeRange?: {
-    start: string;
-    end: string;
-  };
+// RawItemCanonicalHints
+export interface RawItemCanonicalHints {
+  hnDiscussion?: string;
+  redditDiscussion?: string;
 }
 
 // RawItem - 采集最小标准化结果，仅用于进入 normalize
 export interface RawItem {
   id: string;
   sourceId: string;
+  sourceType: string;
+  contentType: string;
   title: string;
   url: string;
+  author?: string;
+  content?: string;
+  summary?: string;
+  engagement?: RawItemEngagement;
+  expandedUrl?: string;
+  canonicalHints?: RawItemCanonicalHints;
+  sourceName: string;
+  publishedAt: string;
   fetchedAt: string;
   metadataJson: string;
-  publishedAt?: string;
-  author?: string;        // Top-level author field (D-06)
-  content?: string;       // Top-level content field (D-07)
-  // Runtime filter context (not stored in DB, set at collection time)
-  filterContext?: FilterContext;
-}
-
-export interface RawItemEngagement {
-  score?: number;
-  comments?: number;
-  reactions?: number;
-}
-
-export interface RawItemCanonicalHints {
-  externalUrl?: string;
-  discussionUrl?: string;
-  linkedUrl?: string;
-  expandedUrl?: string;
-}
-
-export interface RawItemMediaItem {
-  type: "photo" | "video" | "animated_gif";
-  url: string;
-  previewUrl?: string;
-}
-
-export interface RawItemArticle {
-  title: string;
-  url: string;
-  previewText?: string;
-}
-
-export interface RawItemQuote {
-  id?: string;
-  text?: string;
-  author?: string;
-  url?: string;
-}
-
-export interface RawItemThreadItem {
-  id?: string;
-  text?: string;
-  author?: string;
-}
-
-export interface RawItemMetadata {
-  provider: string;
-  sourceKind: SourceKind;
-  contentType: string;
-  engagement?: RawItemEngagement;
-  canonicalHints?: RawItemCanonicalHints;
-  subreddit?: string;
-  discoveredFrom?: string;
-  // X Analysis 扩展字段
-  media?: RawItemMediaItem[];
-  article?: RawItemArticle;
-  quote?: RawItemQuote;
-  thread?: RawItemThreadItem[];
-  // 新增字段
-  tweetId?: string;           // 推文 ID
-  authorId?: string;          // 作者 ID
-  authorName?: string;        // 作者显示名
-  content?: string;           // 正文内容
-  expandedUrl?: string;       // 展开的外链 URL
-  conversationId?: string;    // 对话 ID
-  parent?: RawItemThreadItem; // 父推文（回复上下文）
-  sourceName?: string;       // 来源名称，用于日报展示
+  tagFilter?: Tag[];
 }
 
 // NormalizedItem - simplified article-only output from normalize.ts
@@ -155,15 +79,13 @@ export interface NormalizedItem {
   sourceId: string;
   title: string;
   publishedAt?: string;
-  sourceKind: SourceKind;
+  sourceType: string;
   contentType: "article"; // fixed to article per spec
   normalizedUrl: string;
   normalizedTitle: string;
   normalizedSummary: string;
   normalizedContent: string;
   metadataJson: string;
-  // Runtime filter context (not stored in DB, set at collection time)
-  filterContext?: FilterContext;
 }
 
 // normalizedArticle - pipeline 中统一使用的文章类型
@@ -173,7 +95,7 @@ export interface normalizedArticle {
   sourceName?: string;      // 来源名称，用于日报展示
   title: string;
   publishedAt?: string;
-  sourceKind: SourceKind;
+  sourceType: string;
   contentType: "article";
   normalizedUrl: string;
   normalizedTitle: string;
@@ -199,8 +121,8 @@ export interface Content {
   fetchedAt: string;
   engagementScore?: number;
   qualityScore?: number;
-  topicIds: string[];
-  topicScoresJson?: string;
+  tagIds: string[];
+  tagScoresJson?: string;
   metadataJson?: string;
 }
 
@@ -212,12 +134,21 @@ export type GitHubContent = Content & { kind: "github"; body?: string };
 export type RedditContent = Content & { kind: "reddit"; body?: string };
 export type HackerNewsContent = Content & { kind: "hackernews"; body?: string };
 
+// FilterableItem - for filter-by-tag.ts
+export interface FilterableItem {
+  normalizedTitle: string;
+  normalizedSummary: string;
+  normalizedContent: string;
+  engagementScore?: number | null;
+  tagFilter?: Tag[];
+}
+
 // ReportCandidate - 日报阶段统一候选模型（基于 Content，不是数据库表）
 export interface ReportCandidate {
   id: string;
   kind: ContentKind;
-  topicId: string; // Primary topic this candidate belongs to
-  topicScores?: TopicScores; // Scores across all matched topics
+  tagId: string; // Primary tag this candidate belongs to
+  tagScores?: TagScores; // Scores across all matched tags
   title: string;
   summary: string;
   content: string;
@@ -236,8 +167,8 @@ export interface ReportCandidate {
     sourceId: string;
   };
   // Quadrant-aware pipeline fields
-  topicIds?: string[]; // Content.topicIds copy for preset Topic grouping
-  sourceKind?: SourceKind; // Source.kind this content was collected from
+  tagIds?: string[]; // Content.tagIds copy for preset Tag grouping
+  sourceType?: string; // Source.type this content was collected from
   freshnessTier?: "热点" | "趋势" | "经典";
   productivityDistance?: "近" | "中" | "远";
 }
@@ -285,7 +216,7 @@ export interface RankedCandidate {
   finalScore?: number;
   rationale?: string;
   contentType?: string;
-  sourceKind?: SourceKind;
+  sourceType?: string;
   metadataJson?: string;  // 原始元数据 JSON
   author?: string;        // 作者信息
   // 深度 enrichment 相关字段
@@ -350,8 +281,8 @@ export interface EnrichmentConfig {
   extractionConcurrency?: number;       // 正文提取并发数，默认 3
   extractionBatchSize?: number;         // 正文提取批次大小，默认 5
   enableKeyPoints?: boolean;            // 是否启用关键点提取，默认 true
-  enableTagging?: boolean;              // 是否启用标签生成，默认 true
-  cacheEnabled?: boolean;               // 是否启用缓存，默认 true
+  enableTagging?: boolean;             // 是否启用标签生成，默认 true
+  cacheEnabled?: boolean;              // 是否启用缓存，默认 true
   cacheTtl?: number;                    // 缓存 TTL（秒），默认 86400
   maxContentLength?: number;            // 最大内容长度（字符数），默认不限制
   aiBatchSize?: number;                 // AI 批处理大小，默认 5
