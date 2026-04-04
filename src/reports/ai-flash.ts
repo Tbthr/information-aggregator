@@ -12,7 +12,8 @@ export interface AiFlashContent {
 }
 
 async function fetchHexiDaily(source: AiFlashSource, fetcher: typeof fetch): Promise<AiFlashContent | null> {
-  const now = new Date()
+  // Use Beijing time to construct URL (hexi publishes by Beijing date)
+  const now = new Date(Date.now() + 8 * 60 * 60 * 1000)
   const yyyy = now.getUTCFullYear()
   const mm = String(now.getUTCMonth() + 1).padStart(2, '0')
   const dd = String(now.getUTCDate()).padStart(2, '0')
@@ -135,10 +136,11 @@ async function fetchJuyaDaily(source: AiFlashSource, fetcher: typeof fetch): Pro
 async function fetchClawfeedDaily(source: AiFlashSource, fetcher: typeof fetch): Promise<AiFlashContent | null> {
   const resp = await fetcher('https://clawfeed.kevinhe.io/feed/kevin')
   if (!resp.ok) return null
-  const data = await resp.json() as Array<{ created_at: string; content: string }>
+  const json = await resp.json() as { digests: Array<{ created_at: string; content: string }> }
+  const items = json.digests ?? []
 
   const todayStr = formatBeijingDate(new Date())
-  const todayItems = data.filter(item => {
+  const todayItems = items.filter(item => {
     const itemDate = new Date(item.created_at)
     return formatBeijingDate(itemDate) === todayStr
   })
