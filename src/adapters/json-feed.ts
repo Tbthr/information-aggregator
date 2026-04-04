@@ -45,7 +45,9 @@ export function parseJsonFeedItems(
   const cutoffTimestamp = computeTimeCutoff(jobStartedAt, timeWindow);
 
   const items: RawItem[] = [];
-  let discardCount = 0;
+  let discardNoTimestamp = 0;
+  let discardOutsideWindow = 0;
+  let discardInvalidTimestamp = 0;
 
   for (let index = 0; index < payload.items.length; index++) {
     const item = payload.items[index];
@@ -94,19 +96,19 @@ export function parseJsonFeedItems(
         rawTime: timestampFailure.rawPublishedAt,
         discardReason: `timestamp is ${timestampFailure.reason}: ${timestampFailure.rawPublishedAt}`,
       });
-      discardCount++;
+      discardInvalidTimestamp++;
       continue;
     }
 
     // If no timestamp found, skip the item
     if (!parsedTimestamp) {
-      discardCount++;
+      discardNoTimestamp++;
       continue;
     }
 
     // Check if timestamp is within the 24h window
     if (parsedTimestamp.date.getTime() < cutoffTimestamp) {
-      discardCount++;
+      discardOutsideWindow++;
       continue;
     }
 
@@ -141,14 +143,15 @@ export function parseJsonFeedItems(
   }
 
   // Log discard summary per source (D-04, D-05)
+  const totalDiscarded = discardNoTimestamp + discardOutsideWindow + discardInvalidTimestamp;
   logger.info("Source fetch completed", {
     sourceId,
     sourceType: "json-feed",
     fetched: items.length,
-    discarded: discardCount,
-    discardRate: items.length + discardCount > 0
-      ? `${((discardCount / (items.length + discardCount)) * 100).toFixed(1)}%`
-      : "0%",
+    discardedNoTimestamp: discardNoTimestamp,
+    discardedOutsideWindow: discardOutsideWindow,
+    discardedInvalidTimestamp: discardInvalidTimestamp,
+    totalDiscarded,
   });
 
   return items;

@@ -295,7 +295,7 @@ function buildParentMetadata(parent: BirdThreadItem | undefined): { id?: string;
   };
 }
 
-function parseBirdItems(payload: string, source: Source, jobStartedAt: string, timeWindow: number): { items: RawItem[], discardCount: number } {
+function parseBirdItems(payload: string, source: Source, jobStartedAt: string, timeWindow: number): { items: RawItem[], discardNoTimestamp: number, discardOutsideWindow: number } {
   const parsed = JSON.parse(payload) as BirdItem[] | { tweets: BirdItem[] };
   // --all 参数会返回 {"tweets": [...]} 结构，需要提取 tweets 数组
   const items = Array.isArray(parsed) ? parsed : (parsed as { tweets: BirdItem[] }).tweets;
@@ -303,7 +303,8 @@ function parseBirdItems(payload: string, source: Source, jobStartedAt: string, t
     throw new Error("bird CLI output must be a JSON array or {tweets: [...]}");
   }
 
-  let discardCount = 0;
+  let discardNoTimestamp = 0;
+  let discardOutsideWindow = 0;
   const cutoffTimestamp = computeTimeCutoff(jobStartedAt, timeWindow);
 
   const result = items
@@ -320,13 +321,13 @@ function parseBirdItems(payload: string, source: Source, jobStartedAt: string, t
       // Check 24h window using created_at or createdAt
       const itemTime = item.created_at ?? item.createdAt;
       if (!itemTime) {
-        discardCount++;
+        discardNoTimestamp++;
         return null;
       }
 
       const parsedTime = new Date(itemTime);
       if (!isNaN(parsedTime.getTime()) && parsedTime.getTime() < cutoffTimestamp) {
-        discardCount++;
+        discardOutsideWindow++;
         return null; // Will be filtered out
       }
 
@@ -365,17 +366,18 @@ function parseBirdItems(payload: string, source: Source, jobStartedAt: string, t
     .filter((item): item is NonNullable<typeof item> => item !== null && item.url !== "") as RawItem[];
 
   // Log discard summary per source (D-04, D-05)
+  const totalDiscarded = discardNoTimestamp + discardOutsideWindow;
   logger.info("Source fetch completed", {
     sourceId: source.id,
     sourceType: "bird",
     fetched: result.length,
-    discarded: discardCount,
-    discardRate: result.length + discardCount > 0
-      ? `${((discardCount / (result.length + discardCount)) * 100).toFixed(1)}%`
-      : "0%",
+    discardedNoTimestamp: discardNoTimestamp,
+    discardedOutsideWindow: discardOutsideWindow,
+    discardedInvalidTimestamp: 0,
+    totalDiscarded,
   });
 
-  return { items: result, discardCount };
+  return { items: result, discardNoTimestamp, discardOutsideWindow };
 }
 
 export async function collectXBirdSource(
