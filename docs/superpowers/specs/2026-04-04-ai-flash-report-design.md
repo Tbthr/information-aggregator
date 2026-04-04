@@ -80,6 +80,12 @@ sources:
 - 与 `sources.yaml` 完全解耦，不共享配置
 - 每个 source 只声明 `id`、`adapter`、`enabled`，不需要 `tagIds`、`contentType` 等 pipeline 专用字段
 - `id` 与 `sources.yaml` 中的 `id` 保持一致，便于后续扩展（比如复用同一套 adapter）
+- `adapter` 字段引用 `src/adapters/` 中已存在的 adapter（`clawfeed`、`rss` 等）
+- **关于 `timeWindow`**：AI快讯来源是 digest 类型（整期周报/日报），不存在"时间窗口内过滤"的问题。每个 source 的 adapter 直接返回最新一期内容，`fetchAiFlashSources` 的 `timeWindow` 参数仅用于与 adapter 接口签名兼容，调用时可传任意值或忽略
+
+**adapter 映射**：
+- `clawfeed` → `src/adapters/clawfeed.ts`（已存在）
+- `rss` → `src/adapters/rss.ts`（已存在，用于何夕和橘鸦）
 
 ### 2. AI快讯获取 — `src/reports/ai-flash.ts`
 
@@ -121,8 +127,8 @@ export interface AiFlashSource {
 export interface AiFlashContent {
   sourceId: string
   sourceName: string
-  publishedAt: string
-  content: string  // 清理后的纯文本或 Markdown
+  publishedAt: string  // UTC ISO 8601 格式
+  content: string      // 清理后的纯文本或 Markdown
 }
 
 export async function fetchAiFlashSources(
@@ -130,6 +136,8 @@ export async function fetchAiFlashSources(
   options: { timeWindow: number; fetchImpl?: typeof fetch }
 ): Promise<AiFlashContent[]>
 ```
+
+**错误处理策略**：部分失败不影响整体。采用 fail-silent 模式——单个 source 获取失败时记录日志并跳过，不阻塞其他 source。最终返回所有成功获取的内容（可能少于配置数量）。
 
 ### 3. 日报生成器重写 — `src/reports/daily.ts`
 
