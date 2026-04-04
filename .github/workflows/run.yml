@@ -2,7 +2,7 @@
 name: Run Aggregator
 on:
   schedule:
-    - cron: "0 23 * * *"  # 每天 23:00 UTC = 7:00 北京时间
+    - cron: "0 0 * * *"  # 每天 00:00 UTC = 8:00 北京时间
   workflow_dispatch:
 
 jobs:
