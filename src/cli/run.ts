@@ -84,7 +84,7 @@ function parseArgs(): CLIArgs {
 interface LogEntry {
   level: 'info' | 'warn' | 'error'
   ts: string
-  stage: 'collect' | 'enrich' | 'filter' | 'dedupe' | 'score' | 'normalize' | 'quadrant' | 'topic' | 'output'
+  stage: 'collect' | 'enrich' | 'filter' | 'dedupe' | 'score' | 'normalize' | 'output'
   msg: string
   data?: Record<string, unknown>
 }
@@ -109,7 +109,7 @@ async function main() {
   })
 
   // 1. 加载配置
-  const { sources, tags, enrichOptions, dailyConfig } = loadConfig()
+  const { sources, tags, enrichOptions, dailyConfig, aiFlashSources } = loadConfig()
   const adapters = buildAdapters()
 
   // 2. 并发收集
@@ -226,7 +226,7 @@ async function main() {
     const aiClient = createAiClient()
 
     if (aiClient) {
-      const result = await generateDailyReport(new Date(), aiClient, enriched as any, dailyConfig.quadrantPrompt)
+      const result = await generateDailyReport(new Date(), aiClient, enriched as any, aiFlashSources)
       log({
         level: 'info',
         ts: new Date().toISOString(),

@@ -15,7 +15,7 @@ import type { EnrichOptions } from '../pipeline/enrich.js'
 
 export interface AiFlashSource {
   id: string
-  adapter: string
+  adapter: 'hexi-daily' | 'juya-daily' | 'clawfeed-daily'
   enabled: boolean
 }
 
@@ -147,7 +147,7 @@ function loadAiFlashSources(): AiFlashSource[] {
     }
     return {
       id: s.id,
-      adapter: s.adapter,
+      adapter: s.adapter as AiFlashSource['adapter'],
       enabled: s.enabled ?? true,
     }
   })
