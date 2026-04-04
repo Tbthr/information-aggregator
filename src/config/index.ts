@@ -13,6 +13,12 @@ import type { EnrichOptions } from '../pipeline/enrich.js'
 // Reports Daily Config
 // ============================================================
 
+export interface AiFlashSource {
+  id: string
+  adapter: string
+  enabled: boolean
+}
+
 export interface DailyConfig {
   quadrantPrompt: string
 }
@@ -26,6 +32,7 @@ export interface AppConfig {
   tags: Tag[]
   enrichOptions: EnrichOptions
   dailyConfig: DailyConfig
+  aiFlashSources: AiFlashSource[]
 }
 
 // ============================================================
@@ -118,6 +125,25 @@ function loadReportsConfig(): { enrichOptions: EnrichOptions; dailyConfig: Daily
   return { enrichOptions, dailyConfig }
 }
 
+function loadAiFlashSources(): AiFlashSource[] {
+  const configPath = path.join(process.cwd(), 'config', 'ai-flash-sources.yaml')
+  if (!fs.existsSync(configPath)) {
+    return []
+  }
+  const content = fs.readFileSync(configPath, 'utf-8')
+  const raw = yaml.load(content) as { sources: Array<{
+    id: string
+    adapter: string
+    enabled?: boolean
+  }> }
+
+  return raw.sources.map(s => ({
+    id: s.id,
+    adapter: s.adapter,
+    enabled: s.enabled ?? true,
+  }))
+}
+
 // ============================================================
 // Public API
 // ============================================================
@@ -130,6 +156,7 @@ export function loadConfig(): AppConfig {
   const sources = loadSources()
   const tags = loadTags()
   const { enrichOptions, dailyConfig } = loadReportsConfig()
+  const aiFlashSources = loadAiFlashSources()
 
-  return { sources, tags, enrichOptions, dailyConfig }
+  return { sources, tags, enrichOptions, dailyConfig, aiFlashSources }
 }
