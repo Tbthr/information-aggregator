@@ -1,11 +1,12 @@
 /**
- * Daily Report Generator — JSON-based pipeline (no Prisma)
+ * Daily Report Generator — Dual-module structure (AI Flash + Article List)
  *
  * Architecture:
  * 1. Accept pre-processed articles (from pipeline)
- * 2. Classify each article into a quadrant (尝试/深度/地图感) using AI
- * 3. Group articles by quadrant
- * 4. Output to Markdown (reports/daily/YYYY-MM-DD.md)
+ * 2. Fetch AI flash content from dedicated adapters (hexi-daily, juya-daily, clawfeed-daily)
+ * 3. Output to Markdown (reports/daily/YYYY-MM-DD.md)
+ *    - AI快讯 section (from dedicated adapters)
+ *    - 文章列表 section (from pipeline articles)
  */
 
 import fs from 'fs'
@@ -13,10 +14,7 @@ import path from 'path'
 import type { AiClient } from '../ai/types.js'
 import { formatUtcDate, formatUtcDayLabel } from '../../lib/date-utils.js'
 import type { normalizedArticle } from '../types/index.js'
-
-// ============================================================
-// Types
-// ============================================================
+import type { AiFlashSource, AiFlashContent } from './ai-flash.js'
 
 export interface DailyGenerateResult {
   date: string
@@ -30,78 +28,11 @@ interface ArticleForReport {
   sourceName: string
 }
 
-interface DailyReportData {
+export interface DailyReportData {
   date: string
   dateLabel: string
-  quadrants: QuadrantData[]
-}
-
-type Quadrant = '尝试' | '深度' | '地图感'
-
-interface QuadrantData {
-  quadrant: Quadrant
+  aiFlash: AiFlashContent[]
   articles: ArticleForReport[]
-}
-
-// ============================================================
-// Quadrant Classification
-// ============================================================
-
-async function classifyArticlesQuadrantBatch(
-  articles: normalizedArticle[],
-  aiClient: AiClient,
-  quadrantPrompt: string
-): Promise<Map<string, Quadrant>> {
-  const idAndContent = articles.map((a, i) => ({
-    id: a.id || `article-${i}`,
-    title: a.title || a.normalizedTitle || '',
-    content: (a.normalizedContent || '')?.slice(0, 2000) ?? '',
-  }))
-
-  const prompt = `${quadrantPrompt}\n\n请对以下所有内容进行分类，返回JSON数组格式：\n${JSON.stringify(idAndContent, null, 2)}\n\n返回格式：\n[{"id": "文章id", "quadrant": "尝试|深度|地图感", "reason": "理由"}]`
-
-  const resultMap = new Map<string, Quadrant>()
-
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      const raw = await aiClient.generateText(prompt)
-
-      // Try parsing as JSON array
-      let items: { id: string; quadrant: string }[] = []
-      try {
-        const parsed = JSON.parse(raw)
-        if (Array.isArray(parsed)) {
-          items = parsed
-        }
-      } catch {
-        // Try extracting from markdown code block
-        const match = raw.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/)
-        if (match) {
-          try {
-            items = JSON.parse(match[1])
-          } catch { /* ignore */ }
-        }
-      }
-
-      if (items.length > 0) {
-        for (const item of items) {
-          if (['尝试', '深度', '地图感'].includes(item.quadrant)) {
-            resultMap.set(item.id, item.quadrant as Quadrant)
-          }
-        }
-        if (resultMap.size > 0) return resultMap
-      }
-    } catch {
-      // retry
-    }
-  }
-
-  // Fallback: all to 地图感
-  for (const a of articles) {
-    const id = a.id || `article-${articles.indexOf(a)}`
-    resultMap.set(id, '地图感')
-  }
-  return resultMap
 }
 
 // ============================================================
@@ -113,20 +44,20 @@ export function generateDailyMarkdown(report: DailyReportData): string {
 
   lines.push(`# ${report.dateLabel}`)
   lines.push('')
-  for (const quad of report.quadrants) {
-    lines.push(`## ${quad.quadrant} ⓘ`)
-    lines.push('')
 
-    if (quad.articles.length === 0) {
-      lines.push('无内容')
-      lines.push('')
-      continue
-    }
-
-    for (const article of quad.articles) {
-      lines.push(`- [${article.title}](${article.url}) (${article.sourceName})`)
-    }
+  lines.push('## AI快讯')
+  lines.push('')
+  for (const flash of report.aiFlash) {
+    lines.push(`### ${flash.sourceName}`)
     lines.push('')
+    lines.push(flash.content)
+    lines.push('')
+  }
+
+  lines.push('## 文章列表')
+  lines.push('')
+  for (const article of report.articles) {
+    lines.push(`- [${article.title}](${article.url}) (${article.sourceName})`)
   }
 
   return lines.join('\n')
@@ -141,71 +72,36 @@ export function generateDailyMarkdown(report: DailyReportData): string {
  *
  * Pipeline:
  * 1. Accept pre-processed articles (normalizedArticle[] from pipeline)
- * 2. Classify each article into a quadrant using AI
- * 3. Group by quadrant
+ * 2. Fetch AI flash content from dedicated adapters (fail-silent)
+ * 3. Map articles for report output
  * 4. Output to Markdown
  */
 export async function generateDailyReport(
   now: Date,
   aiClient: AiClient,
   articles: normalizedArticle[],
-  quadrantPrompt: string
+  aiFlashSources: AiFlashSource[]
 ): Promise<DailyGenerateResult> {
   const dateStr = formatUtcDate(now)
   const dayLabel = formatUtcDayLabel(now)
   const errorSteps: string[] = []
 
-  if (articles.length === 0) {
-    return { date: dateStr, articleCount: 0, errorSteps }
-  }
+  // Fetch AI flash sources (fail-silent, imported from ai-flash.ts)
+  const { fetchAiFlashSources } = await import('./ai-flash.js')
+  const aiFlash = await fetchAiFlashSources(aiFlashSources, {})
 
-  // Step 2: Classify all articles by quadrant (single batch AI call)
-  const quadrantMap = await classifyArticlesQuadrantBatch(articles, aiClient, quadrantPrompt)
+  // Map articles for report
+  const reportArticles: ArticleForReport[] = articles.map(a => ({
+    title: a.title || a.normalizedTitle || '',
+    url: a.normalizedUrl || '',
+    sourceName: a.sourceName || a.sourceId || '',
+  }))
 
-  const classified: { article: normalizedArticle; quadrant: Quadrant }[] = []
-  for (const article of articles) {
-    const id = article.id || `article-${articles.indexOf(article)}`
-    const quadrant = quadrantMap.get(id) ?? '地图感'
-    classified.push({ article, quadrant })
-  }
-
-  // Step 3: 取所有已分类的文章（pipeline 已排序）
-  const filtered = classified
-
-  if (filtered.length === 0) {
-    return { date: dateStr, articleCount: 0, errorSteps }
-  }
-
-  // Step 4: Group by quadrant
-  const byQuadrant = new Map<Quadrant, normalizedArticle[]>()
-  for (const { article, quadrant } of filtered) {
-    const list = byQuadrant.get(quadrant) ?? []
-    list.push(article)
-    byQuadrant.set(quadrant, list)
-  }
-
-  // Build quadrant data
-  const quadrants: QuadrantData[] = []
-  let totalArticles = 0
-
-  for (const q of (['尝试', '深度', '地图感'] as Quadrant[])) {
-    const quadArticles = byQuadrant.get(q) ?? []
-    quadrants.push({
-      quadrant: q,
-      articles: quadArticles.map(a => ({
-        title: a.title || a.normalizedTitle || '',
-        url: a.normalizedUrl || '',
-        sourceName: a.sourceName || a.sourceId || '',
-      })),
-    })
-    totalArticles += quadArticles.length
-  }
-
-  // Step 5: Write Markdown output
   const reportData: DailyReportData = {
     date: dateStr,
     dateLabel: `${dayLabel} 日报`,
-    quadrants,
+    aiFlash,
+    articles: reportArticles,
   }
 
   const markdown = generateDailyMarkdown(reportData)
@@ -219,5 +115,5 @@ export async function generateDailyReport(
     errorSteps.push('writeOutput')
   }
 
-  return { date: dateStr, articleCount: totalArticles, errorSteps }
+  return { date: dateStr, articleCount: reportArticles.length, errorSteps }
 }
