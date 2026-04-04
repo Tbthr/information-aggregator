@@ -211,7 +211,7 @@ sources:
     id: chadnauseam-com-rss-xml
     name: Chad Nauseam Home
     url: https://chadnauseam.com/rss.xml
-    enabled: true
+    enabled: false
     tagIds: [karpathy-picks]
     contentType: article
 
