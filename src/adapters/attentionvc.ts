@@ -78,19 +78,13 @@ export async function collectAttentionvcSource(
     logger.info("AttentionVC response", { count: entries.length, elapsed, total: body.totalCount });
 
     const out: RawItem[] = [];
+    let discardCount = 0;
 
     for (const entry of entries) {
       // Filter by timeWindow using tweetCreatedAt
       const publishedAt = new Date(entry.tweetCreatedAt);
       if (publishedAt.getTime() < cutoffMs) {
-        logger.warn("Discarding item outside time window", {
-          sourceId: source.id,
-          sourceType: "attentionvc",
-          title: entry.title,
-          url: `https://x.com/${entry.author.handle}/status/${entry.tweetId}`,
-          rawTime: entry.tweetCreatedAt,
-          discardReason: `tweetCreatedAt ${publishedAt.toISOString()} is before cutoff ${new Date(cutoffMs).toISOString()}`,
-        });
+        discardCount++;
         continue;
       }
 
@@ -127,7 +121,14 @@ export async function collectAttentionvcSource(
       });
     }
 
-    logger.info("AttentionVC collect completed", { sourceId: source.id, count: out.length });
+    logger.info("AttentionVC collect completed", {
+      sourceId: source.id,
+      fetched: out.length,
+      discarded: discardCount,
+      discardRate: out.length + discardCount > 0
+        ? `${((discardCount / (out.length + discardCount)) * 100).toFixed(1)}%`
+        : "0%",
+    });
     return out;
   } catch (err) {
     const elapsed = Date.now() - startTime;

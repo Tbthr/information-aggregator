@@ -112,14 +112,6 @@ export function parseJsonFeedItems(
 
     // Check if timestamp is within the 24h window
     if (parsedTimestamp.date.getTime() < cutoffTimestamp) {
-      logger.warn("Discarding item outside 24h window", {
-        sourceId,
-        sourceType: "json-feed",
-        title: item.title,
-        url,
-        rawTime: parsedTimestamp.rawPublishedAt,
-        discardReason: `published at ${parsedTimestamp.date.toISOString()} is before cutoff ${new Date(cutoffTimestamp).toISOString()}`,
-      });
       discardCount++;
       continue;
     }

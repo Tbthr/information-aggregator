@@ -332,16 +332,6 @@ function parseBirdItems(payload: string, source: Source, jobStartedAt: string, t
 
       const parsedTime = new Date(itemTime);
       if (!isNaN(parsedTime.getTime()) && parsedTime.getTime() < cutoffTimestamp) {
-        logger.warn("Discarding item outside 24h window", {
-          sourceId: source.id,
-          sourceType: "bird",
-          title: typeof article?.title === "string" && article.title.trim() !== ""
-            ? article.title.trim()
-            : normalizeBirdTitle(rawText),
-          url: item.url ?? "",
-          rawTime: itemTime,
-          discardReason: `created at ${parsedTime.toISOString()} is before cutoff ${new Date(cutoffTimestamp).toISOString()}`,
-        });
         discardCount++;
         return null; // Will be filtered out
       }
