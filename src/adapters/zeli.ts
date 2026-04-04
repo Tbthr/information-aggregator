@@ -58,10 +58,6 @@ export async function collectZeliSource(
 
       const published = parseUnixTimestamp(p.time);
       if (!published) {
-        logger.warn("Skipping item without publishedAt", {
-          sourceId: source.id,
-          url: link,
-        });
         continue;
       }
       if (published.getTime() < cutoffMs) continue;

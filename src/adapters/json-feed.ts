@@ -100,12 +100,6 @@ export function parseJsonFeedItems(
 
     // If no timestamp found, skip the item
     if (!parsedTimestamp) {
-      logger.warn("Skipping item without publishedAt", {
-        sourceId,
-        sourceType: "json-feed",
-        title: item.title,
-        url,
-      });
       discardCount++;
       continue;
     }

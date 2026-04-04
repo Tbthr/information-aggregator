@@ -320,12 +320,6 @@ function parseBirdItems(payload: string, source: Source, jobStartedAt: string, t
       // Check 24h window using created_at or createdAt
       const itemTime = item.created_at ?? item.createdAt;
       if (!itemTime) {
-        logger.warn("Skipping item without publishedAt", {
-          sourceId: source.id,
-          sourceType: "bird",
-          title,
-          url: item.url ?? "",
-        });
         discardCount++;
         return null;
       }

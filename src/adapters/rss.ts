@@ -100,12 +100,6 @@ export function parseRssItems(
 
     // If no timestamp found, skip the item (publishedAt is required)
     if (!parsedTimestamp) {
-      logger.warn("Skipping item without publishedAt", {
-        sourceId,
-        sourceType: "rss",
-        title,
-        url,
-      });
       discardCount++;
       continue;
     }
