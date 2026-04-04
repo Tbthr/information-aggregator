@@ -3,25 +3,23 @@
 ## 概述
 
 重构日报生成逻辑，移除象限分类，改为双模块结构：
-- **AI快讯**：三个精选信息源的完整内容拼接，各自独立子模块展示
+- **AI快讯**：三个精选信息源的当日完整内容，各自独立子模块展示
 - **文章列表**：复用现有 pipeline 结果
+
+---
 
 ## 变更范围
 
-### 删除
-- `src/reports/filter-quadrant.ts` —象限分类逻辑删除
-- `config/reports.yaml` 中的 `quadrantPrompt` 配置
-- `src/ai/prompts-reports.ts` 中的 `parseQuadrantResult` 函数
-
-### 新增
-- `config/ai-flash-sources.yaml` — AI快讯数据源配置
-- `src/reports/ai-flash.ts` — AI快讯获取 + HTML清理
-
-### 重写
-- `src/reports/daily.ts` — 移除象限逻辑，改为双模块输出
-
-### 配置变更
-- `config/reports.yaml` — 删除 `quadrantPrompt` 段落
+| 操作 | 文件 |
+|------|------|
+| 删除 | `src/reports/filter-quadrant.ts` |
+| 删除 | `src/ai/prompts-reports.ts` 中的 `parseQuadrantResult` |
+| 新增 | `config/ai-flash-sources.yaml` |
+| 新增 | `src/reports/ai-flash.ts` |
+| 重写 | `src/reports/daily.ts` |
+| 修改 | `config/reports.yaml`（删除 `quadrantPrompt`） |
+| 修改 | `src/config/index.ts`（扩展 Config 类型） |
+| 修改 | `src/cli/run.ts`（集成 AI快讯获取） |
 
 ---
 
@@ -34,15 +32,15 @@
 
 ### ClawFeed
 
-[完整 Markdown 内容，原样输出]
+[当日 Markdown 内容]
 
 ### 何夕2077 AI资讯
 
-[HTML 清理后的纯文本内容]
+[当日日报 Markdown 内容]
 
 ### 橘鸦AI早报
 
-[HTML 清理后的纯文本内容]
+[当日 HTML 清理后的内容]
 
 ## 文章列表
 
@@ -52,75 +50,110 @@
 
 ---
 
-## 详细设计
-
-### 1. AI快讯配置 — `config/ai-flash-sources.yaml`
+## AI快讯配置 — `config/ai-flash-sources.yaml`
 
 ```yaml
 # AI快讯数据源配置
-# 这些来源的内容被认为是完全可信的，不需要 tag 过滤、enrichment、评分排序
+# 三个来源均为 dedicated adapter，不走 pipeline 的 adapter 机制
 
 sources:
-  - id: clawfeed-kevinhe-io-feed-kevin
-    adapter: clawfeed
+  - id: hexi-daily
+    adapter: hexi-daily
     enabled: true
 
-  - id: ai-hubtoday-blog
-    name: 何夕2077 AI资讯
-    adapter: rss
+  - id: juya-daily
+    adapter: juya-daily
     enabled: true
 
-  - id: juya-ai-daily
-    name: 橘鸦AI早报
-    adapter: rss
+  - id: clawfeed-daily
+    adapter: clawfeed-daily
     enabled: true
 ```
 
 **设计原则**：
-- 与 `sources.yaml` 完全解耦，不共享配置
-- 每个 source 只声明 `id`、`adapter`、`enabled`，不需要 `tagIds`、`contentType` 等 pipeline 专用字段
-- `id` 与 `sources.yaml` 中的 `id` 保持一致，便于后续扩展（比如复用同一套 adapter）
-- `adapter` 字段引用 `src/adapters/` 中已存在的 adapter（`clawfeed`、`rss` 等）
-- **关于 `timeWindow`**：AI快讯来源是 digest 类型（整期周报/日报），不存在"时间窗口内过滤"的问题。每个 source 的 adapter 直接返回最新一期内容，`fetchAiFlashSources` 的 `timeWindow` 参数仅用于与 adapter 接口签名兼容，调用时可传任意值或忽略
+- 与 `sources.yaml` 完全解耦
+- 三个 dedicated adapter 各自独立获取当日内容，互不依赖
+- `timeWindow` 在这三个 adapter 中均无意义（都是日度一期），接口签名保留但忽略
 
-**adapter 映射**：
-- `clawfeed` → `src/adapters/clawfeed.ts`（已存在）
-- `rss` → `src/adapters/rss.ts`（已存在，用于何夕和橘鸦）
+---
 
-### 2. AI快讯获取 — `src/reports/ai-flash.ts`
+## Dedicated Adapters
 
-**职责**：
-1. 根据配置加载 AI快讯数据源
-2. 通过对应 adapter 获取原始内容
-3. 对 HTML 内容进行基本清理（strip tags，保留链接和加粗）
-4. 返回结构化数据给日报生成器
+三个 adapter 统一放在 `src/reports/ai-flash.ts` 中，作为内部实现细节，不暴露到 `src/adapters/`。
 
-**三个来源的内容形态**：
+### 1. hexi-daily — 何夕日报
 
-| 来源 | 获取字段 | 内容形态 | 清理方式 |
-|------|----------|----------|----------|
-| ClawFeed | JSON `content` | Markdown，带 emoji 前缀分类 | 最小处理，原样输出 |
-| 何夕 | RSS `description` | 完整 HTML 周报 | strip HTML，保留 `<a>` 链接和 `<strong>` |
-| 橘鸦 | RSS `content:encoded` | 完整 HTML 日报 | 同上 |
+**URL 规律**：`https://ai.hubtoday.app/{YYYY-MM}/{YYYY-MM-DD}/`
 
-**HTML 清理规则**：
-```typescript
-// 输入: "<p>阿里发布<strong>Wan2.7</strong>，见<a href="...">链接</a></p>"
-// 输出: "阿里发布**Wan2.7**，见 链接(https://...)\n\n"
+**数据获取**：通过 jina.ai 提取页面正文
+```
+GET https://r.jina.ai/https://ai.hubtoday.app/2026-04/2026-04-04/
 ```
 
-- 移除所有 HTML 标签
-- 保留 `<a>` 标签的文本和 href，格式为 `文本(url)`
-- 保留 `<strong>` 和 `<b>` 为 `**文本**`
-- `<br>` 和块级标签后换行
-- 连续空白压缩为单个空格
+**返回格式**：jina.ai 返回 Markdown，直接截取正文区域即可。
 
-**接口设计**：
+**清理规则**：
+- jina.ai 输出前约 700 行为侧边栏/目录，跳过
+- 找到第一个 `# AI资讯日报` 标题，从下一行开始截取
+- 截取到 `© 2026 何夕2077` 或文件末尾
+- 过滤掉含 `优云智算` 的广告行（特征：含 `ucloud` 域名或 `6.9元购` 等营销文字）
+- 图片链接保留（格式 `![alt](url)`），不处理
+
+**处理后格式**：Markdown，包含完整当日日报结构。
+
+### 2. juya-daily — 橘鸦AI早报
+
+**RSS URL**：`https://imjuya.github.io/juya-ai-daily/rss.xml`
+
+**数据获取**：抓取 RSS，过滤当天条目（按 `pubDate` 中的日期匹配北京时间当天）。
+
+**清理规则**：
+- 解析 `content:encoded` 字段
+- strip HTML tags，保留 `<a>` 链接格式为 `文本(url)`
+- 保留 `<strong>` 为 `**文本**`
+- `<br>` 和块级标签后换行
+
+**当日过滤逻辑**：
+```typescript
+const todayStr = formatBeijingDate(now) // "2026-04-04"
+for (const item of rssItems) {
+  const itemDate = parseBeijingDate(item.pubDate) // 从 pubDate 提取日期
+  if (formatDate(itemDate) === todayStr) {
+    // 保留
+  }
+}
+```
+
+### 3. clawfeed-daily — ClawFeed
+
+**API URL**：`https://clawfeed.kevinhe.io/feed/kevin`
+
+**数据获取**：抓取 JSON，按 `created_at` 过滤当天条目。
+
+**清理规则**：
+- 已是 Markdown 格式，最小处理
+- 过滤掉空行过多的条目
+- 按 `created_at` 过滤北京时间当天
+
+**当日过滤逻辑**：
+```typescript
+const todayStr = formatBeijingDate(now) // "2026-04-04"
+for (const digest of digests) {
+  const digestDate = formatBeijingDate(new Date(digest.created_at))
+  if (digestDate === todayStr) {
+    // 保留
+  }
+}
+```
+
+---
+
+## 接口设计 — `src/reports/ai-flash.ts`
+
 ```typescript
 export interface AiFlashSource {
   id: string
-  name: string
-  adapter: string
+  adapter: string  // "hexi-daily" | "juya-daily" | "clawfeed-daily"
   enabled: boolean
 }
 
@@ -128,49 +161,50 @@ export interface AiFlashContent {
   sourceId: string
   sourceName: string
   publishedAt: string  // UTC ISO 8601 格式
-  content: string      // 清理后的纯文本或 Markdown
+  content: string      // 清理后的 Markdown
 }
 
 export async function fetchAiFlashSources(
   sources: AiFlashSource[],
-  options: { timeWindow: number; fetchImpl?: typeof fetch }
+  options: { fetchImpl?: typeof fetch }
 ): Promise<AiFlashContent[]>
 ```
 
-**错误处理策略**：部分失败不影响整体。采用 fail-silent 模式——单个 source 获取失败时记录日志并跳过，不阻塞其他 source。最终返回所有成功获取的内容（可能少于配置数量）。
+**错误处理**：fail-silent，单个 source 获取失败时跳过，不阻塞其他 source。
 
-### 3. 日报生成器重写 — `src/reports/daily.ts`
+---
+
+## 日报生成器重写 — `src/reports/daily.ts`
 
 **移除**：
-- `classifyArticlesQuadrantBatch` — 象限分类
+- `classifyArticlesQuadrantBatch`
 - `QuadrantData`、`Quadrant` 类型
-- 所有 quadrantPrompt 参数
+- `quadrantPrompt` 参数
 
 **新增**：
 ```typescript
 export interface DailyReportData {
   date: string
   dateLabel: string
-  aiFlash: AiFlashContent[]   // AI快讯列表
-  articles: ArticleForReport[] // 文章列表
+  aiFlash: AiFlashContent[]
+  articles: ArticleForReport[]
 }
 
 export async function generateDailyReport(
   now: Date,
   aiClient: AiClient,
-  articles: normalizedArticle[],  // 来自 pipeline
-  aiFlashSources: AiFlashSource[] // 来自 ai-flash-sources.yaml
+  articles: normalizedArticle[],
+  aiFlashSources: AiFlashSource[]
 ): Promise<DailyGenerateResult>
 ```
 
-**输出格式**：
+**Markdown 输出**：
 ```typescript
 export function generateDailyMarkdown(report: DailyReportData): string {
   const lines: string[] = []
   lines.push(`# ${report.dateLabel}`)
   lines.push('')
 
-  // AI快讯模块
   lines.push('## AI快讯')
   lines.push('')
   for (const flash of report.aiFlash) {
@@ -180,7 +214,6 @@ export function generateDailyMarkdown(report: DailyReportData): string {
     lines.push('')
   }
 
-  // 文章列表模块
   lines.push('## 文章列表')
   lines.push('')
   for (const article of report.articles) {
@@ -191,37 +224,28 @@ export function generateDailyMarkdown(report: DailyReportData): string {
 }
 ```
 
-### 4. CLI 集成 — `src/cli/run.ts`
+---
 
-变化点在日报生成调用处：
+## CLI 集成 — `src/cli/run.ts`
 
 ```typescript
-// before
-const quadrantPrompt = reportsConfig.daily.quadrantPrompt
-const result = await generateDailyReport(now, aiClient, rankedArticles, quadrantPrompt)
-
-// after
 const aiFlashSources = loadAiFlashSources()  // from ai-flash-sources.yaml
-const aiFlashContent = await fetchAiFlashSources(aiFlashSources, { timeWindow })
+const aiFlashContent = await fetchAiFlashSources(aiFlashSources, { fetchImpl })
 const result = await generateDailyReport(now, aiClient, rankedArticles, aiFlashContent)
 ```
 
 ---
 
-## 配置加载
-
-### `src/config/index.ts`
-
-扩展 `loadConfig` 返回值：
+## 配置加载 — `src/config/index.ts`
 
 ```typescript
 interface Config {
   // ... existing fields
   aiFlashSources: AiFlashSource[]
 }
-```
 
-新增 `loadAiFlashSources()` 辅助函数。
+export function loadAiFlashSources(): AiFlashSource[] { ... }
+```
 
 ---
 
@@ -233,26 +257,36 @@ before:
 
 after:
   pipeline → normalizedArticle[] ──────────────────→ 文章列表
-                                └──→ aiFlash → AiFlashContent[] → AI快讯
+                                └──→ fetchAiFlashSources → AI快讯
 ```
 
 两个模块完全并行，无依赖关系。
 
 ---
 
+## sources.yaml 中原配置的处置
+
+`config/sources.yaml` 中以下条目在切换到 dedicated adapter 后应设为 `enabled: false` 或注释掉：
+
+- `ai-hubtoday-blog`（原 RSS 只返回周报，新逻辑走 dedicated hexi-daily）
+- `juya-ai-daily`（原 RSS 不做日度过滤，新逻辑走 dedicated juya-daily）
+- `clawfeed-kevinhe-io-feed-kevin`（原 adapter 返回全量历史，新逻辑走 dedicated clawfeed-daily）
+
+---
+
 ## 后续优化（不在本期范围内）
 
-1. **去重**：三个 AI快讯来源之间可能有内容重叠（比如都报道了同一事件），需要 URL 或语义去重
-2. **条目级提取**：将周报/日报拆解为独立条目，而非整篇拼接
-3. **来源重要性权重**：某些来源优先级更高时可做排序
+1. **去重**：三个 AI快讯来源之间可能有内容重叠
+2. **来源重要性权重**：某些来源优先级更高时可做排序
+3. **hexi-daily 广告过滤**：目前用字符串特征过滤，可考虑更健壮的方式
 
 ---
 
 ## 测试策略
 
-1. `bun test src/reports` — 单元测试覆盖 HTML 清理逻辑
-2. `bun run src/cli/run.ts -t 1h` — 端到端验证，生成日报检查输出格式
-3. 手动检查生成的日报，确认 AI快讯三个子模块都正确渲染
+1. `bun test src/reports` — 单元测试覆盖清理逻辑
+2. `bun run src/cli/run.ts -t 1h` — 端到端验证，检查输出格式
+3. 手动检查生成的日报，确认三个子模块都正确渲染
 
 ---
 
@@ -265,6 +299,7 @@ after:
 | 新增 | `config/ai-flash-sources.yaml` |
 | 新增 | `src/reports/ai-flash.ts` |
 | 重写 | `src/reports/daily.ts` |
-| 修改 | `config/reports.yaml`（删除 quadrantPrompt） |
-| 修改 | `src/config/index.ts`（扩展 Config 类型） |
+| 修改 | `config/reports.yaml`（删除 `quadrantPrompt`） |
+| 修改 | `src/config/index.ts`（扩展 Config 类型，添加 `loadAiFlashSources`） |
 | 修改 | `src/cli/run.ts`（集成 AI快讯获取） |
+| 修改 | `config/sources.yaml`（将三个原 AI快讯 source 设为 `enabled: false` 或注释） |
