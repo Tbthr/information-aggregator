@@ -4,8 +4,8 @@
 
 ## 功能特性
 
-- **AI 分类** - 内容自动分配到尝试/深度/地图感 三个象限
-- **话题聚类** - AI 将相关内容聚合成话题，生成摘要和核心要点
+- **AI 快讯** - 三个精选信息源（何夕2077、橘鸦AI早报、ClawFeed）当日完整内容
+- **文章列表** - 复用 pipeline 结果，按评分排序
 - **历史去重** - 基于 URL 和内容的精确去重
 - **GitHub Pages 部署** - 静态网站，自动更新
 
@@ -44,12 +44,15 @@ bun run src/cli/run.ts
 |------|------|
 | `config/sources.yaml` | 数据源配置（RSS、JSON Feed、X/Twitter） |
 | `config/tags.yaml` | Tag 配置（include/exclude 规则、scoreBoost） |
-| `config/reports.yaml` | 日报参数（maxItems、minScore、quadrantPrompts） |
+| `config/reports.yaml` | 日报参数（enrich 配置） |
+| `config/ai-flash-sources.yaml` | AI快讯数据源配置（hexi/juya/clawfeed） |
 
 ## 架构
 
 ```
-数据源 → 并发收集 → 标准化 → Tag 过滤 → 评分排序 → 去重 → 象限分类 → 话题生成 → Markdown
+数据源 → 并发收集 → 标准化 → Tag 过滤 → 评分排序 → 去重 → 内容充实 → 日报生成
+                                                    ↓
+                              AI快讯（hexi/juya/clawfeed）→ AI快讯模块
 ```
 
 ### CLI 参数
@@ -75,9 +78,8 @@ bun run src/cli/run.ts 24h --adapter-concurrency 4 --source-concurrency 4
 3. **Tag 过滤** - include/exclude 规则初筛
 4. **评分排序 (rank)** - sourceWeightScore×0.4 + engagementScore×0.15
 5. **去重 (dedupe)** - URL 精确去重 + 语义 LCS 去重
-6. **象限分类 (quadrant)** - AI 将内容分配到尝试/深度/地图感
-7. **话题生成 (topic)** - AI 聚类相关内容，生成摘要和要点（各象限独立 prompt）
-8. **输出 (output)** - 生成 Markdown 日报
+6. **内容充实 (enrich)** - 提取正文、AI摘要和关键点
+7. **日报生成 (output)** - 生成 Markdown 日报（AI快讯 + 文章列表）
 
 ## License
 

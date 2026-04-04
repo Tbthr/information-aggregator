@@ -19,7 +19,8 @@ information-aggregator/
 ├── config/                    # YAML 配置
 │   ├── sources.yaml        # 数据源配置
 │   ├── tags.yaml           # Tag 配置
-│   └── reports.yaml         # 报表配置（日报参数、prompts）
+│   ├── reports.yaml         # 报表配置（日报参数、prompts）
+│   └── ai-flash-sources.yaml # AI快讯数据源配置
 ├── data/                    # 收集的 JSON 数据（用于历史去重）
 │   └── YYYY-MM-DD.json
 ├── reports/daily/           # 生成的日报 Markdown
@@ -37,7 +38,8 @@ information-aggregator/
 │   │   ├── client.ts      # AI 客户端
 │   │   └── prompts-reports.ts # 报表生成 prompts
 │   ├── reports/           # 日报生成
-│   │   └── daily.ts       # 日报逻辑
+│   │   ├── daily.ts       # 日报逻辑
+│   │   └── ai-flash.ts    # AI快讯专用 adapters
 │   └── archive/           # 存档接口 + JSON store
 │       ├── index.ts       # Article/ArticleStore 接口
 │       └── json-store.ts  # JSON 实现
@@ -98,9 +100,8 @@ bash -c 'set -a; source .env.local; exec bun run src/cli/run.ts'
 3. tag 过滤          → include/exclude 初筛
 4. 评分 (rank)        → sourceWeightScore×0.4 + engagementScore×0.15
 5. 去重 (dedupe)      → URL 精确 + 语义 LCS
-6. 象限分类 (quadrant) → AI 分类到尝试/深度/地图感
-7. 话题生成 (topic)   → AI 聚类 + 生成摘要/要点（各象限独立 prompt）
-8. 输出 (output)      → 生成 Markdown
+6. 内容充实 (enrich)  → 提取正文 + AI 摘要/关键点
+7. 输出 (output)      → 生成 Markdown（AI快讯 + 文章列表）
 ```
 
 ### Data Format
@@ -130,22 +131,25 @@ bash -c 'set -a; source .env.local; exec bun run src/cli/run.ts'
 
 ```markdown
 # 4月1日 日报
-本报告由 AI 自动生成
 
-## 尝试 ⓘ
-### AI 编程
-本周 AI 编程领域迎来多项重磅更新...
-**核心要点：**
-- Claude 4 发布，多模态能力大幅提升
-- GitHub Copilot Enterprise 支持自然语言代码重构
-**引用文章：**
-- [文章标题](https://...) (来源)
+## AI快讯
 
-## 深度 ⓘ
-...
+### 何夕2077 AI资讯
 
-## 地图感 ⓘ
-...
+[当日 Markdown 内容]
+
+### 橘鸦AI早报
+
+[当日 HTML 清理后的内容]
+
+### ClawFeed
+
+[当日内容]
+
+## 文章列表
+
+- [文章标题](url) (来源)
+- ...
 ```
 
 ## Code Standards
@@ -222,13 +226,11 @@ bun run src/cli/run.ts
 ### config/reports.yaml
 
 ```yaml
-daily:
-  maxItems: 50        # 输入 AI 的候选数量上限
-  minScore: 0          # 最终分数门槛
-  quadrantPrompts:     # 各象限独立的生成 prompt
-    near: "尝试象限 prompt..."
-    mid: "深度象限 prompt..."
-    far: "地图感象限 prompt..."
+enrich:
+  enabled: true
+  batchSize: 10
+  minContentLength: 500
+  fetchTimeout: 20000
 ```
 
 ## GitHub Actions
