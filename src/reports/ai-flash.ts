@@ -24,6 +24,11 @@ async function fetchHexiDaily(source: AiFlashSource, fetcher: typeof fetch): Pro
   if (!resp.ok) return null
   const text = await resp.text()
 
+  // r.jina.ai returns 200 even when target is 404 - detect error content
+  if (text.includes('Warning:') && text.includes('error')) {
+    return null
+  }
+
   // Find start: first "# AI资讯日报" heading
   const lines = text.split('\n')
   let startIdx = -1
