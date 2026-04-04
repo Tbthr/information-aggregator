@@ -1,0 +1,15 @@
+# AI快讯数据源配置
+# 三个来源均为 dedicated adapter，不走 pipeline 的 adapter 机制
+
+sources:
+  - id: hexi-daily
+    adapter: hexi-daily
+    enabled: true
+
+  - id: juya-daily
+    adapter: juya-daily
+    enabled: true
+
+  - id: clawfeed-daily
+    adapter: clawfeed-daily
+    enabled: true
