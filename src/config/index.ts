@@ -131,17 +131,26 @@ function loadAiFlashSources(): AiFlashSource[] {
     return []
   }
   const content = fs.readFileSync(configPath, 'utf-8')
-  const raw = yaml.load(content) as { sources: Array<{
+  const raw = yaml.load(content) as { sources?: Array<{
     id: string
     adapter: string
     enabled?: boolean
   }> }
 
-  return raw.sources.map(s => ({
-    id: s.id,
-    adapter: s.adapter,
-    enabled: s.enabled ?? true,
-  }))
+  if (!raw.sources) {
+    return []
+  }
+
+  return raw.sources.map(s => {
+    if (!s.id || !s.adapter) {
+      throw new Error(`AI flash source missing required id or adapter field`)
+    }
+    return {
+      id: s.id,
+      adapter: s.adapter,
+      enabled: s.enabled ?? true,
+    }
+  })
 }
 
 // ============================================================
