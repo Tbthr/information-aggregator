@@ -49,4 +49,5 @@ export interface AiClient {
   generateText(prompt: string): Promise<string>;
   suggestTopics(prompt: string): Promise<TopicSuggestion[]>;
   summarizeItem(title: string, content: string): Promise<string>;
+  complete(options: { system?: string; prompt: string; maxTokens?: number }): Promise<string>;
 }

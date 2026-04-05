@@ -193,4 +193,10 @@ export abstract class BaseAiClient<TConfig> implements AiClient {
   async summarizeItem(title: string, content: string): Promise<string> {
     return this.getText(await this.request(`${title}\n\n${content}`));
   }
+
+  async complete(options: { system?: string; prompt: string; maxTokens?: number }): Promise<string> {
+    const { system, prompt } = options;
+    const fullPrompt = system ? `${system}\n\n${prompt}` : prompt;
+    return this.getText(await this.request(fullPrompt));
+  }
 }

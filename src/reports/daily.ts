@@ -14,7 +14,7 @@ import path from 'path'
 import type { AiClient } from '../ai/types.js'
 import { formatUtcDate, formatUtcDayLabel } from '../../lib/date-utils.js'
 import type { normalizedArticle } from '../types/index.js'
-import type { AiFlashSource, AiFlashContent } from './ai-flash.js'
+import type { AiFlashSource, AiFlashItem } from './ai-flash.js'
 
 export interface DailyGenerateResult {
   date: string
@@ -31,7 +31,7 @@ interface ArticleForReport {
 export interface DailyReportData {
   date: string
   dateLabel: string
-  aiFlash: AiFlashContent[]
+  aiFlash: AiFlashItem[]
   articles: ArticleForReport[]
 }
 
@@ -47,10 +47,22 @@ export function generateDailyMarkdown(report: DailyReportData): string {
 
   lines.push('## AI快讯')
   lines.push('')
-  for (const flash of report.aiFlash) {
-    lines.push(`### ${flash.sourceName}`)
+
+  // Group AI flash items by sourceName
+  const itemsBySource = new Map<string, AiFlashItem[]>()
+  for (const item of report.aiFlash) {
+    const existing = itemsBySource.get(item.sourceName) ?? []
+    existing.push(item)
+    itemsBySource.set(item.sourceName, existing)
+  }
+
+  for (const [sourceName, items] of itemsBySource) {
+    lines.push(`### ${sourceName}`)
     lines.push('')
-    lines.push(flash.content)
+    for (const item of items) {
+      const titlePart = item.url ? `[${item.title}](${item.url})` : item.title
+      lines.push(`- ${titlePart} — ${item.summary}`)
+    }
     lines.push('')
   }
 
