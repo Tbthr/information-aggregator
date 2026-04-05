@@ -143,7 +143,12 @@ export function parseGitHubTrendingHtml(html: string, sourceId: string, sourceTy
         };
       } catch (error) {
         // 单个条目解析失败不影响其他条目
-        console.warn(`[github-trending] Failed to parse article ${index + 1}:`, error);
+        logger.warn('文章解析失败', {
+          stage: 'collect',
+          source: 'github-trending',
+          articleIndex: index + 1,
+          error: error instanceof Error ? error.message : String(error),
+        });
         return null;
       }
     });
