@@ -31,7 +31,7 @@
 | 边界 | 当前 | 修复后 |
 |---|---|---|
 | 起始 | `#\s+AI资讯日报`（匹配不到） | `## **今日摘要**` |
-| 结束 | `© 2026 何夕2077`（不稳定） | `## **AI资讯日报多渠道** |
+| 结束 | `© 2026 何夕2077`（不稳定） | `## **AI资讯日报多渠道` |
 
 **实现**（`src/reports/ai-flash.ts` → `fetchHexiDaily`）：
 
@@ -163,8 +163,8 @@ function extractJuyaItem(itemHtml: string): JuyaItem | null {
 
 **Adapter 读取 source 定义的方式：**
 - Dedicated adapter 的 URL **全部 hardcoded** 在 `src/reports/ai-flash.ts` 三个函数里
-- `config/ai-flash-sources.yaml` 只负责定义"有哪些 source 要跑"（id、adapter 类型、enabled 开关）
-- 因此 **`ai-flash-sources.yaml` 的内容不需要任何改动**，adapter 代码也不需要改
+- `config/ai-flash-sources.yaml` 只负责定义"有哪些 source 要跑"（id、adapter 类型、enabled 开关），不包含 URL
+- 因此 **`ai-flash-sources.yaml` 的内容不需要任何改动**
 
 **`sources.yaml` 需要移除的三个 source：**
 - `clawfeed-kevinhe-io-feed-kevin`（完全重复）
@@ -230,8 +230,8 @@ export interface DailyConfig {
 **处理流程**：
 
 ```
-1. fetchHexiDaily() → 何夕 Markdown 内容 → parseHexiMarkdownToItems() → AiFlashItem[]
-2. fetchJuyaDaily() → 橘鸦条目 → AiFlashItem[]
+1. fetchHexiDaily() → 何夕条目（含原有分类标签）
+2. fetchJuyaDaily() → 橘鸦条目（修复后无重复）
 3. 合并两个来源的条目
 4. AI 分类（只分类，不改写内容）
 5. 渲染输出
@@ -246,7 +246,7 @@ export interface DailyConfig {
 | 行业动态 | 公司动向、政策、市场趋势 | 商业决策、财报、政策法规归此类 |
 | 开源项目 | GitHub 项目、工具发布 | 有明确代码仓库的项目发布归此类 |
 | 社媒精选 | Twitter/X 讨论热度高的内容 | 社区热帖、观点争鸣、非产品/技术类推文归此类 |
-| 其他 | 与 AI 行业无关的生活/娱乐内容 | 如 AI 生成的音乐，游戏等内容；分类失败时 fallback |
+| 其他 | 与 AI 行业无关的生活/娱乐内容 | 如 AI 生成的音乐、游戏等内容；分类失败时 fallback |
 
 **`categorizeAiFlash` 接口定义**：
 
@@ -342,7 +342,6 @@ ai-flash-categorization:
 | `config/sources.yaml` | 移除 `clawfeed-kevinhe-io-feed-kevin`（与 dedicated clawfeed 完全重复）、`ai-hubtoday-blog`、`juya-ai-daily`（pipeline enabled=false，dedicated 已覆盖） |
 | `config/ai-flash-sources.yaml` | **无需任何变更**（dedicated adapter URL 全部 hardcoded，不依赖此文件的 URL） |
 | `config/reports.yaml` | 新增 `ai-flash-categorization` 配置节（`enabled`、`maxCategories`、`prompt`），AI 分类 prompt 从此读取 |
-| `src/config/index.ts` | `loadReportsConfig()` 新增解析 `ai-flash-categorization` 配置节；`DailyConfig` 接口新增 `aiFlashCategorization` 字段 |
 | `src/reports/ai-flash.ts` | **修复**：修复 `fetchHexiDaily` 边界 + 日期计算（改用 `beijingDayRange`）；重构 `fetchJuyaDaily` 去重逻辑（blockquote-only + link extraction）；**新增** `AiFlashItem` 和 `AiFlashCategory` 类型定义；**新增** `categorizeAiFlash` 函数（~100 行，核心分类逻辑） |
 | `src/reports/daily.ts` | **`DailyReportData` 接口重新设计**：拆分为 `mergedAiFlash: AiFlashCategory[]`（分类后）和 `clawfeed: AiFlashContent | null`（独立）；**`generateDailyMarkdown` 完全重写**：从当前的"按 source 分块"改为"按分类渲染 + 推特模块独立" |
 | `docs/superpowers/specs/2026-04-05-ai-flash-restructuring-design.md` | 本文档 |

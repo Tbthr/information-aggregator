@@ -5,8 +5,8 @@
 **Goal:** 修复何夕2077 提取边界、橘鸦去重，并将日报结构重组为 AI快讯（分类）→ 推特精选 → 文章列表
 
 **Architecture:**
-- `src/reports/ai-flash.ts` 修复提取逻辑，新增 `parseHexiMarkdownToItems` 和 `categorizeAiFlash`
-- `src/reports/daily.ts` 重新设计 `DailyReportData` 接口，重写 `generateDailyMarkdown`
+- `src/reports/ai-flash.ts` 修复提取逻辑，新增 `categorizeAiFlash` 分类函数
+- `src/reports/daily.ts` 重新设计 `DailyReportData` 接口（含 `clawfeed` 字段），重写 `generateDailyMarkdown`
 - `src/config/index.ts` 扩展 `DailyConfig` 以支持 AI 分类配置
 - `config/reports.yaml` 新增 `ai-flash-categorization` 配置节
 - `config/sources.yaml` 移除 3 个 redundant pipeline sources
@@ -23,7 +23,7 @@
 | `config/reports.yaml` | 新增 `ai-flash-categorization` 配置节 |
 | `src/config/index.ts` | 扩展 `DailyConfig` 接口 + `loadReportsConfig()` |
 | `src/reports/ai-flash.ts` | 修复提取 + 新增类型 + 新增 `categorizeAiFlash` |
-| `src/reports/daily.ts` | 重新设计接口 + 重写 `generateDailyMarkdown` |
+| `src/reports/daily.ts` | `DailyReportData` 新增 `clawfeed` 字段 + 重写 `generateDailyMarkdown` |
 
 ---
 
@@ -112,17 +112,9 @@ const dailyConfig: DailyConfig = {
 **Files:**
 - Modify: `src/reports/ai-flash.ts`
 
-### 3a: 确认 beijingDayRange import
+### 3a: 修复日期计算 + 边界提取
 
-在 `src/reports/ai-flash.ts` 顶部确认以下 import 存在：
-```typescript
-import { beijingDayRange } from '../../lib/date-utils.js'
-```
-如果不存在，添加它。
-
-### 3b: 修复日期计算
-
-找到 `fetchHexiDaily` 函数（`ai-flash.ts:18-27`），替换日期计算逻辑：
+找到 `fetchHexiDaily` 函数（`ai-flash.ts:18-68`），替换日期计算逻辑：
 
 **原代码（行 19-27）：**
 ```typescript
@@ -134,6 +126,7 @@ const dd = String(now.getUTCDate()).padStart(2, '0')
 
 **改为：**
 ```typescript
+import { beijingDayRange } from '../../lib/date-utils.js'  // 顶部 import 需确认
 const todayStr = new Date().toISOString().split('T')[0]
 const { start } = beijingDayRange(todayStr)
 const yyyy = start.getUTCFullYear()
@@ -141,7 +134,7 @@ const mm = String(start.getUTCMonth() + 1).padStart(2, '0')
 const dd = String(start.getUTCDate()).padStart(2, '0')
 ```
 
-### 3c: 修复边界提取
+### 3b: 修复边界提取
 
 替换 `fetchHexiDaily` 中的边界提取逻辑（行 37-55）：
 
@@ -168,6 +161,14 @@ const contentLines = lines.slice(startIdx, endIdx).filter(line => {
 })
 ```
 
+### 3c: 确认 beijingDayRange import
+
+在 `src/reports/ai-flash.ts` 顶部确认以下 import 存在：
+```typescript
+import { beijingDayRange } from '../../lib/date-utils.js'
+```
+如果不存在，添加它。
+
 **验证：**
 ```bash
 curl -s "https://r.jina.ai/https://ai.hubtoday.app/2026-04/2026-04-05/" | grep -n "今日摘要\|AI资讯日报多渠道"
@@ -181,9 +182,33 @@ curl -s "https://r.jina.ai/https://ai.hubtoday.app/2026-04/2026-04-05/" | grep -
 **Files:**
 - Modify: `src/reports/ai-flash.ts`
 
-### 4a: extractJuyaItem 实现
+### 4a: 扩展返回类型
 
-在 `fetchJuyaDaily` 上方添加：
+将 `fetchJuyaDaily` 的返回类型从 `Promise<AiFlashContent | null>` 改为 `Promise<AiFlashItem[]>`（直接返回解析后的条目列表）。
+
+在 `fetchJuyaDaily` 函数内部，将 `cleanedContent` 组装逻辑替换为：
+
+```typescript
+// 替代 cleanHtmlContent 全量处理，对每个 item 单独解析
+const items: AiFlashItem[] = []
+for (const item of todayItems) {
+  const parsed = extractJuyaItem(item.content)
+  if (parsed) {
+    items.push({
+      title: parsed.title,
+      url: parsed.url,
+      summary: parsed.summary,
+      sourceName: '橘鸦AI早报',
+    })
+  }
+}
+if (items.length === 0) return null  // 改为返回 null 或空数组（调用方处理）
+return items
+```
+
+### 4b: extractJuyaItem 实现（复用 Plan Task 4 的代码）
+
+将 `extractJuyaItem` 函数添加在 `fetchJuyaDaily` 上方：
 
 ```typescript
 function extractJuyaItem(itemHtml: string): { title: string; url: string; summary: string; links: string[] } | null {
@@ -204,32 +229,7 @@ function extractJuyaItem(itemHtml: string): { title: string; url: string; summar
 }
 ```
 
-### 4b: 重构 fetchJuyaDaily 返回类型
-
-将 `fetchJuyaDaily` 的返回类型从 `Promise<AiFlashContent | null>` 改为 `Promise<{ title: string; url: string; summary: string; sourceName: string }[]>`。
-
-在函数内部，将 `cleanedContent` 组装逻辑替换为：
-
-```typescript
-const items = []
-for (const item of todayItems) {
-  const parsed = extractJuyaItem(item.content)
-  if (parsed) {
-    items.push({
-      title: parsed.title,
-      url: parsed.url,
-      summary: parsed.summary,
-      sourceName: '橘鸦AI早报',
-    })
-  }
-}
-if (items.length === 0) return []
-return items
-```
-
-同时将函数返回值的组装改为返回上述 `items` 数组（不再组装为 `AiFlashContent` 格式）。
-
-> 注：`AiFlashItem` 类型在 Task 5 中定义。先用同名字面量结构替代，Task 5 再 import 正式类型。
+> 注：`AiFlashItem` 类型在 Task 5a 中定义。先用同名字面量结构替代，Task 5 再 import 正式类型。
 
 **验证：** `bun run typecheck` 应无报错
 
@@ -258,7 +258,7 @@ export interface AiFlashCategory {
 }
 ```
 
-### 5b: parseHexiMarkdownToItems 函数
+### 5b: 新增 parseHexiMarkdownToItems 函数
 
 将何夕 Markdown 内容解析为 `AiFlashItem[]`（放在 `fetchHexiDaily` 附近）：
 
@@ -276,11 +276,13 @@ function parseHexiMarkdownToItems(content: string): AiFlashItem[] {
       continue
     }
 
-    // 检测条目：如 "1.   **Gemini深度嵌入安卓底层.**"
-    const itemMatch = line.match(/^\d+\.\s+\*\*(.+?)\*\*[\s:.。](.+)/)
+    // 检测条目：如 "1.   **Gemini深度嵌入安卓底层.**" 或 "• ..."
+    const itemMatch = line.match(/^\d+\.\s+\*\*(.+?)\*\*[\s:.。](.+)/) ||
+                      line.match(/^[•\-]\s+(.+)/)
     if (itemMatch && currentCategory) {
       const title = itemMatch[1].trim()
       const summary = itemMatch[2]?.trim() ?? ''
+      // 尝试从标题中提取链接（如 "[链接](url)" 部分）
       const urlMatch = title.match(/\[([^\]]+)\]\(([^)]+)\)/)
       items.push({
         title: urlMatch ? urlMatch[1] : title,
@@ -295,7 +297,9 @@ function parseHexiMarkdownToItems(content: string): AiFlashItem[] {
 }
 ```
 
-### 5c: categorizeAiFlash 函数
+> 注：何夕的 Markdown 内容结构较复杂，此正则只提取 `1. **标题**` 格式和 `• 标题` 格式。如解析为空，不影响最终输出（有 AI 分类兜底）。
+
+### 5c: 实现 categorizeAiFlash 函数
 
 在 `fetchAiFlashSources` 函数上方添加：
 
@@ -341,7 +345,7 @@ function fallbackCategorize(items: AiFlashItem[]): AiFlashCategory[] {
 }
 ```
 
-> 注：`aiClient.complete()` 的调用方式参考 `src/ai/client.ts`，如有差异按实际接口调整。
+> 注：`aiClient.complete()` 的调用方式参考 `src/ai/client.ts`。如调用方式不同，在实现时调整。
 
 **验证：** `bun run typecheck` 应无报错
 
@@ -361,7 +365,7 @@ export interface DailyReportData {
   date: string
   dateLabel: string
   mergedAiFlash: AiFlashCategory[]   // 分类后的 AI快讯（来自 hexi + juya）
-  clawfeed: AiFlashContent | null  // ClawFeed 独立（保持原格式，不分类）
+  clawfeed: AiFlashContent | null    // ClawFeed 独立（保持原格式，不分类）
   articles: ArticleForReport[]
 }
 ```
@@ -384,6 +388,7 @@ const clawfeedContent = (rawFlashSources.find(
 const allItems: AiFlashItem[] = []
 for (const flash of rawFlashSources) {
   if (flash.sourceId !== 'clawfeed-daily') {
+    // flash 在这里是 AiFlashItem[]
     allItems.push(...(flash as unknown as AiFlashItem[]))
   }
 }
@@ -404,7 +409,7 @@ const reportData: DailyReportData = {
 }
 ```
 
-> 注：如果类型断言造成 `tsc` 报错，改为在 `fetchAiFlashSources` 内部用 tagged union 返回。具体实现时根据 tsc 报错调整。
+> 注：如果类型断言造成 `tsc` 报错，改为在 `fetchAiFlashSources` 内部用 tagged union 返回 `{ type: 'items'; items: AiFlashItem[] } | { type: 'raw'; content: AiFlashContent }` 形式。具体实现时根据 tsc 报错调整。
 
 ### 6c: 重写 generateDailyMarkdown
 
@@ -460,6 +465,10 @@ export function generateDailyMarkdown(report: DailyReportData): string {
 
 ## Task 7: 验证与测试
 
+**Files:**
+- Run: `bun run typecheck`
+- Run: E2E `bun run src/cli/run.ts -t 1h`（需先确认 `.env.local` 中 `ANTHROPIC_API_KEY` 存在）
+
 ### 7a: Typecheck
 
 ```bash
@@ -467,13 +476,15 @@ bun run typecheck
 ```
 预期：无 TypeScript 错误
 
-### 7b: 单元验证（fetchHexiDaily 边界修复）
+### 7b: 单元验证（fetch 修复）
 
 ```bash
+# 验证 fetchHexiDaily 边界修复：
 # curl 实际页面，确认 "## **今日摘要**" 存在
 curl -s "https://r.jina.ai/https://ai.hubtoday.app/2026-04/2026-04-05/" | grep -c "今日摘要"
+
+# 预期：1（行数）
 ```
-预期：1（行数）
 
 ### 7c: E2E 测试
 
