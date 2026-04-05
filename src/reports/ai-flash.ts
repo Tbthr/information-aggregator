@@ -19,6 +19,8 @@ export interface AiFlashItem {
   url: string
   summary: string
   sourceName: string
+  /** Preserves original markdown for ClawFeed items */
+  originalMarkdown?: string
 }
 
 export type AiFlashCategoryName = '产品更新' | '前沿研究' | '行业动态' | '开源项目' | '社媒精选' | '其他'
@@ -133,26 +135,36 @@ function parseClawfeedMarkdownToItems(content: string): AiFlashItem[] {
   // Try to extract items from lines starting with - or *
   const lines = content.split('\n')
   let currentItem: Partial<AiFlashItem> = {}
+  let currentMarkdownLines: string[] = []
+
+  const pushCurrentItem = () => {
+    if (currentItem.title) {
+      items.push({
+        title: currentItem.title,
+        url: currentItem.url ?? '',
+        summary: currentItem.summary?.slice(0, 200) ?? '',
+        sourceName: 'ClawFeed',
+        originalMarkdown: currentMarkdownLines.join('\n'),
+      })
+    }
+    currentItem = {}
+    currentMarkdownLines = []
+  }
 
   for (const line of lines) {
     const trimmed = line.trim()
     if (!trimmed) {
-      // End of current item
-      if (currentItem.title) {
-        items.push({
-          title: currentItem.title,
-          url: currentItem.url ?? '',
-          summary: currentItem.summary?.slice(0, 200) ?? '',
-          sourceName: 'ClawFeed',
-        })
-        currentItem = {}
-      }
+      // Blank line - end of current item
+      pushCurrentItem()
       continue
     }
 
     // Check for item start: - **Title** or - [Title](url)
     const itemMatch = trimmed.match(/^[•\-]\s+(.+)/)
     if (itemMatch) {
+      // Start of new item - push previous if exists
+      pushCurrentItem()
+
       const rest = itemMatch[1].trim()
       const urlMatch = rest.match(/\[([^\]]+)\]\(([^)]+)\)/)
       if (urlMatch) {
@@ -168,21 +180,16 @@ function parseClawfeedMarkdownToItems(content: string): AiFlashItem[] {
           summary: rest.replace(/^\*\*(.+)\*\*[\s:.。]*/, '').trim(),
         }
       }
+      currentMarkdownLines = [line]
     } else if (currentItem.title) {
-      // Continuation line
+      // Continuation line of current item
       currentItem.summary = (currentItem.summary ?? '') + ' ' + trimmed
+      currentMarkdownLines.push(line)
     }
   }
 
   // Push last item if exists
-  if (currentItem.title) {
-    items.push({
-      title: currentItem.title,
-      url: currentItem.url ?? '',
-      summary: currentItem.summary?.slice(0, 200) ?? '',
-      sourceName: 'ClawFeed',
-    })
-  }
+  pushCurrentItem()
 
   return items
 }
