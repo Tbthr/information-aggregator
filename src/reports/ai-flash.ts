@@ -28,7 +28,7 @@ async function fetchHexiDaily(source: AiFlashSource, fetcher: typeof fetch): Pro
   const text = await resp.text()
 
   // r.jina.ai returns 200 even when target is 404 - detect error content
-  if (text.includes('Warning:') && text.includes('error')) {
+  if (/<title>Error<\/title>/i.test(text) || (text.includes('Warning:') && text.includes('error'))) {
     return null
   }
 
@@ -53,10 +53,10 @@ async function fetchHexiDaily(source: AiFlashSource, fetcher: typeof fetch): Pro
   }
 
   // Filter ad lines and rejoin
+  const AD_KEYWORDS = ['ucloud', '6.9元购']
+
   const contentLines = lines.slice(startIdx, endIdx).filter(line => {
-    if (line.includes('ucloud')) return false
-    if (line.includes('6.9元购')) return false
-    return true
+    return !AD_KEYWORDS.some(keyword => line.includes(keyword))
   })
 
   return {
