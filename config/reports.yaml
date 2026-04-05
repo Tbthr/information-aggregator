@@ -8,3 +8,19 @@ enrich:
   minContentLength: 500
   fetchTimeout: 20000  # agent-fetch 超时（毫秒）
 
+ai-flash-categorization:
+  enabled: true
+  maxCategories: 6
+  prompt: |
+    你是一个内容分类助手。请将以下 AI 快讯条目分类到以下类别：
+    产品更新 / 前沿研究 / 行业动态 / 开源项目 / 社媒精选 / 其他
+
+    规则：
+    - 不要改写任何内容，只输出分类结果
+    - 每个条目必须归属一个类别
+    - 输出 JSON 格式：{ "categories": [{ "name": "产品更新", "items": [...] }, ...] }
+    - 类别数量不超过 6 个，"其他"作为最后兜底
+
+    输入条目：
+    {items}
+
