@@ -130,21 +130,25 @@ bash -c 'set -a; source .env.local; exec bun run src/cli/run.ts'
 ### Daily Report Structure
 
 ```markdown
-# 4月1日 日报
+# 4月5日 日报
 
 ## AI快讯
 
-### 何夕2077 AI资讯
+### 产品更新
+- [**Kimi Code** 抢先体验计划开放申请](https://...) — Kimi 现已推出...
+- ...
 
-[当日 Markdown 内容]
+### 前沿研究
+- ...
 
-### 橘鸦AI早报
+（其他分类同理）
 
-[当日 HTML 清理后的内容]
+## 推特精选
 
-### ClawFeed
+☀️ ClawFeed | 2026-04-05 00:41 SGT
 
-[当日内容]
+🔥 重要
+• ...
 
 ## 文章列表
 
@@ -188,19 +192,12 @@ const todayStr = new Date().toISOString().split('T')[0]
 // 北京 00:30 时，toISOString() 返回前一天日期
 ```
 
-**正确做法**（任选其一）：
+**正确做法**：
 
 ```typescript
-// ✅ 方式 1：用 formatBeijingDate 工具函数（推荐）
+// ✅ 用 formatBeijingDate 工具函数
 import { formatBeijingDate } from './lib/date-utils.js'
 const todayStr = formatBeijingDate(new Date())
-
-// ✅ 方式 2：手动偏移后取 UTC components
-const d = new Date(Date.now() + 8 * 60 * 60 * 1000)
-const yyyy = d.getUTCFullYear()
-const mm = String(d.getUTCMonth() + 1).padStart(2, '0')
-const dd = String(d.getUTCDate()).padStart(2, '0')
-const todayStr = `${yyyy}-${mm}-${dd}`
 ```
 
 **为什么**：北京时间 = UTC + 8 小时。"先用 `toISOString()` 取 UTC 日期，再传给 `beijingDayRange()`"的组合会导致北京时间 00:00–07:59 时取到前一天的日期，每次运行抓取错误日期的内容。
