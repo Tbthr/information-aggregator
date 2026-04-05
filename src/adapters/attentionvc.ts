@@ -8,7 +8,7 @@
 
 import type { RawItem, Source } from "../types/index";
 import { createLogger } from "../utils/logger";
-import { createDiscardCounters, logDiscardSummary } from "../utils/discard-counter";
+import { DiscardCounters, createDiscardCounters, logDiscardSummary } from "../utils/discard-counter";
 import { computeTimeCutoff } from "../../lib/utils";
 
 const logger = createLogger("adapter:attentionvc");
@@ -80,7 +80,7 @@ export async function collectAttentionvcSource(
     logger.info("AttentionVC response", { count: entries.length, elapsed, total: body.totalCount });
 
     const out: RawItem[] = [];
-    const counters = createDiscardCounters();
+    const counters: DiscardCounters = createDiscardCounters();
 
     for (const entry of entries) {
       // Filter by timeWindow using tweetCreatedAt
