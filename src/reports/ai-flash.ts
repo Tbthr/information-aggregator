@@ -13,6 +13,8 @@ export interface AiFlashContent {
   content: string      // cleaned Markdown
 }
 
+const AD_KEYWORDS = ['ucloud', '6.9元购']
+
 async function fetchHexiDaily(source: AiFlashSource, fetcher: typeof fetch): Promise<AiFlashContent | null> {
   // Use Beijing time to construct URL (hexi publishes by Beijing date)
   const now = new Date(Date.now() + 8 * 60 * 60 * 1000)
@@ -53,8 +55,6 @@ async function fetchHexiDaily(source: AiFlashSource, fetcher: typeof fetch): Pro
   }
 
   // Filter ad lines and rejoin
-  const AD_KEYWORDS = ['ucloud', '6.9元购']
-
   const contentLines = lines.slice(startIdx, endIdx).filter(line => {
     return !AD_KEYWORDS.some(keyword => line.includes(keyword))
   })
