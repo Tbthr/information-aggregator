@@ -13,7 +13,7 @@ import { computeTimeCutoff } from "../../lib/utils.js";
 const logger = createLogger("adapter:zeli");
 
 function parseUnixTimestamp(ts: number | string | undefined): Date | null {
-  if (ts === undefined || ts === null) return null;
+  if (ts == null) return null;
   const n = typeof ts === "string" ? parseInt(ts, 10) : ts;
   if (isNaN(n)) return null;
   return new Date(n * 1000);
