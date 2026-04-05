@@ -7,6 +7,8 @@ import { computeTimeCutoff } from "../../lib/utils";
 
 const logger = createLogger("adapter:bird");
 
+type BirdMode = 'home' | 'bookmarks' | 'likes' | 'list' | 'user-tweets' | 'search' | 'news' | 'trending';
+
 const DEBUG_BIRD_OUTPUT = process.env.DEBUG_BIRD_OUTPUT === "true";
 const DEBUG_OUTPUT_DIR = "out/bird-raw";
 
@@ -28,7 +30,7 @@ function saveDebugOutput(sourceId: string, rawOutput: string): void {
 }
 
 interface BirdSourceConfig {
-  birdMode?: string;
+  birdMode?: BirdMode;
   listId?: string;
   count?: number;
   fetchAll?: boolean;
