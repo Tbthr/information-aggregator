@@ -80,7 +80,24 @@ function cleanHtmlContent(html: string): string {
     .trim()
 }
 
-async function fetchJuyaDaily(source: AiFlashSource, fetcher: typeof fetch): Promise<AiFlashContent | null> {
+function extractJuyaItem(itemHtml: string): { title: string; url: string; summary: string; links: string[] } | null {
+  const h2Match = /<h2><a href="([^"]+)">(.*?)<\/a>\s*<code>#(\d+)<\/code><\/h2>/.exec(itemHtml)
+  if (!h2Match) return null
+  const mainUrl = h2Match[1]
+  const title = h2Match[2].trim()
+
+  const bqMatch = /<blockquote><p>([\s\S]*?)<\/p><\/blockquote>/.exec(itemHtml)
+  const summary = bqMatch
+    ? bqMatch[1].replace(/<[^>]+>/g, '').trim()
+    : (itemHtml.match(/<p>([\s\S]*?)<\/p>/)?.[1] ?? '').replace(/<[^>]+>/g, '').trim()
+
+  const linkMatches = [...itemHtml.matchAll(/<li><a href="([^"]+)">(.*?)<\/a><\/li>/g)]
+  const links = linkMatches.map(m => m[1]).filter(u => u !== mainUrl)
+
+  return { title, url: mainUrl, summary, links }
+}
+
+async function fetchJuyaDaily(source: AiFlashSource, fetcher: typeof fetch): Promise<Array<{ title: string; url: string; summary: string; sourceName: string }> | null> {
   const resp = await fetcher('https://imjuya.github.io/juya-ai-daily/rss.xml')
   if (!resp.ok) return null
   const xml = await resp.text()
@@ -112,15 +129,21 @@ async function fetchJuyaDaily(source: AiFlashSource, fetcher: typeof fetch): Pro
 
   if (todayItems.length === 0) return null
 
-  // Clean HTML: strip tags, keep links and bold
-  const cleanedContent = todayItems.map(item => cleanHtmlContent(item.content)).join('\n\n')
-
-  return {
-    sourceId: source.id,
-    sourceName: '橘鸦AI早报',
-    publishedAt: new Date().toISOString(),
-    content: cleanedContent,
+  // 替代 cleanHtmlContent 全量处理，对每个 item 单独解析
+  const flashItems: Array<{ title: string; url: string; summary: string; sourceName: string }> = []
+  for (const item of todayItems) {
+    const parsed = extractJuyaItem(item.content)
+    if (parsed) {
+      flashItems.push({
+        title: parsed.title,
+        url: parsed.url,
+        summary: parsed.summary,
+        sourceName: '橘鸦AI早报',
+      })
+    }
   }
+  if (flashItems.length === 0) return null
+  return flashItems
 }
 
 async function fetchClawfeedDaily(source: AiFlashSource, fetcher: typeof fetch): Promise<AiFlashContent | null> {
