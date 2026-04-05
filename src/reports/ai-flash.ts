@@ -98,16 +98,16 @@ async function fetchJuyaDaily(source: AiFlashSource, fetcher: typeof fetch): Pro
 
   const todayStr = new Date().toISOString().split('T')[0]
   const { start, end } = beijingDayRange(todayStr)
-  const items: { pubDate: string; content: string }[] = []
-  let match
-  while ((match = itemRegex.exec(xml)) !== null) {
+  const matches = [...xml.matchAll(itemRegex)]
+  const items: { pubDate: string; content: string }[] = matches.map(match => {
     const itemXml = match[1]
     const pubDateMatch = pubDateRegex.exec(itemXml)
     const contentMatch = contentRegex.exec(itemXml)
     if (pubDateMatch && contentMatch) {
-      items.push({ pubDate: pubDateMatch[1], content: contentMatch[1] })
+      return { pubDate: pubDateMatch[1], content: contentMatch[1] }
     }
-  }
+    return null
+  }).filter((item): item is { pubDate: string; content: string } => item !== null)
 
   // Filter today's items by Beijing time range
   const todayItems = items.filter(item => {
