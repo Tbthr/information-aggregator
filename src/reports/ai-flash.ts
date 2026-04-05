@@ -1,3 +1,5 @@
+import { beijingDayRange } from '../../lib/date-utils.js'
+
 export interface AiFlashSource {
   id: string
   adapter: 'hexi-daily' | 'juya-daily' | 'clawfeed-daily'
@@ -72,14 +74,6 @@ function parseBeijingDate(pubDateStr: string): Date {
   return new Date(date.getTime() + 8 * 60 * 60 * 1000)
 }
 
-function formatBeijingDate(date: Date): string {
-  const d = new Date(date.getTime() + 8 * 60 * 60 * 1000)
-  const yyyy = d.getUTCFullYear()
-  const mm = String(d.getUTCMonth() + 1).padStart(2, '0')
-  const dd = String(d.getUTCDate()).padStart(2, '0')
-  return `${yyyy}-${mm}-${dd}`
-}
-
 function cleanHtmlContent(html: string): string {
   return html
     .replace(/<br\s*\/?>/gi, '\n')
@@ -102,7 +96,8 @@ async function fetchJuyaDaily(source: AiFlashSource, fetcher: typeof fetch): Pro
   const pubDateRegex = /<pubDate>(.*?)<\/pubDate>/
   const contentRegex = /<content:encoded><!\[CDATA\[([\s\S]*?)\]\]><\/content:encoded>/
 
-  const todayStr = formatBeijingDate(new Date())
+  const todayStr = new Date().toISOString().split('T')[0]
+  const { start, end } = beijingDayRange(todayStr)
   const items: { pubDate: string; content: string }[] = []
   let match
   while ((match = itemRegex.exec(xml)) !== null) {
@@ -114,10 +109,10 @@ async function fetchJuyaDaily(source: AiFlashSource, fetcher: typeof fetch): Pro
     }
   }
 
-  // Filter today's items
+  // Filter today's items by Beijing time range
   const todayItems = items.filter(item => {
     const itemDate = parseBeijingDate(item.pubDate)
-    return formatBeijingDate(itemDate) === todayStr
+    return itemDate >= start && itemDate <= end
   })
 
   if (todayItems.length === 0) return null
@@ -139,10 +134,11 @@ async function fetchClawfeedDaily(source: AiFlashSource, fetcher: typeof fetch):
   const json = await resp.json() as { digests: Array<{ created_at: string; content: string }> }
   const items = json.digests ?? []
 
-  const todayStr = formatBeijingDate(new Date())
+  const todayStr = new Date().toISOString().split('T')[0]
+  const { start, end } = beijingDayRange(todayStr)
   const todayItems = items.filter(item => {
     const itemDate = new Date(item.created_at)
-    return formatBeijingDate(itemDate) === todayStr
+    return itemDate >= start && itemDate <= end
   })
 
   if (todayItems.length === 0) return null
