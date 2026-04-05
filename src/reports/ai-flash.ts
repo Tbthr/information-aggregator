@@ -17,10 +17,11 @@ const AD_KEYWORDS = ['ucloud', '6.9元购']
 
 async function fetchHexiDaily(source: AiFlashSource, fetcher: typeof fetch): Promise<AiFlashContent | null> {
   // Use Beijing time to construct URL (hexi publishes by Beijing date)
-  const now = new Date(Date.now() + 8 * 60 * 60 * 1000)
-  const yyyy = now.getUTCFullYear()
-  const mm = String(now.getUTCMonth() + 1).padStart(2, '0')
-  const dd = String(now.getUTCDate()).padStart(2, '0')
+  const todayStr = new Date().toISOString().split('T')[0]
+  const { start } = beijingDayRange(todayStr)
+  const yyyy = start.getUTCFullYear()
+  const mm = String(start.getUTCMonth() + 1).padStart(2, '0')
+  const dd = String(start.getUTCDate()).padStart(2, '0')
   const dateStr = `${yyyy}-${mm}-${dd}`
   const monthStr = `${yyyy}-${mm}`
 
@@ -34,27 +35,22 @@ async function fetchHexiDaily(source: AiFlashSource, fetcher: typeof fetch): Pro
     return null
   }
 
-  // Find start: first "# AI资讯日报" heading
   const lines = text.split('\n')
   let startIdx = -1
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i].match(/^#\s+AI资讯日报/)) {
-      startIdx = i + 1
-      break
-    }
-  }
-  if (startIdx < 0) startIdx = 0
-
-  // Find end: "© 2026 何夕2077"
   let endIdx = lines.length
-  for (let i = startIdx; i < lines.length; i++) {
-    if (lines[i].includes('© 2026 何夕2077')) {
+
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].match(/^## \*\*今日摘要\*\*$/)) {
+      startIdx = i + 1
+    }
+    if (lines[i].match(/^## \*\*AI资讯日报多渠道\*\*$/)) {
       endIdx = i
       break
     }
   }
 
-  // Filter ad lines and rejoin
+  if (startIdx < 0) return null
+
   const contentLines = lines.slice(startIdx, endIdx).filter(line => {
     return !AD_KEYWORDS.some(keyword => line.includes(keyword))
   })
