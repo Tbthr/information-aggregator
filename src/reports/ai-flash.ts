@@ -17,11 +17,10 @@ const AD_KEYWORDS = ['ucloud', '6.9元购']
 
 async function fetchHexiDaily(source: AiFlashSource, fetcher: typeof fetch): Promise<AiFlashContent | null> {
   // Use Beijing time to construct URL (hexi publishes by Beijing date)
-  const todayStr = new Date().toISOString().split('T')[0]
-  const { start } = beijingDayRange(todayStr)
-  const yyyy = start.getUTCFullYear()
-  const mm = String(start.getUTCMonth() + 1).padStart(2, '0')
-  const dd = String(start.getUTCDate()).padStart(2, '0')
+  const now = new Date(Date.now() + 8 * 60 * 60 * 1000)
+  const yyyy = now.getUTCFullYear()
+  const mm = String(now.getUTCMonth() + 1).padStart(2, '0')
+  const dd = String(now.getUTCDate()).padStart(2, '0')
   const dateStr = `${yyyy}-${mm}-${dd}`
   const monthStr = `${yyyy}-${mm}`
 
