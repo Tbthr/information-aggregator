@@ -33,12 +33,13 @@ tags:
   - id: ai-news
     name: AI 资讯
     description: ...
+    enabled: true
     includeRules: [...]
     excludeRules: [...]
     scoreBoost: 1.0
 
 enrich:
-  enabled: true
+  enabled: true  # 注意：当前 enrich.enabled 未被 EnrichOptions 接口使用，属遗留字段，保持兼容
   batchSize: 10
   minContentLength: 500
   fetchTimeout: 20000
@@ -52,6 +53,8 @@ aiFlashCategorization:
 ranking:
   sourceWeight: 0.4
   engagement: 0.15
+  # 注意：config 变更只是把值放进 config.yaml 并传入 loadConfig() 返回值。
+  # 需同步修改 src/pipeline/rank.ts 中的 hardcoded 权重常量，从 rankingConfig 读取。
 
 dedupe:
   nearThreshold: 0.75
@@ -60,7 +63,10 @@ content:
   truncationMarkers:
     - "[...]"
     - "Read more"
+    - "click here"
+    - "read more at"
     - "来源："
+    - "Original:"
 
 aiFlashSources:
   - id: hexi-daily
@@ -125,7 +131,7 @@ export type AppConfig = z.infer<typeof AppConfigSchema>
 | `lib/types.ts` | 清理重复类型定义 |
 | `src/config/index.ts` 中旧类型 | 迁移至 `src/types/config.ts` |
 | `quadrantPrompt` | 删除，从未使用 |
-| `weightScore` 默认值不一致 | 统一为 1 |
+| `weightScore` 默认值不一致 | 统一为 1（需同步修改 `src/cli/run.ts:145` 的 fallback） |
 | Twitter auth env var 名称 | 统一为 `TWITTER_AUTH_TOKEN`、`TWITTER_CT0` |
 
 ## 6. 第二步：灵活性（硬编码值可配置）
