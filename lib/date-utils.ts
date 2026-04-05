@@ -97,6 +97,18 @@ export function utcWeekNumber(monday: Date): string {
 }
 
 /**
+ * 将 Date 对象转换为北京时间的日期字符串（YYYY-MM-DD）。
+ * 通过 UTC+8 偏移后提取 UTC components 实现，避免 toISOString() 的 UTC 日期偏差。
+ */
+export function formatBeijingDate(date: Date): string {
+  const d = new Date(date.getTime() + BEIJING_OFFSET_HOURS * 60 * 60 * 1000)
+  const yyyy = d.getUTCFullYear()
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0')
+  const dd = String(d.getUTCDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
+
+/**
  * 北京时间某天的 UTC 起止范围。
  * 北京时间 3月22日 00:00 = UTC 3月21日 16:00
  * 北京时间 3月22日 23:59 = UTC 3月22日 15:59

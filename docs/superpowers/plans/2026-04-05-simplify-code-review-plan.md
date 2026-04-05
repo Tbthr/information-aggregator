@@ -336,7 +336,7 @@ const todayStr = formatBeijingDate(new Date());
 const todayItems = items.filter(item => formatBeijingDate(parseBeijingDate(item.pubDate)) === todayStr);
 
 // 改为:
-const { start, end } = beijingDayRange(new Date().toISOString().split('T')[0]);
+const { start, end } = beijingDayRange(formatBeijingDate(new Date()));
 const todayItems = items.filter(item => {
   const itemDate = parseBeijingDate(item.pubDate);
   return itemDate >= start && itemDate <= end;
