@@ -1,4 +1,4 @@
-import type { RawItem, Source } from "../types/index";
+import type { ParseItemsOptions, RawItem, Source } from "../types/index";
 import { createLogger, truncateWithLength } from "../utils/logger";
 import { parseDate, type ParseDateSuccess, type ParseDateFailure } from "../../lib/date-utils";
 import { computeTimeCutoff } from "../../lib/utils";
@@ -23,10 +23,7 @@ interface JsonFeedPayload {
   items?: JsonFeedItem[];
 }
 
-export interface ParseJsonFeedItemsOptions {
-  jobStartedAt: string;
-  timeWindow: number;
-}
+export interface ParseJsonFeedItemsOptions extends Omit<ParseItemsOptions, 'source'> {}
 
 export function parseJsonFeedItems(
   payload: JsonFeedPayload,
