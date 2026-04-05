@@ -127,11 +127,14 @@ const dd = String(now.getUTCDate()).padStart(2, '0')
 **改为：**
 ```typescript
 import { beijingDayRange } from '../../lib/date-utils.js'  // 顶部 import 需确认
-const todayStr = new Date().toISOString().split('T')[0]
-const { start } = beijingDayRange(todayStr)
-const yyyy = start.getUTCFullYear()
-const mm = String(start.getUTCMonth() + 1).padStart(2, '0')
-const dd = String(start.getUTCDate()).padStart(2, '0')
+// 正确方式：先用 UTC+8 偏移计算出北京时间，再用 UTC components 提取年月日
+// 不能用 toISOString()（返回 UTC 日期）+ beijingDayRange（把输入当北京时间处理），会 off-by-one
+const now = new Date(Date.now() + 8 * 60 * 60 * 1000)
+const yyyy = now.getUTCFullYear()
+const mm = String(now.getUTCMonth() + 1).padStart(2, '0')
+const dd = String(now.getUTCDate()).padStart(2, '0')
+const dateStr = `${yyyy}-${mm}-${dd}`
+const monthStr = `${yyyy}-${mm}`
 ```
 
 ### 3b: 修复边界提取

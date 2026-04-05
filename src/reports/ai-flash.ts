@@ -108,7 +108,12 @@ async function fetchJuyaDaily(source: AiFlashSource, fetcher: typeof fetch): Pro
   const pubDateRegex = /<pubDate>(.*?)<\/pubDate>/
   const contentRegex = /<content:encoded><!\[CDATA\[([\s\S]*?)\]\]><\/content:encoded>/
 
-  const todayStr = new Date().toISOString().split('T')[0]
+  // Compute Beijing date string (same correct approach as fetchHexiDaily)
+  const now = new Date(Date.now() + 8 * 60 * 60 * 1000)
+  const yyyy = now.getUTCFullYear()
+  const mm = String(now.getUTCMonth() + 1).padStart(2, '0')
+  const dd = String(now.getUTCDate()).padStart(2, '0')
+  const todayStr = `${yyyy}-${mm}-${dd}`
   const { start, end } = beijingDayRange(todayStr)
   const matches = [...xml.matchAll(itemRegex)]
   const items: { pubDate: string; content: string }[] = matches.map(match => {
@@ -152,7 +157,12 @@ async function fetchClawfeedDaily(source: AiFlashSource, fetcher: typeof fetch):
   const json = await resp.json() as { digests: Array<{ created_at: string; content: string }> }
   const items = json.digests ?? []
 
-  const todayStr = new Date().toISOString().split('T')[0]
+  // Compute Beijing date string (same correct approach as fetchHexiDaily)
+  const now = new Date(Date.now() + 8 * 60 * 60 * 1000)
+  const yyyy = now.getUTCFullYear()
+  const mm = String(now.getUTCMonth() + 1).padStart(2, '0')
+  const dd = String(now.getUTCDate()).padStart(2, '0')
+  const todayStr = `${yyyy}-${mm}-${dd}`
   const { start, end } = beijingDayRange(todayStr)
   const todayItems = items.filter(item => {
     const itemDate = new Date(item.created_at)
