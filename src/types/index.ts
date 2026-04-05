@@ -2,6 +2,21 @@ export type RunKind = "query";
 export type QuerySort = "ranked" | "recent" | "engagement";
 export type RunStatus = "pending" | "running" | "completed" | "failed" | "succeeded";
 
+// Source and content types
+export type SourceType = 'rss' | 'x' | 'json-feed' | 'github-trending' | 'zeli' | 'attentionvc' | 'clawfeed' | 'github';
+export type ContentType = 'article' | 'tweet' | 'github';
+export type AdapterType = 'hexi-daily' | 'juya-daily' | 'clawfeed-daily';
+
+// Adapter type constants
+export const ADAPTER_TYPES = {
+  JSON_FEED: 'json-feed',
+  RSS: 'rss',
+  X: 'x',
+  ZELI: 'zeli',
+  ATTENTIONVC: 'attentionvc',
+  CLAWFEED: 'clawfeed',
+} as const;
+
 // Content kinds for unified content model
 export const CONTENT_KINDS = ["article", "tweet", "video", "github", "reddit", "hackernews"] as const;
 export type ContentKind = (typeof CONTENT_KINDS)[number];
@@ -22,7 +37,7 @@ export type TagScores = Record<string, number>; // tagId -> score
 
 // Source 类型，用于 adapter 函数签名
 export interface Source {
-  type: string;
+  type: SourceType;
   id: string;
   name: string;
   description?: string;
@@ -30,9 +45,16 @@ export interface Source {
   enabled: boolean;
   tagIds: string[];
   weightScore: number | null;
-  contentType: string;
+  contentType: ContentType;
   authConfigJson: string | null;
   sourceWeightScore: number;
+}
+
+// Shared interface for parseItems functions
+export interface ParseItemsOptions {
+  jobStartedAt: string;
+  timeWindow: number;
+  source: Source;
 }
 
 // Adapter 函数类型
