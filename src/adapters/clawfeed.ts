@@ -8,6 +8,7 @@
 
 import type { RawItem, Source } from "../types/index";
 import { createLogger } from "../utils/logger";
+import { computeTimeCutoff } from "../../lib/utils";
 
 const logger = createLogger("adapter:clawfeed");
 
@@ -32,7 +33,7 @@ export async function collectClawfeedSource(
   const startTime = Date.now();
   const { timeWindow, fetchImpl = fetch } = options;
   const jobStartedAt = new Date().toISOString();
-  const cutoffMs = new Date(jobStartedAt).getTime() - timeWindow;
+  const cutoffMs = computeTimeCutoff(jobStartedAt, timeWindow);
 
   logger.info("Fetching ClawFeed", { url, sourceId: source.id });
 
