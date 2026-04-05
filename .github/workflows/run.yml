@@ -21,7 +21,9 @@ jobs:
 
       - name: Run
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_API_KEYS: ${{ secrets.ANTHROPIC_API_KEYS }}
+          ANTHROPIC_MODEL: ${{ vars.ANTHROPIC_MODEL || 'claude-sonnet-4-20250514' }}
+          ANTHROPIC_BASE_URLS: ${{ vars.ANTHROPIC_BASE_URLS }}
         run: bun run src/cli/run.ts
 
       - name: Commit report
