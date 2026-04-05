@@ -59,7 +59,8 @@ export function generateDailyMarkdown(report: DailyReportData): string {
       lines.push(`### ${category.name}`)
       lines.push('')
       for (const item of category.items) {
-        lines.push(`- [**${item.title}**](${item.url}) — ${item.summary}`)
+        const titleMd = item.url ? `[**${item.title}**](${item.url})` : `**${item.title}**`
+        lines.push(`- ${titleMd} — ${item.summary}`)
       }
       lines.push('')
     }
@@ -156,6 +157,20 @@ export async function generateDailyReport(
   try {
     fs.mkdirSync(outputDir, { recursive: true })
     fs.writeFileSync(outputPath, markdown, 'utf-8')
+
+    // Update reports.json with the new date
+    const reportsJsonPath = path.join(process.cwd(), 'reports', 'reports.json')
+    let reportList: string[] = []
+    if (fs.existsSync(reportsJsonPath)) {
+      try {
+        reportList = JSON.parse(fs.readFileSync(reportsJsonPath, 'utf-8')).daily || []
+      } catch { /* ignore */ }
+    }
+    const fileName = `${dateStr}.md`
+    if (!reportList.includes(fileName)) {
+      reportList.unshift(fileName)
+      fs.writeFileSync(reportsJsonPath, JSON.stringify({ daily: reportList }, null, 2), 'utf-8')
+    }
   } catch {
     errorSteps.push('writeOutput')
   }

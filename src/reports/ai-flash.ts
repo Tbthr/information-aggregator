@@ -52,10 +52,10 @@ async function fetchHexiDaily(source: AiFlashSource, fetcher: typeof fetch): Pro
   let endIdx = lines.length
 
   for (let i = 0; i < lines.length; i++) {
-    if (lines[i].match(/^## \*\*今日摘要\*\*$/)) {
+    if (lines[i].includes('## **今日摘要**') && !lines[i].startsWith('*')) {
       startIdx = i + 1
     }
-    if (lines[i].match(/^## \*\*AI资讯日报多渠道\*\*$/)) {
+    if (lines[i].includes('## **AI资讯日报多渠道**')) {
       endIdx = i
       break
     }
@@ -102,21 +102,40 @@ function parseHexiMarkdownToItems(content: string): AiFlashItem[] {
     // 检测分类标题，如 "### 产品与功能更新"
     const categoryMatch = line.match(/^###\s+(.+)/)
     if (categoryMatch) {
-      currentCategory = categoryMatch[1].trim()
+      // Strip markdown link anchor like [text](url) from category name
+      currentCategory = categoryMatch[1].replace(/\[\]\([^)]+\)/, '').trim()
       continue
     }
 
-    // 检测条目：如 "1.   **Gemini深度嵌入安卓底层.**" 或 "• ..."
-    const itemMatch = line.match(/^\d+\.\s+\*\*(.+?)\*\*[\s:.。](.+)/) ||
-                      line.match(/^[•\-]\s+(.+)/)
-    if (itemMatch && currentCategory) {
-      const title = itemMatch[1].trim()
-      const summary = itemMatch[2]?.trim() ?? ''
-      const urlMatch = title.match(/\[([^\]]+)\]\(([^)]+)\)/)
+    // 检测条目：如 "1.   **Gemini深度嵌入安卓底层。** 继Gemini 3.1..." 或 "• ..."
+    // 用 split('**') 代替非贪心 regex，避免描述中 ** 干扰标题捕获
+    const numberedMatch = line.match(/^\d+\.\s+\*\*/)
+    if (numberedMatch) {
+      const parts = line.split('**')
+      // parts[0]="1.   ", parts[1]="Gemini深度嵌入安卓底层。", parts[2]=" 继Gemini...**Gemini** 已升级为..."
+      if (parts.length >= 3) {
+        const title = parts[1].trim()
+        // 找分隔符（— 或 ：或 。）在 parts[2] 中的位置
+        const rest = parts[2]
+        const sepMatch = rest.match(/^[ ：.]+(.+)/)
+        const summary = sepMatch ? sepMatch[1].trim() : rest.trim()
+        items.push({
+          title,
+          url: '',
+          summary: summary.slice(0, 200),
+          sourceName: '何夕2077',
+        })
+        continue
+      }
+    }
+    const bulletMatch = line.match(/^[•\-]\s+(.+)/)
+    if (bulletMatch && currentCategory) {
+      const raw = bulletMatch[1].trim()
+      const urlMatch = raw.match(/\[([^\]]+)\]\(([^)]+)\)/)
       items.push({
-        title: urlMatch ? urlMatch[1] : title,
+        title: urlMatch ? urlMatch[1] : raw,
         url: urlMatch ? urlMatch[2] : '',
-        summary: summary.slice(0, 200),
+        summary: '',
         sourceName: '何夕2077',
       })
     }
@@ -355,8 +374,8 @@ export async function fetchAiFlashSources(
             results.push(...items)
           }
         }
-      } catch {
-        // fail-silent: skip single source failure
+      } catch (err) {
+        console.warn(`[ai-flash] Source ${source.id} failed:`, err)
       }
     })
   )

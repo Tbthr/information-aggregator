@@ -8,7 +8,7 @@ enrich:
   minContentLength: 500
   fetchTimeout: 20000  # agent-fetch 超时（毫秒）
 
-ai-flash-categorization:
+aiFlashCategorization:
   enabled: true
   maxCategories: 6
   prompt: |
