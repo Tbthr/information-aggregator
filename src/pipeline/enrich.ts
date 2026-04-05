@@ -215,11 +215,14 @@ export async function enrichArticles(
   articles: normalizedArticle[],
   options: EnrichOptions
 ): Promise<normalizedArticle[]> {
-  // Process in batches with concurrency
+  // Process in batches with full concurrency
+  const batches: normalizedArticle[][] = [];
   for (let i = 0; i < articles.length; i += options.batchSize) {
-    const batch = articles.slice(i, i + options.batchSize);
-    await Promise.all(batch.map(article => Promise.resolve(enrichArticleItem(article, options))));
+    batches.push(articles.slice(i, i + options.batchSize));
   }
+  await Promise.all(
+    batches.map(batch => Promise.all(batch.map(article => enrichArticleItem(article, options))))
+  );
 
   return articles;
 }
