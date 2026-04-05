@@ -161,11 +161,12 @@ function loadAiFlashSources(): AiFlashSource[] {
  * Load all application configuration once.
  * Returns sources, tags, enrich options, and daily report config.
  */
-export function loadConfig(): AppConfig {
-  const sources = loadSources()
-  const tags = loadTags()
-  const { enrichOptions, dailyConfig } = loadReportsConfig()
-  const aiFlashSources = loadAiFlashSources()
-
-  return { sources, tags, enrichOptions, dailyConfig, aiFlashSources }
+export async function loadConfig(): Promise<AppConfig> {
+  const [sources, tags, { enrichOptions, dailyConfig }, aiFlashSources] = await Promise.all([
+    loadSources(),
+    loadTags(),
+    loadReportsConfig(),
+    loadAiFlashSources(),
+  ]);
+  return { sources, tags, enrichOptions, dailyConfig, aiFlashSources };
 }

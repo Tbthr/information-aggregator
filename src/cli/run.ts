@@ -109,7 +109,7 @@ async function main() {
   })
 
   // 1. 加载配置
-  const { sources, tags, enrichOptions, dailyConfig, aiFlashSources } = loadConfig()
+  const { sources, tags, enrichOptions, dailyConfig, aiFlashSources } = await loadConfig()
   const adapters = buildAdapters()
 
   // 2. 并发收集
