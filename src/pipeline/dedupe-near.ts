@@ -1,8 +1,5 @@
 import { selectWinner, removePunctuation } from "../../lib/utils";
 
-/**
- * Near deduplication item interface with all fields needed for winner selection.
- */
 export interface NearDedupItem {
   id: string;
   normalizedTitle: string;
@@ -15,10 +12,6 @@ export interface NearDedupItem {
   engagementScore?: number | null;
 }
 
-/**
- * Tokenize dedupe text: lowercase -> strip punctuation -> collapse whitespace -> split.
- * The input should be the combined title + body text.
- */
 function tokenize(value: string): string[] {
   const lowered = value.toLowerCase();
   const depunctuated = removePunctuation(lowered);
@@ -64,10 +57,6 @@ function similarityRatio(a: string[], b: string[]): number {
   return (2 * lcs) / lenSum;
 }
 
-/**
- * Check if two items share at least one significant token.
- * Used for bucket pre-filtering: items with no shared tokens cannot be near-duplicates.
- */
 function hasSharedToken(aTokens: string[], bTokens: string[]): boolean {
   const bSet = new Set(bTokens);
   for (const token of aTokens) {
@@ -78,10 +67,6 @@ function hasSharedToken(aTokens: string[], bTokens: string[]): boolean {
   return false;
 }
 
-/**
- * Find connected components (clusters) of near-duplicate items using Union-Find.
- * Items are connected if they are near-duplicates (similarity >= threshold).
- */
 function findClusters<T extends NearDedupItem>(items: T[], threshold = 0.75): Map<number, T[]> {
   const n = items.length;
   const parent = Array.from({ length: n }, (_, i) => i);
