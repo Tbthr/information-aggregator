@@ -130,21 +130,25 @@ bash -c 'set -a; source .env.local; exec bun run src/cli/run.ts'
 ### Daily Report Structure
 
 ```markdown
-# 4月1日 日报
+# 4月5日 日报
 
 ## AI快讯
 
-### 何夕2077 AI资讯
+### 产品更新
+- [**Kimi Code** 抢先体验计划开放申请](https://...) — Kimi 现已推出...
+- ...
 
-[当日 Markdown 内容]
+### 前沿研究
+- ...
 
-### 橘鸦AI早报
+（其他分类同理）
 
-[当日 HTML 清理后的内容]
+## 推特精选
 
-### ClawFeed
+☀️ ClawFeed | 2026-04-05 00:41 SGT
 
-[当日内容]
+🔥 重要
+• ...
 
 ## 文章列表
 
@@ -176,6 +180,29 @@ bash -c 'set -a; source .env.local; exec bun run src/cli/run.ts'
 - **JSON 存储**: 使用 UTC ISO 8601 格式
 - **日报日期**: 使用北京时间日期
 - 工具函数见 `lib/date-utils.ts`
+
+### ⛔ 时间处理铁律
+
+**获取当前北京时间日期字符串（YYYY-MM-DD）**：必须用 `formatBeijingDate(new Date())`，不能直接用 `new Date().toISOString().split('T')[0]`。
+
+**错误做法**：
+```typescript
+// ❌ 错：toISOString() 返回 UTC 日期，比北京时间早 0~8 小时
+const todayStr = new Date().toISOString().split('T')[0]
+// 北京 00:30 时，toISOString() 返回前一天日期
+```
+
+**正确做法**：
+
+```typescript
+// ✅ 用 formatBeijingDate 工具函数
+import { formatBeijingDate } from './lib/date-utils.js'
+const todayStr = formatBeijingDate(new Date())
+```
+
+**为什么**：北京时间 = UTC + 8 小时。"先用 `toISOString()` 取 UTC 日期，再传给 `beijingDayRange()`"的组合会导致北京时间 00:00–07:59 时取到前一天的日期，每次运行抓取错误日期的内容。
+
+**`beijingDayRange(dateStr)` 的输入必须是北京时间日期字符串**，`dateStr` 不是当前时间，而是"哪一天的北京时间"。
 
 ## Testing
 

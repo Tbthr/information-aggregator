@@ -61,4 +61,8 @@ export class FallbackAiClient implements AiClient {
   async summarizeItem(title: string, content: string) {
     return this.withFallback(c => c.summarizeItem(title, content));
   }
+
+  async complete(options: { system?: string; prompt: string; maxTokens?: number }) {
+    return this.withFallback(c => c.complete(options));
+  }
 }

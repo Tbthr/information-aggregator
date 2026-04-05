@@ -5,7 +5,8 @@
  * 1. Accept pre-processed articles (from pipeline)
  * 2. Fetch AI flash content from dedicated adapters (hexi-daily, juya-daily, clawfeed-daily)
  * 3. Output to Markdown (reports/daily/YYYY-MM-DD.md)
- *    - AI快讯 section (from dedicated adapters)
+ *    - AI快讯 section (from dedicated adapters, categorized)
+ *    - 推特精选 section (ClawFeed, original markdown format)
  *    - 文章列表 section (from pipeline articles)
  */
 
@@ -14,7 +15,9 @@ import path from 'path'
 import type { AiClient } from '../ai/types.js'
 import { formatUtcDate, formatUtcDayLabel } from '../../lib/date-utils.js'
 import type { normalizedArticle } from '../types/index.js'
-import type { AiFlashSource, AiFlashContent } from './ai-flash.js'
+import type { AiFlashSource, AiFlashItem, AiFlashCategory, AiFlashContent } from './ai-flash.js'
+import { categorizeAiFlash, fetchAiFlashSources } from './ai-flash.js'
+import { loadConfig } from '../config/index.js'
 
 export interface DailyGenerateResult {
   date: string
@@ -31,7 +34,8 @@ interface ArticleForReport {
 export interface DailyReportData {
   date: string
   dateLabel: string
-  aiFlash: AiFlashContent[]
+  mergedAiFlash: AiFlashCategory[]   // 分类后的 AI快讯（来自 hexi + juya）
+  clawfeed: AiFlashContent | null     // ClawFeed 独立（保持原格式，不分类）
   articles: ArticleForReport[]
 }
 
@@ -45,15 +49,33 @@ export function generateDailyMarkdown(report: DailyReportData): string {
   lines.push(`# ${report.dateLabel}`)
   lines.push('')
 
+  // ## AI快讯
   lines.push('## AI快讯')
   lines.push('')
-  for (const flash of report.aiFlash) {
-    lines.push(`### ${flash.sourceName}`)
-    lines.push('')
-    lines.push(flash.content)
-    lines.push('')
+  if (report.mergedAiFlash.length === 0) {
+    lines.push('暂无内容')
+  } else {
+    for (const category of report.mergedAiFlash) {
+      lines.push(`### ${category.name}`)
+      lines.push('')
+      for (const item of category.items) {
+        lines.push(`- [**${item.title}**](${item.url}) — ${item.summary}`)
+      }
+      lines.push('')
+    }
   }
 
+  // ## 推特精选
+  lines.push('## 推特精选')
+  lines.push('')
+  if (report.clawfeed) {
+    lines.push(report.clawfeed.content)
+  } else {
+    lines.push('暂无内容')
+  }
+  lines.push('')
+
+  // ## 文章列表
   lines.push('## 文章列表')
   lines.push('')
   for (const article of report.articles) {
@@ -73,8 +95,9 @@ export function generateDailyMarkdown(report: DailyReportData): string {
  * Pipeline:
  * 1. Accept pre-processed articles (normalizedArticle[] from pipeline)
  * 2. Fetch AI flash content from dedicated adapters (fail-silent)
- * 3. Map articles for report output
- * 4. Output to Markdown
+ * 3. Separate ClawFeed from hexi+juya
+ * 4. Categorize hexi+juya items via AI
+ * 5. Build report data and output to Markdown
  */
 export async function generateDailyReport(
   now: Date,
@@ -86,9 +109,30 @@ export async function generateDailyReport(
   const dayLabel = formatUtcDayLabel(now)
   const errorSteps: string[] = []
 
-  // Fetch AI flash sources (fail-silent, imported from ai-flash.ts)
-  const { fetchAiFlashSources } = await import('./ai-flash.js')
-  const aiFlash = await fetchAiFlashSources(aiFlashSources, {})
+  // Fetch AI flash sources (returns AiFlashItem[])
+  const flashSources = await fetchAiFlashSources(aiFlashSources, { fetchImpl: fetch })
+
+  // Separate ClawFeed items from hexi+juya
+  const clawfeedItems = flashSources.filter(item => item.sourceName === 'ClawFeed')
+  const hexiJuyaItems = flashSources.filter(item => item.sourceName !== 'ClawFeed')
+
+  // Categorize only hexi+juya items
+  const { dailyConfig } = await loadConfig()
+  const categorizedFlash = await categorizeAiFlash(
+    hexiJuyaItems,
+    aiClient,
+    { maxCategories: dailyConfig.aiFlashCategorization.maxCategories }
+  )
+
+  // Build ClawFeed content from original markdown
+  const clawfeedContent: AiFlashContent | null = clawfeedItems.length > 0
+    ? {
+        sourceId: 'clawfeed',
+        sourceName: 'ClawFeed',
+        publishedAt: new Date().toISOString(),
+        content: clawfeedItems.map(item => item.originalMarkdown ?? '').filter(Boolean).join('\n\n'),
+      }
+    : null
 
   // Map articles for report
   const reportArticles: ArticleForReport[] = articles.map(a => ({
@@ -100,7 +144,8 @@ export async function generateDailyReport(
   const reportData: DailyReportData = {
     date: dateStr,
     dateLabel: `${dayLabel} 日报`,
-    aiFlash,
+    mergedAiFlash: categorizedFlash,
+    clawfeed: clawfeedContent,
     articles: reportArticles,
   }
 

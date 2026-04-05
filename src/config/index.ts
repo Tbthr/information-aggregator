@@ -21,6 +21,11 @@ export interface AiFlashSource {
 
 export interface DailyConfig {
   quadrantPrompt: string
+  aiFlashCategorization: {
+    enabled: boolean
+    maxCategories: number
+    prompt: string
+  }
 }
 
 // ============================================================
@@ -110,6 +115,7 @@ function loadReportsConfig(): { enrichOptions: EnrichOptions; dailyConfig: Daily
   const raw = yaml.load(content) as {
     daily?: { quadrantPrompt?: string }
     enrich?: { enabled?: boolean; batchSize?: number; minContentLength?: number; fetchTimeout?: number }
+    aiFlashCategorization?: { enabled?: boolean; maxCategories?: number; prompt?: string }
   }
 
   const enrichOptions: EnrichOptions = {
@@ -120,6 +126,11 @@ function loadReportsConfig(): { enrichOptions: EnrichOptions; dailyConfig: Daily
 
   const dailyConfig: DailyConfig = {
     quadrantPrompt: raw.daily?.quadrantPrompt ?? '',
+    aiFlashCategorization: {
+      enabled: raw.aiFlashCategorization?.enabled ?? true,
+      maxCategories: raw.aiFlashCategorization?.maxCategories ?? 6,
+      prompt: raw.aiFlashCategorization?.prompt ?? '',
+    },
   }
 
   return { enrichOptions, dailyConfig }

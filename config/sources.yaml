@@ -1,23 +1,6 @@
 # 数据源配置
 
 sources:
-  # === AI 资讯 / 精选博客 (RSS) ===
-  - type: clawfeed
-    id: clawfeed-kevinhe-io-feed-kevin
-    name: ClawFeed - AI 新闻4小时简报
-    url: https://clawfeed.kevinhe.io/feed/kevin
-    enabled: false
-    tagIds: [ai-news]
-    contentType: digest
-
-  - type: rss
-    id: ai-hubtoday-blog
-    name: 何夕2077的AI资讯 | 精选AI新闻与工具 | 洞悉AI前沿动态
-    url: https://ai.hubtoday.app/blog/index.xml
-    enabled: false
-    tagIds: [ai-news]
-    contentType: article
-
   # 可用参数见：https://github.com/ginobefun/BestBlogs/blob/main/BestBlogs_RSS_Doc.md
   - type: rss
     id: bestblogs-dev-zh
@@ -25,14 +8,6 @@ sources:
     url: https://www.bestblogs.dev/zh/feeds/rss
     enabled: true
     tagIds: [tech-news]
-    contentType: article
-
-  - type: rss
-    id: juya-ai-daily
-    name: 橘鸦AI早报
-    url: https://imjuya.github.io/juya-ai-daily/rss.xml
-    enabled: false
-    tagIds: [ai-news]
     contentType: article
 
   # zeli: 隐藏 API (https://zeli.app/api/hacker-news?type=hot24h)
