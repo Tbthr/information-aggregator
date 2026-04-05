@@ -1,5 +1,6 @@
 import type { RawItem, Source } from "../types/index";
 import { createLogger, truncateWithLength } from "../utils/logger";
+import { stripHtml } from "../../lib/utils.js";
 
 const logger = createLogger("adapter:github-trending");
 
@@ -58,16 +59,6 @@ function extractTodayStars(text: string): string | undefined {
   return undefined;
 }
 
-/**
- * 从 HTML 文本中移除标签并清理空白
- */
-function stripHtml(text: string): string {
-  return text
-    .replace(/<svg\b[\s\S]*?<\/svg>/gi, "") // 移除 SVG 元素
-    .replace(/<[^>]+>/g, " ") // 移除其他 HTML 标签
-    .replace(/\s+/g, " ")
-    .trim();
-}
 
 /**
  * 清理标题中的 SVG 和多余空白
@@ -122,7 +113,7 @@ export function parseGitHubTrendingHtml(html: string, sourceId: string, sourceTy
         // 匹配包含 float-sm 类的 div，这是 GitHub 存放 stars/forks 等元数据的地方
         const metaPattern = /<div[^>]*class="[^"]*\bfloat-sm\b[^"]*"[^>]*>([\s\S]*?)<\/div>/i;
         const metaMatch = article.match(metaPattern);
-        const metaText = metaMatch ? stripHtml(metaMatch[1]) : "";
+        const metaText = metaMatch ? stripHtml(metaMatch[1], { removeSvg: true }) : "";
 
         const stars = extractStars(metaText);
         const forks = extractForks(metaText);
