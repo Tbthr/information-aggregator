@@ -129,8 +129,10 @@ export abstract class BaseAiClient<TConfig> implements AiClient {
           attempt: attempt + 1,
         });
 
+        const responseStr = JSON.stringify(json);
         this.logger.debug("Response details", {
-          response: truncateWithLength(JSON.stringify(json), 1000),
+          response: responseStr.length > 1000 ? responseStr.substring(0, 1000) + '...' : responseStr,
+          fullLength: responseStr.length,
         });
 
         return json;

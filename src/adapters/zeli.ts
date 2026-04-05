@@ -8,11 +8,12 @@
 
 import type { RawItem, Source } from "../types/index";
 import { createLogger } from "../utils/logger";
+import { computeTimeCutoff } from "../../lib/utils.js";
 
 const logger = createLogger("adapter:zeli");
 
 function parseUnixTimestamp(ts: number | string | undefined): Date | null {
-  if (ts === undefined || ts === null) return null;
+  if (ts == null) return null;
   const n = typeof ts === "string" ? parseInt(ts, 10) : ts;
   if (isNaN(n)) return null;
   return new Date(n * 1000);
@@ -26,7 +27,7 @@ export async function collectZeliSource(
   const startTime = Date.now();
   const { timeWindow, fetchImpl = fetch } = options;
   const jobStartedAt = new Date().toISOString();
-  const cutoffMs = new Date(jobStartedAt).getTime() - timeWindow;
+  const cutoffMs = computeTimeCutoff(jobStartedAt, timeWindow);
 
   logger.info("Fetching zeli API", { url, sourceId: source.id });
 

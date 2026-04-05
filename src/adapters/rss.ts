@@ -1,29 +1,17 @@
-import type { RawItem, Source } from "../types/index";
+import type { ParseItemsOptions, RawItem, Source } from "../types/index";
 import { createLogger, truncateWithLength } from "../utils/logger";
 import { parseDate, type ParseDateSuccess, type ParseDateFailure } from "../../lib/date-utils";
-import { computeTimeCutoff } from "../../lib/utils";
+import { computeTimeCutoff, decodeHtmlEntities } from "../../lib/utils";
 
 const logger = createLogger("adapter:rss");
-
-function decodeXml(value: string): string {
-  return value
-    .replace(/<!\[CDATA\[(.*?)\]\]>/gs, "$1")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, "\"")
-    .replace(/&#39;/g, "'");
-}
 
 function extractTag(block: string, tagName: string): string | undefined {
   const pattern = new RegExp(`<${tagName}[^>]*>([\\s\\S]*?)</${tagName}>`, "i");
   const match = block.match(pattern);
-  return match ? decodeXml(match[1].trim()) : undefined;
+  return match ? decodeHtmlEntities(match[1].trim(), { includeCdata: true }) : undefined;
 }
 
-export interface ParseRssItemsOptions {
-  jobStartedAt: string;
-  timeWindow: number;
+export interface ParseRssItemsOptions extends Omit<ParseItemsOptions, 'source'> {
   sourceType: string;
   sourceContentType: string;
   sourceName: string;

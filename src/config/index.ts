@@ -6,7 +6,7 @@
 import fs from 'fs'
 import path from 'path'
 import yaml from 'js-yaml'
-import type { Source, Tag } from '../types/index.js'
+import type { Source, Tag, SourceType, ContentType } from '../types/index.js'
 import type { EnrichOptions } from '../pipeline/enrich.js'
 
 // ============================================================
@@ -63,7 +63,7 @@ function loadSources(): Source[] {
       }
 
       return {
-        type: s.type,
+        type: s.type as SourceType,
         id: s.id,
         name: s.name ?? s.id,
         description: undefined,
@@ -71,7 +71,7 @@ function loadSources(): Source[] {
         enabled: true,
         tagIds: s.tagIds ?? [],
         weightScore: null,
-        contentType: s.contentType,
+        contentType: s.contentType as ContentType,
         authConfigJson: s.auth ? JSON.stringify(s.auth) : null,
         sourceWeightScore: s.weightScore ?? 1,
       }
@@ -161,11 +161,12 @@ function loadAiFlashSources(): AiFlashSource[] {
  * Load all application configuration once.
  * Returns sources, tags, enrich options, and daily report config.
  */
-export function loadConfig(): AppConfig {
-  const sources = loadSources()
-  const tags = loadTags()
-  const { enrichOptions, dailyConfig } = loadReportsConfig()
-  const aiFlashSources = loadAiFlashSources()
-
-  return { sources, tags, enrichOptions, dailyConfig, aiFlashSources }
+export async function loadConfig(): Promise<AppConfig> {
+  const [sources, tags, { enrichOptions, dailyConfig }, aiFlashSources] = await Promise.all([
+    loadSources(),
+    loadTags(),
+    loadReportsConfig(),
+    loadAiFlashSources(),
+  ]);
+  return { sources, tags, enrichOptions, dailyConfig, aiFlashSources };
 }

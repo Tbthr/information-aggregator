@@ -5,9 +5,11 @@
 
 import { execSync } from "child_process";
 import path from "path";
+import { createLogger } from "../utils/logger";
 import type { normalizedArticle } from "../types/index.js";
 
 const agentFetchBin = path.join(process.cwd(), "node_modules/.bin/agent-fetch");
+const logger = createLogger("pipeline:enrich");
 
 // ============================================================
 // Types
@@ -149,7 +151,11 @@ export function fetchArticleContent(
     }
     return null;
   } catch (error) {
-    // execSync 本身的异常（如超时、二进制不存在），静默跳过
+    logger.warn('内容提取失败', {
+      stage: 'enrich',
+      url,
+      error: error instanceof Error ? error.message : String(error),
+    });
     return null;
   }
 }
@@ -215,11 +221,14 @@ export async function enrichArticles(
   articles: normalizedArticle[],
   options: EnrichOptions
 ): Promise<normalizedArticle[]> {
-  // Process in batches with concurrency
+  // Process in batches with full concurrency
+  const batches: normalizedArticle[][] = [];
   for (let i = 0; i < articles.length; i += options.batchSize) {
-    const batch = articles.slice(i, i + options.batchSize);
-    await Promise.all(batch.map(article => Promise.resolve(enrichArticleItem(article, options))));
+    batches.push(articles.slice(i, i + options.batchSize));
   }
+  await Promise.all(
+    batches.map(batch => Promise.all(batch.map(article => enrichArticleItem(article, options))))
+  );
 
   return articles;
 }

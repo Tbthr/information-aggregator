@@ -1,18 +1,4 @@
-// Remove HTML tags
-function stripHtml(value: string): string {
-  return value.replace(/<[^>]*>/g, "");
-}
-
-// Decode common HTML entities
-function decodeHtmlEntities(value: string): string {
-  return value
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, " ");
-}
+import { decodeHtmlEntities, removePunctuation, stripHtml } from "../../lib/utils.js";
 
 // Pre-compiled regex for site name removal
 const SITE_NAME_PATTERN = /\s*[|\-–—]\s*[^|\-–—]+$/;
@@ -36,12 +22,6 @@ function removeRtPrefix(value: string): string {
 function removeBareUrls(value: string): string {
   // Remove t.co and other shortened URLs
   return value.replace(/https?:\/\/\S+/g, "").trim();
-}
-
-// Remove punctuation for dedup comparison
-function removePunctuation(value: string): string {
-  // Keep basic punctuation for sentence structure (only remove truly disruptive chars)
-  return value.replace(/[!"#$%&'*+,/:;<=>?@[\]^`{|}~]/g, "");
 }
 
 export function normalizeWhitespace(value: string): string {
@@ -89,7 +69,12 @@ export function normalizeSummary(value: string): string {
   result = decodeHtmlEntities(result);
   result = normalizeWhitespace(result);
   result = result.toLowerCase();
-  // Preserve sentence structure and punctuation
+
+  // Truncate to 500 characters
+  if (result.length > 500) {
+    result = result.slice(0, 497) + "...";
+  }
+
   return result;
 }
 

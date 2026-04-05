@@ -109,7 +109,7 @@ async function main() {
   })
 
   // 1. 加载配置
-  const { sources, tags, enrichOptions, dailyConfig, aiFlashSources } = loadConfig()
+  const { sources, tags, enrichOptions, dailyConfig, aiFlashSources } = await loadConfig()
   const adapters = buildAdapters()
 
   // 2. 并发收集
@@ -138,9 +138,10 @@ async function main() {
   })
 
   // 3. normalize
+  const sourceMap = new Map(sources.map(s => [s.id, s]))
   const normalized = rawItems
     .map((item) => {
-      const source = sources.find(s => s.id === item.sourceId)
+      const source = sourceMap.get(item.sourceId)
       const sourceWeightScore = source?.sourceWeightScore ?? 0.5
       const normalized = normalizeItem(item)
       if (normalized) {

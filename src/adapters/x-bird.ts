@@ -7,6 +7,8 @@ import { computeTimeCutoff } from "../../lib/utils";
 
 const logger = createLogger("adapter:bird");
 
+type BirdMode = 'home' | 'bookmarks' | 'likes' | 'list' | 'user-tweets' | 'search' | 'news' | 'trending';
+
 const DEBUG_BIRD_OUTPUT = process.env.DEBUG_BIRD_OUTPUT === "true";
 const DEBUG_OUTPUT_DIR = "out/bird-raw";
 
@@ -28,7 +30,7 @@ function saveDebugOutput(sourceId: string, rawOutput: string): void {
 }
 
 interface BirdSourceConfig {
-  birdMode?: string;
+  birdMode?: BirdMode;
   listId?: string;
   count?: number;
   fetchAll?: boolean;
@@ -400,11 +402,36 @@ export async function collectXBirdSource(
     const proc = spawn(command[0], command.slice(1), {
       stdio: ["ignore", "pipe", "pipe"],
     });
+    const MAX_BUFFER_SIZE = 10 * 1024 * 1024;
     const [output, error, exitCode] = await new Promise<[string, string, number]>((resolve) => {
       const stdoutChunks: Buffer[] = [];
       const stderrChunks: Buffer[] = [];
-      proc.stdout?.on("data", (chunk: Buffer) => stdoutChunks.push(chunk));
-      proc.stderr?.on("data", (chunk: Buffer) => stderrChunks.push(chunk));
+      let stdoutSize = 0;
+      let stderrSize = 0;
+      proc.stdout?.on("data", (chunk: Buffer) => {
+        if (stdoutSize >= MAX_BUFFER_SIZE) {
+          return;
+        }
+        if (stdoutSize + chunk.length > MAX_BUFFER_SIZE) {
+          stdoutChunks.push(chunk.subarray(0, MAX_BUFFER_SIZE - stdoutSize));
+          stdoutSize = MAX_BUFFER_SIZE;
+          return;
+        }
+        stdoutChunks.push(chunk);
+        stdoutSize += chunk.length;
+      });
+      proc.stderr?.on("data", (chunk: Buffer) => {
+        if (stderrSize >= MAX_BUFFER_SIZE) {
+          return;
+        }
+        if (stderrSize + chunk.length > MAX_BUFFER_SIZE) {
+          stderrChunks.push(chunk.subarray(0, MAX_BUFFER_SIZE - stderrSize));
+          stderrSize = MAX_BUFFER_SIZE;
+          return;
+        }
+        stderrChunks.push(chunk);
+        stderrSize += chunk.length;
+      });
       proc.on("close", (code) => {
         resolve([
           Buffer.concat(stdoutChunks).toString(),

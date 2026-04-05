@@ -101,3 +101,36 @@ export function computeDiscardRate(itemCount: number, discardCount: number): str
 export function computeTimeCutoff(jobStartedAt: string, timeWindow: number): number {
   return new Date(jobStartedAt).getTime() - timeWindow;
 }
+
+export interface DecodeHtmlEntitiesOptions {
+  includeCdata?: boolean;
+}
+
+export function decodeHtmlEntities(
+  value: string,
+  options: DecodeHtmlEntitiesOptions = {}
+): string {
+  let result = value;
+  if (options.includeCdata) {
+    result = result.replace(/<!\[CDATA\[(.*?)\]]>/gs, "$1");
+  }
+  return result
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, " ");
+}
+
+export interface StripHtmlOptions {
+  removeSvg?: boolean;
+}
+
+export function stripHtml(value: string, options: StripHtmlOptions = {}): string {
+  let result = value;
+  if (options.removeSvg) {
+    result = result.replace(/<svg\b[\s\S]*?<\/svg>/gi, "");
+  }
+  return result.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}

@@ -1,3 +1,5 @@
+import { beijingDayRange } from '../../lib/date-utils.js'
+
 export interface AiFlashSource {
   id: string
   adapter: 'hexi-daily' | 'juya-daily' | 'clawfeed-daily'
@@ -10,6 +12,8 @@ export interface AiFlashContent {
   publishedAt: string  // UTC ISO 8601
   content: string      // cleaned Markdown
 }
+
+const AD_KEYWORDS = ['ucloud', '6.9元购']
 
 async function fetchHexiDaily(source: AiFlashSource, fetcher: typeof fetch): Promise<AiFlashContent | null> {
   // Use Beijing time to construct URL (hexi publishes by Beijing date)
@@ -26,7 +30,7 @@ async function fetchHexiDaily(source: AiFlashSource, fetcher: typeof fetch): Pro
   const text = await resp.text()
 
   // r.jina.ai returns 200 even when target is 404 - detect error content
-  if (text.includes('Warning:') && text.includes('error')) {
+  if (/<title>Error<\/title>/i.test(text) || (text.includes('Warning:') && text.includes('error'))) {
     return null
   }
 
@@ -52,9 +56,7 @@ async function fetchHexiDaily(source: AiFlashSource, fetcher: typeof fetch): Pro
 
   // Filter ad lines and rejoin
   const contentLines = lines.slice(startIdx, endIdx).filter(line => {
-    if (line.includes('ucloud')) return false
-    if (line.includes('6.9元购')) return false
-    return true
+    return !AD_KEYWORDS.some(keyword => line.includes(keyword))
   })
 
   return {
@@ -70,14 +72,6 @@ function parseBeijingDate(pubDateStr: string): Date {
   const date = new Date(pubDateStr)
   // Convert to Beijing time by adding 8 hours
   return new Date(date.getTime() + 8 * 60 * 60 * 1000)
-}
-
-function formatBeijingDate(date: Date): string {
-  const d = new Date(date.getTime() + 8 * 60 * 60 * 1000)
-  const yyyy = d.getUTCFullYear()
-  const mm = String(d.getUTCMonth() + 1).padStart(2, '0')
-  const dd = String(d.getUTCDate()).padStart(2, '0')
-  return `${yyyy}-${mm}-${dd}`
 }
 
 function cleanHtmlContent(html: string): string {
@@ -102,22 +96,23 @@ async function fetchJuyaDaily(source: AiFlashSource, fetcher: typeof fetch): Pro
   const pubDateRegex = /<pubDate>(.*?)<\/pubDate>/
   const contentRegex = /<content:encoded><!\[CDATA\[([\s\S]*?)\]\]><\/content:encoded>/
 
-  const todayStr = formatBeijingDate(new Date())
-  const items: { pubDate: string; content: string }[] = []
-  let match
-  while ((match = itemRegex.exec(xml)) !== null) {
+  const todayStr = new Date().toISOString().split('T')[0]
+  const { start, end } = beijingDayRange(todayStr)
+  const matches = [...xml.matchAll(itemRegex)]
+  const items: { pubDate: string; content: string }[] = matches.map(match => {
     const itemXml = match[1]
     const pubDateMatch = pubDateRegex.exec(itemXml)
     const contentMatch = contentRegex.exec(itemXml)
     if (pubDateMatch && contentMatch) {
-      items.push({ pubDate: pubDateMatch[1], content: contentMatch[1] })
+      return { pubDate: pubDateMatch[1], content: contentMatch[1] }
     }
-  }
+    return null
+  }).filter((item): item is { pubDate: string; content: string } => item !== null)
 
-  // Filter today's items
+  // Filter today's items by Beijing time range
   const todayItems = items.filter(item => {
     const itemDate = parseBeijingDate(item.pubDate)
-    return formatBeijingDate(itemDate) === todayStr
+    return itemDate >= start && itemDate <= end
   })
 
   if (todayItems.length === 0) return null
@@ -139,10 +134,11 @@ async function fetchClawfeedDaily(source: AiFlashSource, fetcher: typeof fetch):
   const json = await resp.json() as { digests: Array<{ created_at: string; content: string }> }
   const items = json.digests ?? []
 
-  const todayStr = formatBeijingDate(new Date())
+  const todayStr = new Date().toISOString().split('T')[0]
+  const { start, end } = beijingDayRange(todayStr)
   const todayItems = items.filter(item => {
     const itemDate = new Date(item.created_at)
-    return formatBeijingDate(itemDate) === todayStr
+    return itemDate >= start && itemDate <= end
   })
 
   if (todayItems.length === 0) return null

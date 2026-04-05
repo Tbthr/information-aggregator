@@ -8,6 +8,8 @@
 
 import type { RawItem, Source } from "../types/index";
 import { createLogger } from "../utils/logger";
+import { DiscardCounters, createDiscardCounters, logDiscardSummary } from "../utils/discard-counter";
+import { computeTimeCutoff } from "../../lib/utils";
 
 const logger = createLogger("adapter:attentionvc");
 
@@ -59,7 +61,7 @@ export async function collectAttentionvcSource(
   const url = `${API_BASE}/leaderboard?window=1d&category=ai&sortBy=views&limit=20`;
   const startTime = Date.now();
   const jobStartedAt = new Date().toISOString();
-  const cutoffMs = new Date(jobStartedAt).getTime() - timeWindow;
+  const cutoffMs = computeTimeCutoff(jobStartedAt, timeWindow);
 
   logger.info("Fetching AttentionVC", { url, sourceId: source.id });
 
@@ -78,13 +80,13 @@ export async function collectAttentionvcSource(
     logger.info("AttentionVC response", { count: entries.length, elapsed, total: body.totalCount });
 
     const out: RawItem[] = [];
-    let discardOutsideWindow = 0;
+    const counters: DiscardCounters = createDiscardCounters();
 
     for (const entry of entries) {
       // Filter by timeWindow using tweetCreatedAt
       const publishedAt = new Date(entry.tweetCreatedAt);
       if (publishedAt.getTime() < cutoffMs) {
-        discardOutsideWindow++;
+        counters.outsideWindow++;
         continue;
       }
 
@@ -121,14 +123,7 @@ export async function collectAttentionvcSource(
       });
     }
 
-    logger.info("AttentionVC collect completed", {
-      sourceId: source.id,
-      fetched: out.length,
-      discardedNoTimestamp: 0,
-      discardedOutsideWindow: discardOutsideWindow,
-      discardedInvalidTimestamp: 0,
-      totalDiscarded: discardOutsideWindow,
-    });
+    logDiscardSummary(logger, source.name, out.length, counters);
     return out;
   } catch (err) {
     const elapsed = Date.now() - startTime;
