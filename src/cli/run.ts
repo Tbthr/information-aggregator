@@ -138,9 +138,10 @@ async function main() {
   })
 
   // 3. normalize
+  const sourceMap = new Map(sources.map(s => [s.id, s]))
   const normalized = rawItems
     .map((item) => {
-      const source = sources.find(s => s.id === item.sourceId)
+      const source = sourceMap.get(item.sourceId)
       const sourceWeightScore = source?.sourceWeightScore ?? 0.5
       const normalized = normalizeItem(item)
       if (normalized) {
