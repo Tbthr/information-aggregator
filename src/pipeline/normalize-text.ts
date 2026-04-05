@@ -69,7 +69,12 @@ export function normalizeSummary(value: string): string {
   result = decodeHtmlEntities(result);
   result = normalizeWhitespace(result);
   result = result.toLowerCase();
-  // Preserve sentence structure and punctuation
+
+  // Truncate to 500 characters
+  if (result.length > 500) {
+    result = result.slice(0, 497) + "...";
+  }
+
   return result;
 }
 
