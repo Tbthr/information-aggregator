@@ -4,14 +4,21 @@ export interface RankableCandidate {
   engagementScore: number;
 }
 
-export function rankCandidates<T extends RankableCandidate>(candidates: T[]): Array<T & { finalScore: number }> {
+export interface RankingOptions {
+  sourceWeight: number;
+  engagement: number;
+}
+
+export function rankCandidates<T extends RankableCandidate>(
+  candidates: T[],
+  options: RankingOptions = { sourceWeight: 0.4, engagement: 0.15 }
+): Array<T & { finalScore: number }> {
   return candidates
     .map((candidate) => ({
       ...candidate,
-      // 简化评分公式：sourceWeightScore × 0.4 + engagementScore × 0.15
       finalScore:
-        candidate.sourceWeightScore * 0.4 +
-        candidate.engagementScore * 0.15,
+        candidate.sourceWeightScore * options.sourceWeight +
+        candidate.engagementScore * options.engagement,
     }))
     .sort((left, right) => right.finalScore - left.finalScore);
 }
