@@ -1,11 +1,9 @@
 import { beijingDayRange, formatBeijingDate } from '../../lib/date-utils.js'
 import type { AiClient } from '../ai/types.js'
-
-export interface AiFlashSource {
-  id: string
-  adapter: 'hexi-daily' | 'juya-daily' | 'clawfeed-daily'
-  enabled: boolean
-}
+import type { AiFlashSource } from '../types/config.js'
+// Re-export for backward compatibility with consumers that import AiFlashSource from ai-flash.ts
+export type { AiFlashSource } from '../types/config.js'
+import { loadConfig } from '../config/index.js'
 
 export interface AiFlashContent {
   sourceId: string
@@ -37,8 +35,9 @@ async function fetchHexiDaily(source: AiFlashSource, fetcher: typeof fetch): Pro
   const dateStr = formatBeijingDate(new Date())
   const monthStr = dateStr.slice(0, 7)
 
-  const url = `https://r.jina.ai/https://ai.hubtoday.app/${monthStr}/${dateStr}/`
-  const resp = await fetcher(url)
+  const url = source.url
+  const resolvedUrl = url.replace('{month}', monthStr).replace('{date}', dateStr)
+  const resp = await fetcher(resolvedUrl)
   if (!resp.ok) return null
   const text = await resp.text()
 
@@ -227,7 +226,8 @@ function extractJuyaItem(itemHtml: string): { title: string; url: string; summar
 }
 
 async function fetchJuyaDaily(source: AiFlashSource, fetcher: typeof fetch): Promise<AiFlashItem[] | null> {
-  const resp = await fetcher('https://imjuya.github.io/juya-ai-daily/rss.xml')
+  const url = source.url
+  const resp = await fetcher(url)
   if (!resp.ok) return null
   const xml = await resp.text()
 
@@ -277,7 +277,8 @@ async function fetchJuyaDaily(source: AiFlashSource, fetcher: typeof fetch): Pro
 }
 
 async function fetchClawfeedDaily(source: AiFlashSource, fetcher: typeof fetch): Promise<AiFlashContent | null> {
-  const resp = await fetcher('https://clawfeed.kevinhe.io/feed/kevin')
+  const url = source.url
+  const resp = await fetcher(url)
   if (!resp.ok) return null
   const json = await resp.json() as { digests: Array<{ created_at: string; content: string }> }
   const items = json.digests ?? []
@@ -309,14 +310,13 @@ async function fetchClawfeedDaily(source: AiFlashSource, fetcher: typeof fetch):
 
 export async function categorizeAiFlash(
   items: AiFlashItem[],
-  aiClient: AiClient,
-  options?: { maxCategories?: number }
+  aiClient: AiClient
 ): Promise<AiFlashCategory[]> {
   if (items.length === 0) return []
 
-  const { maxCategories = 6 } = options ?? {}
-
-  const systemPrompt = `你是一个内容分类助手。将输入的 AI 快讯条目分类到以下六个类别之一：产品更新 / 前沿研究 / 行业动态 / 开源项目 / 社媒精选 / 其他。不要改写任何内容，只输出 JSON。类别数量不超过 ${maxCategories} 个。"其他"作为最后兜底。`
+  const { dailyConfig } = await loadConfig()
+  const systemPrompt = dailyConfig.aiFlashCategorization.prompt ||
+    `你是一个内容分类助手。将输入的 AI 快讯条目分类到以下六个类别之一：产品更新 / 前沿研究 / 行业动态 / 开源项目 / 社媒精选 / 其他。不要改写任何内容，只输出 JSON。"其他"作为最后兜底。`
 
   const userPrompt = `请将以下条目分类，输出 JSON 格式：{ "categories": [{ "name": "分类名", "items": [{ "title": "...", "url": "...", "summary": "...", "sourceName": "..." }] }, ...] }。每个条目必须归属一个类别。
 
