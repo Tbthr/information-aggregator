@@ -67,7 +67,7 @@ function hasSharedToken(aTokens: string[], bTokens: string[]): boolean {
   return false;
 }
 
-function findClusters<T extends NearDedupItem>(items: T[], threshold = 0.75): Map<number, T[]> {
+function findClusters<T extends NearDedupItem>(items: T[], threshold: number): Map<number, T[]> {
   const n = items.length;
   const parent = Array.from({ length: n }, (_, i) => i);
   const rank = new Array(n).fill(0);
@@ -138,7 +138,7 @@ function findClusters<T extends NearDedupItem>(items: T[], threshold = 0.75): Ma
  *
  * This ensures A≈B, B≈C → single cluster (transitive closure via connected components).
  */
-export function dedupeNear<T extends NearDedupItem>(items: T[], threshold = 0.75): T[] {
+export function dedupeNear<T extends NearDedupItem>(items: T[], threshold: number): T[] {
   if (items.length === 0) {
     return [];
   }
