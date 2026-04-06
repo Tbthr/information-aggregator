@@ -25,7 +25,7 @@ describe('config schemas', () => {
     })
 
     it('applies defaults', () => {
-      const tag = TagSchema.parse({ id: 'test' })
+      const tag = TagSchema.parse({ id: 'test', name: 'Test' })
       expect(tag.enabled).toBe(true)
       expect(tag.includeRules).toEqual([])
       expect(tag.scoreBoost).toBe(1.0)
@@ -105,7 +105,7 @@ describe('config schemas', () => {
   describe('AppConfigSchema', () => {
     it('parses full valid config', () => {
       const config = AppConfigSchema.parse({
-        tags: [{ id: 'ai' }, { id: 'news' }],
+        tags: [{ id: 'ai', name: 'AI' }, { id: 'news', name: 'News' }],
         enrich: { batchSize: 5 },
         aiFlashCategorization: { enabled: true },
         ranking: {},

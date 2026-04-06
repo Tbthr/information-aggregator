@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 export const TagSchema = z.object({
   id: z.string(),
-  name: z.string().optional(),
+  name: z.string(),
   description: z.string().optional(),
   enabled: z.boolean().optional().default(true),
   includeRules: z.array(z.string()).optional().default([]),
@@ -19,6 +19,7 @@ export const EnrichSchema = z.object({
 
 export const AiFlashCategorizationSchema = z.object({
   enabled: z.boolean().optional().default(true),
+  maxCategories: z.number().optional().default(6),
   prompt: z.string().optional().default(''),
 })
 
