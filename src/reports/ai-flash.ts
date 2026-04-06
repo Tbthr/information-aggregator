@@ -39,7 +39,7 @@ async function fetchHexiDaily(source: AiFlashSource, fetcher: typeof fetch): Pro
   const monthStr = dateStr.slice(0, 7)
 
   // Use fetchWithFallback (defuddle → jina) with source URL
-  const url = `${source.url}${monthStr}/${dateStr}/`
+  const url = source.url.replace('{month}', monthStr).replace('{date}', dateStr)
   const rawText = await fetchWithFallback(url, 20000, fetcher)
   if (!rawText) return null
 
@@ -51,10 +51,12 @@ async function fetchHexiDaily(source: AiFlashSource, fetcher: typeof fetch): Pro
   let endIdx = lines.length
 
   for (let i = 0; i < lines.length; i++) {
-    if (lines[i].includes('## 今日摘要') && !lines[i].startsWith('*')) {
+    // hexi may output ## **今日摘要** (with bold markers), strip them for matching
+    const stripped = lines[i].replace(/\*\*/g, '')
+    if (stripped.includes('## 今日摘要') && !lines[i].startsWith('*')) {
       startIdx = i + 1
     }
-    if (lines[i].includes('## AI资讯日报多渠道')) {
+    if (stripped.includes('## AI资讯日报多渠道')) {
       endIdx = i
       break
     }
@@ -219,31 +221,34 @@ function parseClawfeedMarkdownToItems(content: string): AiFlashItem[] {
   return items
 }
 
-function extractJuyaItem(itemHtml: string): { title: string; url: string; summary: string; links: string[] } | null {
-  const h2Match = /<h2><a href="([^"]+)">(.*?)<\/a>\s*<code>#(\d+)<\/code><\/h2>/.exec(itemHtml)
-  if (!h2Match) return null
-  const mainUrl = h2Match[1]
-  const title = h2Match[2].trim()
+function extractAllJuyaItems(itemHtml: string): { title: string; url: string; summary: string; links: string[] }[] {
+  const results: { title: string; url: string; summary: string; links: string[] }[] = []
 
-  // Extract blockquote + subsequent paragraphs for richer summary
-  // Blockquote: brief summary; subsequent <p> tags: detailed content
-  const bqEnd = itemHtml.indexOf('</blockquote>')
-  const nextHr = itemHtml.indexOf('<hr>')
-  const afterBq = bqEnd > 0 ? itemHtml.slice(bqEnd + 13, nextHr > 0 ? nextHr : undefined) : ''
-  const bqMatch = /<blockquote>\s*<p>([\s\S]*?)<\/p>\s*<\/blockquote>/.exec(itemHtml)
-  const bqText = bqMatch ? bqMatch[1].replace(/<[^>]+>/g, '').trim() : ''
-  const subsequentText = afterBq
-    .replace(/<img[^>]*>/gi, '')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-  const textContent = (bqText + ' ' + subsequentText).replace(/\s+/g, ' ').trim()
+  // Find all h2 positions with their content blocks
+  const h2Regex = /<h2><a href="([^"]+)">(.*?)<\/a>\s*<code>#(\d+)<\/code><\/h2>/g
+  const h2Matches = [...itemHtml.matchAll(h2Regex)]
 
-  // Extract links
-  const linkMatches = [...itemHtml.matchAll(/<li><a href="([^"]+)">(.*?)<\/a><\/li>/g)]
-  const links = linkMatches.map(m => m[1]).filter(u => u !== mainUrl)
+  for (let i = 0; i < h2Matches.length; i++) {
+    const h2Match = h2Matches[i]
+    const mainUrl = h2Match[1]
+    const title = h2Match[2].trim()
+    const blockStart = h2Match.index! + h2Match[0].length
+    const blockEnd = i + 1 < h2Matches.length ? h2Matches[i + 1].index! : itemHtml.length
 
-  return { title, url: mainUrl, summary: textContent.slice(0, 400), links }
+    const blockHtml = itemHtml.slice(blockStart, blockEnd)
+
+    // Extract blockquote summary (only blockquote, not subsequent detail paragraphs)
+    const bqMatch = /<blockquote>\s*<p>([\s\S]*?)<\/p>\s*<\/blockquote>/.exec(blockHtml)
+    const summary = bqMatch ? bqMatch[1].replace(/<[^>]+>/g, '').trim() : ''
+
+    // Extract related links (excluding main URL)
+    const linkMatches = [...blockHtml.matchAll(/<li><a href="([^"]+)">(.*?)<\/a><\/li>/g)]
+    const links = linkMatches.map(m => m[1]).filter(u => u !== mainUrl)
+
+    results.push({ title, url: mainUrl, summary, links })
+  }
+
+  return results
 }
 
 async function fetchJuyaDaily(source: AiFlashSource, fetcher: typeof fetch): Promise<AiFlashItem[] | null> {
@@ -282,12 +287,12 @@ async function fetchJuyaDaily(source: AiFlashSource, fetcher: typeof fetch): Pro
   // 替代 cleanHtmlContent 全量处理，对每个 item 单独解析
   const flashItems: AiFlashItem[] = []
   for (const item of todayItems) {
-    const parsed = extractJuyaItem(item.content)
-    if (parsed) {
+    const parsed = extractAllJuyaItems(item.content)
+    for (const p of parsed) {
       flashItems.push({
-        title: parsed.title,
-        url: parsed.url,
-        summary: parsed.summary,
+        title: p.title,
+        url: p.url,
+        summary: p.summary,
         sourceName: '橘鸦AI早报',
       })
     }
