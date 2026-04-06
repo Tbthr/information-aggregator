@@ -138,7 +138,7 @@ function findClusters<T extends NearDedupItem>(items: T[], threshold: number): M
  *
  * This ensures A≈B, B≈C → single cluster (transitive closure via connected components).
  */
-export function dedupeNear<T extends NearDedupItem>(items: T[], threshold: number): T[] {
+export function dedupeNear<T extends NearDedupItem>(items: T[], threshold: number = 0.75): T[] {
   if (items.length === 0) {
     return [];
   }

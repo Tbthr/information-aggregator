@@ -1,4 +1,4 @@
-import { beijingDayRange, formatBeijingDate } from "../../lib/date-utils.js";
+import { beijingDayRange, formatBeijingDate, parseDate } from "../../lib/date-utils.js";
 import type { AiClient } from "../ai/types.js";
 import { fetchWithFallback, normalizeAiFlashMarkers } from "../utils/fetch-with-fallback.js";
 import type { AiFlashSource } from "../types/config.js";
@@ -35,11 +35,11 @@ const AD_KEYWORDS = ['ucloud', '6.9元购']
 
 async function fetchHexiDaily(source: AiFlashSource, fetcher: typeof fetch): Promise<AiFlashContent | null> {
   // Use Beijing time to construct URL (hexi publishes by Beijing date)
-  const dateStr = formatBeijingDate(new Date())
-  const monthStr = dateStr.slice(0, 7)
+  const { todayStr } = getTodayBeijingRange()
+  const monthStr = todayStr.slice(0, 7)
 
   // Use fetchWithFallback (defuddle → jina) with source URL
-  const url = source.url.replace('{month}', monthStr).replace('{date}', dateStr)
+  const url = source.url.replace('{month}', monthStr).replace('{date}', todayStr)
   const rawText = await fetchWithFallback(url, 20000, fetcher)
   if (!rawText) return null
 
@@ -68,19 +68,29 @@ async function fetchHexiDaily(source: AiFlashSource, fetcher: typeof fetch): Pro
     return !AD_KEYWORDS.some(keyword => line.includes(keyword))
   })
 
+  // publishedAt: use Beijing date noon UTC as approximate publish moment
+  const publishedUtc = new Date(`${todayStr}T12:00:00.000Z`)
+
   return {
     sourceId: source.id,
     sourceName: '何夕2077 AI资讯',
-    publishedAt: new Date().toISOString(),
+    publishedAt: publishedUtc.toISOString(),
     content: contentLines.join('\n').trim(),
   }
 }
 
-function parseBeijingDate(pubDateStr: string): Date {
-  // pubDate format: "Mon, 05 Apr 2026 12:00:00 GMT"
-  const date = new Date(pubDateStr)
-  // Convert to Beijing time by adding 8 hours
-  return new Date(date.getTime() + 8 * 60 * 60 * 1000)
+/** Returns today's Beijing date string and UTC range. */
+function getTodayBeijingRange(): { todayStr: string; start: Date; end: Date } {
+  const todayStr = formatBeijingDate(new Date())
+  const { start, end } = beijingDayRange(todayStr)
+  return { todayStr, start, end }
+}
+
+/** Parse RFC 2822 / RFC 822 date to UTC Date using date-utils (no manual offset). */
+function parseBeijingDate(pubDateStr: string): Date | null {
+  const result = parseDate(pubDateStr)
+  if (!result || !result.valid) return null
+  return result.date
 }
 
 // hexi 原始分类 → AI 标准分类 的语义映射
@@ -262,9 +272,8 @@ async function fetchJuyaDaily(source: AiFlashSource, fetcher: typeof fetch): Pro
   const pubDateRegex = /<pubDate>(.*?)<\/pubDate>/
   const contentRegex = /<content:encoded><!\[CDATA\[([\s\S]*?)\]\]><\/content:encoded>/
 
-  // Compute Beijing date string
-  const todayStr = formatBeijingDate(new Date())
-  const { start, end } = beijingDayRange(todayStr)
+  // Compute Beijing date range for today
+  const { start, end } = getTodayBeijingRange()
   const matches = [...xml.matchAll(itemRegex)]
   const items: { pubDate: string; content: string }[] = matches.map(match => {
     const itemXml = match[1]
@@ -279,6 +288,7 @@ async function fetchJuyaDaily(source: AiFlashSource, fetcher: typeof fetch): Pro
   // Filter today's items by Beijing time range
   const todayItems = items.filter(item => {
     const itemDate = parseBeijingDate(item.pubDate)
+    if (!itemDate) return false
     return itemDate >= start && itemDate <= end
   })
 
@@ -304,13 +314,13 @@ async function fetchJuyaDaily(source: AiFlashSource, fetcher: typeof fetch): Pro
 async function fetchClawfeedDaily(source: AiFlashSource, fetcher: typeof fetch): Promise<AiFlashContent | null> {
   const resp = await fetcher(source.url)
   if (!resp.ok) return null
-  const json = await resp.json() as { digests: Array<{ created_at: string; content: string }> }
+  const json = await resp.json() as { digests?: Array<{ created_at: string; content?: string }> }
   const items = json.digests ?? []
 
-  // Compute Beijing date string
-  const todayStr = formatBeijingDate(new Date())
-  const { start, end } = beijingDayRange(todayStr)
+  // Compute Beijing date range for today
+  const { start, end } = getTodayBeijingRange()
   const todayItems = items.filter(item => {
+    if (!item.content) return false
     const itemDate = new Date(item.created_at)
     return itemDate >= start && itemDate <= end
   })
@@ -338,45 +348,67 @@ export async function categorizeAiFlash(
 ): Promise<AiFlashCategory[]> {
   if (items.length === 0) return []
 
-  const { dailyConfig } = await loadConfig()
-  const systemPrompt = dailyConfig.aiFlashCategorization.prompt ||
-    `你是一个内容分类助手。将输入的 AI 快讯条目分类到以下六个类别之一：产品更新 / 前沿研究 / 行业动态 / 开源项目 / 社媒精选 / 其他。不要改写任何内容，只输出 JSON。类别数量不超过 6 个。"其他"作为最后兜底。原文分类参考：产品与功能更新→产品更新；行业展望与社会影响→行业动态；开源TOP项目→开源项目；社媒分享→社媒精选；前沿研究→前沿研究。`
+  // Items with a known sourceCategory (e.g., hexi parsed items) can be classified directly.
+  // Only call AI for items where sourceCategory is unavailable or unclear.
+  const categorizedMap = new Map<string, AiFlashItem[]>()
+  const needsAi: AiFlashItem[] = []
 
-  const userPrompt = `请将以下条目分类，输出 JSON 格式：{ "categories": [{ "name": "分类名", "items": [{ "title": "...", "url": "...", "summary": "...", "sourceName": "..." }] }, ...] }。每个条目必须归属一个类别。
-
-条目：
-${items.map((item, i) => `${i + 1}. [${item.title}](${item.url}) — ${item.summary}`).join('\n')}
-
-输出（只输出 JSON，不要其他内容）：`
-
-  try {
-    const response = await aiClient.complete({
-      system: systemPrompt,
-      prompt: userPrompt,
-      maxTokens: 4096,
-    })
-
-    const jsonMatch = response.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) return fallbackCategorize(items)
-
-    const parsed = JSON.parse(jsonMatch[0])
-    const categories: AiFlashCategory[] = parsed.categories ?? fallbackCategorize(items)
-
-    // Strip hallucinated source attributions (e.g., "（来源：何夕2077）") from AI output
-    for (const cat of categories) {
-      for (const item of cat.items) {
-        item.summary = item.summary.replace(/（来源：[^）]+）/g, '').trim()
-      }
+  for (const item of items) {
+    if (item.sourceCategory) {
+      const catName = CATEGORY_ALIAS[item.sourceCategory] ?? item.sourceCategory
+      const existing = categorizedMap.get(catName) ?? []
+      existing.push(item)
+      categorizedMap.set(catName, existing)
+    } else {
+      needsAi.push(item)
     }
-
-    return categories
-  } catch {
-    return fallbackCategorize(items)
   }
-}
 
-function fallbackCategorize(items: AiFlashItem[]): AiFlashCategory[] {
-  return [{ name: '其他', items }]
+  // AI categorize items without sourceCategory
+  if (needsAi.length > 0) {
+    const { dailyConfig } = await loadConfig()
+    const itemsText = needsAi.map((item, i) => `${i + 1}. [${item.title}](${item.url}) — ${item.summary}`).join('\n')
+    const basePrompt = dailyConfig.aiFlashCategorization.prompt ||
+      `你是一个内容分类助手。请将以下 AI 快讯条目分类到以下类别：产品更新 / 前沿研究 / 行业动态 / 开源项目 / 社媒精选 / 其他。每个条目必须归属一个类别，不要改写任何内容。输出 JSON 格式：{ "categories": [{ "name": "分类名", "items": [{ "title": "...", "url": "...", "summary": "...", "sourceName": "..." }] }, ...] }。类别数量不超过 6 个，"其他"作为最后兜底。`
+
+    const prompt = basePrompt.replace('{items}', `\n${itemsText}\n`)
+
+    try {
+      const response = await aiClient.complete({
+        prompt,
+        maxTokens: 4096,
+      })
+
+      const jsonMatch = response.match(/\{[\s\S]*\}/)
+      if (!jsonMatch) {
+        // Fallback: put all uncategorized items under "其他"
+        const existing = categorizedMap.get('其他') ?? []
+        categorizedMap.set('其他', [...existing, ...needsAi])
+      } else {
+        const parsed = JSON.parse(jsonMatch[0])
+        const categories: AiFlashCategory[] = parsed.categories ?? []
+        for (const cat of categories) {
+          const existing = categorizedMap.get(cat.name) ?? []
+          categorizedMap.set(cat.name, [...existing, ...cat.items])
+        }
+      }
+    } catch {
+      // On error, put uncategorized items under "其他"
+      const existing = categorizedMap.get('其他') ?? []
+      categorizedMap.set('其他', [...existing, ...needsAi])
+    }
+  }
+
+  // Strip hallucinated source attributions and convert map to array
+  const result: AiFlashCategory[] = []
+  for (const [name, catItems] of categorizedMap) {
+    for (const item of catItems) {
+      item.summary = item.summary.replace(/（来源：[^）]+）/g, '').trim()
+    }
+    result.push({ name: name as AiFlashCategoryName, items: catItems })
+  }
+
+  return result
 }
 
 export async function fetchAiFlashSources(

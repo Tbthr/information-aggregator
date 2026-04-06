@@ -254,14 +254,7 @@ enrich:
 aiFlashCategorization:
   enabled: true
   prompt: |
-    你是一个内容分类助手。请将以下 AI 快讯条目分类到以下类别：
-    产品更新 / 前沿研究 / 行业动态 / 开源项目 / 社媒精选 / 其他
-
-    规则：
-    - 不要改写任何内容，只输出分类结果
-    - 每个条目必须归属一个类别
-    - 输出 JSON 格式：{ "categories": [{ "name": "产品更新", "items": [...] }, ...] }
-    - 类别数量不超过 6 个，"其他"作为最后兜底
+    你是一个内容分类助手。请将以下 AI 快讯条目分类到以下类别：产品更新 / 前沿研究 / 行业动态 / 开源项目 / 社媒精选 / 其他。每个条目必须归属一个类别，不要改写任何内容。输出 JSON 格式：{ "categories": [{ "name": "分类名", "items": [{ "title": "...", "url": "...", "summary": "...", "sourceName": "..." }] }, ...] }。类别数量不超过 6 个，"其他"作为最后兜底。
 
     输入条目：
     {items}
@@ -285,7 +278,7 @@ content:
 aiFlashSources:
   - id: hexi-daily
     adapter: hexi-daily
-    url: https://r.jina.ai/https://ai.hubtoday.app/{month}/{date}/
+    url: https://ai.hubtoday.app/{month}/{date}/
     enabled: true
 
   - id: juya-daily
