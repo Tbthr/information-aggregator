@@ -18,6 +18,7 @@
 
 | 文件 | 操作 |
 |------|------|
+| `config/sources.yaml` | 保留 |
 | `config/config.yaml` | 新建 |
 | `config/tags.yaml` | 删除 |
 | `config/reports.yaml` | 删除 |
@@ -31,6 +32,8 @@
 | `src/reports/ai-flash.ts` | 修改 |
 | `src/cli/run.ts` | 修改 |
 | `lib/types.ts` | 清理 |
+| `README.md` | 修改 |
+| `AGENTS.md` | 修改 |
 
 ---
 
@@ -602,5 +605,32 @@ bun run src/cli/run.ts -t 1h
 4. **Task 10** (lib/types cleanup)
 5. **Task 11** (删除旧 YAML)
 6. **Task 12** (验证)
+7. **Task 13** (更新文档)
 
 **注意：Task 1 放在最后是因为 config.yaml 的内容需要等 Task 3 确认 Schema 后才能最终确定。**
+
+---
+
+## Task 13: 更新文档
+
+**文件:** `README.md`、`AGENTS.md`
+
+- [ ] **Step 1: 检查 README.md 中的配置说明**
+
+找到描述配置文件的部分，更新：
+- 配置文件从 4 个改为 2 个（sources.yaml + config.yaml）
+- 新增 `config/config.yaml` 的字段说明（ranking、dedupe、content、aiFlashSources 等）
+- 移除已删除的 `tags.yaml`、`reports.yaml`、`ai-flash-sources.yaml` 引用
+
+- [ ] **Step 2: 检查 AGENTS.md 中的配置说明**
+
+找到描述配置或 CLI 参数的部分，更新：
+- 移除对 `tags.yaml`、`reports.yaml`、`ai-flash-sources.yaml` 的引用
+- 更新 config.yaml 相关内容
+
+- [ ] **Step 3: 运行 typecheck 确认无破坏**
+
+```bash
+bun run typecheck
+```
+期望：无错误
