@@ -1,26 +1,33 @@
 /**
  * Centralized configuration loader.
  * All config is loaded once and provided to modules on demand.
+ *
+ * Configuration sources:
+ * - sources.yaml  → loadSources()  (unchanged structure)
+ * - tags.yaml     → loadTags()     (unchanged structure)
+ * - config.yaml   → loadConfigYaml() (new Zod-validated loader)
+ * - env vars      → loadAuthConfigsFromEnv()
  */
 
 import fs from 'fs'
 import path from 'path'
 import yaml from 'js-yaml'
-import type { Source, Tag, SourceType, ContentType } from '../types/index.js'
+import type { Source, SourceType, ContentType } from '../types/index.js'
 import type { EnrichOptions } from '../pipeline/enrich.js'
+import {
+  AppConfigSchema,
+  type AiFlashSource,
+  type RankingConfig,
+  type DedupeConfig,
+  type ContentConfig,
+} from '../types/config.js'
+import { loadAuthConfigsFromEnv } from './load-auth.js'
 
 // ============================================================
-// Reports Daily Config
+// Daily Config (from config.yaml)
 // ============================================================
-
-export interface AiFlashSource {
-  id: string
-  adapter: 'hexi-daily' | 'juya-daily' | 'clawfeed-daily'
-  enabled: boolean
-}
 
 export interface DailyConfig {
-  quadrantPrompt: string
   aiFlashCategorization: {
     enabled: boolean
     maxCategories: number
@@ -29,15 +36,19 @@ export interface DailyConfig {
 }
 
 // ============================================================
-// App Config Types
+// App Config (returned by loadConfig)
 // ============================================================
 
 export interface AppConfig {
   sources: Source[]
-  tags: Tag[]
+  tags: import('../types/config.js').Tag[]
   enrichOptions: EnrichOptions
   dailyConfig: DailyConfig
   aiFlashSources: AiFlashSource[]
+  rankingConfig: RankingConfig
+  dedupeConfig: DedupeConfig
+  contentConfig: ContentConfig
+  authConfigs: Record<string, Record<string, unknown>>
 }
 
 // ============================================================
@@ -83,7 +94,7 @@ function loadSources(): Source[] {
     })
 }
 
-function loadTags(): Tag[] {
+function loadTags(): import('../types/config.js').Tag[] {
   const tagsPath = path.join(process.cwd(), 'config', 'tags.yaml')
   const tagsContent = fs.readFileSync(tagsPath, 'utf-8')
   const raw = yaml.load(tagsContent) as { tags: Array<{
@@ -109,59 +120,131 @@ function loadTags(): Tag[] {
     }))
 }
 
-function loadReportsConfig(): { enrichOptions: EnrichOptions; dailyConfig: DailyConfig } {
-  const configPath = path.join(process.cwd(), 'config', 'reports.yaml')
+/**
+ * Load and validate config.yaml with Zod.
+ * Handles missing config.yaml gracefully with defaults.
+ */
+function loadConfigYaml(): {
+  enrichOptions: EnrichOptions
+  dailyConfig: DailyConfig
+  aiFlashSources: AiFlashSource[]
+  rankingConfig: RankingConfig
+  dedupeConfig: DedupeConfig
+  contentConfig: ContentConfig
+} {
+  const configPath = path.join(process.cwd(), 'config', 'config.yaml')
+
+  // If config.yaml doesn't exist yet, return defaults
+  if (!fs.existsSync(configPath)) {
+    return {
+      enrichOptions: {
+        enabled: true,
+        batchSize: 10,
+        minContentLength: 500,
+        fetchTimeout: 20000,
+      },
+      dailyConfig: {
+        aiFlashCategorization: {
+          enabled: true,
+          maxCategories: 6,
+          prompt: '',
+        },
+      },
+      aiFlashSources: [],
+      rankingConfig: {
+        sourceWeight: 0.4,
+        engagement: 0.15,
+      },
+      dedupeConfig: {
+        nearThreshold: 0.75,
+      },
+      contentConfig: {
+        truncationMarkers: ['[...]', 'Read more', 'click here', 'read more at', '来源：', 'Original:'],
+      },
+    }
+  }
+
   const content = fs.readFileSync(configPath, 'utf-8')
   const raw = yaml.load(content) as {
-    daily?: { quadrantPrompt?: string }
-    enrich?: { enabled?: boolean; batchSize?: number; minContentLength?: number; fetchTimeout?: number }
-    aiFlashCategorization?: { enabled?: boolean; maxCategories?: number; prompt?: string }
+    enrich?: {
+      enabled?: boolean
+      batchSize?: number
+      minContentLength?: number
+      fetchTimeout?: number
+    }
+    aiFlashCategorization?: {
+      enabled?: boolean
+      prompt?: string
+    }
+    ranking?: {
+      sourceWeight?: number
+      engagement?: number
+    }
+    dedupe?: {
+      nearThreshold?: number
+    }
+    content?: {
+      truncationMarkers?: string[]
+    }
+    aiFlashSources?: Array<{
+      id: string
+      adapter: string
+      url?: string
+      enabled?: boolean
+    }>
   }
 
+  // Parse with Zod for validation (tags are loaded separately from tags.yaml)
+  const parsed = AppConfigSchema.safeParse({
+    tags: [],
+    enrich: raw.enrich ?? {},
+    aiFlashCategorization: raw.aiFlashCategorization ?? {},
+    ranking: raw.ranking ?? {},
+    dedupe: raw.dedupe ?? {},
+    content: raw.content ?? {},
+    aiFlashSources: raw.aiFlashSources ?? [],
+  })
+
+  if (!parsed.success) {
+    throw new Error(`config.yaml validation failed: ${parsed.error.message}`)
+  }
+
+  const cfg = parsed.data
+
+  // Build enrichOptions (EnrichOptions type from pipeline/enrich.ts)
   const enrichOptions: EnrichOptions = {
-    batchSize: raw.enrich?.batchSize ?? 10,
-    minContentLength: raw.enrich?.minContentLength ?? 500,
-    fetchTimeout: raw.enrich?.fetchTimeout ?? 20000,
+    enabled: cfg.enrich.enabled,
+    batchSize: cfg.enrich.batchSize,
+    minContentLength: cfg.enrich.minContentLength,
+    fetchTimeout: cfg.enrich.fetchTimeout,
+    // truncationMarkers lives in contentConfig, not enrichOptions
   }
 
+  // Build dailyConfig
   const dailyConfig: DailyConfig = {
-    quadrantPrompt: raw.daily?.quadrantPrompt ?? '',
     aiFlashCategorization: {
-      enabled: raw.aiFlashCategorization?.enabled ?? true,
-      maxCategories: raw.aiFlashCategorization?.maxCategories ?? 6,
-      prompt: raw.aiFlashCategorization?.prompt ?? '',
+      enabled: cfg.aiFlashCategorization.enabled,
+      maxCategories: cfg.aiFlashCategorization.maxCategories,
+      prompt: cfg.aiFlashCategorization.prompt,
     },
   }
 
-  return { enrichOptions, dailyConfig }
-}
+  // aiFlashSources - map to include url (required by AiFlashSourceSchema)
+  const aiFlashSources: AiFlashSource[] = cfg.aiFlashSources.map(s => ({
+    id: s.id,
+    adapter: s.adapter,
+    url: s.url,
+    enabled: s.enabled ?? true,
+  }))
 
-function loadAiFlashSources(): AiFlashSource[] {
-  const configPath = path.join(process.cwd(), 'config', 'ai-flash-sources.yaml')
-  if (!fs.existsSync(configPath)) {
-    return []
+  return {
+    enrichOptions,
+    dailyConfig,
+    aiFlashSources,
+    rankingConfig: cfg.ranking,
+    dedupeConfig: cfg.dedupe,
+    contentConfig: cfg.content,
   }
-  const content = fs.readFileSync(configPath, 'utf-8')
-  const raw = yaml.load(content) as { sources?: Array<{
-    id: string
-    adapter: string
-    enabled?: boolean
-  }> }
-
-  if (!raw.sources) {
-    return []
-  }
-
-  return raw.sources.map(s => {
-    if (!s.id || !s.adapter) {
-      throw new Error(`AI flash source missing required id or adapter field`)
-    }
-    return {
-      id: s.id,
-      adapter: s.adapter as AiFlashSource['adapter'],
-      enabled: s.enabled ?? true,
-    }
-  })
 }
 
 // ============================================================
@@ -170,14 +253,26 @@ function loadAiFlashSources(): AiFlashSource[] {
 
 /**
  * Load all application configuration once.
- * Returns sources, tags, enrich options, and daily report config.
+ * Returns sources (sources.yaml), tags (tags.yaml), enrich/daily/ranking/dedupe/content/aiFlashSources (config.yaml),
+ * and auth configs from environment variables.
  */
 export async function loadConfig(): Promise<AppConfig> {
-  const [sources, tags, { enrichOptions, dailyConfig }, aiFlashSources] = await Promise.all([
+  const [sources, tags, yamlConfig, authConfigs] = await Promise.all([
     loadSources(),
     loadTags(),
-    loadReportsConfig(),
-    loadAiFlashSources(),
-  ]);
-  return { sources, tags, enrichOptions, dailyConfig, aiFlashSources };
+    Promise.resolve(loadConfigYaml()),
+    Promise.resolve(loadAuthConfigsFromEnv()),
+  ])
+
+  return {
+    sources,
+    tags,
+    enrichOptions: yamlConfig.enrichOptions,
+    dailyConfig: yamlConfig.dailyConfig,
+    aiFlashSources: yamlConfig.aiFlashSources,
+    rankingConfig: yamlConfig.rankingConfig,
+    dedupeConfig: yamlConfig.dedupeConfig,
+    contentConfig: yamlConfig.contentConfig,
+    authConfigs,
+  }
 }

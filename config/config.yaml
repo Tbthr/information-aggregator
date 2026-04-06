@@ -1,0 +1,59 @@
+# Main application config (centralized configuration)
+# This file consolidates enrich, ranking, dedupe, content, and aiFlashSources
+
+tags: []
+
+enrich:
+  enabled: true
+  batchSize: 10
+  minContentLength: 500
+  fetchTimeout: 20000
+
+aiFlashCategorization:
+  enabled: true
+  prompt: |
+    你是一个内容分类助手。请将以下 AI 快讯条目分类到以下类别：
+    产品更新 / 前沿研究 / 行业动态 / 开源项目 / 社媒精选 / 其他
+
+    规则：
+    - 不要改写任何内容，只输出分类结果
+    - 每个条目必须归属一个类别
+    - 输出 JSON 格式：{ "categories": [{ "name": "产品更新", "items": [...] }, ...] }
+    - 类别数量不超过 6 个，"其他"作为最后兜底
+
+    输入条目：
+    {items}
+
+ranking:
+  sourceWeight: 0.4
+  engagement: 0.15
+
+dedupe:
+  nearThreshold: 0.75
+
+content:
+  truncationMarkers:
+    - "[...]"
+    - "Read more"
+    - "click here"
+    - "read more at"
+    - "来源："
+    - "Original:"
+
+# AI快讯数据源（来自 ai-flash-sources.yaml）
+# url 字段已添加（从 Task 2 开始需要）
+aiFlashSources:
+  - id: hexi-daily
+    adapter: hexi-daily
+    url: https://hexi.example/feed
+    enabled: true
+
+  - id: juya-daily
+    adapter: juya-daily
+    url: https://juya.example/feed
+    enabled: true
+
+  - id: clawfeed-daily
+    adapter: clawfeed-daily
+    url: https://clawfeed.example/feed
+    enabled: true
