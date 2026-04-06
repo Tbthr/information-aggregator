@@ -39,14 +39,14 @@ tags:
     scoreBoost: 1.0
 
 enrich:
-  enabled: true  # ✅ 需修改 src/pipeline/enrich.ts，让 enrich 流程在 enabled=false 时跳过
-  batchSize: 10  # ✅ 已在 enrich.ts:226 使用
-  minContentLength: 500  # ✅ 已在 enrich.ts:103 使用
-  fetchTimeout: 20000  # ✅ 已在 enrich.ts:190 使用
+  enabled: true  # 需修改 enrich.ts，当前未使用
+  batchSize: 10  # 已在 enrich.ts:226 使用
+  minContentLength: 500  # 已在 enrich.ts:103 使用
+  fetchTimeout: 20000  # 已在 enrich.ts:190 使用
 
 aiFlashCategorization:
-  enabled: true  # ✅ 需修改 src/reports/daily.ts，让 enabled=false 时跳过 AI 分类环节
-  prompt: |  # ✅ 需修改 src/reports/ai-flash.ts:319，使用此 prompt 而非 hardcoded string
+  enabled: true  # 需修改 daily.ts
+  prompt: |  # 需修改 ai-flash.ts:319 使用此 prompt
     你是一个内容分类助手...
   # maxCategories: 已删除，类别数量由 AI 自己决定（prompt 中描述类别数量即可）
 
@@ -170,12 +170,14 @@ export type AppConfig = z.infer<typeof AppConfigSchema>
 
 | 字段 | 问题 | 修复位置 |
 |------|------|----------|
-| `enrich.enabled` | enrich.ts 未判断此开关 | `src/pipeline/enrich.ts` — 流程入口加 enabled 判断 |
+| `enrich.enabled` | enrich.ts 未判断此开关 | `src/pipeline/enrich.ts` — 流程入口加 enabled 判断；`EnrichOptions` 接口需加 enabled 字段 |
 | `aiFlashCategorization.enabled` | daily.ts 无条件调用分类 | `src/reports/daily.ts` — 跳过调用 |
 | `aiFlashCategorization.prompt` | ai-flash.ts 用硬编码 prompt | `src/reports/ai-flash.ts:319` — 替换为 config.prompt |
 | `ranking.sourceWeight/engagement` | rank.ts 用硬编码常量 | `src/pipeline/rank.ts` — 从 rankingConfig 读取 |
 | `content.truncationMarkers` | enrich.ts 用硬编码数组 | `src/pipeline/enrich.ts` — 从 contentConfig 读取 |
 | `dedupe.nearThreshold` | dedupe-near.ts 硬编码 0.75 | `src/pipeline/dedupe-near.ts` — 从 dedupeConfig 读取 |
+| `aiFlashSources[].url` | loadAiFlashSources() 不读 url | `src/config/index.ts` — loadAiFlashSources() 需读 url 字段；`ai-flash.ts` 三个 fetch 函数从 source.url 取值 |
+| `aiFlashCategorization.maxCategories` | 代码仍用此参数 | `src/reports/daily.ts:125` — 移除 maxCategories 参数；`src/reports/ai-flash.ts:317` — 移除 maxCategories 参数和 hardcoded prompt 中的数量限制 |
 
 ## 9. 验证方法
 
