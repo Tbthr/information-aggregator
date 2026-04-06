@@ -74,19 +74,44 @@ information-aggregator/
 2. `bun test` - 确保所有测试通过
 3. `bun run src/cli/run.ts -t 1h` - 确保 CLI 能正常运行（测试时用 1h 避免数据过多）
 
-## Environment
+## Environment & 本地运行
 
-Required in `.env.local` (gitignored):
-- `ANTHROPIC_API_KEY` — Anthropic API key
-
-### 本地运行准则
+### AI 配置 (`.env.local`)
 
 ```bash
-# 使用 .env.local 中的变量运行（仅影响本次进程，且优先级高于当前 shell，不污染所在环境）
-bash -c 'set -a; source .env.local; exec bun run src/cli/run.ts'
+# 默认 Provider
+AI_DEFAULT_PROVIDER=anthropic      # anthropic | gemini | openai
+
+# Anthropic
+ANTHROPIC_API_KEYS=sk-ant-...     # API keys (多个用逗号分隔)
+ANTHROPIC_MODEL=claude-sonnet-4-20250514
+ANTHROPIC_BASE_URLS=https://open.bigmodel.cn/api/anthropic/v1
+
+# Gemini
+GEMINI_API_KEYS=...
+GEMINI_MODEL=gemini-2.0-flash
+
+# OpenAI
+OPENAI_API_KEYS=...
+OPENAI_MODEL=gpt-4o
+
+# 重试配置
+AI_MAX_RETRIES=4
+AI_INITIAL_DELAY_MS=1000
+AI_MAX_DELAY_MS=30000
+AI_BACKOFF_FACTOR=2
+
+# 日志
+LOG_LEVEL=info                      # debug | info | warn | error
+LOG_FORMAT=text                     # text | json
 ```
 
-> Bun 的环境变量优先级：shell 已有的变量 > `.env` / `.env.local`。上述命令通过 `source` 读取并强制注入 `.env.local` 的值，且运行结束后不残留到 shell 中。
+### 本地运行
+
+```bash
+# 使用 .env.local 中的变量运行（仅影响本次进程，且优先级高于当前 shell）
+bash -c 'set -a; source .env.local; exec bun run src/cli/run.ts'
+```
 
 ## Architecture
 
