@@ -39,16 +39,16 @@ tags:
     scoreBoost: 1.0
 
 enrich:
-  enabled: true  # 注意：当前 enrich.enabled 未被 EnrichOptions 接口使用，属遗留字段，保持兼容
-  batchSize: 10
-  minContentLength: 500
-  fetchTimeout: 20000
+  enabled: true  # ✅ 需修改 src/pipeline/enrich.ts，让 enrich 流程在 enabled=false 时跳过
+  batchSize: 10  # ✅ 已在 enrich.ts:226 使用
+  minContentLength: 500  # ✅ 已在 enrich.ts:103 使用
+  fetchTimeout: 20000  # ✅ 已在 enrich.ts:190 使用
 
 aiFlashCategorization:
-  enabled: true
-  maxCategories: 6
-  prompt: |
+  enabled: true  # ✅ 需修改 src/reports/daily.ts，让 enabled=false 时跳过 AI 分类环节
+  prompt: |  # ✅ 需修改 src/reports/ai-flash.ts:319，使用此 prompt 而非 hardcoded string
     你是一个内容分类助手...
+  # maxCategories: 已删除，类别数量由 AI 自己决定（prompt 中描述类别数量即可）
 
 ranking:
   sourceWeight: 0.4
@@ -143,9 +143,12 @@ export type AppConfig = z.infer<typeof AppConfigSchema>
 | source weight 因子 | `ranking.sourceWeight` | 0.4 |
 | engagement 因子 | `ranking.engagement` | 0.15 |
 | 近义去重 threshold | `dedupe.nearThreshold` | 0.75 |
-| 内容截断标记 | `content.truncationMarkers` | [...] |
+| 内容截断标记 | `content.truncationMarkers` | 6个标记 |
 | AI flash URLs | `aiFlashSources[].url` | 3个URL |
 | enrich 参数 | `enrich.batchSize` 等 | 10/500/20000 |
+| enrich enabled | `enrich.enabled` | true（需改造 enrich.ts） |
+| AI 分类 enabled | `aiFlashCategorization.enabled` | true（需改造 daily.ts） |
+| AI 分类 prompt | `aiFlashCategorization.prompt` | 自定义 prompt（需改造 ai-flash.ts） |
 
 ## 7. 关键文件变更
 
@@ -161,7 +164,20 @@ export type AppConfig = z.infer<typeof AppConfigSchema>
 | `src/config/index.ts` | 重写 |
 | `lib/types.ts` | 清理 |
 
-## 8. 验证方法
+## 8. 需改造代码的能力项
+
+以下 config 字段目前存在但未在代码中生效，实施时必须同步修复：
+
+| 字段 | 问题 | 修复位置 |
+|------|------|----------|
+| `enrich.enabled` | enrich.ts 未判断此开关 | `src/pipeline/enrich.ts` — 流程入口加 enabled 判断 |
+| `aiFlashCategorization.enabled` | daily.ts 无条件调用分类 | `src/reports/daily.ts` — 跳过调用 |
+| `aiFlashCategorization.prompt` | ai-flash.ts 用硬编码 prompt | `src/reports/ai-flash.ts:319` — 替换为 config.prompt |
+| `ranking.sourceWeight/engagement` | rank.ts 用硬编码常量 | `src/pipeline/rank.ts` — 从 rankingConfig 读取 |
+| `content.truncationMarkers` | enrich.ts 用硬编码数组 | `src/pipeline/enrich.ts` — 从 contentConfig 读取 |
+| `dedupe.nearThreshold` | dedupe-near.ts 硬编码 0.75 | `src/pipeline/dedupe-near.ts` — 从 dedupeConfig 读取 |
+
+## 9. 验证方法
 
 1. `bun run typecheck` — TypeScript 类型检查通过
 2. `bun test` — 所有测试通过
