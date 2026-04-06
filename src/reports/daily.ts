@@ -119,11 +119,13 @@ export async function generateDailyReport(
 
   // Categorize only hexi+juya items
   const { dailyConfig } = await loadConfig()
-  const categorizedFlash = await categorizeAiFlash(
-    hexiJuyaItems,
-    aiClient,
-    { maxCategories: dailyConfig.aiFlashCategorization.maxCategories }
-  )
+  let categorizedFlash: AiFlashCategory[]
+  if (dailyConfig.aiFlashCategorization.enabled) {
+    categorizedFlash = await categorizeAiFlash(hexiJuyaItems, aiClient)
+  } else {
+    // Use unclassified items directly under "其他" category (like fallbackCategorize)
+    categorizedFlash = [{ name: '其他', items: hexiJuyaItems }]
+  }
 
   // Build ClawFeed content from original markdown
   const clawfeedContent: AiFlashContent | null = clawfeedItems.length > 0
