@@ -31,9 +31,9 @@ jobs:
         run: bun run src/cli/run.ts
 
       - name: Install Zola
-        uses: tao-zma/install-zola@v0.1.0
+        uses: taiki-e/install-action@v2
         with:
-          version: 0.19.0
+          tool: zola@0.19.0
 
       - name: Clone Even theme
         run: git clone https://github.com/getzola/even.git themes/even
