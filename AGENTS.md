@@ -57,7 +57,7 @@ information-aggregator/
 | `bun test` | 运行所有单元测试 |
 | `bun run typecheck` | TypeScript 类型检查 |
 | `bash -c 'set -a; source .env.local; exec bun run src/cli/run.ts'` | 运行完整流程（默认 24h，需 AI 配置）|
-| `bash -c 'set -a; source .env.local; exec bun run src/cli/run.ts -t 1h'` | 本地测试，缩短运行时间 |
+| `bash -c 'set -a; source .env.local; exec bun run src/cli/run.ts -t 1h'` | 本地快速测试，缩短运行时间 |
 
 ## Development Workflow
 
@@ -66,6 +66,7 @@ information-aggregator/
 运行任何 `src/cli/run.ts` 命令前，需先加载 `.env.local` 中的环境变量：
 
 ```bash
+# 使用 .env.local 中的变量运行（仅影响本次进程，且优先级高于当前 shell）
 bash -c 'set -a; source .env.local; exec bun run src/cli/run.ts'
 ```
 
@@ -75,9 +76,9 @@ bash -c 'set -a; source .env.local; exec bun run src/cli/run.ts'
 2. `bun test` - 确保所有测试通过
 3. `bash -c 'set -a; source .env.local; exec bun run src/cli/run.ts -t 1h'` - 确保 CLI 能正常运行
 
-## Environment & 本地运行
+## Environment
 
-### AI 配置 (`.env.local`)
+### .env.local 配置
 
 ```bash
 # 默认 Provider
@@ -105,13 +106,6 @@ AI_BACKOFF_FACTOR=2
 # 日志
 LOG_LEVEL=info                      # debug | info | warn | error
 LOG_FORMAT=text                     # text | json
-```
-
-### 本地运行
-
-```bash
-# 使用 .env.local 中的变量运行（仅影响本次进程，且优先级高于当前 shell）
-bash -c 'set -a; source .env.local; exec bun run src/cli/run.ts'
 ```
 
 ## Architecture
