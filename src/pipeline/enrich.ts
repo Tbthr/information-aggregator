@@ -14,9 +14,11 @@ const logger = createLogger("pipeline:enrich");
 // ============================================================
 
 export interface EnrichOptions {
+  enabled: boolean;
   batchSize: number;
   minContentLength: number;
   fetchTimeout: number;
+  truncationMarkers?: string[];
 }
 
 export interface ContentQualityResult {
@@ -46,7 +48,11 @@ export interface EnrichArticleResult {
  * @param minLength 最小长度要求（默认 500）
  * @returns 'pass' | 'fail'
  */
-export function contentQuality(text: string, minLength = 500): ContentQualityResult {
+export function contentQuality(
+  text: string,
+  minLength = 500,
+  truncationMarkers: string[] = ["[...]", "Read more", "click here", "read more at", "来源：", "Original:"]
+): ContentQualityResult {
   // Strip HTML tags for quality assessment
   const plainText = text.replace(/<[^>]*>/g, "").trim();
 
@@ -59,7 +65,6 @@ export function contentQuality(text: string, minLength = 500): ContentQualityRes
   }
 
   // Rule 2: Check for truncation markers
-  const truncationMarkers = ["[...]", "Read more", "click here", "read more at", "来源：", "Original:"];
   const hasTruncationMarker = truncationMarkers.some((marker) =>
     plainText.toLowerCase().includes(marker.toLowerCase())
   );
@@ -96,9 +101,10 @@ export function contentQuality(text: string, minLength = 500): ContentQualityRes
 export function needsEnrichment(
   normalizedContent: string,
   url: string | undefined,
-  options: EnrichOptions
+  options: EnrichOptions,
+  truncationMarkers: string[]
 ): NeedsEnrichmentResult {
-  const quality = contentQuality(normalizedContent, options.minContentLength);
+  const quality = contentQuality(normalizedContent, options.minContentLength, truncationMarkers);
 
   // Quality sufficient → not needed
   if (quality.status === "pass") {
@@ -152,10 +158,12 @@ export async function enrichArticleItem(
   item: normalizedArticle,
   options: EnrichOptions
 ): Promise<EnrichArticleResult> {
+  const truncationMarkers = options.truncationMarkers ?? ["[...]", "Read more", "click here", "read more at", "来源：", "Original:"];
   const { needed } = needsEnrichment(
     item.normalizedContent,
     item.normalizedUrl,
-    options
+    options,
+    truncationMarkers
   );
 
   if (!needed) {
@@ -199,6 +207,10 @@ export async function enrichArticles(
   articles: normalizedArticle[],
   options: EnrichOptions
 ): Promise<normalizedArticle[]> {
+  if (!options.enabled) {
+    logger.info("enrich disabled, skipping");
+    return articles;
+  }
   // Process in batches with full concurrency
   const batches: normalizedArticle[][] = [];
   for (let i = 0; i < articles.length; i += options.batchSize) {
