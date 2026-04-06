@@ -1,7 +1,249 @@
 # Main application config (centralized configuration)
-# This file consolidates enrich, ranking, dedupe, content, and aiFlashSources
+# This file consolidates tags, enrich, ranking, dedupe, content, and aiFlashSources
 
-tags: []
+tags:
+  - id: ai-news
+    name: AI 资讯
+    description: |
+      关注 AI 领域的最新动态、产品发布、技术突破和行业趋势。
+      优先保留：重要发布、深度分析、技术突破，行业影响
+      可以过滤：营销软文、重复报道、浅层转载
+    enabled: true
+    includeRules:
+      - "openai"
+      - "anthropic"
+      - "google ai"
+      - "gemma"
+      - "qwen"
+      - "claude"
+      - "gpt"
+      - "llm"
+      - "大模型"
+      - "大语言模型"
+      - "ai 行业"
+      - "ai 创业"
+      - "ai 投资"
+      - "ai 发布"
+      - "ai 模型"
+      - "agent"
+      - "computer use"
+      - "cursor"
+      - "copilot"
+    excludeRules:
+      - "广告"
+      - " sponsored"
+      - "affiliate"
+      - "推广"
+      - "100 万人"
+      - "震惊"
+      - "必看"
+    scoreBoost: 1.0
+
+  - id: ai
+    name: AI 技术
+    description: |
+      AI 技术相关的深度内容，包括研究论文、技术博客、实践分享。
+      优先保留：原创观点、技术分析、实践经验
+      可以过滤：浅层介绍、纯营销内容
+    enabled: true
+    includeRules:
+      - "machine learning"
+      - "deep learning"
+      - "neural network"
+      - "transformer"
+      - "llm"
+      - "reinforcement learning"
+      - "training"
+      - "inference"
+      - "arxiv"
+      - "paper"
+      - "research"
+      - "benchmark"
+      - "ai coding"
+      - "copilot"
+      - "cursor"
+      - "code generation"
+      - "vibe coding"
+      - "agent"
+      - "autonomous"
+      - "reasoning"
+      - "reasoning model"
+    excludeRules:
+      - "sponsored"
+      - "advertisement"
+      - "affiliate"
+      - "promoted"
+      - "ai will replace"
+      - "make money with ai"
+      - "ai passive income"
+    scoreBoost: 1.0
+
+  - id: github
+    name: GitHub 趋势
+    description: |
+      关注 GitHub 上的热门开源项目和趋势仓库。
+      优先保留：创新项目、实用工具、值得关注的新技术
+      可以过滤：重复项目、低质量项目、纯营销项目
+    enabled: true
+    includeRules:
+      - "github"
+      - "open source"
+      - "repository"
+      - "stars"
+      - "release"
+      - "library"
+      - "framework"
+      - "tool"
+      - "cli"
+      - "api"
+      - "rust"
+      - "zig"
+      - "python"
+      - "typescript"
+      - "javascript"
+      - "golang"
+      - "repo"
+    excludeRules:
+      - "forked"
+      - "mirror"
+      - "archived"
+    scoreBoost: 1.0
+
+  - id: karpathy-picks
+    name: Karpathy 精选技术博客
+    description: |
+      90个来自 Hacker News Popularity Contest 2025 的优质 RSS 源（由 Karpathy 精选）
+      内容涵盖：编程语言、系统设计、安全研究、硬件/嵌入式，游戏引擎、
+      技术历史、数学、分布式系统、工程哲学、AI/ML 等
+    enabled: true
+    includeRules:
+      - "programming"
+      - "software"
+      - "algorithm"
+      - "data structure"
+      - "distributed system"
+      - "database"
+      - "concurrency"
+      - "performance"
+      - "optimization"
+      - "rust"
+      - "zig"
+      - "python"
+      - "javascript"
+      - "typescript"
+      - "c++"
+      - "go"
+      - "ruby"
+      - "linux"
+      - "unix"
+      - "freebsd"
+      - "nixos"
+      - "server"
+      - "infrastructure"
+      - "kubernetes"
+      - "docker"
+      - "devops"
+      - "security"
+      - "privacy"
+      - "cryptography"
+      - "vulnerability"
+      - "exploit"
+      - "malware"
+      - "hack"
+      - "infosec"
+      - "surveillance"
+      - "machine learning"
+      - "deep learning"
+      - "neural network"
+      - "llm"
+      - "artificial intelligence"
+      - "gpt"
+      - "transformer"
+      - "ai agent"
+      - "ai safety"
+      - "hardware"
+      - "embedded"
+      - "microcontroller"
+      - "raspberry pi"
+      - "arduino"
+      - "risc-v"
+      - "arm"
+      - "game engine"
+      - "graphics"
+      - "rendering"
+      - "quake"
+      - "opengl"
+      - "vulkan"
+      - "history"
+      - "retro"
+      - "vintage computing"
+      - "archaeology"
+      - "computing history"
+      - "mathematics"
+      - "math"
+      - "complexity"
+      - "software engineering"
+      - "architecture"
+      - "conway's law"
+      - "technical debt"
+      - "design pattern"
+    excludeRules:
+      - "sponsored"
+      - "advertisement"
+      - "affiliate"
+      - "promoted"
+      - "buy now"
+      - "limited time"
+      - "recipe"
+      - "cooking"
+      - "gaming"
+      - "esports"
+      - "sports"
+      - "passive income"
+      - "make money online"
+      - "ai will replace programmers"
+      - "100x developer"
+    scoreBoost: 1.0
+
+  - id: tech-news
+    name: 科技资讯聚合
+    description: |
+      关注中文科技资讯和行业动态。
+      优先保留：深度分析、原创观点、重要新闻、技术趋势
+      可以过滤：营销内容、浅层资讯、转载文章、广告软文
+    enabled: true
+    includeRules:
+      - "技术"
+      - "ai"
+      - "编程"
+      - "开源"
+      - "软件"
+      - "硬件"
+      - "产品"
+      - "发布"
+      - "趋势"
+      - "行业"
+      - "创业"
+      - "投资"
+      - "分析"
+      - "观点"
+      - "评论"
+      - "github"
+      - "twitter"
+      - "hacker news"
+      - "product hunt"
+    excludeRules:
+      - "广告"
+      - "赞助"
+      - "推广"
+      - " affiliate"
+      - "震惊"
+      - "必看"
+      - "万人"
+      - "火爆"
+      - "转载"
+      - "摘录"
+    scoreBoost: 1.0
 
 enrich:
   enabled: true
@@ -40,20 +282,18 @@ content:
     - "来源："
     - "Original:"
 
-# AI快讯数据源（来自 ai-flash-sources.yaml）
-# url 字段已添加（从 Task 2 开始需要）
 aiFlashSources:
   - id: hexi-daily
     adapter: hexi-daily
-    url: https://hexi.example/feed
+    url: https://r.jina.ai/https://ai.hubtoday.app/{month}/{date}/
     enabled: true
 
   - id: juya-daily
     adapter: juya-daily
-    url: https://juya.example/feed
+    url: https://imjuya.github.io/juya-ai-daily/rss.xml
     enabled: true
 
   - id: clawfeed-daily
     adapter: clawfeed-daily
-    url: https://clawfeed.example/feed
+    url: https://clawfeed.kevinhe.io/feed/kevin
     enabled: true
