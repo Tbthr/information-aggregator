@@ -1,9 +1,12 @@
-import { beijingDayRange, formatBeijingDate } from '../../lib/date-utils.js'
-import type { AiClient } from '../ai/types.js'
-import type { AiFlashSource } from '../types/config.js'
-// Re-export for backward compatibility with consumers that import AiFlashSource from ai-flash.ts
-export type { AiFlashSource } from '../types/config.js'
-import { loadConfig } from '../config/index.js'
+import { beijingDayRange, formatBeijingDate } from "../../lib/date-utils.js";
+import type { AiClient } from "../ai/types.js";
+import { fetchWithFallback, normalizeAiFlashMarkers } from "../utils/fetch-with-fallback.js";
+
+export interface AiFlashSource {
+  id: string
+  adapter: 'hexi-daily' | 'juya-daily' | 'clawfeed-daily'
+  enabled: boolean
+}
 
 export interface AiFlashContent {
   sourceId: string
@@ -17,6 +20,8 @@ export interface AiFlashItem {
   url: string
   summary: string
   sourceName: string
+  /** 原始分类标签（如 hexi 的 "产品与功能更新"），AI 分类时的参考上下文 */
+  sourceCategory?: string
   /** Preserves original markdown for ClawFeed items */
   originalMarkdown?: string
 }
@@ -35,26 +40,23 @@ async function fetchHexiDaily(source: AiFlashSource, fetcher: typeof fetch): Pro
   const dateStr = formatBeijingDate(new Date())
   const monthStr = dateStr.slice(0, 7)
 
-  const url = source.url
-  const resolvedUrl = url.replace('{month}', monthStr).replace('{date}', dateStr)
-  const resp = await fetcher(resolvedUrl)
-  if (!resp.ok) return null
-  const text = await resp.text()
+  // Use fetchWithFallback (defuddle → jina) with source URL
+  const sourceUrl = `https://ai.hubtoday.app/${monthStr}/${dateStr}/`
+  const rawText = await fetchWithFallback(sourceUrl, 20000, fetcher)
+  if (!rawText) return null
 
-  // r.jina.ai returns 200 even when target is 404 - detect error content
-  if (/<title>Error<\/title>/i.test(text) || (text.includes('Warning:') && text.includes('error'))) {
-    return null
-  }
+  // Normalize markers so both defuddle and jina output work with same parsing
+  const text = normalizeAiFlashMarkers(rawText)
 
   const lines = text.split('\n')
   let startIdx = -1
   let endIdx = lines.length
 
   for (let i = 0; i < lines.length; i++) {
-    if (lines[i].includes('## **今日摘要**') && !lines[i].startsWith('*')) {
+    if (lines[i].includes('## 今日摘要') && !lines[i].startsWith('*')) {
       startIdx = i + 1
     }
-    if (lines[i].includes('## **AI资讯日报多渠道**')) {
+    if (lines[i].includes('## AI资讯日报多渠道')) {
       endIdx = i
       break
     }
@@ -81,15 +83,15 @@ function parseBeijingDate(pubDateStr: string): Date {
   return new Date(date.getTime() + 8 * 60 * 60 * 1000)
 }
 
-function cleanHtmlContent(html: string): string {
-  return html
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<p[^>]*>/gi, '\n')
-    .replace(/<\/p>/gi, '')
-    .replace(/<strong>(.*?)<\/strong>/gi, '**$1**')
-    .replace(/<a[^>]+href=["']([^"']+)["'][^>]*>(.*?)<\/a>/gi, '$2($1)')
-    .replace(/<[^>]+>/g, '')
-    .trim()
+// hexi 原始分类 → AI 标准分类 的语义映射
+const CATEGORY_ALIAS: Record<string, string> = {
+  "产品与功能更新": "产品更新",
+  "前沿研究": "前沿研究",
+  "行业展望与社会影响": "行业动态",
+  "开源TOP项目": "开源项目",
+  "社媒分享": "社媒精选",
+  "行业动态": "行业动态",
+  "开源项目": "开源项目",
 }
 
 function parseHexiMarkdownToItems(content: string): AiFlashItem[] {
@@ -101,41 +103,56 @@ function parseHexiMarkdownToItems(content: string): AiFlashItem[] {
     // 检测分类标题，如 "### 产品与功能更新"
     const categoryMatch = line.match(/^###\s+(.+)/)
     if (categoryMatch) {
-      // Strip markdown link anchor like [text](url) from category name
-      currentCategory = categoryMatch[1].replace(/\[\]\([^)]+\)/, '').trim()
+      const raw = categoryMatch[1].replace(/\[\]\([^)]+\)/, '').trim()
+      // 映射到 AI 标准分类名，未知分类保持原样
+      currentCategory = CATEGORY_ALIAS[raw] ?? raw
       continue
     }
 
-    // 检测条目：如 "1.   **Gemini深度嵌入安卓底层。** 继Gemini 3.1..." 或 "• ..."
-    // 用 split('**') 代替非贪心 regex，避免描述中 ** 干扰标题捕获
-    const numberedMatch = line.match(/^\d+\.\s+\*\*/)
+    // 检测条目：numbered 格式 "1. **Title** rest"
+    const numberedMatch = line.match(/^\d+\.\s+\*\*(.+?)\*\*(.+)$/)
     if (numberedMatch) {
-      const parts = line.split('**')
-      // parts[0]="1.   ", parts[1]="Gemini深度嵌入安卓底层。", parts[2]=" 继Gemini...**Gemini** 已升级为..."
-      if (parts.length >= 3) {
-        const title = parts[1].trim()
-        // 找分隔符（— 或 ：或 。）在 parts[2] 中的位置
-        const rest = parts[2]
-        const sepMatch = rest.match(/^[ ：.]+(.+)/)
-        const summary = sepMatch ? sepMatch[1].trim() : rest.trim()
-        items.push({
-          title,
-          url: '',
-          summary: summary.slice(0, 200),
-          sourceName: '何夕2077',
-        })
-        continue
-      }
+      const title = numberedMatch[1].trim()
+      let rest = numberedMatch[2]
+      // Extract first [text](url) from rest BEFORE stripping links
+      const firstLink = rest.match(/\[([^\]]+)\]\(([^)]+)\)/)
+      const itemUrl = firstLink ? firstLink[2] : ''
+      rest = rest.replace(/^[ ：]+/, '')
+      rest = rest
+        .replace(/\*\*([^*]+)\*\*/g, '$1')
+        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+        .trim()
+      items.push({
+        title,
+        url: itemUrl,
+        summary: rest.replace(/（来源：[^）]+）/g, '').trim().slice(0, 300),
+        sourceName: '何夕2077',
+        sourceCategory: currentCategory,
+      })
+      continue
     }
+
+    // Bullet 格式：支持 • 和 - 两种 bullet 字符
     const bulletMatch = line.match(/^[•\-]\s+(.+)/)
     if (bulletMatch && currentCategory) {
       const raw = bulletMatch[1].trim()
       const urlMatch = raw.match(/\[([^\]]+)\]\(([^)]+)\)/)
+      // Title: if link format, extract link text; otherwise strip ** markers
+      let rawTitle = urlMatch ? urlMatch[1] : raw
+      rawTitle = rawTitle.replace(/\*\*/g, '').trim()
+      // Description: remove the [title](url) part first, then strip ** markers
+      let rest = urlMatch ? raw.replace(/\[([^\]]+)\]\([^)]+\)/, '').trim() : raw
+      rest = rest.replace(/^[ —：:]+/, '').trim()
+      rest = rest
+        .replace(/\*\*([^*]+)\*\*/g, '$1')
+        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+        .trim()
       items.push({
-        title: urlMatch ? urlMatch[1] : raw,
+        title: rawTitle,
         url: urlMatch ? urlMatch[2] : '',
-        summary: '',
+        summary: rest.replace(/（来源：[^）]+）/g, '').trim().slice(0, 300),
         sourceName: '何夕2077',
+        sourceCategory: currentCategory,
       })
     }
   }
@@ -145,8 +162,6 @@ function parseHexiMarkdownToItems(content: string): AiFlashItem[] {
 
 function parseClawfeedMarkdownToItems(content: string): AiFlashItem[] {
   const items: AiFlashItem[] = []
-  // Clawfeed content is already markdown with items separated by blank lines
-  // Try to extract items from lines starting with - or *
   const lines = content.split('\n')
   let currentItem: Partial<AiFlashItem> = {}
   let currentMarkdownLines: string[] = []
@@ -168,41 +183,39 @@ function parseClawfeedMarkdownToItems(content: string): AiFlashItem[] {
   for (const line of lines) {
     const trimmed = line.trim()
     if (!trimmed) {
-      // Blank line - end of current item
       pushCurrentItem()
       continue
     }
 
-    // Check for item start: - **Title** or - [Title](url)
+    // Check for item start: • or - followed by content
     const itemMatch = trimmed.match(/^[•\-]\s+(.+)/)
     if (itemMatch) {
-      // Start of new item - push previous if exists
       pushCurrentItem()
 
       const rest = itemMatch[1].trim()
+      // Extract [text](url) first, then strip all markdown from title
       const urlMatch = rest.match(/\[([^\]]+)\]\(([^)]+)\)/)
-      if (urlMatch) {
-        currentItem = {
-          title: urlMatch[1],
-          url: urlMatch[2],
-          summary: rest.replace(/\[([^\]]+)\]\([^)]+\)/, '').trim(),
-        }
-      } else {
-        currentItem = {
-          title: rest.replace(/^\*\*(.+)\*\*.*/, '$1'),
-          url: '',
-          summary: rest.replace(/^\*\*(.+)\*\*[\s:.。]*/, '').trim(),
-        }
+      // Strip [text](url) link, then strip all ** and other markdown from title area
+      let titleRaw = urlMatch ? rest.slice(0, rest.indexOf('[')) : rest
+      // Also handle case where title is fully wrapped as [**Title**](url)
+      if (!titleRaw.trim() && urlMatch) {
+        titleRaw = urlMatch[1]
+      }
+      titleRaw = titleRaw.replace(/\*\*/g, '').trim()
+      const summaryRest = urlMatch ? rest.replace(/\[([^\]]+)\]\([^)]+\)/, '').trim() : rest
+
+      currentItem = {
+        title: titleRaw || (urlMatch ? urlMatch[1] : rest).replace(/\*\*/g, '').trim(),
+        url: urlMatch ? urlMatch[2] : '',
+        summary: summaryRest.replace(/^[ —：:]+/, '').replace(/\*\*/g, '').replace(/（来源：[^）]+）/g, '').trim(),
       }
       currentMarkdownLines = [line]
     } else if (currentItem.title) {
-      // Continuation line of current item
       currentItem.summary = (currentItem.summary ?? '') + ' ' + trimmed
       currentMarkdownLines.push(line)
     }
   }
 
-  // Push last item if exists
   pushCurrentItem()
 
   return items
@@ -214,20 +227,29 @@ function extractJuyaItem(itemHtml: string): { title: string; url: string; summar
   const mainUrl = h2Match[1]
   const title = h2Match[2].trim()
 
-  const bqMatch = /<blockquote><p>([\s\S]*?)<\/p><\/blockquote>/.exec(itemHtml)
-  const summary = bqMatch
-    ? bqMatch[1].replace(/<[^>]+>/g, '').trim()
-    : (itemHtml.match(/<p>([\s\S]*?)<\/p>/)?.[1] ?? '').replace(/<[^>]+>/g, '').trim()
+  // Extract blockquote + subsequent paragraphs for richer summary
+  // Blockquote: brief summary; subsequent <p> tags: detailed content
+  const bqEnd = itemHtml.indexOf('</blockquote>')
+  const nextHr = itemHtml.indexOf('<hr>')
+  const afterBq = bqEnd > 0 ? itemHtml.slice(bqEnd + 13, nextHr > 0 ? nextHr : undefined) : ''
+  const bqMatch = /<blockquote>\s*<p>([\s\S]*?)<\/p>\s*<\/blockquote>/.exec(itemHtml)
+  const bqText = bqMatch ? bqMatch[1].replace(/<[^>]+>/g, '').trim() : ''
+  const subsequentText = afterBq
+    .replace(/<img[^>]*>/gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  const textContent = (bqText + ' ' + subsequentText).replace(/\s+/g, ' ').trim()
 
+  // Extract links
   const linkMatches = [...itemHtml.matchAll(/<li><a href="([^"]+)">(.*?)<\/a><\/li>/g)]
   const links = linkMatches.map(m => m[1]).filter(u => u !== mainUrl)
 
-  return { title, url: mainUrl, summary, links }
+  return { title, url: mainUrl, summary: textContent.slice(0, 400), links }
 }
 
-async function fetchJuyaDaily(source: AiFlashSource, fetcher: typeof fetch): Promise<AiFlashItem[] | null> {
-  const url = source.url
-  const resp = await fetcher(url)
+async function fetchJuyaDaily(_source: AiFlashSource, fetcher: typeof fetch): Promise<AiFlashItem[] | null> {
+  const resp = await fetcher('https://imjuya.github.io/juya-ai-daily/rss.xml')
   if (!resp.ok) return null
   const xml = await resp.text()
 
@@ -277,8 +299,7 @@ async function fetchJuyaDaily(source: AiFlashSource, fetcher: typeof fetch): Pro
 }
 
 async function fetchClawfeedDaily(source: AiFlashSource, fetcher: typeof fetch): Promise<AiFlashContent | null> {
-  const url = source.url
-  const resp = await fetcher(url)
+  const resp = await fetcher('https://clawfeed.kevinhe.io/feed/kevin')
   if (!resp.ok) return null
   const json = await resp.json() as { digests: Array<{ created_at: string; content: string }> }
   const items = json.digests ?? []
@@ -310,18 +331,19 @@ async function fetchClawfeedDaily(source: AiFlashSource, fetcher: typeof fetch):
 
 export async function categorizeAiFlash(
   items: AiFlashItem[],
-  aiClient: AiClient
+  aiClient: AiClient,
+  options?: { maxCategories?: number }
 ): Promise<AiFlashCategory[]> {
   if (items.length === 0) return []
 
-  const { dailyConfig } = await loadConfig()
-  const systemPrompt = dailyConfig.aiFlashCategorization.prompt ||
-    `你是一个内容分类助手。将输入的 AI 快讯条目分类到以下六个类别之一：产品更新 / 前沿研究 / 行业动态 / 开源项目 / 社媒精选 / 其他。不要改写任何内容，只输出 JSON。"其他"作为最后兜底。`
+  const { maxCategories = 6 } = options ?? {}
+
+  const systemPrompt = `你是一个内容分类助手。将输入的 AI 快讯条目分类到以下六个类别之一：产品更新 / 前沿研究 / 行业动态 / 开源项目 / 社媒精选 / 其他。不要改写任何内容，只输出 JSON。类别数量不超过 ${maxCategories} 个。"其他"作为最后兜底。原文分类参考：产品与功能更新→产品更新；行业展望与社会影响→行业动态；开源TOP项目→开源项目；社媒分享→社媒精选；前沿研究→前沿研究。`
 
   const userPrompt = `请将以下条目分类，输出 JSON 格式：{ "categories": [{ "name": "分类名", "items": [{ "title": "...", "url": "...", "summary": "...", "sourceName": "..." }] }, ...] }。每个条目必须归属一个类别。
 
 条目：
-${items.map((item, i) => `${i + 1}. [${item.title}](${item.url}) — ${item.summary}（来源：${item.sourceName}）`).join('\n')}
+${items.map((item, i) => `${i + 1}. [${item.title}](${item.url}) — ${item.summary}`).join('\n')}
 
 输出（只输出 JSON，不要其他内容）：`
 
@@ -336,7 +358,16 @@ ${items.map((item, i) => `${i + 1}. [${item.title}](${item.url}) — ${item.summ
     if (!jsonMatch) return fallbackCategorize(items)
 
     const parsed = JSON.parse(jsonMatch[0])
-    return parsed.categories ?? fallbackCategorize(items)
+    const categories: AiFlashCategory[] = parsed.categories ?? fallbackCategorize(items)
+
+    // Strip hallucinated source attributions (e.g., "（来源：何夕2077）") from AI output
+    for (const cat of categories) {
+      for (const item of cat.items) {
+        item.summary = item.summary.replace(/（来源：[^）]+）/g, '').trim()
+      }
+    }
+
+    return categories
   } catch {
     return fallbackCategorize(items)
   }

@@ -3,12 +3,10 @@
  * 负责判断哪些文章需要从原 URL 提取完整正文，以及执行提取
  */
 
-import { execSync } from "child_process";
-import path from "path";
-import { createLogger } from "../utils/logger";
+import { createLogger } from "../utils/logger.js";
 import type { normalizedArticle } from "../types/index.js";
+import { fetchWithFallback } from "../utils/fetch-with-fallback.js";
 
-const agentFetchBin = path.join(process.cwd(), "node_modules/.bin/agent-fetch");
 const logger = createLogger("pipeline:enrich");
 
 // ============================================================
@@ -16,11 +14,9 @@ const logger = createLogger("pipeline:enrich");
 // ============================================================
 
 export interface EnrichOptions {
-  enabled: boolean;
   batchSize: number;
   minContentLength: number;
   fetchTimeout: number;
-  truncationMarkers?: string[];
 }
 
 export interface ContentQualityResult {
@@ -48,14 +44,9 @@ export interface EnrichArticleResult {
  * 判断内容质量是否达标
  * @param text 纯文本内容
  * @param minLength 最小长度要求（默认 500）
- * @param truncationMarkers 截断标记数组（默认硬编码值）
  * @returns 'pass' | 'fail'
  */
-export function contentQuality(
-  text: string,
-  minLength = 500,
-  truncationMarkers: string[] = ["[...]", "Read more", "click here", "read more at", "来源：", "Original:"]
-): ContentQualityResult {
+export function contentQuality(text: string, minLength = 500): ContentQualityResult {
   // Strip HTML tags for quality assessment
   const plainText = text.replace(/<[^>]*>/g, "").trim();
 
@@ -68,6 +59,7 @@ export function contentQuality(
   }
 
   // Rule 2: Check for truncation markers
+  const truncationMarkers = ["[...]", "Read more", "click here", "read more at", "来源：", "Original:"];
   const hasTruncationMarker = truncationMarkers.some((marker) =>
     plainText.toLowerCase().includes(marker.toLowerCase())
   );
@@ -99,16 +91,14 @@ export function contentQuality(
  * @param normalizedContent 当前标准化内容
  * @param url 文章 URL
  * @param options 充实选项
- * @param truncationMarkers 截断标记数组
  * @returns {needed, reason}
  */
 export function needsEnrichment(
   normalizedContent: string,
   url: string | undefined,
-  options: EnrichOptions,
-  truncationMarkers: string[] = ["[...]", "Read more", "click here", "read more at", "来源：", "Original:"]
+  options: EnrichOptions
 ): NeedsEnrichmentResult {
-  const quality = contentQuality(normalizedContent, options.minContentLength, truncationMarkers);
+  const quality = contentQuality(normalizedContent, options.minContentLength);
 
   // Quality sufficient → not needed
   if (quality.status === "pass") {
@@ -125,47 +115,27 @@ export function needsEnrichment(
 }
 
 // ============================================================
-// Fetch Article Content via agent-fetch
+// Fetch Article Content via fetchWithFallback
 // ============================================================
 
 /**
- * 通过 agent-fetch 二进制获取文章正文
+ * 通过 fetchWithFallback 获取文章正文（defuddle → jina fallback）
  * @param url 文章 URL
  * @param timeout 超时时间（毫秒）
  * @returns 提取的正文内容，失败返回 null
  */
-export function fetchArticleContent(
+export async function fetchArticleContent(
   url: string,
   timeout: number = 20000
-): string | null {
-  try {
-    const stdout = execSync(`node ${agentFetchBin} "${url}" --json`, {
-      timeout,
-      cwd: process.cwd(),
-      encoding: "utf-8",
-    });
-
-    const result = JSON.parse(stdout.toString());
-    // agent-fetch 通过 JSON 中的 success 字段区分成功/失败，而非退出码
-    if (result.success === false) {
-      // 提取失败（如 body_too_small、页面不存在等），静默跳过
-      return null;
-    }
-    if (result.content?.textContent) {
-      return result.content.textContent;
-    }
-    if (result.textContent) {
-      return result.textContent;
-    }
-    return null;
-  } catch (error) {
-    logger.warn('内容提取失败', {
-      stage: 'enrich',
+): Promise<string | null> {
+  const result = await fetchWithFallback(url, timeout);
+  if (result === null) {
+    logger.warn("内容提取失败", {
+      stage: "enrich",
       url,
-      error: error instanceof Error ? error.message : String(error),
     });
-    return null;
   }
+  return result;
 }
 
 // ============================================================
@@ -178,16 +148,14 @@ export function fetchArticleContent(
  * @param options 充实选项
  * @returns 充实结果
  */
-export function enrichArticleItem(
+export async function enrichArticleItem(
   item: normalizedArticle,
   options: EnrichOptions
-): EnrichArticleResult {
-  const truncationMarkers = options.truncationMarkers ?? ["[...]", "Read more", "click here", "read more at", "来源：", "Original:"];
+): Promise<EnrichArticleResult> {
   const { needed } = needsEnrichment(
     item.normalizedContent,
     item.normalizedUrl,
-    options,
-    truncationMarkers
+    options
   );
 
   if (!needed) {
@@ -197,7 +165,7 @@ export function enrichArticleItem(
     };
   }
 
-  const newContent = fetchArticleContent(item.normalizedUrl, options.fetchTimeout);
+  const newContent = await fetchArticleContent(item.normalizedUrl, options.fetchTimeout);
 
   if (!newContent) {
     return {
@@ -231,10 +199,6 @@ export async function enrichArticles(
   articles: normalizedArticle[],
   options: EnrichOptions
 ): Promise<normalizedArticle[]> {
-  if (!options.enabled) {
-    logger.info("enrich disabled, skipping", { stage: "enrich" });
-    return articles;
-  }
   // Process in batches with full concurrency
   const batches: normalizedArticle[][] = [];
   for (let i = 0; i < articles.length; i += options.batchSize) {
