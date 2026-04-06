@@ -180,6 +180,16 @@ LOG_FORMAT=text                     # text | json
 2. **JSON Logging**: CLI 使用结构化 JSON 日志输出到 stdout
 3. **Error Handling**: 失败时输出错误信息并以非零退出码退出
 
+### ⚠️ Git 安全规则
+
+- **禁止**执行 `git reset --hard`，除非用户明确要求且已确认分支状态
+- `git status` 显示 clean 不代表与 remote 同步，需检查 `git log --oneline origin/main..HEAD`
+
+### TypeScript 验证
+
+- VS Code 诊断面板可能显示过时错误（stale diagnostics）
+- 始终用 `bun run typecheck` 验证真实状态，而非依赖 UI 诊断
+
 ### Logging Format
 
 ```json
