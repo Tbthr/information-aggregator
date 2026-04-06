@@ -44,7 +44,7 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "docs(daily): update $(date +%Y-%m-%d)"
-          file_pattern: "content/daily/*.md public/**"
+          file_pattern: "content/daily/*.md"
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
