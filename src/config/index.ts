@@ -16,6 +16,7 @@ import type { Source, SourceType, ContentType } from '../types/index.js'
 import type { EnrichOptions } from '../pipeline/enrich.js'
 import {
   AppConfigSchema,
+  type AppConfig,
   type AiFlashSource,
   type RankingConfig,
   type DedupeConfig,
@@ -27,7 +28,7 @@ import { loadAuthConfigsFromEnv } from './load-auth.js'
 // Daily Config (from config.yaml)
 // ============================================================
 
-export interface DailyConfig {
+interface DailyConfig {
   aiFlashCategorization: {
     enabled: boolean
     maxCategories: number
@@ -36,10 +37,10 @@ export interface DailyConfig {
 }
 
 // ============================================================
-// App Config (returned by loadConfig)
+// Config returned by loadConfig (extends YAML-validated config)
 // ============================================================
 
-export interface AppConfig {
+export interface LoadedAppConfig {
   sources: Source[]
   tags: import('../types/config.js').Tag[]
   enrichOptions: EnrichOptions
@@ -256,12 +257,12 @@ function loadConfigYaml(): {
  * Returns sources (sources.yaml), tags (tags.yaml), enrich/daily/ranking/dedupe/content/aiFlashSources (config.yaml),
  * and auth configs from environment variables.
  */
-export async function loadConfig(): Promise<AppConfig> {
+export async function loadConfig(): Promise<LoadedAppConfig> {
   const [sources, tags, yamlConfig, authConfigs] = await Promise.all([
     loadSources(),
     loadTags(),
-    Promise.resolve(loadConfigYaml()),
-    Promise.resolve(loadAuthConfigsFromEnv()),
+    loadConfigYaml(),
+    loadAuthConfigsFromEnv(),
   ])
 
   return {
