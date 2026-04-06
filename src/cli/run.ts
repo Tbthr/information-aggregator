@@ -109,7 +109,7 @@ async function main() {
   })
 
   // 1. 加载配置
-  const { sources, tags, enrichOptions, dailyConfig, aiFlashSources } = await loadConfig()
+  const { sources, tags, enrichOptions, dailyConfig, aiFlashSources, rankingConfig, dedupeConfig } = await loadConfig()
   const adapters = buildAdapters()
 
   // 2. 并发收集
@@ -142,7 +142,7 @@ async function main() {
   const normalized = rawItems
     .map((item) => {
       const source = sourceMap.get(item.sourceId)
-      const sourceWeightScore = source?.sourceWeightScore ?? 0.5
+      const sourceWeightScore = source?.sourceWeightScore ?? 1
       const normalized = normalizeItem(item)
       if (normalized) {
         normalized.sourceWeightScore = sourceWeightScore
@@ -174,7 +174,7 @@ async function main() {
   })
 
   // 5. 评分排序
-  const ranked = rankCandidates(filtered)
+  const ranked = rankCandidates(filtered, rankingConfig)
 
   log({
     level: 'info',
@@ -186,7 +186,7 @@ async function main() {
 
   // 6. 全局去重
   const dedupedExact = dedupeExact(ranked)
-  const deduped = dedupeNear(dedupedExact)
+  const deduped = dedupeNear(dedupedExact, dedupeConfig.nearThreshold)
 
   log({
     level: 'info',
