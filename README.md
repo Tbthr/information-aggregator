@@ -43,9 +43,7 @@ bun run src/cli/run.ts
 | 文件 | 说明 |
 |------|------|
 | `config/sources.yaml` | 数据源配置（RSS、JSON Feed、X/Twitter） |
-| `config/tags.yaml` | Tag 配置（include/exclude 规则、scoreBoost） |
-| `config/reports.yaml` | 日报参数（enrich 配置） |
-| `config/ai-flash-sources.yaml` | AI快讯数据源配置（hexi/juya/clawfeed） |
+| `config/config.yaml` | 统一配置（tags、enrich、ranking、dedupe、content、AI快讯数据源） |
 
 ## 架构
 

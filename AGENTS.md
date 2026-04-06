@@ -18,9 +18,7 @@ Information Aggregator 是一个轻量级信息聚合平台，通过 YAML 配置
 information-aggregator/
 ├── config/                    # YAML 配置
 │   ├── sources.yaml        # 数据源配置
-│   ├── tags.yaml           # Tag 配置
-│   ├── reports.yaml         # 报表配置（日报参数、prompts）
-│   └── ai-flash-sources.yaml # AI快讯数据源配置
+│   └── config.yaml         # 统一配置（tags、enrich、ranking、dedupe、content、AI快讯）
 ├── data/                    # 收集的 JSON 数据（用于历史去重）
 │   └── YYYY-MM-DD.json
 ├── reports/daily/           # 生成的日报 Markdown
@@ -250,7 +248,7 @@ bun run src/cli/run.ts
 
 ## 配置说明
 
-### config/reports.yaml
+### config/config.yaml
 
 ```yaml
 enrich:
@@ -258,6 +256,36 @@ enrich:
   batchSize: 10
   minContentLength: 500
   fetchTimeout: 20000
+
+ranking:
+  sourceWeight: 0.4
+  engagement: 0.15
+
+dedupe:
+  nearThreshold: 0.75
+
+content:
+  truncationMarkers:
+    - "[...]"
+    - "Read more"
+    - "click here"
+    - "read more at"
+    - "来源："
+    - "Original:"
+
+aiFlashSources:
+  - id: hexi-daily
+    adapter: hexi-daily
+    url: https://r.jina.ai/https://ai.hubtoday.app/{month}/{date}/
+    enabled: true
+  - id: juya-daily
+    adapter: juya-daily
+    url: https://imjuya.github.io/juya-ai-daily/rss.xml
+    enabled: true
+  - id: clawfeed-daily
+    adapter: clawfeed-daily
+    url: https://clawfeed.kevinhe.io/feed/kevin
+    enabled: true
 ```
 
 ## GitHub Actions
