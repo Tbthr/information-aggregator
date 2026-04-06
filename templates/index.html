@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <meta http-equiv="content-type" content="text/html; charset=utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>{{ config.title }}</title>
+      <link rel="stylesheet" href="{{ get_url(path="site.css", trailing_slash=false) }}">
+    </head>
+    <body>
+        <div class="container">
+            <header id="header">
+                <div class="logo"><a href="{{ config.base_url }}">{{ config.title }}</a></div>
+            </header>
+
+            <main>
+                <div class="content">
+                    <div class="posts">
+                        {% set section = get_section(path="daily/_index.md") %}
+                        {% for page in section.pages | reverse %}
+                            <article class="post">
+                                <h2><a href="{{ page.permalink | safe }}">{{ page.title }}</a></h2>
+                                <div class="post-meta">{{ page.date | date(format="%Y-%m-%d") }}</div>
+                            </article>
+                        {% endfor %}
+                    </div>
+                </div>
+            </main>
+        </div>
+    </body>
+</html>

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <meta http-equiv="content-type" content="text/html; charset=utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>{{ page.title }} - {{ config.title }}</title>
+      <link rel="stylesheet" href="{{ get_url(path="site.css", trailing_slash=false) }}">
+      <style>
+          .post-header {
+              display: flex;
+              align-items: baseline;
+              gap: 1rem;
+              margin-bottom: 1rem;
+          }
+          .post-header h1 {
+              margin: 0;
+              font-weight: 400;
+          }
+          .post-header .post-meta {
+              color: #757575;
+              font-size: 14px;
+          }
+          .post-content h2::before { content: "## "; color: #bb5649; }
+          .post-content h3::before { content: "### "; color: #bb5649; }
+          .post-content h4::before { content: "#### "; color: #bb5649; }
+      </style>
+    </head>
+    <body>
+        <div class="container">
+            <header id="header">
+                <div class="logo"><a href="{{ config.base_url }}">{{ config.title }}</a></div>
+                <nav class="menu">
+                    <ul>
+                        <li><a href="{{ get_url(path="daily/") | safe }}">日报</a></li>
+                    </ul>
+                </nav>
+            </header>
+
+            <main>
+                <div class="content">
+                    <article class="post">
+                        <div class="post-header">
+                            <h1>{{ page.title }}</h1>
+                            <span class="post-meta">{{ page.date | date(format="%Y-%m-%d") }}</span>
+                        </div>
+                        <div class="post-content">
+                            {{ page.content | safe }}
+                        </div>
+                    </article>
+                </div>
+            </main>
+        </div>
+    </body>
+</html>

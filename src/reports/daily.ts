@@ -4,7 +4,7 @@
  * Architecture:
  * 1. Accept pre-processed articles (from pipeline)
  * 2. Fetch AI flash content from dedicated adapters (hexi-daily, juya-daily, clawfeed-daily)
- * 3. Output to Markdown (reports/daily/YYYY-MM-DD.md)
+ * 3. Output to Markdown (content/daily/YYYY-MM-DD.md) with Zola front matter
  *    - AI快讯 section (from dedicated adapters, categorized)
  *    - 推特精选 section (ClawFeed, original markdown format)
  *    - 文章列表 section (from pipeline articles)
@@ -46,7 +46,12 @@ export interface DailyReportData {
 export function generateDailyMarkdown(report: DailyReportData): string {
   const lines: string[] = []
 
-  lines.push(`# ${report.dateLabel}`)
+  // Zola front matter
+  lines.push('+++')
+  lines.push(`title = "${report.dateLabel}"`)
+  lines.push(`date = ${report.date}`)
+  lines.push('render = true')
+  lines.push('+++')
   lines.push('')
 
   // ## AI快讯
@@ -153,26 +158,12 @@ export async function generateDailyReport(
   }
 
   const markdown = generateDailyMarkdown(reportData)
-  const outputDir = path.join(process.cwd(), 'reports', 'daily')
+  const outputDir = path.join(process.cwd(), 'content', 'daily')
   const outputPath = path.join(outputDir, `${dateStr}.md`)
 
   try {
     fs.mkdirSync(outputDir, { recursive: true })
     fs.writeFileSync(outputPath, markdown, 'utf-8')
-
-    // Update reports.json with the new date
-    const reportsJsonPath = path.join(process.cwd(), 'reports', 'reports.json')
-    let reportList: string[] = []
-    if (fs.existsSync(reportsJsonPath)) {
-      try {
-        reportList = JSON.parse(fs.readFileSync(reportsJsonPath, 'utf-8')).daily || []
-      } catch { /* ignore */ }
-    }
-    const fileName = `${dateStr}.md`
-    if (!reportList.includes(fileName)) {
-      reportList.unshift(fileName)
-      fs.writeFileSync(reportsJsonPath, JSON.stringify({ daily: reportList }, null, 2), 'utf-8')
-    }
   } catch {
     errorSteps.push('writeOutput')
   }

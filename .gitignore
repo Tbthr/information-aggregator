@@ -14,5 +14,8 @@ coverage/
 screenshots/
 tmp/
 
+# Zola build output
+public/
+
 # Brainstorm mockups
 .superpowers

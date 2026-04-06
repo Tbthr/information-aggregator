@@ -1,0 +1,8 @@
+base_url = "https://Tbthr.github.io/information-aggregator/"
+title = "The Daily Brief"
+description = ""
+theme = "even"
+
+[markdown]
+
+[extra]
