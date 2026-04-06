@@ -96,9 +96,10 @@ function loadSources(): Source[] {
 }
 
 function loadTags(): import('../types/config.js').Tag[] {
-  const tagsPath = path.join(process.cwd(), 'config', 'tags.yaml')
-  const tagsContent = fs.readFileSync(tagsPath, 'utf-8')
-  const raw = yaml.load(tagsContent) as { tags: Array<{
+  // Tags are now embedded in config.yaml (previously in config/tags.yaml)
+  const configPath = path.join(process.cwd(), 'config', 'config.yaml')
+  const configContent = fs.readFileSync(configPath, 'utf-8')
+  const raw = yaml.load(configContent) as { tags?: Array<{
     id: string
     name?: string
     description?: string
@@ -107,6 +108,8 @@ function loadTags(): import('../types/config.js').Tag[] {
     excludeRules?: string[]
     scoreBoost?: number
   }> }
+
+  if (!raw.tags) return []
 
   return raw.tags
     .filter(t => t.enabled !== false)
