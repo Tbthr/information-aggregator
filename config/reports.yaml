@@ -6,7 +6,7 @@ enrich:
   enabled: true
   batchSize: 10
   minContentLength: 500
-  fetchTimeout: 20000  # agent-fetch 超时（毫秒）
+  fetchTimeout: 20000  # 网页内容抓取超时（毫秒）
 
 aiFlashCategorization:
   enabled: true

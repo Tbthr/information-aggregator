@@ -3,12 +3,10 @@
  * 负责判断哪些文章需要从原 URL 提取完整正文，以及执行提取
  */
 
-import { execSync } from "child_process";
-import path from "path";
-import { createLogger } from "../utils/logger";
+import { createLogger } from "../utils/logger.js";
 import type { normalizedArticle } from "../types/index.js";
+import { fetchWithFallback } from "../utils/fetch-with-fallback.js";
 
-const agentFetchBin = path.join(process.cwd(), "node_modules/.bin/agent-fetch");
 const logger = createLogger("pipeline:enrich");
 
 // ============================================================
@@ -117,47 +115,27 @@ export function needsEnrichment(
 }
 
 // ============================================================
-// Fetch Article Content via agent-fetch
+// Fetch Article Content via fetchWithFallback
 // ============================================================
 
 /**
- * 通过 agent-fetch 二进制获取文章正文
+ * 通过 fetchWithFallback 获取文章正文（defuddle → jina fallback）
  * @param url 文章 URL
  * @param timeout 超时时间（毫秒）
  * @returns 提取的正文内容，失败返回 null
  */
-export function fetchArticleContent(
+export async function fetchArticleContent(
   url: string,
   timeout: number = 20000
-): string | null {
-  try {
-    const stdout = execSync(`node ${agentFetchBin} "${url}" --json`, {
-      timeout,
-      cwd: process.cwd(),
-      encoding: "utf-8",
-    });
-
-    const result = JSON.parse(stdout.toString());
-    // agent-fetch 通过 JSON 中的 success 字段区分成功/失败，而非退出码
-    if (result.success === false) {
-      // 提取失败（如 body_too_small、页面不存在等），静默跳过
-      return null;
-    }
-    if (result.content?.textContent) {
-      return result.content.textContent;
-    }
-    if (result.textContent) {
-      return result.textContent;
-    }
-    return null;
-  } catch (error) {
-    logger.warn('内容提取失败', {
-      stage: 'enrich',
+): Promise<string | null> {
+  const result = await fetchWithFallback(url, timeout);
+  if (result === null) {
+    logger.warn("内容提取失败", {
+      stage: "enrich",
       url,
-      error: error instanceof Error ? error.message : String(error),
     });
-    return null;
   }
+  return result;
 }
 
 // ============================================================
@@ -170,10 +148,10 @@ export function fetchArticleContent(
  * @param options 充实选项
  * @returns 充实结果
  */
-export function enrichArticleItem(
+export async function enrichArticleItem(
   item: normalizedArticle,
   options: EnrichOptions
-): EnrichArticleResult {
+): Promise<EnrichArticleResult> {
   const { needed } = needsEnrichment(
     item.normalizedContent,
     item.normalizedUrl,
@@ -187,7 +165,7 @@ export function enrichArticleItem(
     };
   }
 
-  const newContent = fetchArticleContent(item.normalizedUrl, options.fetchTimeout);
+  const newContent = await fetchArticleContent(item.normalizedUrl, options.fetchTimeout);
 
   if (!newContent) {
     return {
