@@ -53,26 +53,27 @@ information-aggregator/
 
 | Command | Purpose |
 |---------|---------|
-| `bun run src/cli/run.ts --help` | 显示帮助信息 |
-| `bun run src/cli/run.ts` | 运行完整流程（默认 24h 时间窗口）|
-| `bun run src/cli/run.ts -t 1h` | 本地测试用，缩短运行时间 |
+| `bun install` | 安装依赖 |
+| `bun test` | 运行所有单元测试 |
+| `bun run typecheck` | TypeScript 类型检查 |
+| `bash -c 'set -a; source .env.local; exec bun run src/cli/run.ts'` | 运行完整流程（默认 24h，需 AI 配置）|
+| `bash -c 'set -a; source .env.local; exec bun run src/cli/run.ts -t 1h'` | 本地测试，缩短运行时间 |
 
 ## Development Workflow
 
 ### Common Commands
 
-| Command | Purpose |
-|---------|---------|
-| `bun install` | 安装依赖 |
-| `bun test` | 运行所有单元测试 |
-| `bun run src/cli/run.ts -t 1h` | 运行 CLI（测试时用 1h 避免数据过多）|
-| `bun run typecheck` | TypeScript 类型检查 |
+运行任何 `src/cli/run.ts` 命令前，需先加载 `.env.local` 中的环境变量：
+
+```bash
+bash -c 'set -a; source .env.local; exec bun run src/cli/run.ts'
+```
 
 ### Pre-commit Checklist
 
 1. `bun run typecheck` - 确保无 TypeScript 错误
 2. `bun test` - 确保所有测试通过
-3. `bun run src/cli/run.ts -t 1h` - 确保 CLI 能正常运行（测试时用 1h 避免数据过多）
+3. `bash -c 'set -a; source .env.local; exec bun run src/cli/run.ts -t 1h'` - 确保 CLI 能正常运行
 
 ## Environment & 本地运行
 
