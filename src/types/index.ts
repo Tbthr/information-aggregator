@@ -127,6 +127,8 @@ export interface normalizedArticle {
   // Pipeline 运行时字段
   sourceWeightScore: number;
   engagementScore: number;
+  // Tag 过滤字段（由 source.tagIds 或 item.tagFilter 传递）
+  tagIds?: string[];
 }
 
 // Content - unified content model for normalized items

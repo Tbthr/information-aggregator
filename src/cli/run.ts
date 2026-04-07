@@ -109,7 +109,7 @@ async function main() {
   })
 
   // 1. 加载配置
-  const { sources, tags, enrichOptions, dailyConfig, aiFlashSources, rankingConfig, dedupeConfig } = await loadConfig()
+  const { sources, tags, enrichOptions, aiFlashSources, rankingConfig, dedupeConfig } = await loadConfig()
   const adapters = buildAdapters()
 
   // 2. 并发收集
@@ -147,7 +147,7 @@ async function main() {
       if (normalized) {
         normalized.sourceWeightScore = sourceWeightScore
         // 传递 tagIds，供 filterByTags 使用
-        ;(normalized as any).tagIds = item.tagFilter ?? source?.tagIds ?? []
+        normalized.tagIds = item.tagFilter ?? source?.tagIds ?? []
       }
       return normalized
     })
@@ -163,7 +163,7 @@ async function main() {
   })
 
   // 4. tag 过滤
-  const filtered = filterByTags(normalized as any, tags) as normalizedArticle[]
+  const filtered = filterByTags(normalized, tags) as normalizedArticle[]
 
   log({
     level: 'info',
@@ -227,7 +227,7 @@ async function main() {
     const aiClient = createAiClient()
 
     if (aiClient) {
-      const result = await generateDailyReport(new Date(), aiClient, enriched as any, aiFlashSources)
+      const result = await generateDailyReport(new Date(), aiClient, enriched, aiFlashSources)
       log({
         level: 'info',
         ts: new Date().toISOString(),

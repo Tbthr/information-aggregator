@@ -3,6 +3,9 @@ import type { AiClient } from "../ai/types.js";
 import { fetchWithFallback, normalizeAiFlashMarkers } from "../utils/fetch-with-fallback.js";
 import type { AiFlashSource } from "../types/config.js";
 import { loadConfig } from "../config/index.js";
+import { createLogger } from "../utils/logger.js";
+
+const logger = createLogger("reports:ai-flash");
 
 export type { AiFlashSource }
 
@@ -385,11 +388,17 @@ export async function categorizeAiFlash(
         const existing = categorizedMap.get('其他') ?? []
         categorizedMap.set('其他', [...existing, ...needsAi])
       } else {
-        const parsed = JSON.parse(jsonMatch[0])
-        const categories: AiFlashCategory[] = parsed.categories ?? []
-        for (const cat of categories) {
-          const existing = categorizedMap.get(cat.name) ?? []
-          categorizedMap.set(cat.name, [...existing, ...cat.items])
+        try {
+          const parsed = JSON.parse(jsonMatch[0]) as { categories?: AiFlashCategory[] }
+          const categories: AiFlashCategory[] = parsed.categories ?? []
+          for (const cat of categories) {
+            const existing = categorizedMap.get(cat.name) ?? []
+            categorizedMap.set(cat.name, [...existing, ...cat.items])
+          }
+        } catch (err) {
+          logger.warn("Failed to parse AI categorization response as JSON", { error: String(err), responsePreview: jsonMatch[0].slice(0, 200) });
+          const existing = categorizedMap.get('其他') ?? []
+          categorizedMap.set('其他', [...existing, ...needsAi])
         }
       }
     } catch {
@@ -440,7 +449,7 @@ export async function fetchAiFlashSources(
           }
         }
       } catch (err) {
-        console.warn(`[ai-flash] Source ${source.id} failed:`, err)
+        logger.warn(`Source ${source.id} failed`, { sourceId: source.id, error: String(err) })
       }
     })
   )

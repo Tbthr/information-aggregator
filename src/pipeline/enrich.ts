@@ -183,9 +183,6 @@ export async function enrichArticleItem(
     };
   }
 
-  // In-place replacement of normalizedContent
-  item.normalizedContent = newContent;
-
   return {
     enriched: true,
     originalContent: item.normalizedContent,
@@ -201,7 +198,7 @@ export async function enrichArticleItem(
  * 批量充实文章
  * @param articles 文章数组
  * @param options 充实选项
- * @returns 充实后的文章数组（in-place）
+ * @returns 充实后的文章数组
  */
 export async function enrichArticles(
   articles: normalizedArticle[],
@@ -216,9 +213,19 @@ export async function enrichArticles(
   for (let i = 0; i < articles.length; i += options.batchSize) {
     batches.push(articles.slice(i, i + options.batchSize));
   }
-  await Promise.all(
-    batches.map(batch => Promise.all(batch.map(article => enrichArticleItem(article, options))))
-  );
+
+  for (const batch of batches) {
+    const batchResults = await Promise.all(
+      batch.map(article => enrichArticleItem(article, options))
+    );
+    // Apply enrichment results to articles (immutable update)
+    for (let i = 0; i < batch.length; i++) {
+      const result = batchResults[i];
+      if (result.enriched && result.newContent) {
+        batch[i].normalizedContent = result.newContent;
+      }
+    }
+  }
 
   return articles;
 }

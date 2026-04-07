@@ -298,7 +298,13 @@ function buildParentMetadata(parent: BirdThreadItem | undefined): { id?: string;
 }
 
 function parseBirdItems(payload: string, source: Source, jobStartedAt: string, timeWindow: number): { items: RawItem[], discardNoTimestamp: number, discardOutsideWindow: number } {
-  const parsed = JSON.parse(payload) as BirdItem[] | { tweets: BirdItem[] };
+  let parsed: BirdItem[] | { tweets: BirdItem[] };
+  try {
+    parsed = JSON.parse(payload) as BirdItem[] | { tweets: BirdItem[] };
+  } catch (err) {
+    logger.error("Failed to parse bird CLI JSON output", { error: String(err), payloadPreview: payload.slice(0, 500) });
+    return { items: [], discardNoTimestamp: 0, discardOutsideWindow: 0 };
+  }
   // --all 参数会返回 {"tweets": [...]} 结构，需要提取 tweets 数组
   const items = Array.isArray(parsed) ? parsed : (parsed as { tweets: BirdItem[] }).tweets;
   if (!Array.isArray(items)) {
