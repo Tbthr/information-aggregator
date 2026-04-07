@@ -73,5 +73,3 @@ export function normalizeUrlWithExpansion(input: string, expandedUrl?: string | 
   return normalizeUrl(input);
 }
 
-// Canonical URL resolution is removed per spec - only use normalizeUrl
-export { normalizeUrl as resolveCanonicalUrl };

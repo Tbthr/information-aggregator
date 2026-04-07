@@ -18,6 +18,6 @@ export function buildAdapters(): Record<string, AdapterFn> {
     zeli: (source, options) => collectZeliSource(source, options),
     clawfeed: (source, options) => collectClawfeedSource(source, options),
     attentionvc: (source, options) => collectAttentionvcSource(source, options),
-    githubTrending: (source, options) => collectGitHubTrendingSource(source, options),
+    "github-trending": (source, options) => collectGitHubTrendingSource(source, options),
   };
 }

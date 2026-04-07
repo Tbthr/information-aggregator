@@ -3,7 +3,7 @@ export type QuerySort = "ranked" | "recent" | "engagement";
 export type RunStatus = "pending" | "running" | "completed" | "failed" | "succeeded";
 
 // Source and content types
-export type SourceType = 'rss' | 'x' | 'json-feed' | 'github-trending' | 'zeli' | 'attentionvc' | 'clawfeed' | 'github';
+export type SourceType = 'rss' | 'x' | 'json-feed' | 'github-trending' | 'zeli' | 'attentionvc' | 'clawfeed';
 export type ContentType = 'article' | 'tweet' | 'github';
 export type AdapterType = 'hexi-daily' | 'juya-daily' | 'clawfeed-daily';
 

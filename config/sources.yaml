@@ -29,7 +29,7 @@ sources:
     contentType: article
 
   # === Twitter/X (需要 auth) ===
-  - type: twitter
+  - type: x
     id: twitter
     name: twitter
     enabled: true
