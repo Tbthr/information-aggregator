@@ -1,6 +1,7 @@
 import type { RawItem, Source } from "../types/index";
 import { createLogger, truncateWithLength } from "../utils/logger";
 import { stripHtml } from "../../lib/utils.js";
+import { cleanHtmlTitle } from "../../lib/clean-title.js";
 
 const logger = createLogger("adapter:github-trending");
 
@@ -60,16 +61,6 @@ function extractTodayStars(text: string): string | undefined {
 }
 
 
-/**
- * 清理标题中的 SVG 和多余空白
- */
-function cleanTitle(title: string): string {
-  return title
-    .replace(/<svg\b[\s\S]*?<\/svg>/gi, "")
-    .replace(/<[^>]+>/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
 
 /**
  * 解析 GitHub Trending HTML
@@ -94,7 +85,7 @@ export function parseGitHubTrendingHtml(html: string, sourceId: string, sourceTy
 
         // 提取标题（作者 / 仓库名）
         const titleMatch = article.match(/<h2[^>]*>\s*<a[^>]*>([\s\S]*?)<\/a>\s*<\/h2>/i);
-        const title = cleanTitle(titleMatch?.[1] ?? "") || `Repo ${index + 1}`;
+        const title = cleanHtmlTitle(titleMatch?.[1] ?? "") || `Repo ${index + 1}`;
 
         // 解析作者和仓库名
         const parts = title.split("/").map((p) => p.trim());

@@ -4,6 +4,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
 import { computeTimeCutoff } from "../../lib/utils";
+import { cleanMarkdownTitle } from "../../lib/clean-title.js";
 
 const logger = createLogger("adapter:bird");
 
@@ -122,8 +123,8 @@ interface BirdItem {
 function normalizeBirdTitle(text: string): string {
   const firstLine = text.split("\n").map((line) => line.trim()).find((line) => line !== "") ?? text.trim();
   const withoutUrls = firstLine.replace(/https?:\/\/\S+/g, "").trim();
-  const collapsed = withoutUrls.replace(/\s+/g, " ");
-  return collapsed.length > 120 ? `${collapsed.slice(0, 117).trimEnd()}...` : collapsed;
+  const cleaned = cleanMarkdownTitle(withoutUrls);
+  return cleaned.length > 120 ? `${cleaned.slice(0, 117).trimEnd()}...` : cleaned;
 }
 
 function getBirdConfig(source: Pick<Source, "authConfigJson">): BirdSourceConfig {

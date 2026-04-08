@@ -17,7 +17,7 @@ import { formatUtcDate, formatUtcDayLabel } from '../../lib/date-utils.js'
 import type { normalizedArticle } from '../types/index.js'
 import type { AiFlashSource, AiFlashItem, AiFlashCategory, AiFlashContent } from './ai-flash.js'
 import { categorizeAiFlash, fetchAiFlashSources } from './ai-flash.js'
-import { loadConfig } from '../config/index.js'
+import type { DailyConfig } from '../config/index.js'
 
 export interface DailyGenerateResult {
   date: string
@@ -109,7 +109,8 @@ export async function generateDailyReport(
   now: Date,
   aiClient: AiClient,
   articles: normalizedArticle[],
-  aiFlashSources: AiFlashSource[]
+  aiFlashSources: AiFlashSource[],
+  dailyConfig: DailyConfig,
 ): Promise<DailyGenerateResult> {
   const dateStr = formatUtcDate(now)
   const dayLabel = formatUtcDayLabel(now)
@@ -123,10 +124,9 @@ export async function generateDailyReport(
   const hexiJuyaItems = flashSources.filter(item => item.sourceName !== 'ClawFeed')
 
   // Categorize only hexi+juya items
-  const { dailyConfig } = await loadConfig()
   let categorizedFlash: AiFlashCategory[]
   if (dailyConfig.aiFlashCategorization.enabled) {
-    categorizedFlash = await categorizeAiFlash(hexiJuyaItems, aiClient)
+    categorizedFlash = await categorizeAiFlash(hexiJuyaItems, aiClient, dailyConfig.aiFlashCategorization)
   } else {
     // Use unclassified items directly under "其他" category (like fallbackCategorize)
     categorizedFlash = [{ name: '其他', items: hexiJuyaItems }]

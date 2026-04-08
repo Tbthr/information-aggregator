@@ -214,18 +214,23 @@ export async function enrichArticles(
     batches.push(articles.slice(i, i + options.batchSize));
   }
 
+  // Build new enriched array (immutable — never mutate input)
+  const enrichedArticles: normalizedArticle[] = [];
+
   for (const batch of batches) {
     const batchResults = await Promise.all(
       batch.map(article => enrichArticleItem(article, options))
     );
-    // Apply enrichment results to articles (immutable update)
+    // Apply enrichment results to articles (immutable — build new objects)
     for (let i = 0; i < batch.length; i++) {
       const result = batchResults[i];
       if (result.enriched && result.newContent) {
-        batch[i].normalizedContent = result.newContent;
+        enrichedArticles.push({ ...batch[i], normalizedContent: result.newContent });
+      } else {
+        enrichedArticles.push(batch[i]);
       }
     }
   }
 
-  return articles;
+  return enrichedArticles;
 }

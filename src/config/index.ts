@@ -23,12 +23,13 @@ import {
   type ContentConfig,
 } from '../types/config.js'
 import { loadAuthConfigsFromEnv } from './load-auth.js'
+import { resolveEnvVars } from './resolve-env.js'
 
 // ============================================================
 // Daily Config (from config.yaml)
 // ============================================================
 
-interface DailyConfig {
+export interface DailyConfig {
   aiFlashCategorization: {
     enabled: boolean
     maxCategories: number
@@ -89,7 +90,7 @@ function loadSources(): Source[] {
         tagIds: s.tagIds ?? [],
         weightScore: null,
         contentType: s.contentType as ContentType,
-        authConfigJson: s.auth ? JSON.stringify(s.auth) : null,
+        authConfigJson: s.auth ? JSON.stringify(resolveEnvVars(s.auth)) : null,
         sourceWeightScore: s.weightScore ?? 1,
       }
     })

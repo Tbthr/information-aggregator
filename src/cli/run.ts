@@ -109,7 +109,7 @@ async function main() {
   })
 
   // 1. 加载配置
-  const { sources, tags, enrichOptions, aiFlashSources, rankingConfig, dedupeConfig } = await loadConfig()
+  const { sources, tags, enrichOptions, aiFlashSources, rankingConfig, dedupeConfig, dailyConfig } = await loadConfig()
   const adapters = buildAdapters()
 
   // 2. 并发收集
@@ -227,7 +227,7 @@ async function main() {
     const aiClient = createAiClient()
 
     if (aiClient) {
-      const result = await generateDailyReport(new Date(), aiClient, enriched, aiFlashSources)
+      const result = await generateDailyReport(new Date(), aiClient, enriched, aiFlashSources, dailyConfig)
       log({
         level: 'info',
         ts: new Date().toISOString(),

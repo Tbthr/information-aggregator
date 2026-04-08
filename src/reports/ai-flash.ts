@@ -2,7 +2,8 @@ import { beijingDayRange, formatBeijingDate, parseDate } from "../../lib/date-ut
 import type { AiClient } from "../ai/types.js";
 import { fetchWithFallback, normalizeAiFlashMarkers } from "../utils/fetch-with-fallback.js";
 import type { AiFlashSource } from "../types/config.js";
-import { loadConfig } from "../config/index.js";
+import type { DailyConfig } from "../config/index.js";
+import { cleanMarkdownTitle } from "../../lib/clean-title.js";
 import { createLogger } from "../utils/logger.js";
 
 const logger = createLogger("reports:ai-flash");
@@ -116,7 +117,7 @@ function parseHexiMarkdownToItems(content: string): AiFlashItem[] {
     // 检测分类标题，如 "### 产品与功能更新"
     const categoryMatch = line.match(/^###\s+(.+)/)
     if (categoryMatch) {
-      const raw = categoryMatch[1].replace(/\[\]\([^)]+\)/, '').trim()
+      const raw = cleanMarkdownTitle(categoryMatch[1])
       // 映射到 AI 标准分类名，未知分类保持原样
       currentCategory = CATEGORY_ALIAS[raw] ?? raw
       continue
@@ -130,11 +131,7 @@ function parseHexiMarkdownToItems(content: string): AiFlashItem[] {
       // Extract first [text](url) from rest BEFORE stripping links
       const firstLink = rest.match(/\[([^\]]+)\]\(([^)]+)\)/)
       const itemUrl = firstLink ? firstLink[2] : ''
-      rest = rest.replace(/^[ ：]+/, '')
-      rest = rest
-        .replace(/\*\*([^*]+)\*\*/g, '$1')
-        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-        .trim()
+      rest = cleanMarkdownTitle(rest)
       items.push({
         title,
         url: itemUrl,
@@ -214,13 +211,12 @@ function parseClawfeedMarkdownToItems(content: string): AiFlashItem[] {
       if (!titleRaw.trim() && urlMatch) {
         titleRaw = urlMatch[1]
       }
-      titleRaw = titleRaw.replace(/\*\*/g, '').trim()
       const summaryRest = urlMatch ? rest.replace(/\[([^\]]+)\]\([^)]+\)/, '').trim() : rest
 
       currentItem = {
-        title: titleRaw || (urlMatch ? urlMatch[1] : rest).replace(/\*\*/g, '').trim(),
+        title: cleanMarkdownTitle(titleRaw) || cleanMarkdownTitle(urlMatch ? urlMatch[1] : rest),
         url: urlMatch ? urlMatch[2] : '',
-        summary: summaryRest.replace(/^[ —：:]+/, '').replace(/\*\*/g, '').replace(/（来源：[^）]+）/g, '').trim(),
+        summary: cleanMarkdownTitle(summaryRest).replace(/（来源：[^）]+）/g, '').trim(),
       }
       currentMarkdownLines = [line]
     } else if (currentItem.title) {
@@ -348,6 +344,7 @@ async function fetchClawfeedDaily(source: AiFlashSource, fetcher: typeof fetch):
 export async function categorizeAiFlash(
   items: AiFlashItem[],
   aiClient: AiClient,
+  aiFlashCategorizationConfig: DailyConfig['aiFlashCategorization'],
 ): Promise<AiFlashCategory[]> {
   if (items.length === 0) return []
 
@@ -369,9 +366,8 @@ export async function categorizeAiFlash(
 
   // AI categorize items without sourceCategory
   if (needsAi.length > 0) {
-    const { dailyConfig } = await loadConfig()
     const itemsText = needsAi.map((item, i) => `${i + 1}. [${item.title}](${item.url}) — ${item.summary}`).join('\n')
-    const basePrompt = dailyConfig.aiFlashCategorization.prompt ||
+    const basePrompt = aiFlashCategorizationConfig.prompt ||
       `你是一个内容分类助手。请将以下 AI 快讯条目分类到以下类别：产品更新 / 前沿研究 / 行业动态 / 开源项目 / 社媒精选 / 其他。每个条目必须归属一个类别，不要改写任何内容。输出 JSON 格式：{ "categories": [{ "name": "分类名", "items": [{ "title": "...", "url": "...", "summary": "...", "sourceName": "..." }] }, ...] }。类别数量不超过 6 个，"其他"作为最后兜底。`
 
     const prompt = basePrompt.replace('{items}', `\n${itemsText}\n`)
