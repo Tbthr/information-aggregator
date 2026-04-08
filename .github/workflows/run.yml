@@ -25,11 +25,16 @@ jobs:
       - name: Install dependencies
         run: bun install
 
+      - name: Install bird CLI
+        run: npm install -g @steipete/bird
+
       - name: Run aggregator
         env:
           ANTHROPIC_API_KEYS: ${{ secrets.ANTHROPIC_API_KEYS }}
           ANTHROPIC_MODEL: ${{ vars.ANTHROPIC_MODEL || 'claude-sonnet-4-20250514' }}
           ANTHROPIC_BASE_URLS: ${{ vars.ANTHROPIC_BASE_URLS }}
+          TWITTER_AUTH_TOKEN: ${{ secrets.TWITTER_AUTH_TOKEN }}
+          TWITTER_CT0: ${{ secrets.TWITTER_CT0 }}
         run: bun run src/cli/run.ts
 
       - name: Install Zola

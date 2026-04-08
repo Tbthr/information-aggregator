@@ -32,7 +32,7 @@ sources:
   - type: x
     id: twitter
     name: twitter
-    enabled: true
+    enabled: false  # TODO: re-enable after adding TWITTER_AUTH_TOKEN and TWITTER_CT0 secrets
     tagIds: [ai]
     contentType: tweet
     auth:
